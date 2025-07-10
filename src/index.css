@@ -2,39 +2,58 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* Sistema de design baseado no ícone do agente financeiro
+Paleta de cores extraída do ícone: tons de azul com gradientes
 */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 220 20% 98%;
+    --foreground: 215 25% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 215 25% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 215 25% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Azul principal baseado no ícone */
+    --primary: 220 90% 55%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 220 85% 70%;
+    --primary-dark: 220 95% 45%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Tons secundários do gradiente */
+    --secondary: 200 85% 85%;
+    --secondary-foreground: 215 25% 15%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 15% 95%;
+    --muted-foreground: 215 15% 50%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 200 90% 60%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Success (receitas) */
+    --success: 145 65% 45%;
+    --success-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Destructive (despesas) */
+    --destructive: 0 85% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 25% 90%;
+    --input: 220 25% 95%;
+    --ring: 220 90% 55%;
+
+    /* Gradientes inspirados no ícone */
+    --gradient-primary: linear-gradient(135deg, hsl(220 95% 45%), hsl(200 90% 60%));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(220 15% 98%));
+    --gradient-header: linear-gradient(135deg, hsl(220 90% 55%), hsl(200 85% 65%));
+    
+    /* Sombras elegantes */
+    --shadow-soft: 0 4px 20px hsla(220, 50%, 20%, 0.1);
+    --shadow-card: 0 2px 15px hsla(220, 40%, 30%, 0.08);
+    --shadow-primary: 0 8px 25px hsla(220, 90%, 55%, 0.3);
 
     --radius: 0.5rem;
 
