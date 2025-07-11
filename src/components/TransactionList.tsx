@@ -1,15 +1,16 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, TrendingDown, Trash2 } from "lucide-react";
+import { TrendingUp, TrendingDown, Trash2, Edit } from "lucide-react";
 import { Transaction } from '@/hooks/useTransactions';
 
 interface TransactionListProps {
   transactions: Transaction[];
   onDelete?: (id: string) => void;
+  onEdit?: (transaction: Transaction) => void;
 }
 
-export function TransactionList({ transactions, onDelete }: TransactionListProps) {
+export function TransactionList({ transactions, onDelete, onEdit }: TransactionListProps) {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
@@ -68,6 +69,16 @@ export function TransactionList({ transactions, onDelete }: TransactionListProps
                     {transaction.type === 'income' ? '+' : '-'} R$ {transaction.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
+                {onEdit && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onEdit(transaction)}
+                    className="text-primary hover:text-primary"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                )}
                 {onDelete && (
                   <Button
                     variant="ghost"

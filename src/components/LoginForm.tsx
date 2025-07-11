@@ -5,6 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Eye, EyeOff, LogIn } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface LoginFormProps {
   onToggleMode: () => void;
@@ -19,6 +21,7 @@ export function LoginForm({ onToggleMode, isSignUp }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { signIn, signUp } = useAuth();
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +31,11 @@ export function LoginForm({ onToggleMode, isSignUp }: LoginFormProps) {
     }
 
     if (isSignUp && password !== confirmPassword) {
+      toast({
+        title: "Erro",
+        description: "As senhas não coincidem.",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -39,6 +47,32 @@ export function LoginForm({ onToggleMode, isSignUp }: LoginFormProps) {
     
     try {
       if (isSignUp) {
+        // Verificar se o email já existe tentando fazer login
+        const { data: existingUser, error: loginError } = await supabase.auth.signInWithPassword({
+          email,
+          password: 'dummy_password_check'
+        });
+
+        // Se não deu erro de credenciais inválidas, significa que o email existe
+        if (loginError && !loginError.message.includes('Invalid login credentials')) {
+          // Outro tipo de erro
+          toast({
+            title: "Erro",
+            description: "Erro ao verificar e-mail. Tente novamente.",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        if (!loginError || !loginError.message.includes('Invalid login credentials')) {
+          toast({
+            title: "Erro no cadastro",
+            description: "Este e-mail já está cadastrado. Faça login ou use outro e-mail.",
+            variant: "destructive"
+          });
+          return;
+        }
+
         await signUp(email, password, fullName);
       } else {
         await signIn(email, password);

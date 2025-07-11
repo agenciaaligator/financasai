@@ -2,9 +2,13 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TransactionForm } from "./TransactionForm";
 import { TransactionList } from "./TransactionList";
 import { FinancialChart } from "./FinancialChart";
+import { CategoryManager } from "./CategoryManager";
+import { ProfileSettings } from "./ProfileSettings";
+import { EditTransactionModal } from "./EditTransactionModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useTransactions } from "@/hooks/useTransactions";
 import { 
@@ -14,13 +18,17 @@ import {
   PlusCircle, 
   AlertTriangle,
   LogOut,
-  User
+  User,
+  Settings,
+  Tags
 } from "lucide-react";
+import { Transaction } from "@/hooks/useTransactions";
 
 export function FinancialDashboard() {
   const [showForm, setShowForm] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const { user, signOut } = useAuth();
-  const { transactions, loading, balance, totalIncome, totalExpenses, addTransaction, deleteTransaction } = useTransactions();
+  const { transactions, categories, loading, balance, totalIncome, totalExpenses, addTransaction, deleteTransaction, refetch } = useTransactions();
 
   const handleAddTransaction = async (transaction: any) => {
     const result = await addTransaction(transaction);
@@ -54,10 +62,6 @@ export function FinancialDashboard() {
           </div>
           
           <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm">
-              <User className="h-4 w-4 mr-2" />
-              Perfil
-            </Button>
             <Button variant="outline" size="sm" onClick={signOut}>
               <LogOut className="h-4 w-4 mr-2" />
               Sair
@@ -151,28 +155,78 @@ export function FinancialDashboard() {
         )}
 
         {/* Conteúdo Principal */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="bg-gradient-card shadow-card border-0">
-            <CardHeader>
-              <CardTitle>Gráfico Financeiro</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <FinancialChart transactions={transactions} />
-            </CardContent>
-          </Card>
+        <Tabs defaultValue="dashboard" className="w-full">
+          <TabsList className="grid w-full grid-cols-4 bg-muted/30">
+            <TabsTrigger value="dashboard" className="flex items-center space-x-2">
+              <DollarSign className="h-4 w-4" />
+              <span>Dashboard</span>
+            </TabsTrigger>
+            <TabsTrigger value="transactions" className="flex items-center space-x-2">
+              <TrendingUp className="h-4 w-4" />
+              <span>Transações</span>
+            </TabsTrigger>
+            <TabsTrigger value="categories" className="flex items-center space-x-2">
+              <Tags className="h-4 w-4" />
+              <span>Categorias</span>
+            </TabsTrigger>
+            <TabsTrigger value="profile" className="flex items-center space-x-2">
+              <User className="h-4 w-4" />
+              <span>Perfil</span>
+            </TabsTrigger>
+          </TabsList>
 
-          <Card className="bg-gradient-card shadow-card border-0">
-            <CardHeader>
-              <CardTitle>Transações Recentes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <TransactionList 
-                transactions={transactions.slice(0, 10)} 
-                onDelete={deleteTransaction}
-              />
-            </CardContent>
-          </Card>
-        </div>
+          <TabsContent value="dashboard" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="bg-gradient-card shadow-card border-0">
+                <CardHeader>
+                  <CardTitle>Gráfico Financeiro</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <FinancialChart transactions={transactions} />
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-card shadow-card border-0">
+                <CardHeader>
+                  <CardTitle>Transações Recentes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <TransactionList 
+                    transactions={transactions.slice(0, 10)} 
+                    onDelete={deleteTransaction}
+                    onEdit={setEditingTransaction}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="transactions">
+            <Card className="bg-gradient-card shadow-card border-0">
+              <CardHeader>
+                <CardTitle>Todas as Transações</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <TransactionList 
+                  transactions={transactions} 
+                  onDelete={deleteTransaction}
+                  onEdit={setEditingTransaction}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="categories">
+            <CategoryManager 
+              categories={categories} 
+              onRefresh={refetch}
+            />
+          </TabsContent>
+
+          <TabsContent value="profile">
+            <ProfileSettings />
+          </TabsContent>
+        </Tabs>
 
         {/* Informações do WhatsApp */}
         <Card className="mt-6 bg-gradient-card shadow-card border-0">
@@ -194,6 +248,14 @@ export function FinancialDashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Modal de Edição */}
+        <EditTransactionModal
+          transaction={editingTransaction}
+          categories={categories}
+          onClose={() => setEditingTransaction(null)}
+          onUpdate={refetch}
+        />
       </div>
     </div>
   );
