@@ -47,33 +47,23 @@ export function LoginForm({ onToggleMode, isSignUp }: LoginFormProps) {
     
     try {
       if (isSignUp) {
-        // Verificar se o email já existe tentando fazer login
-        const { data: existingUser, error: loginError } = await supabase.auth.signInWithPassword({
-          email,
-          password: 'dummy_password_check'
-        });
-
-        // Se não deu erro de credenciais inválidas, significa que o email existe
-        if (loginError && !loginError.message.includes('Invalid login credentials')) {
-          // Outro tipo de erro
-          toast({
-            title: "Erro",
-            description: "Erro ao verificar e-mail. Tente novamente.",
-            variant: "destructive"
-          });
-          return;
+        // Tentativa de cadastro - a validação será feita pelo Supabase
+        const result = await signUp(email, password, fullName);
+        
+        // Se houve erro, verificar se é por email duplicado
+        if (result?.error) {
+          if (result.error.message.includes('User already registered') || 
+              result.error.message.includes('already registered') ||
+              result.error.message.includes('email address is already confirmed')) {
+            toast({
+              title: "Erro no cadastro",
+              description: "Este e-mail já está cadastrado. Faça login ou use outro e-mail.",
+              variant: "destructive"
+            });
+            return;
+          }
+          // Outros erros serão tratados pelo useAuth
         }
-
-        if (!loginError || !loginError.message.includes('Invalid login credentials')) {
-          toast({
-            title: "Erro no cadastro",
-            description: "Este e-mail já está cadastrado. Faça login ou use outro e-mail.",
-            variant: "destructive"
-          });
-          return;
-        }
-
-        await signUp(email, password, fullName);
       } else {
         await signIn(email, password);
       }

@@ -30,6 +30,10 @@ export function FinancialDashboard() {
   const { user, signOut } = useAuth();
   const { transactions, categories, loading, balance, totalIncome, totalExpenses, addTransaction, deleteTransaction, refetch } = useTransactions();
 
+  console.log('Dashboard renderizado - user:', user?.email);
+  console.log('Categories carregadas:', categories?.length);
+  console.log('Transactions carregadas:', transactions?.length);
+
   const handleAddTransaction = async (transaction: any) => {
     const result = await addTransaction(transaction);
     if (!result?.error) {
