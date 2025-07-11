@@ -1,13 +1,5 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-
-interface Transaction {
-  id: string;
-  type: 'income' | 'expense';
-  amount: number;
-  category: string;
-  description: string;
-  date: string;
-}
+import { Transaction } from '@/hooks/useTransactions';
 
 interface FinancialChartProps {
   transactions: Transaction[];
@@ -43,7 +35,8 @@ export function FinancialChart({ transactions }: FinancialChartProps) {
 
   // Dados para o gráfico de barras por categoria
   const categoryData = transactions.reduce((acc, transaction) => {
-    const existing = acc.find(item => item.category === transaction.category);
+    const categoryName = transaction.categories?.name || 'Sem categoria';
+    const existing = acc.find(item => item.category === categoryName);
     if (existing) {
       if (transaction.type === 'income') {
         existing.income += transaction.amount;
@@ -52,7 +45,7 @@ export function FinancialChart({ transactions }: FinancialChartProps) {
       }
     } else {
       acc.push({
-        category: transaction.category,
+        category: categoryName,
         income: transaction.type === 'income' ? transaction.amount : 0,
         expense: transaction.type === 'expense' ? transaction.amount : 0
       });

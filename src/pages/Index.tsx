@@ -1,26 +1,24 @@
 import { useState } from "react";
 import { FinancialDashboard } from "@/components/FinancialDashboard";
 import { LoginForm } from "@/components/LoginForm";
+import { useAuth } from "@/hooks/useAuth";
 
 const Index = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const { user, loading } = useAuth();
 
-  const handleLogin = (email: string, password: string) => {
-    // Aqui você integrará com Supabase para autenticação real
-    console.log('Login attempt:', { email, password });
-    setIsAuthenticated(true);
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-  };
-
-  if (!isAuthenticated) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20 flex items-center justify-center p-4">
         <LoginForm 
-          onLogin={handleLogin}
           onToggleMode={() => setIsSignUp(!isSignUp)}
           isSignUp={isSignUp}
         />

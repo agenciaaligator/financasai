@@ -4,60 +4,45 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Eye, EyeOff, LogIn } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 interface LoginFormProps {
-  onLogin: (email: string, password: string) => void;
   onToggleMode: () => void;
   isSignUp: boolean;
 }
 
-export function LoginForm({ onLogin, onToggleMode, isSignUp }: LoginFormProps) {
+export function LoginForm({ onToggleMode, isSignUp }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  const { signIn, signUp } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!email || !password) {
-      toast({
-        title: "Erro",
-        description: "Preencha todos os campos obrigatórios",
-        variant: "destructive"
-      });
       return;
     }
 
     if (isSignUp && password !== confirmPassword) {
-      toast({
-        title: "Erro", 
-        description: "As senhas não coincidem",
-        variant: "destructive"
-      });
+      return;
+    }
+
+    if (isSignUp && !fullName) {
       return;
     }
 
     setIsLoading(true);
     
     try {
-      // Simular autenticação
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      onLogin(email, password);
-      
-      toast({
-        title: "Sucesso",
-        description: isSignUp ? "Conta criada com sucesso!" : "Login realizado com sucesso!",
-      });
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Falha na autenticação. Tente novamente.",
-        variant: "destructive"
-      });
+      if (isSignUp) {
+        await signUp(email, password, fullName);
+      } else {
+        await signIn(email, password);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -83,6 +68,20 @@ export function LoginForm({ onLogin, onToggleMode, isSignUp }: LoginFormProps) {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {isSignUp && (
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Nome Completo</Label>
+              <Input
+                id="fullName"
+                type="text"
+                placeholder="Seu nome completo"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required
+              />
+            </div>
+          )}
+          
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input

@@ -1,21 +1,15 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, TrendingDown } from "lucide-react";
-
-interface Transaction {
-  id: string;
-  type: 'income' | 'expense';
-  amount: number;
-  category: string;
-  description: string;
-  date: string;
-}
+import { Button } from "@/components/ui/button";
+import { TrendingUp, TrendingDown, Trash2 } from "lucide-react";
+import { Transaction } from '@/hooks/useTransactions';
 
 interface TransactionListProps {
   transactions: Transaction[];
+  onDelete?: (id: string) => void;
 }
 
-export function TransactionList({ transactions }: TransactionListProps) {
+export function TransactionList({ transactions, onDelete }: TransactionListProps) {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
@@ -49,23 +43,41 @@ export function TransactionList({ transactions }: TransactionListProps) {
                 
                 <div className="flex-1">
                   <div className="flex items-center space-x-2">
-                    <p className="font-medium">{transaction.description}</p>
-                    <Badge variant="outline" className="text-xs">
-                      {transaction.category}
+                    <p className="font-medium">{transaction.title}</p>
+                    {transaction.categories && (
+                      <Badge variant="outline" className="text-xs">
+                        {transaction.categories.name}
+                      </Badge>
+                    )}
+                    <Badge variant="secondary" className="text-xs">
+                      {transaction.source === 'whatsapp' ? 'WhatsApp' : 'Manual'}
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {formatDate(transaction.date)}
+                    {transaction.description && ` • ${transaction.description}`}
                   </p>
                 </div>
               </div>
               
-              <div className="text-right">
-                <p className={`font-bold ${
-                  transaction.type === 'income' ? 'text-success' : 'text-destructive'
-                }`}>
-                  {transaction.type === 'income' ? '+' : '-'} R$ {transaction.amount.toLocaleString('pt-BR')}
-                </p>
+              <div className="flex items-center space-x-2">
+                <div className="text-right">
+                  <p className={`font-bold ${
+                    transaction.type === 'income' ? 'text-success' : 'text-destructive'
+                  }`}>
+                    {transaction.type === 'income' ? '+' : '-'} R$ {transaction.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+                {onDelete && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onDelete(transaction.id)}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>
