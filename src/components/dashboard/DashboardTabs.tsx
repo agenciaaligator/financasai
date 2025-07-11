@@ -4,12 +4,17 @@ import { TransactionList } from "../TransactionList";
 import { FinancialChart } from "../FinancialChart";
 import { CategoryManager } from "../CategoryManager";
 import { ProfileSettings } from "../ProfileSettings";
+import { ReportsPage } from "../ReportsPage";
+import { AIReportsChat } from "../AIReportsChat";
+import { FutureFeatures } from "../FutureFeatures";
 import { Transaction } from "@/hooks/useTransactions";
 import { 
   DollarSign, 
   TrendingUp, 
   User,
-  Tags
+  Tags,
+  BarChart,
+  Bot
 } from "lucide-react";
 
 interface DashboardTabsProps {
@@ -29,7 +34,7 @@ export function DashboardTabs({
 }: DashboardTabsProps) {
   return (
     <Tabs defaultValue="dashboard" className="w-full">
-      <TabsList className="grid w-full grid-cols-4 bg-muted/30">
+      <TabsList className="grid w-full grid-cols-7 bg-muted/30">
         <TabsTrigger value="dashboard" className="flex items-center space-x-2">
           <DollarSign className="h-4 w-4" />
           <span>Dashboard</span>
@@ -41,6 +46,18 @@ export function DashboardTabs({
         <TabsTrigger value="categories" className="flex items-center space-x-2">
           <Tags className="h-4 w-4" />
           <span>Categorias</span>
+        </TabsTrigger>
+        <TabsTrigger value="reports" className="flex items-center space-x-2">
+          <BarChart className="h-4 w-4" />
+          <span>Relatórios</span>
+        </TabsTrigger>
+        <TabsTrigger value="ai-chat" className="flex items-center space-x-2">
+          <Bot className="h-4 w-4" />
+          <span>IA Reports</span>
+        </TabsTrigger>
+        <TabsTrigger value="future" className="flex items-center space-x-2">
+          <User className="h-4 w-4" />
+          <span>Novidades</span>
         </TabsTrigger>
         <TabsTrigger value="profile" className="flex items-center space-x-2">
           <User className="h-4 w-4" />
@@ -94,6 +111,18 @@ export function DashboardTabs({
           categories={categories} 
           onRefresh={onRefresh}
         />
+      </TabsContent>
+
+      <TabsContent value="reports">
+        <ReportsPage />
+      </TabsContent>
+
+      <TabsContent value="ai-chat">
+        <AIReportsChat />
+      </TabsContent>
+
+      <TabsContent value="future">
+        <FutureFeatures />
       </TabsContent>
 
       <TabsContent value="profile">
