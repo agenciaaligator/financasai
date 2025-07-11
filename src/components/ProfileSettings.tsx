@@ -24,11 +24,11 @@ export function ProfileSettings() {
   const fetchProfile = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('user_id', user.id)
-      .single();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('user_id', user.id)
+    .maybeSingle();
 
     if (data) {
       setFullName(data.full_name || "");
@@ -43,10 +43,10 @@ export function ProfileSettings() {
 
     const { error } = await supabase
       .from('profiles')
-      .upsert({
-        user_id: user.id,
+      .update({
         full_name: fullName.trim()
-      });
+      })
+      .eq('user_id', user.id);
 
     if (error) {
       toast({
