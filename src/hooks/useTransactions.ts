@@ -157,6 +157,11 @@ export function useTransactions() {
     .filter(t => t.type === 'expense')
     .reduce((acc, t) => acc + t.amount, 0);
 
+  const refetch = async () => {
+    await fetchTransactions();
+    await fetchCategories();
+  };
+
   return {
     transactions,
     categories,
@@ -166,6 +171,6 @@ export function useTransactions() {
     totalExpenses,
     addTransaction,
     deleteTransaction,
-    refetch: fetchTransactions
+    refetch
   };
 }
