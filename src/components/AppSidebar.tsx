@@ -92,7 +92,8 @@ export function AppSidebar({
   if (isMobile) {
     return (
       <div className="flex flex-col h-full bg-sidebar">
-        <SidebarHeader className="border-b border-sidebar-border p-4">
+        {/* Header do mobile */}
+        <div className="border-b border-sidebar-border p-4">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
               <DollarSign className="h-5 w-5 text-white" />
@@ -102,50 +103,47 @@ export function AppSidebar({
               <p className="text-xs text-sidebar-foreground/60">Gestão Inteligente</p>
             </div>
           </div>
-        </SidebarHeader>
+        </div>
         
-        <SidebarContent className="flex-1 px-2 py-4">
-          <SidebarGroup>
-            <SidebarGroupContent>
-              {/* Botão de adicionar transação */}
-              <div className="mb-4">
-                <SidebarMenuButton
-                  onClick={onToggleForm}
-                  className="w-full h-12 text-left bg-gradient-primary hover:shadow-primary text-white hover:bg-gradient-primary transition-all duration-200 justify-start px-4"
-                >
-                  <Plus className="h-5 w-5" />
-                  <span className="ml-2 font-medium">Nova Transação</span>
-                </SidebarMenuButton>
-              </div>
+        {/* Conteúdo do mobile */}
+        <div className="flex-1 px-2 py-4">
+          {/* Botão de adicionar transação */}
+          <div className="mb-4">
+            <button
+              onClick={onToggleForm}
+              className="w-full h-12 text-left bg-gradient-primary hover:shadow-primary text-white hover:bg-gradient-primary transition-all duration-200 rounded-lg flex items-center justify-start px-4"
+            >
+              <Plus className="h-5 w-5" />
+              <span className="ml-2 font-medium">Nova Transação</span>
+            </button>
+          </div>
 
-              <SidebarMenu>
-                {sidebarItems.map((item) => {
-                  const isActive = currentTab === item.id;
-                  return (
-                    <SidebarMenuItem key={item.id}>
-                      <SidebarMenuButton
-                        onClick={() => onTabChange(item.id)}
-                        className={`w-full h-12 transition-all duration-200 justify-start px-4 ${
-                          isActive 
-                            ? "bg-sidebar-accent text-sidebar-primary font-medium border-l-4 border-primary" 
-                            : "hover:bg-sidebar-accent/50 text-sidebar-foreground"
-                        }`}
-                      >
-                        <item.icon className={`h-5 w-5 ${isActive ? "text-primary" : ""}`} />
-                        <div className="ml-3 text-left">
-                          <div className="font-medium">{item.title}</div>
-                          {!isActive && (
-                            <div className="text-xs text-sidebar-foreground/60">{item.description}</div>
-                          )}
-                        </div>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
+          {/* Menu de navegação */}
+          <div className="space-y-1">
+            {sidebarItems.map((item) => {
+              const isActive = currentTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => onTabChange(item.id)}
+                  className={`w-full h-12 transition-all duration-200 rounded-lg flex items-center justify-start px-4 ${
+                    isActive 
+                      ? "bg-sidebar-accent text-sidebar-primary font-medium border-l-4 border-primary" 
+                      : "hover:bg-sidebar-accent/50 text-sidebar-foreground"
+                  }`}
+                >
+                  <item.icon className={`h-5 w-5 ${isActive ? "text-primary" : ""}`} />
+                  <div className="ml-3 text-left">
+                    <div className="font-medium">{item.title}</div>
+                    {!isActive && (
+                      <div className="text-xs text-sidebar-foreground/60">{item.description}</div>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
     );
   }
