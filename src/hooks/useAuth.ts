@@ -30,13 +30,27 @@ export function useAuth() {
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    
-    // Primeiro verifica se o email já existe
-    const { data: existingUser } = await supabase.auth.getUser();
-    const { data: users } = await supabase.from('profiles').select('user_id').eq('user_id', existingUser?.user?.id || '');
+    // Usar URL da aplicação publicada ou localhost se em desenvolvimento
+    const redirectUrl = window.location.hostname === 'localhost' 
+      ? `${window.location.origin}/`
+      : `https://${window.location.hostname}/`;
     
     try {
+      // Primeiro, verificar se o email já existe usando a API de administração
+      const { data: existingUsers, error: checkError } = await supabase
+        .rpc('check_user_exists', { email_to_check: email })
+        .single();
+
+      // Se não conseguiu verificar, prosseguir com tentativa de cadastro
+      if (!checkError && existingUsers) {
+        toast({
+          title: "Email já cadastrado",
+          description: "Este email já possui uma conta. Faça login ou use a opção 'Esqueci minha senha'.",
+          variant: "destructive"
+        });
+        return { error: { message: "Email já registrado" } };
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -52,10 +66,23 @@ export function useAuth() {
         // Melhor tratamento de erro para email duplicado
         if (error.message.includes('User already registered') || 
             error.message.includes('already been registered') ||
-            error.message.includes('email address is already registered')) {
+            error.message.includes('email address is already registered') ||
+            error.message.includes('already_registered')) {
           toast({
             title: "Email já cadastrado",
-            description: "Este email já possui uma conta. Faça login ou use outro email.",
+            description: "Este email já possui uma conta. Faça login ou use a opção 'Esqueci minha senha'.",
+            variant: "destructive"
+          });
+        } else if (error.message.includes('Password should be at least')) {
+          toast({
+            title: "Senha muito fraca",
+            description: "A senha deve ter pelo menos 6 caracteres.",
+            variant: "destructive"
+          });
+        } else if (error.message.includes('Signup is disabled')) {
+          toast({
+            title: "Cadastro temporariamente indisponível",
+            description: "Tente novamente em alguns minutos.",
             variant: "destructive"
           });
         } else {
@@ -71,12 +98,12 @@ export function useAuth() {
       // Se o usuário foi criado mas precisa confirmar email
       if (data.user && !data.user.email_confirmed_at) {
         toast({
-          title: "Cadastro realizado!",
-          description: "Verifique seu email para confirmar a conta. Confira também a pasta de spam.",
+          title: "✅ Cadastro realizado com sucesso!",
+          description: "Verifique seu email para confirmar a conta e fazer login. Confira também a pasta de spam.",
         });
       } else if (data.user) {
         toast({
-          title: "Cadastro realizado!",
+          title: "✅ Cadastro realizado!",
           description: "Bem-vindo! Você já pode começar a usar o sistema.",
         });
       }
@@ -85,7 +112,7 @@ export function useAuth() {
     } catch (err: any) {
       toast({
         title: "Erro no cadastro",
-        description: "Ocorreu um erro inesperado. Tente novamente.",
+        description: "Ocorreu um erro inesperado. Verifique sua conexão e tente novamente.",
         variant: "destructive"
       });
       return { error: err };
