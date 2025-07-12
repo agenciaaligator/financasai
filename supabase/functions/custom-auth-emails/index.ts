@@ -28,7 +28,7 @@ const handler = async (req: Request): Promise<Response> => {
     let subject = "";
     let html = "";
     
-    const appUrl = "https://bc45aac3-c622-434f-ad58-afc37c18c6c2.lovableproject.com";
+    const appUrl = "https://financasai.lovable.app";
     const confirmUrl = `${site_url}/auth/v1/verify?token=${token_hash}&type=signup&redirect_to=${appUrl}`;
     const recoveryUrl = `${appUrl}/reset-password?token=${token_hash}&type=recovery`;
 
@@ -144,7 +144,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const emailResponse = await resend.emails.send({
-      from: "FinançasAI <noreply@financasai.com.br>",
+      from: "FinançasAI <noreply@mail.app.supabase.io>",
       to: [email],
       subject: subject,
       html: html,
