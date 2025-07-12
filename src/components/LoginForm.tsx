@@ -20,8 +20,28 @@ export function LoginForm({ onToggleMode, isSignUp }: LoginFormProps) {
   const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const [emailExists, setEmailExists] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const { signIn, signUp, checkEmailExists } = useAuth();
   const { toast } = useToast();
+
+  // Verificação em tempo real do email (apenas durante cadastro)
+  const handleEmailChange = async (value: string) => {
+    setEmail(value);
+    setEmailExists(false);
+    
+    if (isSignUp && value && value.includes('@') && value.includes('.')) {
+      setCheckingEmail(true);
+      try {
+        const exists = await checkEmailExists(value);
+        setEmailExists(exists);
+      } catch (err) {
+        console.error('Erro ao verificar email:', err);
+      } finally {
+        setCheckingEmail(false);
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,14 +135,35 @@ export function LoginForm({ onToggleMode, isSignUp }: LoginFormProps) {
           
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="seu@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+            <div className="relative">
+              <Input
+                id="email"
+                type="email"
+                placeholder="seu@email.com"
+                value={email}
+                onChange={(e) => handleEmailChange(e.target.value)}
+                className={emailExists && isSignUp ? "border-destructive" : ""}
+                required
+              />
+              {checkingEmail && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                </div>
+              )}
+            </div>
+            {emailExists && isSignUp && (
+              <div className="text-sm text-destructive flex items-center gap-2">
+                ⚠️ Este email já possui conta.{" "}
+                <Button
+                  type="button"
+                  variant="link"
+                  className="p-0 h-auto text-destructive underline"
+                  onClick={onToggleMode}
+                >
+                  Fazer login
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -169,7 +210,7 @@ export function LoginForm({ onToggleMode, isSignUp }: LoginFormProps) {
           <Button 
             type="submit" 
             className="w-full bg-gradient-primary hover:shadow-primary transition-all duration-200"
-            disabled={isLoading}
+            disabled={isLoading || (isSignUp && emailExists)}
           >
             {isLoading ? (
               <div className="flex items-center">

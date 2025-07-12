@@ -29,7 +29,37 @@ export function useAuth() {
     return () => subscription.unsubscribe();
   }, []);
 
+  const checkEmailExists = async (email: string) => {
+    const { data, error } = await supabase.rpc('check_user_exists', {
+      email_to_check: email
+    });
+    
+    if (error) {
+      console.error('Erro ao verificar email:', error);
+      return false;
+    }
+    
+    return data;
+  };
+
   const signUp = async (email: string, password: string, fullName: string) => {
+    // Verificar PRIMEIRO se o email já existe
+    try {
+      const emailExists = await checkEmailExists(email);
+      
+      if (emailExists) {
+        toast({
+          title: "📧 Email já cadastrado",
+          description: "Este email já possui uma conta. Clique em 'Fazer Login' abaixo para acessar sua conta existente.",
+          variant: "destructive"
+        });
+        return { error: { message: 'Email already exists' } };
+      }
+    } catch (err) {
+      console.error('Erro na verificação prévia do email:', err);
+      // Continue com o processo se a verificação falhar
+    }
+
     // Usar URL da aplicação publicada ou localhost se em desenvolvimento
     const redirectUrl = window.location.hostname === 'localhost' 
       ? `${window.location.origin}/`
@@ -166,6 +196,7 @@ export function useAuth() {
     loading,
     signUp,
     signIn,
-    signOut
+    signOut,
+    checkEmailExists
   };
 }
