@@ -192,9 +192,10 @@ export function useAuth() {
 
   const resetPassword = async (email: string) => {
     // Usar URL da aplicação para o redirect de recuperação
+    const appUrl = "https://bc45aac3-c622-434f-ad58-afc37c18c6c2.lovableproject.com";
     const redirectUrl = window.location.hostname === 'localhost' 
       ? `${window.location.origin}/reset-password`
-      : `https://${window.location.hostname}/reset-password`;
+      : `${appUrl}/reset-password`;
     
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {

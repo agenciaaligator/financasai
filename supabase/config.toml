@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.ai-reports]
 verify_jwt = false
+
+[functions.custom-auth-emails]
+verify_jwt = false

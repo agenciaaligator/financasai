@@ -28,7 +28,9 @@ const handler = async (req: Request): Promise<Response> => {
     let subject = "";
     let html = "";
     
-    const confirmUrl = `${site_url}/auth/v1/verify?token=${token_hash}&type=signup&redirect_to=${redirect_to}`;
+    const appUrl = "https://bc45aac3-c622-434f-ad58-afc37c18c6c2.lovableproject.com";
+    const confirmUrl = `${site_url}/auth/v1/verify?token=${token_hash}&type=signup&redirect_to=${appUrl}`;
+    const recoveryUrl = `${appUrl}/reset-password?token=${token_hash}&type=recovery`;
 
     switch (type) {
       case 'signup':
@@ -117,7 +119,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <p>Se foi você quem solicitou, clique no botão abaixo para criar uma nova senha:</p>
                 
                 <center>
-                  <a href="${redirect_to}" class="button">
+                  <a href="${recoveryUrl}" class="button">
                     🔑 Redefinir minha senha
                   </a>
                 </center>
