@@ -117,7 +117,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <p>Se foi você quem solicitou, clique no botão abaixo para criar uma nova senha:</p>
                 
                 <center>
-                  <a href="${confirmUrl}" class="button">
+                  <a href="${redirect_to}" class="button">
                     🔑 Redefinir minha senha
                   </a>
                 </center>

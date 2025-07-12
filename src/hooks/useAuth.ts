@@ -190,6 +190,81 @@ export function useAuth() {
     }
   };
 
+  const resetPassword = async (email: string) => {
+    // Usar URL da aplicação para o redirect de recuperação
+    const redirectUrl = window.location.hostname === 'localhost' 
+      ? `${window.location.origin}/reset-password`
+      : `https://${window.location.hostname}/reset-password`;
+    
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectUrl,
+      });
+
+      if (error) {
+        if (error.message.includes('User not found')) {
+          toast({
+            title: "📧 Email não encontrado",
+            description: "Não encontramos uma conta com este email. Verifique se está correto ou crie uma nova conta.",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "❌ Erro ao enviar email",
+            description: error.message,
+            variant: "destructive"
+          });
+        }
+        return { error };
+      }
+
+      toast({
+        title: "📧 Email enviado!",
+        description: "Verifique seu email para o link de recuperação de senha. Confira também a pasta de spam.",
+      });
+      
+      return { error: null };
+    } catch (err: any) {
+      toast({
+        title: "💥 Erro inesperado",
+        description: "Ocorreu um erro. Verifique sua conexão e tente novamente.",
+        variant: "destructive"
+      });
+      return { error: err };
+    }
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) {
+        toast({
+          title: "❌ Erro ao alterar senha",
+          description: error.message,
+          variant: "destructive"
+        });
+        return { error };
+      }
+
+      toast({
+        title: "✅ Senha alterada!",
+        description: "Sua senha foi alterada com sucesso.",
+      });
+      
+      return { error: null };
+    } catch (err: any) {
+      toast({
+        title: "💥 Erro inesperado",
+        description: "Ocorreu um erro. Tente novamente.",
+        variant: "destructive"
+      });
+      return { error: err };
+    }
+  };
+
   return {
     user,
     session,
@@ -197,6 +272,8 @@ export function useAuth() {
     signUp,
     signIn,
     signOut,
-    checkEmailExists
+    checkEmailExists,
+    resetPassword,
+    updatePassword
   };
 }

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Eye, EyeOff, LogIn } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { ForgotPasswordModal } from "@/components/ForgotPasswordModal";
 
 interface LoginFormProps {
   onToggleMode: () => void;
@@ -22,6 +22,7 @@ export function LoginForm({ onToggleMode, isSignUp }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [emailExists, setEmailExists] = useState(false);
   const [checkingEmail, setCheckingEmail] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const { signIn, signUp, checkEmailExists } = useAuth();
   const { toast } = useToast();
 
@@ -191,6 +192,18 @@ export function LoginForm({ onToggleMode, isSignUp }: LoginFormProps) {
                 )}
               </Button>
             </div>
+            {!isSignUp && (
+              <div className="text-right">
+                <Button
+                  type="button"
+                  variant="link"
+                  className="p-0 h-auto text-sm text-primary hover:text-primary-dark"
+                  onClick={() => setShowForgotPassword(true)}
+                >
+                  Esqueci minha senha
+                </Button>
+              </div>
+            )}
           </div>
 
           {isSignUp && (
@@ -239,6 +252,11 @@ export function LoginForm({ onToggleMode, isSignUp }: LoginFormProps) {
             </Button>
           </div>
         </form>
+
+        <ForgotPasswordModal 
+          isOpen={showForgotPassword}
+          onClose={() => setShowForgotPassword(false)}
+        />
       </CardContent>
     </Card>
   );
