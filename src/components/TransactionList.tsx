@@ -28,9 +28,10 @@ export function TransactionList({ transactions, onDelete, onEdit }: TransactionL
       {transactions.map((transaction) => (
         <Card key={transaction.id} className="border-l-4 border-l-primary/20 hover:shadow-soft transition-shadow">
           <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className={`p-2 rounded-full ${
+            {/* Layout mobile-first responsivo */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-start sm:items-center space-x-3 min-w-0 flex-1">
+                <div className={`p-2 rounded-full flex-shrink-0 ${
                   transaction.type === 'income' 
                     ? 'bg-success/10 text-success' 
                     : 'bg-destructive/10 text-destructive'
@@ -42,53 +43,62 @@ export function TransactionList({ transactions, onDelete, onEdit }: TransactionL
                   )}
                 </div>
                 
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2">
-                    <p className="font-medium">{transaction.title}</p>
-                    {transaction.categories && (
-                      <Badge variant="outline" className="text-xs">
-                        {transaction.categories.name}
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                    <p className="font-medium truncate">{transaction.title}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {transaction.categories && (
+                        <Badge variant="outline" className="text-xs">
+                          {transaction.categories.name}
+                        </Badge>
+                      )}
+                      <Badge variant="secondary" className="text-xs">
+                        {transaction.source === 'whatsapp' ? 'WhatsApp' : 'Manual'}
                       </Badge>
-                    )}
-                    <Badge variant="secondary" className="text-xs">
-                      {transaction.source === 'whatsapp' ? 'WhatsApp' : 'Manual'}
-                    </Badge>
+                    </div>
                   </div>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground mt-1">
                     {formatDate(transaction.date)}
-                    {transaction.description && ` • ${transaction.description}`}
+                    {transaction.description && (
+                      <span className="block sm:inline">
+                        <span className="hidden sm:inline"> • </span>
+                        <span className="break-words">{transaction.description}</span>
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>
               
-              <div className="flex items-center space-x-2">
-                <div className="text-right">
-                  <p className={`font-bold ${
+              <div className="flex items-center justify-between sm:justify-end space-x-2 flex-shrink-0">
+                <div className="text-left sm:text-right">
+                  <p className={`font-bold text-sm sm:text-base ${
                     transaction.type === 'income' ? 'text-success' : 'text-destructive'
                   }`}>
                     {transaction.type === 'income' ? '+' : '-'} R$ {transaction.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
-                {onEdit && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onEdit(transaction)}
-                    className="text-primary hover:text-primary"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                )}
-                {onDelete && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onDelete(transaction.id)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
+                <div className="flex space-x-1">
+                  {onEdit && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onEdit(transaction)}
+                      className="text-primary hover:text-primary h-8 w-8 p-0"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {onDelete && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onDelete(transaction.id)}
+                      className="text-destructive hover:text-destructive h-8 w-8 p-0"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </CardContent>

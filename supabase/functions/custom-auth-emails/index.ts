@@ -144,7 +144,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const emailResponse = await resend.emails.send({
-      from: "FinançasAI <noreply@mail.app.supabase.io>",
+      from: "FinançasAI <onboarding@resend.dev>",
       to: [email],
       subject: subject,
       html: html,
