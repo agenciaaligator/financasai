@@ -120,6 +120,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_user_exists: {
+        Args: { email_to_check: string }
+        Returns: boolean
+      }
       clean_duplicate_profiles: {
         Args: Record<PropertyKey, never>
         Returns: undefined

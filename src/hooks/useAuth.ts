@@ -36,21 +36,6 @@ export function useAuth() {
       : `https://${window.location.hostname}/`;
     
     try {
-      // Primeiro, verificar se o email já existe usando a API de administração
-      const { data: existingUsers, error: checkError } = await supabase
-        .rpc('check_user_exists', { email_to_check: email })
-        .single();
-
-      // Se não conseguiu verificar, prosseguir com tentativa de cadastro
-      if (!checkError && existingUsers) {
-        toast({
-          title: "Email já cadastrado",
-          description: "Este email já possui uma conta. Faça login ou use a opção 'Esqueci minha senha'.",
-          variant: "destructive"
-        });
-        return { error: { message: "Email já registrado" } };
-      }
-
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -67,27 +52,28 @@ export function useAuth() {
         if (error.message.includes('User already registered') || 
             error.message.includes('already been registered') ||
             error.message.includes('email address is already registered') ||
-            error.message.includes('already_registered')) {
+            error.message.includes('already_registered') ||
+            error.message.includes('A user with this email address has already been registered')) {
           toast({
-            title: "Email já cadastrado",
-            description: "Este email já possui uma conta. Faça login ou use a opção 'Esqueci minha senha'.",
+            title: "📧 Email já cadastrado",
+            description: "Este email já possui uma conta. Clique em 'Fazer Login' abaixo para acessar sua conta existente.",
             variant: "destructive"
           });
         } else if (error.message.includes('Password should be at least')) {
           toast({
-            title: "Senha muito fraca",
+            title: "🔒 Senha muito fraca",
             description: "A senha deve ter pelo menos 6 caracteres.",
             variant: "destructive"
           });
         } else if (error.message.includes('Signup is disabled')) {
           toast({
-            title: "Cadastro temporariamente indisponível",
+            title: "⚠️ Cadastro temporariamente indisponível",
             description: "Tente novamente em alguns minutos.",
             variant: "destructive"
           });
         } else {
           toast({
-            title: "Erro no cadastro",
+            title: "❌ Erro no cadastro",
             description: error.message,
             variant: "destructive"
           });
@@ -99,7 +85,7 @@ export function useAuth() {
       if (data.user && !data.user.email_confirmed_at) {
         toast({
           title: "✅ Cadastro realizado com sucesso!",
-          description: "Verifique seu email para confirmar a conta e fazer login. Confira também a pasta de spam.",
+          description: "Verifique seu email para confirmar a conta e fazer login. Confira também a pasta de spam ou lixo eletrônico.",
         });
       } else if (data.user) {
         toast({
@@ -111,7 +97,7 @@ export function useAuth() {
       return { error: null, data };
     } catch (err: any) {
       toast({
-        title: "Erro no cadastro",
+        title: "💥 Erro no cadastro",
         description: "Ocorreu um erro inesperado. Verifique sua conexão e tente novamente.",
         variant: "destructive"
       });
@@ -126,16 +112,31 @@ export function useAuth() {
     });
 
     if (error) {
-      toast({
-        title: "Erro no login",
-        description: error.message,
-        variant: "destructive"
-      });
+      if (error.message.includes('Invalid login credentials') || 
+          error.message.includes('Email not confirmed')) {
+        toast({
+          title: "🔑 Erro no login",
+          description: "Email ou senha incorretos. Verifique se você confirmou seu email pelo link enviado.",
+          variant: "destructive"
+        });
+      } else if (error.message.includes('Email not confirmed')) {
+        toast({
+          title: "📧 Email não confirmado",
+          description: "Verifique seu email e clique no link de confirmação para fazer login.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "❌ Erro no login",
+          description: error.message,
+          variant: "destructive"
+        });
+      }
       return { error };
     }
 
     toast({
-      title: "Login realizado!",
+      title: "✅ Login realizado!",
       description: "Bem-vindo de volta!",
     });
 
