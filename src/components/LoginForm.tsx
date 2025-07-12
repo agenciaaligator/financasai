@@ -47,25 +47,32 @@ export function LoginForm({ onToggleMode, isSignUp }: LoginFormProps) {
     
     try {
       if (isSignUp) {
-        // Tentativa de cadastro - a validação será feita pelo Supabase
+        // Validação adicional antes do cadastro
+        if (password.length < 6) {
+          toast({
+            title: "Senha muito curta",
+            description: "A senha deve ter pelo menos 6 caracteres.",
+            variant: "destructive"
+          });
+          return;
+        }
+
         const result = await signUp(email, password, fullName);
         
-        // Se houve erro, verificar se é por email duplicado
-        if (result?.error) {
-          if (result.error.message.includes('User already registered') || 
-              result.error.message.includes('already registered') ||
-              result.error.message.includes('email address is already confirmed')) {
-            toast({
-              title: "Erro no cadastro",
-              description: "Este e-mail já está cadastrado. Faça login ou use outro e-mail.",
-              variant: "destructive"
-            });
-            return;
-          }
-          // Outros erros serão tratados pelo useAuth
+        // Se houve sucesso e não há erro, limpar formulário
+        if (result && !result.error) {
+          setEmail('');
+          setPassword('');
+          setConfirmPassword('');
+          setFullName('');
         }
       } else {
-        await signIn(email, password);
+        const result = await signIn(email, password);
+        
+        // Se login bem-sucedido, limpar campos de senha
+        if (result && !result.error) {
+          setPassword('');
+        }
       }
     } finally {
       setIsLoading(false);

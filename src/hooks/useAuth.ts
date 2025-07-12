@@ -32,32 +32,64 @@ export function useAuth() {
   const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          full_name: fullName
+    // Primeiro verifica se o email já existe
+    const { data: existingUser } = await supabase.auth.getUser();
+    const { data: users } = await supabase.from('profiles').select('user_id').eq('user_id', existingUser?.user?.id || '');
+    
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            full_name: fullName
+          }
         }
-      }
-    });
+      });
 
-    if (error) {
+      if (error) {
+        // Melhor tratamento de erro para email duplicado
+        if (error.message.includes('User already registered') || 
+            error.message.includes('already been registered') ||
+            error.message.includes('email address is already registered')) {
+          toast({
+            title: "Email já cadastrado",
+            description: "Este email já possui uma conta. Faça login ou use outro email.",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Erro no cadastro",
+            description: error.message,
+            variant: "destructive"
+          });
+        }
+        return { error };
+      }
+
+      // Se o usuário foi criado mas precisa confirmar email
+      if (data.user && !data.user.email_confirmed_at) {
+        toast({
+          title: "Cadastro realizado!",
+          description: "Verifique seu email para confirmar a conta. Confira também a pasta de spam.",
+        });
+      } else if (data.user) {
+        toast({
+          title: "Cadastro realizado!",
+          description: "Bem-vindo! Você já pode começar a usar o sistema.",
+        });
+      }
+
+      return { error: null, data };
+    } catch (err: any) {
       toast({
         title: "Erro no cadastro",
-        description: error.message,
+        description: "Ocorreu um erro inesperado. Tente novamente.",
         variant: "destructive"
       });
-      return { error };
+      return { error: err };
     }
-
-    toast({
-      title: "Cadastro realizado!",
-      description: "Verifique seu email para confirmar a conta.",
-    });
-
-    return { error: null };
   };
 
   const signIn = async (email: string, password: string) => {
