@@ -18,22 +18,27 @@
 
 ---
 
-### 🌐 **2. Configurar URLs de Redirecionamento**
+### 🌐 **2. Configurar URLs de Redirecionamento (CRÍTICO)**
 
 1. **Acesse Authentication Settings:**
-   - Vá para: `Authentication` > `Settings`
+   - Vá para: `Authentication` > `URL Configuration`
 
 2. **Site URL:**
    ```
    https://financasai.lovable.app
    ```
 
-3. **Redirect URLs:**
+3. **Redirect URLs (ADICIONAR TODAS):**
    ```
    https://financasai.lovable.app/**
    https://financasai.lovable.app/reset-password
    https://financasai.lovable.app/auth/callback
    ```
+
+**⚠️ CONFIGURAÇÃO ESSENCIAL:**
+- Sem estas URLs configuradas, o reset de senha não funcionará
+- O Supabase precisa saber para onde direcionar após verificação
+- A URL `/reset-password` é fundamental para o fluxo funcionar
 
 ---
 

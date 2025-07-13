@@ -24,54 +24,55 @@ export default function ResetPassword() {
   useEffect(() => {
     const initializeResetFlow = async () => {
       try {
-        // Primeiro, verificar se o usuário já está logado (devido ao processo automático do Supabase)
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        
-        if (currentSession?.user) {
-          console.log('Usuário já está logado, permitindo reset direto');
-          setSessionEstablished(true);
-          setIsInitializing(false);
-          return;
-        }
-
-        // Se não está logado, tentar estabelecer sessão com tokens da URL
+        // Verificar se há tokens na URL para reset
         const accessToken = searchParams.get('access_token');
         const refreshToken = searchParams.get('refresh_token');
+        const type = searchParams.get('type');
 
-        if (!accessToken || !refreshToken) {
-          toast({
-            title: "❌ Link inválido",
-            description: "Este link de recuperação é inválido ou expirou. Solicite um novo.",
-            variant: "destructive"
+        // Se chegou via link de recovery, estabelecer sessão com os tokens
+        if (accessToken && refreshToken && type === 'recovery') {
+          console.log('Estabelecendo sessão com tokens de recovery da URL');
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
           });
-          navigate('/');
-          return;
+
+          if (error) {
+            console.error('Erro ao estabelecer sessão:', error);
+            toast({
+              title: "❌ Link inválido",
+              description: "O link de redefinição de senha é inválido ou expirou. Solicite um novo link.",
+              variant: "destructive",
+            });
+            navigate('/');
+            return;
+          }
+
+          setSessionEstablished(true);
+        } else {
+          // Verificar se o usuário já está logado
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
+          
+          if (currentSession?.user) {
+            console.log('Usuário já está logado, permitindo reset direto');
+            setSessionEstablished(true);
+          } else {
+            // Sem tokens válidos e sem sessão ativa
+            toast({
+              title: "❌ Acesso negado",
+              description: "É necessário um link válido de redefinição de senha para acessar esta página.",
+              variant: "destructive",
+            });
+            navigate('/');
+            return;
+          }
         }
-
-        console.log('Estabelecendo sessão com tokens da URL');
-        const { error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken
-        });
-
-        if (error) {
-          console.error('Erro ao estabelecer sessão:', error);
-          toast({
-            title: "❌ Erro de autenticação",
-            description: "Não foi possível validar o link. Solicite um novo link de recuperação.",
-            variant: "destructive"
-          });
-          navigate('/');
-          return;
-        }
-
-        setSessionEstablished(true);
-      } catch (err) {
-        console.error('Erro inesperado:', err);
+      } catch (error) {
+        console.error('Erro no processo de reset:', error);
         toast({
           title: "💥 Erro inesperado",
-          description: "Ocorreu um erro. Tente solicitar um novo link.",
-          variant: "destructive"
+          description: "Ocorreu um erro ao processar o link de redefinição. Tente novamente.",
+          variant: "destructive",
         });
         navigate('/');
       } finally {
