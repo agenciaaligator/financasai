@@ -35,13 +35,28 @@ export function EditTransactionModal({
     if (transaction) {
       setTitle(transaction.title);
       setAmount(transaction.amount.toString());
-      setType(transaction.type);
-      setCategoryId(transaction.category_id || "");
-      // Converte a data do formato ISO para YYYY-MM-DD para o input date
+      setType(transaction.type as 'income' | 'expense');
+      
+      // Fix: Reset category first, then find and set the correct one
+      setCategoryId("");
+      
+      // Aguarda o próximo tick para garantir que as categorias estão disponíveis
+      setTimeout(() => {
+        if (transaction.category_id) {
+          const categoryExists = categories.find(cat => cat.id === transaction.category_id);
+          if (categoryExists) {
+            console.log('Categoria encontrada:', categoryExists.name);
+            setCategoryId(transaction.category_id);
+          } else {
+            console.log('Categoria não encontrada para ID:', transaction.category_id);
+          }
+        }
+      }, 100);
+      
+      // Fix: Correct date handling to avoid timezone issues
       const dateValue = transaction.date;
       if (dateValue) {
-        // Se a data já está no formato correto (YYYY-MM-DD), usa diretamente
-        // Se está no formato ISO, converte
+        // Sempre usar a data exata do banco sem conversão de timezone
         const formattedDate = dateValue.includes('T') 
           ? dateValue.split('T')[0] 
           : dateValue;
@@ -54,10 +69,12 @@ export function EditTransactionModal({
       console.log('Editando transação:', {
         id: transaction.id,
         originalDate: transaction.date,
-        formattedDate: dateValue?.includes('T') ? dateValue.split('T')[0] : dateValue
+        formattedDate: dateValue?.includes('T') ? dateValue.split('T')[0] : dateValue,
+        categoryId: transaction.category_id,
+        categoriesAvailable: categories.length
       });
     }
-  }, [transaction]);
+  }, [transaction, categories]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

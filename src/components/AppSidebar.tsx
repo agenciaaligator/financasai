@@ -91,9 +91,9 @@ export function AppSidebar({
   // Para uso mobile, renderiza apenas o conteúdo sem wrapper Sidebar
   if (isMobile) {
     return (
-      <div className="flex flex-col h-full bg-sidebar">
+      <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
         {/* Header do mobile */}
-        <div className="border-b border-sidebar-border p-4">
+        <div className="border-b border-sidebar-border p-4 bg-sidebar">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
               <DollarSign className="h-5 w-5 text-white" />
@@ -106,11 +106,14 @@ export function AppSidebar({
         </div>
         
         {/* Conteúdo do mobile */}
-        <div className="flex-1 px-2 py-4">
+        <div className="flex-1 px-3 py-4 bg-sidebar">
           {/* Botão de adicionar transação */}
           <div className="mb-4">
             <button
-              onClick={onToggleForm}
+              onClick={() => {
+                console.log('Mobile: botão nova transação clicado');
+                onToggleForm();
+              }}
               className="w-full h-12 text-left bg-gradient-primary hover:shadow-primary text-white hover:bg-gradient-primary transition-all duration-200 rounded-lg flex items-center justify-start px-4"
             >
               <Plus className="h-5 w-5" />
@@ -137,7 +140,7 @@ export function AppSidebar({
                 >
                   <item.icon className={`h-5 w-5 ${isActive ? "text-primary" : ""}`} />
                   <div className="ml-3 text-left">
-                    <div className="font-medium">{item.title}</div>
+                    <div className="font-medium text-sidebar-foreground">{item.title}</div>
                     {!isActive && (
                       <div className="text-xs text-sidebar-foreground/60">{item.description}</div>
                     )}

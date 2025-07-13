@@ -79,19 +79,21 @@ export function FinancialDashboard() {
                     <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-72 p-0">
-                  <AppSidebar 
-                    currentTab={currentTab}
-                    onTabChange={(tab) => {
-                      console.log('AppSidebar: mudando tab para', tab);
-                      handleTabChange(tab);
-                    }}
-                    showForm={showForm}
-                    onToggleForm={() => {
-                      setShowForm(!showForm);
-                      setMobileMenuOpen(false); // Fecha o menu ao abrir o formulário
-                    }}
-                  />
+                <SheetContent side="left" className="w-80 p-0 bg-sidebar">
+                  <div className="h-full flex flex-col">
+                    <AppSidebar 
+                      currentTab={currentTab}
+                      onTabChange={(tab) => {
+                        console.log('AppSidebar: mudando tab para', tab);
+                        handleTabChange(tab);
+                      }}
+                      showForm={showForm}
+                      onToggleForm={() => {
+                        setShowForm(!showForm);
+                        setMobileMenuOpen(false); // Fecha o menu ao abrir o formulário
+                      }}
+                    />
+                  </div>
                 </SheetContent>
               </Sheet>
               <div>
