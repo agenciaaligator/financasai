@@ -191,10 +191,8 @@ export function useAuth() {
   };
 
   const resetPassword = async (email: string) => {
-    // Usar URL da aplicação correta
-    const redirectUrl = window.location.hostname === 'localhost' 
-      ? `${window.location.origin}/reset-password`
-      : `https://financasai.lovable.app/reset-password`;
+    // Usar URL da aplicação atual para o redirect
+    const redirectUrl = `${window.location.origin}/reset-password`;
     
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {

@@ -18,13 +18,23 @@ export default function ResetPassword() {
   const [sessionEstablished, setSessionEstablished] = useState(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { updatePassword } = useAuth();
+  const { updatePassword, user, session } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
-    const establishSession = async () => {
+    const initializeResetFlow = async () => {
       try {
-        // Verificar se existe token na URL
+        // Primeiro, verificar se o usuário já está logado (devido ao processo automático do Supabase)
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        
+        if (currentSession?.user) {
+          console.log('Usuário já está logado, permitindo reset direto');
+          setSessionEstablished(true);
+          setIsInitializing(false);
+          return;
+        }
+
+        // Se não está logado, tentar estabelecer sessão com tokens da URL
         const accessToken = searchParams.get('access_token');
         const refreshToken = searchParams.get('refresh_token');
 
@@ -38,7 +48,7 @@ export default function ResetPassword() {
           return;
         }
 
-        // Estabelecer sessão usando os tokens da URL
+        console.log('Estabelecendo sessão com tokens da URL');
         const { error } = await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken
@@ -69,7 +79,7 @@ export default function ResetPassword() {
       }
     };
 
-    establishSession();
+    initializeResetFlow();
   }, [searchParams, navigate, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
