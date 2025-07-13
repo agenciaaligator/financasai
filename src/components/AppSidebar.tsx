@@ -125,7 +125,10 @@ export function AppSidebar({
               return (
                 <button
                   key={item.id}
-                  onClick={() => onTabChange(item.id)}
+                  onClick={() => {
+                    console.log('Mobile: clicou na tab', item.id);
+                    onTabChange(item.id);
+                  }}
                   className={`w-full h-12 transition-all duration-200 rounded-lg flex items-center justify-start px-4 ${
                     isActive 
                       ? "bg-sidebar-accent text-sidebar-primary font-medium border-l-4 border-primary" 

@@ -128,6 +128,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      send_custom_email: {
+        Args: { email_data: Json }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

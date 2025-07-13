@@ -28,6 +28,9 @@ export function FinancialDashboard() {
   console.log('Dashboard renderizado - user:', user?.email);
   console.log('Categories carregadas:', categories?.length);
   console.log('Transactions carregadas:', transactions?.length);
+  console.log('Current tab:', currentTab);
+  console.log('Is mobile:', isMobile);
+  console.log('Mobile menu open:', mobileMenuOpen);
 
   const handleAddTransaction = async (transaction: any) => {
     const result = await addTransaction(transaction);
@@ -47,8 +50,10 @@ export function FinancialDashboard() {
   const isNegative = balance < 0;
 
   const handleTabChange = (tab: string) => {
+    console.log('Tab mudando de', currentTab, 'para', tab);
     setCurrentTab(tab);
     if (isMobile) {
+      console.log('Mobile: fechando menu após mudança de tab');
       setMobileMenuOpen(false);
     }
   };
