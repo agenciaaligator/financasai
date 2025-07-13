@@ -67,7 +67,15 @@ export function FinancialDashboard() {
             <div className="flex items-center gap-3">
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 w-8 p-0"
+                    onClick={() => {
+                      console.log('Botão menu clicado - abrindo sheet');
+                      setMobileMenuOpen(true);
+                    }}
+                  >
                     <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>

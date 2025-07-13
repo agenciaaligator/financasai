@@ -37,8 +37,25 @@ export function EditTransactionModal({
       setAmount(transaction.amount.toString());
       setType(transaction.type);
       setCategoryId(transaction.category_id || "");
-      setDate(transaction.date);
+      // Converte a data do formato ISO para YYYY-MM-DD para o input date
+      const dateValue = transaction.date;
+      if (dateValue) {
+        // Se a data já está no formato correto (YYYY-MM-DD), usa diretamente
+        // Se está no formato ISO, converte
+        const formattedDate = dateValue.includes('T') 
+          ? dateValue.split('T')[0] 
+          : dateValue;
+        setDate(formattedDate);
+      } else {
+        setDate("");
+      }
       setDescription(transaction.description || "");
+      
+      console.log('Editando transação:', {
+        id: transaction.id,
+        originalDate: transaction.date,
+        formattedDate: dateValue?.includes('T') ? dateValue.split('T')[0] : dateValue
+      });
     }
   }, [transaction]);
 
@@ -51,6 +68,8 @@ export function EditTransactionModal({
 
     setLoading(true);
 
+    console.log('Salvando transação com data:', date);
+    
     const { error } = await supabase
       .from('transactions')
       .update({
@@ -58,7 +77,7 @@ export function EditTransactionModal({
         amount: parseFloat(amount),
         type,
         category_id: categoryId || null,
-        date,
+        date, // A data já está no formato correto YYYY-MM-DD
         description: description || null,
         updated_at: new Date().toISOString()
       })
