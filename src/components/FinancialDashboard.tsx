@@ -82,9 +82,15 @@ export function FinancialDashboard() {
                 <SheetContent side="left" className="w-72 p-0">
                   <AppSidebar 
                     currentTab={currentTab}
-                    onTabChange={handleTabChange}
+                    onTabChange={(tab) => {
+                      console.log('AppSidebar: mudando tab para', tab);
+                      handleTabChange(tab);
+                    }}
                     showForm={showForm}
-                    onToggleForm={() => setShowForm(!showForm)}
+                    onToggleForm={() => {
+                      setShowForm(!showForm);
+                      setMobileMenuOpen(false); // Fecha o menu ao abrir o formulário
+                    }}
                   />
                 </SheetContent>
               </Sheet>

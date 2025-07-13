@@ -68,28 +68,35 @@ export function EditTransactionModal({
 
     setLoading(true);
 
-    console.log('Salvando transação com data:', date);
+    console.log('Salvando transação com data:', {
+      originalDate: transaction.date,
+      newDate: date,
+      formattedForDB: date
+    });
     
-    const { error } = await supabase
+    const { data: updatedData, error } = await supabase
       .from('transactions')
       .update({
         title,
         amount: parseFloat(amount),
         type,
         category_id: categoryId || null,
-        date, // A data já está no formato correto YYYY-MM-DD
+        date: date, // Garantir que a data está no formato YYYY-MM-DD
         description: description || null,
         updated_at: new Date().toISOString()
       })
-      .eq('id', transaction.id);
+      .eq('id', transaction.id)
+      .select();
 
     if (error) {
+      console.error('Erro ao atualizar transação:', error);
       toast({
         title: "Erro ao atualizar transação",
         description: error.message,
         variant: "destructive"
       });
     } else {
+      console.log('Transação atualizada com sucesso. Dados retornados:', updatedData);
       toast({
         title: "Transação atualizada!",
         description: "A transação foi modificada com sucesso."
