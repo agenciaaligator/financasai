@@ -30,7 +30,7 @@ const handler = async (req: Request): Promise<Response> => {
     
     const appUrl = "https://financasai.lovable.app";
     const confirmUrl = `${site_url}/auth/v1/verify?token=${token_hash}&type=signup&redirect_to=${appUrl}`;
-    const recoveryUrl = `${site_url}/auth/v1/verify?token=${token_hash}&type=recovery&redirect_to=${appUrl}/reset-password`;
+    const recoveryUrl = `${site_url}/auth/v1/verify?token=${token_hash}&type=recovery&redirect_to=${appUrl}?recovery=true&t=${Date.now()}`;
 
     switch (type) {
       case 'signup':

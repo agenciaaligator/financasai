@@ -12,33 +12,56 @@ const Index = () => {
 
   // Detectar se chegou via link de recovery do Supabase
   useEffect(() => {
-    const currentUrl = window.location.href;
-    console.log('Index.tsx - URL atual:', currentUrl);
+    console.log('Index.tsx - URL atual:', window.location.href);
     console.log('Index.tsx - SearchParams:', Object.fromEntries(searchParams.entries()));
     console.log('Index.tsx - User:', user);
     console.log('Index.tsx - Loading:', loading);
 
-    // Verificar IMEDIATAMENTE se há tokens de recovery na URL, mesmo sem usuário logado
+    // Verificar se há parâmetro de recovery na URL
+    const isRecovery = searchParams.get('recovery') === 'true';
+    const recoveryTimestamp = searchParams.get('t');
+
+    // Verificar parâmetros de auth do Supabase
     const hasAccessToken = searchParams.get('access_token');
     const hasRefreshToken = searchParams.get('refresh_token');
     const hasRecoveryType = searchParams.get('type') === 'recovery';
     
-    if (hasAccessToken || hasRefreshToken || hasRecoveryType) {
-      console.log('DETECTADO: Parâmetros de recovery na URL - redirecionando IMEDIATAMENTE para reset-password');
-      navigate('/reset-password' + window.location.search, { replace: true });
+    // Se há tokens de auth OU parâmetro recovery, redirecionar imediatamente
+    if (hasAccessToken || hasRefreshToken || hasRecoveryType || isRecovery) {
+      console.log('DETECTADO: Parâmetros de recovery na URL - redirecionando para reset-password');
+      
+      // Marcar no localStorage que é um recovery
+      if (isRecovery || hasRecoveryType) {
+        localStorage.setItem('recovery_flow', Date.now().toString());
+      }
+      
+      // Se tem tokens, preservar na URL do reset
+      if (hasAccessToken || hasRefreshToken || hasRecoveryType) {
+        navigate('/reset-password' + window.location.search, { replace: true });
+      } else {
+        navigate('/reset-password', { replace: true });
+      }
       return;
     }
 
-    // Se usuário está logado mas não tem parâmetros de recovery, verificar se é um login recente via recovery
+    // Se usuário está logado, verificar se é um recovery recente
     if (user && !loading) {
-      const userCreatedAt = new Date(user.created_at || '').getTime();
-      const now = Date.now();
-      const timeDiff = now - userCreatedAt;
+      const recoveryMarker = localStorage.getItem('recovery_flow');
       
-      // Se o usuário foi criado/logado nos últimos 2 minutos, pode ser recovery
-      if (timeDiff < 120000) {
-        console.log('Usuário logado recentemente - pode ser via recovery, redirecionando');
-        navigate('/reset-password', { replace: true });
+      if (recoveryMarker) {
+        const recoveryTime = parseInt(recoveryMarker);
+        const now = Date.now();
+        
+        // Se o recovery foi marcado nos últimos 30 segundos
+        if (now - recoveryTime < 30000) {
+          console.log('Usuário logado após recovery recente - redirecionando');
+          localStorage.removeItem('recovery_flow'); // Limpar o marker
+          navigate('/reset-password', { replace: true });
+          return;
+        } else {
+          // Limpar marker antigo
+          localStorage.removeItem('recovery_flow');
+        }
       }
     }
   }, [user, loading, navigate, searchParams]);
