@@ -37,33 +37,21 @@ export function EditTransactionModal({
       setAmount(transaction.amount.toString());
       setType(transaction.type as 'income' | 'expense');
       
-      // Fix: Reset category first, then find and set the correct one
-      setCategoryId("");
-      
-      // Aguarda o próximo tick para garantir que as categorias estão disponíveis
-      setTimeout(() => {
-        if (transaction.category_id) {
-          const categoryExists = categories.find(cat => cat.id === transaction.category_id);
-          if (categoryExists) {
-            console.log('Categoria encontrada:', categoryExists.name);
-            setCategoryId(transaction.category_id);
-          } else {
-            console.log('Categoria não encontrada para ID:', transaction.category_id);
-          }
+      // Fix: Directly set category without timeout
+      if (transaction.category_id) {
+        const categoryExists = categories.find(cat => cat.id === transaction.category_id);
+        if (categoryExists) {
+          setCategoryId(transaction.category_id);
         }
-      }, 100);
-      
-      // Fix: Correct date handling to avoid timezone issues
-      const dateValue = transaction.date;
-      if (dateValue) {
-        // Sempre usar a data exata do banco sem conversão de timezone
-        const formattedDate = dateValue.includes('T') 
-          ? dateValue.split('T')[0] 
-          : dateValue;
-        setDate(formattedDate);
       } else {
-        setDate("");
+        setCategoryId("");
       }
+      
+      // Fix: Use date directly without timezone conversion
+      const dateValue = transaction.date.includes('T') 
+        ? transaction.date.split('T')[0] 
+        : transaction.date;
+      setDate(dateValue);
       setDescription(transaction.description || "");
       
       console.log('Editando transação:', {

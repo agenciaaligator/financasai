@@ -80,19 +80,81 @@ export function FinancialDashboard() {
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="w-80 p-0 bg-sidebar">
-                  <div className="h-full flex flex-col">
-                    <AppSidebar 
-                      currentTab={currentTab}
-                      onTabChange={(tab) => {
-                        console.log('AppSidebar: mudando tab para', tab);
-                        handleTabChange(tab);
-                      }}
-                      showForm={showForm}
-                      onToggleForm={() => {
-                        setShowForm(!showForm);
-                        setMobileMenuOpen(false); // Fecha o menu ao abrir o formulário
-                      }}
-                    />
+                  <div className="h-full bg-sidebar">
+                    {/* Mobile Menu Header */}
+                    <div className="p-6 border-b border-sidebar-border">
+                      <h2 className="text-lg font-semibold text-sidebar-foreground">Menu</h2>
+                    </div>
+                    
+                    {/* Mobile Navigation */}
+                    <nav className="p-4 space-y-2">
+                      <Button
+                        variant={currentTab === 'dashboard' ? 'secondary' : 'ghost'}
+                        className="w-full justify-start"
+                        onClick={() => handleTabChange('dashboard')}
+                      >
+                        Dashboard
+                      </Button>
+                      <Button
+                        variant={currentTab === 'transactions' ? 'secondary' : 'ghost'}
+                        className="w-full justify-start"
+                        onClick={() => handleTabChange('transactions')}
+                      >
+                        Transações
+                      </Button>
+                      <Button
+                        variant={currentTab === 'categories' ? 'secondary' : 'ghost'}
+                        className="w-full justify-start"
+                        onClick={() => handleTabChange('categories')}
+                      >
+                        Categorias
+                      </Button>
+                      <Button
+                        variant={currentTab === 'reports' ? 'secondary' : 'ghost'}
+                        className="w-full justify-start"
+                        onClick={() => handleTabChange('reports')}
+                      >
+                        Relatórios
+                      </Button>
+                      <Button
+                        variant={currentTab === 'ai-chat' ? 'secondary' : 'ghost'}
+                        className="w-full justify-start"
+                        onClick={() => handleTabChange('ai-chat')}
+                      >
+                        IA Reports
+                      </Button>
+                      <Button
+                        variant={currentTab === 'profile' ? 'secondary' : 'ghost'}
+                        className="w-full justify-start"
+                        onClick={() => handleTabChange('profile')}
+                      >
+                        Perfil
+                      </Button>
+                      
+                      {/* Add Transaction Button */}
+                      <div className="pt-4 border-t border-sidebar-border mt-4">
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start"
+                          onClick={() => {
+                            setShowForm(!showForm);
+                            setMobileMenuOpen(false);
+                          }}
+                        >
+                          {showForm ? 'Fechar Formulário' : 'Nova Transação'}
+                        </Button>
+                      </div>
+                      
+                      <div className="pt-2">
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start text-destructive hover:bg-destructive/10"
+                          onClick={() => signOut()}
+                        >
+                          Sair
+                        </Button>
+                      </div>
+                    </nav>
                   </div>
                 </SheetContent>
               </Sheet>
