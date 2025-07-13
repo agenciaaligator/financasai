@@ -24,14 +24,21 @@ export default function ResetPassword() {
   useEffect(() => {
     const initializeResetFlow = async () => {
       try {
-        // Verificar se há tokens na URL para reset
+        // Verificar todos os parâmetros da URL para debug
         const accessToken = searchParams.get('access_token');
         const refreshToken = searchParams.get('refresh_token');
         const type = searchParams.get('type');
+        
+        console.log('Parâmetros da URL:', {
+          accessToken: accessToken ? 'presente' : 'ausente',
+          refreshToken: refreshToken ? 'presente' : 'ausente',
+          type,
+          allParams: Object.fromEntries(searchParams.entries())
+        });
 
-        // Se chegou via link de recovery, estabelecer sessão com os tokens
-        if (accessToken && refreshToken && type === 'recovery') {
-          console.log('Estabelecendo sessão com tokens de recovery da URL');
+        // Se há tokens na URL, tentar estabelecer sessão (independente do type)
+        if (accessToken && refreshToken) {
+          console.log('Tokens encontrados na URL - estabelecendo sessão');
           const { error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken
@@ -48,6 +55,7 @@ export default function ResetPassword() {
             return;
           }
 
+          console.log('Sessão estabelecida com sucesso');
           setSessionEstablished(true);
         } else {
           // Verificar se o usuário já está logado
@@ -58,6 +66,7 @@ export default function ResetPassword() {
             setSessionEstablished(true);
           } else {
             // Sem tokens válidos e sem sessão ativa
+            console.log('Sem tokens na URL e sem sessão ativa');
             toast({
               title: "❌ Acesso negado",
               description: "É necessário um link válido de redefinição de senha para acessar esta página.",
