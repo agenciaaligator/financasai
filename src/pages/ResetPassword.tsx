@@ -36,7 +36,16 @@ export default function ResetPassword() {
           allParams: Object.fromEntries(searchParams.entries())
         });
 
-        // Se há tokens na URL, tentar estabelecer sessão (independente do type)
+        // Primeiro, verificar se o usuário já está logado (comum após recovery)
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        
+        if (currentSession?.user) {
+          console.log('Usuário já possui sessão ativa - pode redefinir senha');
+          setSessionEstablished(true);
+          return;
+        }
+
+        // Se não há sessão, tentar estabelecer com tokens da URL
         if (accessToken && refreshToken) {
           console.log('Tokens encontrados na URL - estabelecendo sessão');
           const { error } = await supabase.auth.setSession({
@@ -58,23 +67,15 @@ export default function ResetPassword() {
           console.log('Sessão estabelecida com sucesso');
           setSessionEstablished(true);
         } else {
-          // Verificar se o usuário já está logado
-          const { data: { session: currentSession } } = await supabase.auth.getSession();
-          
-          if (currentSession?.user) {
-            console.log('Usuário já está logado, permitindo reset direto');
-            setSessionEstablished(true);
-          } else {
-            // Sem tokens válidos e sem sessão ativa
-            console.log('Sem tokens na URL e sem sessão ativa');
-            toast({
-              title: "❌ Acesso negado",
-              description: "É necessário um link válido de redefinição de senha para acessar esta página.",
-              variant: "destructive",
-            });
-            navigate('/');
-            return;
-          }
+          // Sem tokens válidos e sem sessão ativa
+          console.log('Sem tokens na URL e sem sessão ativa');
+          toast({
+            title: "❌ Acesso negado",
+            description: "É necessário um link válido de redefinição de senha para acessar esta página.",
+            variant: "destructive",
+          });
+          navigate('/');
+          return;
         }
       } catch (error) {
         console.error('Erro no processo de reset:', error);
