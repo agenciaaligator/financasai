@@ -28,7 +28,8 @@ const handler = async (req: Request): Promise<Response> => {
     let subject = "";
     let html = "";
     
-    const appUrl = "https://financasai.lovable.app";
+    // Usar a URL atual do ambiente (desenvolvimento ou produção)
+    const appUrl = "https://bc45aac3-c622-434f-ad58-afc37c18c6c2.lovableproject.com";
     const confirmUrl = `${site_url}/auth/v1/verify?token=${token_hash}&type=signup&redirect_to=${appUrl}`;
     const recoveryUrl = `${site_url}/auth/v1/verify?token=${token_hash}&type=recovery&redirect_to=${appUrl}?recovery=true&t=${Date.now()}`;
 
