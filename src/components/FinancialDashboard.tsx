@@ -159,8 +159,8 @@ export function FinancialDashboard() {
                 </SheetContent>
               </Sheet>
               <div>
-                <h1 className="text-lg font-bold text-foreground">
-                  {currentTab === "dashboard" && "Dashboard"}
+                <h1 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                  {currentTab === "dashboard" && "Dashboard Financeiro"}
                   {currentTab === "transactions" && "Transações"}
                   {currentTab === "categories" && "Categorias"}
                   {currentTab === "reports" && "Relatórios"}
@@ -180,14 +180,6 @@ export function FinancialDashboard() {
 
         {/* Conteúdo Mobile */}
         <div className="p-4 overflow-auto">
-          <BalanceAlert isNegative={isNegative} />
-
-          <SummaryCards 
-            balance={balance}
-            totalIncome={totalIncome}
-            totalExpenses={totalExpenses}
-          />
-
           {showForm && (
             <div className="mb-4">
               <TransactionForm 
@@ -204,6 +196,10 @@ export function FinancialDashboard() {
             onDelete={deleteTransaction}
             onEdit={setEditingTransaction}
             onRefresh={refetch}
+            balance={balance}
+            totalIncome={totalIncome}
+            totalExpenses={totalExpenses}
+            isNegative={isNegative}
           />
 
           <WhatsAppInfo />
@@ -236,8 +232,8 @@ export function FinancialDashboard() {
               <div className="flex items-center gap-4">
                 <SidebarTrigger className="h-8 w-8" />
                 <div>
-                  <h1 className="text-xl font-bold text-foreground">
-                    {currentTab === "dashboard" && "Dashboard"}
+                  <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                    {currentTab === "dashboard" && "Dashboard Financeiro"}
                     {currentTab === "transactions" && "Transações"}
                     {currentTab === "categories" && "Categorias"}
                     {currentTab === "reports" && "Relatórios"}
@@ -260,14 +256,6 @@ export function FinancialDashboard() {
 
           {/* Conteúdo Desktop */}
           <div className="flex-1 p-6 overflow-auto">
-            <BalanceAlert isNegative={isNegative} />
-
-            <SummaryCards 
-              balance={balance}
-              totalIncome={totalIncome}
-              totalExpenses={totalExpenses}
-            />
-
             {showForm && (
               <div className="mb-6">
                 <TransactionForm 
@@ -284,6 +272,10 @@ export function FinancialDashboard() {
               onDelete={deleteTransaction}
               onEdit={setEditingTransaction}
               onRefresh={refetch}
+              balance={balance}
+              totalIncome={totalIncome}
+              totalExpenses={totalExpenses}
+              isNegative={isNegative}
             />
 
             <WhatsAppInfo />
