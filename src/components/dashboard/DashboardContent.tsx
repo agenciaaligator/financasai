@@ -1,5 +1,9 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 import { TransactionList } from "../TransactionList";
+import { TransactionForm } from "../TransactionForm";
 import { FinancialChart } from "../FinancialChart";
 import { CategoryManager } from "../CategoryManager";
 import { ProfileSettings } from "../ProfileSettings";
@@ -9,6 +13,7 @@ import { FutureFeatures } from "../FutureFeatures";
 import { BalanceAlert } from "./BalanceAlert";
 import { SummaryCards } from "./SummaryCards";
 import { Transaction } from "@/hooks/useTransactions";
+import { useTransactions } from "@/hooks/useTransactions";
 
 interface DashboardContentProps {
   currentTab: string;
@@ -35,6 +40,8 @@ export function DashboardContent({
   totalExpenses,
   isNegative
 }: DashboardContentProps) {
+  const [showTransactionForm, setShowTransactionForm] = useState(false);
+  const { addTransaction } = useTransactions();
   
   // Debug logs para identificar problemas
   console.log('DashboardContent renderizado:', {
@@ -42,6 +49,14 @@ export function DashboardContent({
     transactionsCount: transactions?.length,
     categoriesCount: categories?.length
   });
+
+  const handleAddTransaction = async (transactionData: any) => {
+    const result = await addTransaction(transactionData);
+    if (!result?.error) {
+      setShowTransactionForm(false);
+      onRefresh();
+    }
+  };
 
   if (currentTab === "dashboard") {
     return (
@@ -85,9 +100,31 @@ export function DashboardContent({
     return (
       <div className="space-y-4">
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-foreground mb-2">Todas as Transações</h2>
-          <p className="text-muted-foreground">Gerencie todas as suas transações financeiras</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-foreground mb-2">Todas as Transações</h2>
+              <p className="text-muted-foreground">Gerencie todas as suas transações financeiras</p>
+            </div>
+            <Button 
+              onClick={() => setShowTransactionForm(!showTransactionForm)}
+              size="sm"
+              className="bg-gradient-primary hover:shadow-primary"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nova Transação
+            </Button>
+          </div>
         </div>
+        
+        {showTransactionForm && (
+          <div className="mb-6">
+            <TransactionForm 
+              onSubmit={handleAddTransaction}
+              onCancel={() => setShowTransactionForm(false)}
+            />
+          </div>
+        )}
+        
         <Card className="bg-gradient-card shadow-card border-0">
           <CardContent className="p-6">
             <TransactionList 
