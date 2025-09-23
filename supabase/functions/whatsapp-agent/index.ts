@@ -7,6 +7,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Rate limiting for authentication
+const authRateLimit = new Map<string, { count: number; windowStart: number }>();
+const AUTH_RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour
+const MAX_AUTH_ATTEMPTS_PER_HOUR = 3;
+
 interface WhatsAppMessage {
   from: string;
   id?: string;
@@ -106,6 +111,18 @@ class SessionManager {
 
 class AuthManager {
   static async generateAuthCode(phoneNumber: string): Promise<string> {
+    // Security: Rate limiting for auth code generation
+    const now = Date.now();
+    const current = authRateLimit.get(phoneNumber);
+    
+    if (!current || now - current.windowStart > AUTH_RATE_LIMIT_WINDOW) {
+      authRateLimit.set(phoneNumber, { count: 1, windowStart: now });
+    } else if (current.count >= MAX_AUTH_ATTEMPTS_PER_HOUR) {
+      throw new Error('RATE_LIMIT_EXCEEDED');
+    } else {
+      current.count++;
+    }
+
     // Verificar se o usuário existe
     const { data: user } = await supabase
       .rpc('check_user_exists', { email_to_check: `${phoneNumber}@whatsapp.temp` });
@@ -113,6 +130,12 @@ class AuthManager {
     if (!user) {
       throw new Error('USER_NOT_FOUND');
     }
+
+    // Security: Clean up old codes first
+    await supabase
+      .from('whatsapp_auth_codes')
+      .delete()
+      .eq('phone_number', phoneNumber);
 
     // Gerar código de 6 dígitos
     const code = Math.random().toString().slice(-6).padStart(6, '0');
@@ -122,10 +145,12 @@ class AuthManager {
       .insert({
         phone_number: phoneNumber,
         code: code,
-        expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString() // 10 minutos
+        expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString() // Security: Reduced to 5 minutes
       });
 
     if (error) throw error;
+    
+    console.log(`Auth code generated for ${phoneNumber}`);
     return code;
   }
 
@@ -157,6 +182,11 @@ class AuthManager {
 
 class TransactionParser {
   static parseTransactionFromText(text: string): Partial<Transaction> | null {
+    // Security: Input validation
+    if (!text || text.length > 500) {
+      return null;
+    }
+
     const normalizedText = text.toLowerCase().trim();
     
     // Patterns para detectar transações
@@ -193,15 +223,26 @@ class TransactionParser {
           title = match[2].trim();
         }
 
-        if (amount > 0) {
-          return {
-            amount,
-            title: title.charAt(0).toUpperCase() + title.slice(1),
-            type,
-            date: new Date().toISOString().split('T')[0],
-            source: 'whatsapp'
-          };
+        // Security: Transaction limits and validation
+        const MAX_TRANSACTION_AMOUNT = 50000; // R$ 50,000
+        if (amount <= 0 || amount > MAX_TRANSACTION_AMOUNT) {
+          return null;
         }
+
+        // Security: Sanitize title
+        const sanitizedTitle = title.substring(0, 100).replace(/[<>]/g, '');
+
+        // Security: Confirmation for high-value transactions
+        const requiresConfirmation = amount > 1000;
+
+        return {
+          amount,
+          title: sanitizedTitle.charAt(0).toUpperCase() + sanitizedTitle.slice(1),
+          type,
+          date: new Date().toISOString().split('T')[0],
+          source: 'whatsapp',
+          requiresConfirmation
+        };
       }
     }
 
@@ -260,6 +301,19 @@ class WhatsAppAgent {
 
   static async createTransaction(userId: string, transaction: Partial<Transaction>): Promise<string> {
     try {
+      // Security: Validate user ID
+      if (!userId || typeof userId !== 'string') {
+        throw new Error('Invalid user ID');
+      }
+
+      // Security: High-value transaction confirmation (you could implement this in session_data)
+      if (transaction.requiresConfirmation) {
+        return `⚠️ *Confirmação Necessária*\n\n` +
+               `Transação de alto valor: R$ ${transaction.amount?.toFixed(2)}\n` +
+               `📝 ${transaction.title}\n\n` +
+               `Digite "confirmar" para prosseguir ou "cancelar" para cancelar.`;
+      }
+
       const { data, error } = await supabase
         .from('transactions')
         .insert({
@@ -269,10 +323,15 @@ class WhatsAppAgent {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Transaction insert error:', error);
+        throw error;
+      }
 
       const emoji = transaction.type === 'income' ? '💰' : '💸';
       const typeText = transaction.type === 'income' ? 'Receita' : 'Despesa';
+      
+      console.log(`Transaction created for user ${userId}: ${transaction.amount}`);
       
       return `✅ *${typeText} adicionada!*\n\n` +
              `${emoji} R$ ${transaction.amount?.toFixed(2)}\n` +
@@ -375,11 +434,21 @@ serve(async (req) => {
   try {
     const { phone_number, message, action } = await req.json();
     
-    if (!phone_number) {
+    // Security: Input validation
+    if (!phone_number || typeof phone_number !== 'string') {
       throw new Error('Phone number is required');
     }
 
-    console.log('WhatsApp Agent called:', { phone_number, action, message });
+    // Security: Phone number validation
+    if (!/^\+?[\d\s-()]{8,15}$/.test(phone_number)) {
+      throw new Error('Invalid phone number format');
+    }
+
+    console.log('WhatsApp Agent called:', { 
+      phone_number: phone_number.substring(0, 5) + '***', // Log partial phone for privacy
+      action, 
+      hasMessage: !!message 
+    });
 
     // Limpar dados expirados
     await supabase.rpc('cleanup_expired_whatsapp_data');
@@ -415,6 +484,15 @@ serve(async (req) => {
               response: `❌ *Usuário não encontrado*\n\n` +
                        `Este número não está registrado.\n` +
                        `Cadastre-se primeiro em: ${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '')}.vercel.app`
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          } else if (error.message === 'RATE_LIMIT_EXCEEDED') {
+            return new Response(JSON.stringify({
+              success: true,
+              response: `⏰ *Muitas tentativas*\n\n` +
+                       `Você excedeu o limite de códigos por hora.\n` +
+                       `Tente novamente em 1 hora.`
             }), {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
