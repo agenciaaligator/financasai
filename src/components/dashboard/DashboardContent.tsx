@@ -41,6 +41,7 @@ export function DashboardContent({
   isNegative
 }: DashboardContentProps) {
   const [showTransactionForm, setShowTransactionForm] = useState(false);
+  const [showCategoryForm, setShowCategoryForm] = useState(false);
   const { addTransaction } = useTransactions();
   
   // Debug logs para identificar problemas
@@ -139,8 +140,6 @@ export function DashboardContent({
   }
 
   if (currentTab === "categories") {
-    const [showCategoryForm, setShowCategoryForm] = useState(false);
-    
     return (
       <div className="space-y-4">
         <div className="mb-6">
