@@ -139,15 +139,31 @@ export function DashboardContent({
   }
 
   if (currentTab === "categories") {
+    const [showCategoryForm, setShowCategoryForm] = useState(false);
+    
     return (
       <div className="space-y-4">
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-foreground mb-2">Categorias</h2>
-          <p className="text-muted-foreground">Organize suas transações por categorias</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-foreground mb-2">Categorias</h2>
+              <p className="text-muted-foreground">Organize suas transações por categorias</p>
+            </div>
+            <Button 
+              onClick={() => setShowCategoryForm(!showCategoryForm)}
+              size="sm"
+              className="bg-gradient-primary hover:shadow-primary"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nova Categoria
+            </Button>
+          </div>
         </div>
         <CategoryManager 
           categories={categories} 
-          onRefresh={onRefresh}
+          onRefresh={onRefresh} 
+          showForm={showCategoryForm}
+          setShowForm={setShowCategoryForm}
         />
       </div>
     );

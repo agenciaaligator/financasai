@@ -20,10 +20,11 @@ interface Category {
 interface CategoryManagerProps {
   categories: Category[];
   onRefresh: () => void;
+  showForm: boolean;
+  setShowForm: (show: boolean) => void;
 }
 
-export function CategoryManager({ categories, onRefresh }: CategoryManagerProps) {
-  const [showForm, setShowForm] = useState(false);
+export function CategoryManager({ categories, onRefresh, showForm, setShowForm }: CategoryManagerProps) {
   const [name, setName] = useState("");
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [color, setColor] = useState("#3B82F6");
@@ -101,17 +102,7 @@ export function CategoryManager({ categories, onRefresh }: CategoryManagerProps)
   return (
     <Card className="bg-gradient-card shadow-card border-0">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Gerenciar Categorias</CardTitle>
-          <Button 
-            onClick={() => setShowForm(!showForm)}
-            size="sm"
-            className="bg-gradient-primary hover:shadow-primary"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Categoria
-          </Button>
-        </div>
+        <CardTitle>Gerenciar Categorias</CardTitle>
       </CardHeader>
       <CardContent>
         {showForm && (

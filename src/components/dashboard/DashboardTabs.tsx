@@ -110,6 +110,8 @@ export function DashboardTabs({
         <CategoryManager 
           categories={categories} 
           onRefresh={onRefresh}
+          showForm={false}
+          setShowForm={() => {}}
         />
       </TabsContent>
 
