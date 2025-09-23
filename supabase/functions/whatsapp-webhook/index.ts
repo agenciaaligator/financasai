@@ -108,64 +108,105 @@ const handler = async (req: Request): Promise<Response> => {
       if (text) {
         console.log(`Message from ${from}: ${text}`);
 
-        // Tentar encontrar o usuário pelo telefone
-        const user = await findUserByPhone(from);
-        
-        if (!user) {
-          console.log(`User not found for phone: ${from}`);
-          return new Response(JSON.stringify({ 
-            success: false, 
-            message: 'Usuário não encontrado. Registre-se primeiro no app.' 
-          }), {
-            status: 404,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        // Call the WhatsApp Agent to handle the message
+        try {
+          const agentResponse = await fetch(`${supabaseUrl}/functions/v1/whatsapp-agent`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              phone_number: from,
+              message: {
+                from: from,
+                body: text,
+                id: message.id,
+                type: message.type
+              },
+              action: 'process_message'
+            })
           });
-        }
 
-        // Tentar interpretar a mensagem como uma transação
-        const transaction = parseTransactionFromText(text);
-        
-        if (transaction) {
-          // Inserir transação no banco
-          const { data, error } = await supabase
-            .from('transactions')
-            .insert([{
-              ...transaction,
-              user_id: user.id
-            }])
-            .select()
-            .single();
+          const agentResult = await agentResponse.json();
+          console.log('Agent response:', agentResult);
 
-          if (error) {
-            console.error('Error inserting transaction:', error);
+          if (agentResult.success && agentResult.response) {
+            // Here you would send the response back to WhatsApp using the WhatsApp Business API
+            console.log('Response to send to WhatsApp:', agentResult.response);
+            
+            return new Response(JSON.stringify({ 
+              success: true, 
+              message: agentResult.response,
+              agent_handled: true
+            }), {
+              status: 200,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          } else {
+            console.error('Agent error:', agentResult.error);
+            throw new Error(agentResult.error || 'Agent processing failed');
+          }
+
+        } catch (agentError) {
+          console.error('Error calling WhatsApp Agent, falling back to legacy:', agentError);
+          
+          // Fallback to legacy behavior
+          const user = await findUserByPhone(from);
+          
+          if (!user) {
+            console.log(`User not found for phone: ${from}`);
             return new Response(JSON.stringify({ 
               success: false, 
-              message: 'Erro ao salvar transação' 
+              message: 'Usuário não encontrado. Registre-se primeiro no app.' 
             }), {
-              status: 500,
+              status: 404,
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
           }
 
-          console.log('Transaction created:', data);
+          const transaction = parseTransactionFromText(text);
           
-          return new Response(JSON.stringify({ 
-            success: true, 
-            message: `Transação registrada: ${transaction.type === 'income' ? 'Receita' : 'Despesa'} de R$ ${transaction.amount.toFixed(2)} - ${transaction.title}`,
-            transaction: data
-          }), {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
-        } else {
-          // Mensagem não reconhecida como transação
-          return new Response(JSON.stringify({ 
-            success: false, 
-            message: 'Mensagem não reconhecida. Use formatos como: "gasto 50 mercado", "receita 1000 salario", "+100 freelance" ou "-30 combustível"'
-          }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
+          if (transaction) {
+            const { data, error } = await supabase
+              .from('transactions')
+              .insert([{
+                ...transaction,
+                user_id: user.id
+              }])
+              .select()
+              .single();
+
+            if (error) {
+              console.error('Error inserting transaction:', error);
+              return new Response(JSON.stringify({ 
+                success: false, 
+                message: 'Erro ao salvar transação' 
+              }), {
+                status: 500,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              });
+            }
+
+            console.log('Transaction created:', data);
+            
+            return new Response(JSON.stringify({ 
+              success: true, 
+              message: `Transação registrada: ${transaction.type === 'income' ? 'Receita' : 'Despesa'} de R$ ${transaction.amount.toFixed(2)} - ${transaction.title}`,
+              transaction: data
+            }), {
+              status: 200,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          } else {
+            return new Response(JSON.stringify({ 
+              success: false, 
+              message: 'Mensagem não reconhecida. Use formatos como: "gasto 50 mercado", "receita 1000 salario", "+100 freelance" ou "-30 combustível"'
+            }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
         }
       }
     }

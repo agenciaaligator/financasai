@@ -9,6 +9,7 @@ import { BalanceAlert } from "./dashboard/BalanceAlert";
 import { SummaryCards } from "./dashboard/SummaryCards";
 import { DashboardContent } from "./dashboard/DashboardContent";
 import { WhatsAppInfo } from "./dashboard/WhatsAppInfo";
+import { WhatsAppSetup } from "./dashboard/WhatsAppSetup";
 import { AppSidebar } from "./AppSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -203,6 +204,7 @@ export function FinancialDashboard() {
           />
 
           <WhatsAppInfo />
+          <WhatsAppSetup />
         </div>
 
         <EditTransactionModal
@@ -279,6 +281,7 @@ export function FinancialDashboard() {
             />
 
             <WhatsAppInfo />
+            <WhatsAppSetup />
           </div>
         </main>
 

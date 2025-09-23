@@ -81,3 +81,9 @@ verify_jwt = true
 
 [functions.whatsapp-webhook]
 verify_jwt = false
+
+[functions.whatsapp-agent]
+verify_jwt = false
+
+[functions.make-webhook]
+verify_jwt = false
