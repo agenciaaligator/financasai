@@ -262,7 +262,25 @@ const handler = async (req: Request): Promise<Response> => {
           if (whatsappAccessToken && whatsappPhoneNumberId) {
             try {
               const reqId = crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-              const phoneForApi = String(from).replace(/[\s\-()]/g, '');
+              
+              // Sanitizar e validar telefone
+              let phoneForApi = String(from).replace(/[^\d+]/g, '');
+              console.log('Phone sanitization:', { original: from, sanitized: phoneForApi });
+              
+              // Detectar placeholders ou números inválidos
+              if (phoneForApi.includes('{') || phoneForApi.includes('}') || 
+                  !/^\+?\d{10,15}$/.test(phoneForApi)) {
+                console.error('Invalid phone number detected (placeholder or malformed):', from);
+                // Não enviar mensagem para números inválidos - evitar 500
+                return new Response(JSON.stringify({ 
+                  success: true, 
+                  message: 'Invalid phone number in webhook payload',
+                  skipped: true
+                }), {
+                  status: 200,
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+              }
 
               console.log('Sending response to WhatsApp Business API...', {
                 reqId,

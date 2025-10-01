@@ -475,9 +475,43 @@ serve(async (req) => {
         .replace(/[\u0300-\u036f]/g, '')
         .toLowerCase() || '';
       
-      // Comandos de autenticação (case-insensitive e sem acentos)
-      if (action === 'auth' || normalizedMessage.includes('codigo')) {
+      // 1. PRIMEIRO: Verificar se é código de confirmação (case-insensitive e sem acentos)
+      const codeMatch = normalizedMessage.match(/codigo\s+(\d{6})/);
+      if (codeMatch) {
+        console.log(`Auth code VALIDATION attempt for ${phone_number.substring(0, 5)}***`);
+        const userId = await AuthManager.validateAuthCode(phone_number, codeMatch[1]);
+        
+        if (userId) {
+          // Atualizar sessão com user_id
+          session = await SessionManager.createSession(phone_number, userId);
+          console.log(`Auth code VALIDATED successfully for ${phone_number.substring(0, 5)}***`);
+          
+          return new Response(JSON.stringify({
+            success: true,
+            response: `✅ *Autenticação realizada com sucesso!*\n\n` +
+                     `Agora você pode:\n` +
+                     `• Adicionar gastos e receitas\n` +
+                     `• Consultar saldo e relatórios\n\n` +
+                     `Digite "ajuda" para ver todos os comandos.`
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        } else {
+          console.log(`Auth code VALIDATION failed for ${phone_number.substring(0, 5)}***`);
+          return new Response(JSON.stringify({
+            success: true,
+            response: `❌ *Código inválido ou expirado*\n\n` +
+                     `Digite "codigo" para gerar um novo código.`
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+      }
+
+      // 2. SEGUNDO: Gerar novo código apenas se mensagem for exatamente "codigo" (sem números)
+      if (action === 'auth' || normalizedMessage.trim() === 'codigo') {
         try {
+          console.log(`Auth code GENERATION requested for ${phone_number.substring(0, 5)}***`);
           const code = await AuthManager.generateAuthCode(phone_number);
           
           // Criar sessão temporária
@@ -515,36 +549,6 @@ serve(async (req) => {
             });
           }
           throw error;
-        }
-      }
-
-      // Verificar se é código de confirmação (case-insensitive e sem acentos)
-      const codeMatch = normalizedMessage.match(/codigo\s+(\d{6})/);
-      if (codeMatch) {
-        const userId = await AuthManager.validateAuthCode(phone_number, codeMatch[1]);
-        
-        if (userId) {
-          // Atualizar sessão com user_id
-          session = await SessionManager.createSession(phone_number, userId);
-          
-          return new Response(JSON.stringify({
-            success: true,
-            response: `✅ *Autenticação realizada com sucesso!*\n\n` +
-                     `Agora você pode:\n` +
-                     `• Adicionar gastos e receitas\n` +
-                     `• Consultar saldo e relatórios\n\n` +
-                     `Digite "ajuda" para ver todos os comandos.`
-          }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
-        } else {
-          return new Response(JSON.stringify({
-            success: true,
-            response: `❌ *Código inválido ou expirado*\n\n` +
-                     `Digite "codigo" para gerar um novo código.`
-          }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
         }
       }
 
