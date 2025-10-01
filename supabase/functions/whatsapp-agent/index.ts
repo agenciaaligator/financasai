@@ -783,7 +783,7 @@ serve(async (req) => {
 
     // Se não há perfil cadastrado, retornar IMEDIATAMENTE
     if (!profile) {
-      console.log(`User not registered: ${phone_number.substring(0, 5)}***`);
+      console.log('User not registered - redirecting to signup');
       return new Response(JSON.stringify({
         success: true,
         response: `👋 *Bem-vindo ao Aligator Financeiro!*\n\n` +
@@ -796,11 +796,12 @@ serve(async (req) => {
       });
     }
 
+    // SECURITY: Log without any phone number information
     console.log('WhatsApp Agent called:', { 
-      phone_number: phone_number.substring(0, 5) + '***', // Log partial phone for privacy
       action, 
       hasMessage: !!message,
-      user_id: profile.user_id
+      user_id: profile.user_id,
+      timestamp: new Date().toISOString()
     });
 
     // TERCEIRO: Buscar sessão existente
