@@ -12,6 +12,10 @@ const rateLimitStore = new Map<string, { count: number; windowStart: number }>()
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 10;
 
+// Message deduplication storage
+const messageIdStore = new Map<string, number>();
+const DEDUPE_WINDOW = 2 * 60 * 1000; // 2 minutes
+
 interface WhatsAppMessage {
   from: string;
   text: string;
@@ -217,16 +221,60 @@ const handler = async (req: Request): Promise<Response> => {
     const isGPTMakerFormat = body.message || body.contactPhone;
     let from: string | undefined;
     let text: string | undefined;
+    let messageId: string | undefined;
 
     if (isGPTMakerFormat) {
-      // Formato GPT Maker
+      // Ignorar mensagens do assistant (GPT Maker)
+      if (body.role === 'assistant') {
+        console.log('Ignoring GPT Maker assistant message - skipping to avoid duplication');
+        return new Response(JSON.stringify({ 
+          success: true, 
+          skipped: true,
+          reason: 'gpt_maker_assistant_message'
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      // Formato GPT Maker - apenas processar role "user"
       from = body.contactPhone;
       text = body.message;
+      messageId = body.messageId;
     } else if (body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
       // Formato WhatsApp Business API padrão
       const message = body.entry[0].changes[0].value.messages[0];
       from = message.from;
       text = message.text?.body;
+      messageId = message.id;
+    }
+
+    // Deduplicação de mensagens
+    if (messageId) {
+      const now = Date.now();
+      const lastSeen = messageIdStore.get(messageId);
+      
+      if (lastSeen && (now - lastSeen < DEDUPE_WINDOW)) {
+        console.log(`Duplicate message detected and ignored: ${messageId}`);
+        return new Response(JSON.stringify({ 
+          success: true, 
+          skipped: true,
+          reason: 'deduplicated'
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      // Registrar messageId
+      messageIdStore.set(messageId, now);
+      
+      // Limpar mensagens antigas
+      for (const [id, timestamp] of messageIdStore.entries()) {
+        if (now - timestamp > DEDUPE_WINDOW) {
+          messageIdStore.delete(id);
+        }
+      }
     }
 
     // Processar mensagem se houver texto

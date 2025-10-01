@@ -19,7 +19,27 @@ export function WhatsAppSetup() {
 
   useEffect(() => {
     fetchPhoneNumber();
+    checkAuthenticationStatus();
   }, [user]);
+
+  const checkAuthenticationStatus = async () => {
+    if (!user) return;
+
+    // Verificar se existe sessão ativa no banco de dados
+    const { data: session } = await supabase
+      .from('whatsapp_sessions')
+      .select('*')
+      .eq('user_id', user.id)
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle();
+
+    if (session && typeof session.session_data === 'object' && session.session_data !== null) {
+      const sessionData = session.session_data as { authenticated?: boolean };
+      if (sessionData.authenticated) {
+        setIsAuthenticated(true);
+      }
+    }
+  };
 
   const fetchPhoneNumber = async () => {
     if (!user) return;

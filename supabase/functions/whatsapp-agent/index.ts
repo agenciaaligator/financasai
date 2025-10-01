@@ -349,6 +349,42 @@ class WhatsAppAgent {
       };
     }
 
+    // Detectar cumprimentos
+    const greetings = ['oi', 'olá', 'ola', 'bom dia', 'boa tarde', 'boa noite', 'hey', 'alo', 'alô'];
+    if (greetings.some(greeting => messageText === greeting || messageText.startsWith(greeting + ' '))) {
+      console.log('Greeting detected');
+      
+      // Buscar nome do usuário
+      let userName = '';
+      try {
+        const supabase = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        );
+        
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('user_id', session.user_id)
+          .maybeSingle();
+        
+        if (profile?.full_name) {
+          userName = profile.full_name.split(' ')[0]; // Primeiro nome
+        }
+      } catch (error) {
+        console.log('Could not fetch user name:', error);
+      }
+      
+      const greeting = userName 
+        ? `Oi, ${userName}! 👋 Como posso ajudar?`
+        : `Oi! 👋 Como posso ajudar?`;
+      
+      return {
+        response: `${greeting}\n\nVocê pode:\n• Adicionar gastos: "gasto 50 mercado"\n• Adicionar receitas: "receita 1000 salario"\n• Ver saldo: "saldo"\n• Ver relatório: "relatorio"\n• Ver comandos: "ajuda"`,
+        sessionData
+      };
+    }
+
     // Tentar processar como transação
     const transaction = TransactionParser.parseTransactionFromText(messageText);
     if (transaction && session.user_id) {
