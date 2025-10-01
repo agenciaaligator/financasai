@@ -770,23 +770,18 @@ serve(async (req) => {
       });
     }
 
-    console.log('WhatsApp Agent called:', { 
-      phone_number: phone_number.substring(0, 5) + '***', // Log partial phone for privacy
-      action, 
-      hasMessage: !!message 
-    });
-
-    // Limpar dados expirados
+    // PRIMEIRO: Limpar dados expirados
     await supabase.rpc('cleanup_expired_whatsapp_data');
 
-    // Verificar se o usuário está cadastrado (tem perfil com este telefone)
+    // SEGUNDO: Verificar se o usuário está cadastrado (tem perfil com este telefone)
+    // CRITICAL: Esta verificação DEVE acontecer ANTES de qualquer processamento
     const { data: profile } = await supabase
       .from('profiles')
       .select('user_id')
       .eq('phone_number', phone_number)
       .maybeSingle();
 
-    // Se não há perfil cadastrado, direcionar para cadastro
+    // Se não há perfil cadastrado, retornar IMEDIATAMENTE
     if (!profile) {
       console.log(`User not registered: ${phone_number.substring(0, 5)}***`);
       return new Response(JSON.stringify({
@@ -801,7 +796,14 @@ serve(async (req) => {
       });
     }
 
-    // Buscar sessão existente
+    console.log('WhatsApp Agent called:', { 
+      phone_number: phone_number.substring(0, 5) + '***', // Log partial phone for privacy
+      action, 
+      hasMessage: !!message,
+      user_id: profile.user_id
+    });
+
+    // TERCEIRO: Buscar sessão existente
     let session = await SessionManager.getSession(phone_number);
 
     // Se não há sessão ou não está autenticada
