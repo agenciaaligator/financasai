@@ -261,7 +261,12 @@ const handler = async (req: Request): Promise<Response> => {
 
           if (gptMakerToken && gptMakerChannelId) {
             try {
-              console.log('Sending response to GPT Maker API...');
+              console.log('Sending response to GPT Maker API...', {
+                channelId: gptMakerChannelId.substring(0, 5) + '***',
+                phone: from.substring(0, 5) + '***',
+                messageLength: agentResult.response.length
+              });
+              
               const gptMakerResponse = await fetch(
                 `https://api.gptmaker.ai/v2/channel/${gptMakerChannelId}/start-conversation`,
                 {
@@ -281,13 +286,20 @@ const handler = async (req: Request): Promise<Response> => {
                 console.log('Message sent successfully via GPT Maker');
               } else {
                 const errorText = await gptMakerResponse.text();
-                console.error('GPT Maker API error:', gptMakerResponse.status, errorText);
+                console.error('GPT Maker API error:', {
+                  status: gptMakerResponse.status,
+                  error: errorText,
+                  channelId: gptMakerChannelId
+                });
               }
             } catch (gptError) {
               console.error('Error calling GPT Maker API:', gptError);
             }
           } else {
-            console.warn('GPT Maker credentials not configured');
+            console.warn('GPT Maker credentials not configured', {
+              hasToken: !!gptMakerToken,
+              hasChannelId: !!gptMakerChannelId
+            });
           }
           
           return new Response(JSON.stringify({ 

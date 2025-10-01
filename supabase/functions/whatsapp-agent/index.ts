@@ -445,9 +445,13 @@ serve(async (req) => {
       throw new Error('Phone number is required');
     }
 
-    // Security: Phone number validation - mais flexível para aceitar diferentes formatos
+    // Security: Phone number validation - muito mais flexível
     const cleanPhone = phone_number.replace(/[\s\-()]/g, '');
-    if (!/^\+?\d{8,15}$/.test(cleanPhone)) {
+    console.log('Phone validation:', { original: phone_number, cleaned: cleanPhone });
+    
+    // Aceitar números de 10 a 15 dígitos, com ou sem + no início
+    if (!/^\+?\d{10,15}$/.test(cleanPhone)) {
+      console.error('Invalid phone format:', { phone_number, cleanPhone });
       throw new Error('Invalid phone number format');
     }
 
