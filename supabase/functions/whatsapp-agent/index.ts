@@ -46,7 +46,14 @@ interface Transaction {
   date: string;
   description?: string;
   source: string;
+  category_id?: string;
   requiresConfirmation?: boolean;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  type: 'income' | 'expense';
 }
 
 // Inicializar Supabase
@@ -362,6 +369,76 @@ class TransactionParser {
   }
 }
 
+class CategoryMatcher {
+  /**
+   * Busca a melhor categoria para uma transação baseada no título
+   * Prioridade: 1) Match exato, 2) Similaridade, 3) "Outros"
+   */
+  static async findBestCategory(
+    userId: string, 
+    title: string, 
+    type: 'income' | 'expense'
+  ): Promise<{ category_id: string | null, category_name: string, suggested: boolean }> {
+    try {
+      // Buscar todas as categorias do usuário do tipo correto
+      const { data: categories, error } = await supabase
+        .from('categories')
+        .select('id, name, type')
+        .eq('user_id', userId)
+        .eq('type', type);
+
+      if (error || !categories || categories.length === 0) {
+        console.log('No categories found for user');
+        return { category_id: null, category_name: 'Outros', suggested: false };
+      }
+
+      const normalizedTitle = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+      // 1. Buscar match exato
+      const exactMatch = categories.find(cat => 
+        cat.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') === normalizedTitle
+      );
+      
+      if (exactMatch) {
+        console.log(`Exact category match found: ${exactMatch.name}`);
+        return { category_id: exactMatch.id, category_name: exactMatch.name, suggested: false };
+      }
+
+      // 2. Buscar por similaridade (palavra contida no nome da categoria ou vice-versa)
+      const similarMatches = categories.filter(cat => {
+        const normalizedCatName = cat.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        // Verifica se o título contém o nome da categoria ou se a categoria contém o título
+        return normalizedTitle.includes(normalizedCatName) || normalizedCatName.includes(normalizedTitle);
+      });
+
+      if (similarMatches.length > 0) {
+        // Pegar a categoria com nome mais longo (mais específica)
+        const bestMatch = similarMatches.sort((a, b) => b.name.length - a.name.length)[0];
+        console.log(`Similar category match found: ${bestMatch.name} for title: ${title}`);
+        return { category_id: bestMatch.id, category_name: bestMatch.name, suggested: true };
+      }
+
+      // 3. Buscar categoria "Outros"
+      const outrosMatch = categories.find(cat => 
+        cat.name.toLowerCase() === 'outros'
+      );
+
+      if (outrosMatch) {
+        console.log(`Using "Outros" category for: ${title}`);
+        return { category_id: outrosMatch.id, category_name: 'Outros', suggested: false };
+      }
+
+      // 4. Se não encontrou "Outros", usar primeira categoria disponível
+      console.log(`No suitable category found, using first available: ${categories[0].name}`);
+      return { category_id: categories[0].id, category_name: categories[0].name, suggested: false };
+
+    } catch (error) {
+      console.error('Error finding category:', error);
+      return { category_id: null, category_name: 'Sem categoria', suggested: false };
+    }
+  }
+}
+
 class WhatsAppAgent {
   static async processMessage(session: Session, message: WhatsAppMessage): Promise<{ response: string, sessionData: SessionData }> {
     const messageText = message.body?.toLowerCase().trim() || '';
@@ -587,16 +664,23 @@ class WhatsAppAgent {
 
   static getHelpMenu(): string {
     return `🤖 *Assistente Financeiro WhatsApp*\n\n` +
-           `*📝 Adicionar Transações:*\n` +
+           `*📝 Como Adicionar Transações:*\n` +
            `• gasto 50 mercado\n` +
            `• receita 1000 salario\n` +
            `• +100 freelance\n` +
-           `• -30 combustível\n\n` +
+           `• -30 lanche hoje\n` +
+           `• gasto 150 alimentação ontem\n\n` +
            `*📊 Consultas:*\n` +
            `• *saldo* - Ver saldo atual\n` +
            `• *relatorio* - Resumo mensal\n` +
            `• *ajuda* - Este menu\n\n` +
-           `💡 *Dica:* Use valores com pontos ou vírgulas (ex: 50.30 ou 50,30)`;
+           `*📁 Categorias Automáticas:*\n` +
+           `O sistema identifica automaticamente a categoria mais adequada!\n` +
+           `Exemplo: "lanche" → categoria "Alimentação"\n\n` +
+           `💡 *Dicas:*\n` +
+           `• Use valores com pontos ou vírgulas (ex: 50.30 ou 50,30)\n` +
+           `• Pode adicionar a data: "hoje", "ontem" ou "28/09"\n` +
+           `• Seus gastos mantêm o nome original para relatórios precisos`;
   }
 
   static async saveTransaction(userId: string, transaction: Partial<Transaction>): Promise<string> {
@@ -610,16 +694,30 @@ class WhatsAppAgent {
         userId: userId.substring(0, 8) + '***',
         amount: transaction.amount,
         type: transaction.type,
-        date: transaction.date
+        date: transaction.date,
+        title: transaction.title
       });
+
+      // Buscar melhor categoria automaticamente se não foi especificada
+      let categoryInfo = { category_id: null, category_name: 'Sem categoria', suggested: false };
+      
+      if (!transaction.category_id && transaction.title && transaction.type) {
+        categoryInfo = await CategoryMatcher.findBestCategory(
+          userId, 
+          transaction.title, 
+          transaction.type
+        );
+        console.log('Category matched:', categoryInfo);
+      }
 
       const transactionData = {
         user_id: userId,
         amount: transaction.amount,
-        title: transaction.title,
+        title: transaction.title, // Mantém o título original para relatórios fidedignos
         type: transaction.type,
         date: transaction.date,
         description: transaction.description,
+        category_id: transaction.category_id || categoryInfo.category_id,
         source: 'whatsapp'
       };
 
@@ -640,16 +738,31 @@ class WhatsAppAgent {
       
       console.log(`Transaction created successfully:`, {
         id: data.id,
-        amount: data.amount
+        amount: data.amount,
+        category: categoryInfo.category_name
       });
       
       const dateObj = new Date(transaction.date + 'T00:00:00');
       const dateStr = dateObj.toLocaleDateString('pt-BR');
       
-      return `✅ *${typeText} registrada com sucesso!*\n\n` +
-             `${emoji} R$ ${transaction.amount?.toFixed(2)}\n` +
-             `📝 ${transaction.title}\n` +
-             `📅 ${dateStr}`;
+      // Mensagem mais detalhada com categoria
+      let response = `✅ *${typeText} registrada!*\n\n` +
+                     `${emoji} R$ ${transaction.amount?.toFixed(2)}\n` +
+                     `📝 ${transaction.title}\n` +
+                     `📅 ${dateStr}`;
+      
+      // Adicionar informação sobre categoria se foi encontrada
+      if (categoryInfo.category_id) {
+        if (categoryInfo.suggested) {
+          response += `\n📁 Categoria sugerida: *${categoryInfo.category_name}*`;
+        } else if (categoryInfo.category_name !== 'Outros') {
+          response += `\n📁 Categoria: *${categoryInfo.category_name}*`;
+        } else {
+          response += `\n📁 Categoria: *${categoryInfo.category_name}*\n💡 O título "${transaction.title}" será mantido nos seus relatórios`;
+        }
+      }
+      
+      return response;
     } catch (error) {
       console.error('Error saving transaction:', error);
       return `❌ *Erro ao salvar transação.*\n\n` +
@@ -786,11 +899,12 @@ serve(async (req) => {
       console.log('User not registered - redirecting to signup');
       return new Response(JSON.stringify({
         success: true,
-        response: `👋 *Bem-vindo ao Aligator Financeiro!*\n\n` +
-                 `📱 Este número ainda não está cadastrado.\n\n` +
-                 `Para começar a usar o assistente financeiro, cadastre-se gratuitamente em:\n` +
-                 `https://financasai.lovable.app\n\n` +
-                 `Depois do cadastro, volte aqui e envie qualquer mensagem para começar! 🚀`
+        response: `👋 *Bem-vindo ao Assistente Financeiro!*\n\n` +
+                 `*Passo 1:* Cadastre-se gratuitamente\n` +
+                 `🔗 https://financasai.lovable.app\n\n` +
+                 `*Passo 2:* No cadastro, use este número do WhatsApp: ${phone_number}\n\n` +
+                 `*Passo 3:* Depois de cadastrado, volte aqui e digite: *codigo*\n\n` +
+                 `É rápido e fácil! 🚀`
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -826,13 +940,22 @@ serve(async (req) => {
           session = await SessionManager.createSession(phone_number, userId);
           console.log(`Auth code VALIDATED successfully for ${phone_number.substring(0, 5)}***`);
           
+          // Mensagem de boas-vindas completa com lista de comandos
           return new Response(JSON.stringify({
             success: true,
             response: `✅ *Autenticação realizada com sucesso!*\n\n` +
-                     `Agora você pode:\n` +
-                     `• Adicionar gastos e receitas\n` +
-                     `• Consultar saldo e relatórios\n\n` +
-                     `Digite "ajuda" para ver todos os comandos.`
+                     `🎉 Bem-vindo ao seu Assistente Financeiro!\n\n` +
+                     `*📝 Como usar:*\n` +
+                     `• gasto 50 mercado\n` +
+                     `• receita 1000 salario\n` +
+                     `• +100 freelance\n` +
+                     `• -30 lanche hoje\n\n` +
+                     `*📊 Consultas:*\n` +
+                     `• *saldo* - Ver seu saldo\n` +
+                     `• *relatorio* - Resumo do mês\n` +
+                     `• *ajuda* - Ver todos os comandos\n\n` +
+                     `*✨ Dica:* O sistema identifica categorias automaticamente!\n` +
+                     `Exemplo: "lanche" vai para "Alimentação"`
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
