@@ -32,6 +32,9 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const whatsappVerifyToken = Deno.env.get('WHATSAPP_VERIFY_TOKEN') || 'WHATSAPP_VERIFY_TOKEN';
 const whatsappAppSecret = Deno.env.get('WHATSAPP_APP_SECRET');
+const whatsappAccessToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
+const whatsappPhoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID');
+const whatsappBusinessAccountId = Deno.env.get('WHATSAPP_BUSINESS_ACCOUNT_ID');
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -255,74 +258,73 @@ const handler = async (req: Request): Promise<Response> => {
         console.log('Agent response:', agentResult);
 
         if (agentResult.success && agentResult.response) {
-          // Enviar resposta via GPT Maker API com diagnóstico aprimorado
-          let gptMakerToken = Deno.env.get('GPT_MAKER_TOKEN') ?? '';
-          let gptMakerChannelId = Deno.env.get('GPT_MAKER_CHANNEL_ID') ?? '';
-
-          gptMakerToken = gptMakerToken.trim();
-          gptMakerChannelId = gptMakerChannelId.trim();
-
-          if (gptMakerToken && gptMakerChannelId) {
+          // Enviar resposta via WhatsApp Business API oficial
+          if (whatsappAccessToken && whatsappPhoneNumberId) {
             try {
               const reqId = crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
               const phoneForApi = String(from).replace(/[\s\-()]/g, '');
 
-              console.log('Sending response to GPT Maker API...', {
+              console.log('Sending response to WhatsApp Business API...', {
                 reqId,
-                channelIdPreview: gptMakerChannelId.slice(0, 4) + '***' + gptMakerChannelId.slice(-4),
+                phoneNumberIdPreview: whatsappPhoneNumberId.slice(0, 4) + '***' + whatsappPhoneNumberId.slice(-4),
                 phonePreview: phoneForApi.slice(0, 5) + '***',
                 messageLength: agentResult.response.length
               });
               
-              const gptMakerResponse = await fetch(
-                `https://api.gptmaker.ai/v2/channel/${encodeURIComponent(gptMakerChannelId)}/start-conversation`,
+              const whatsappResponse = await fetch(
+                `https://graph.facebook.com/v18.0/${whatsappPhoneNumberId}/messages`,
                 {
                   method: 'POST',
                   headers: {
-                    'Authorization': `Bearer ${gptMakerToken}`,
+                    'Authorization': `Bearer ${whatsappAccessToken}`,
                     'Content-Type': 'application/json',
-                    'X-Request-ID': reqId,
                   },
                   body: JSON.stringify({
-                    phone: phoneForApi,
-                    message: agentResult.response
+                    messaging_product: 'whatsapp',
+                    to: phoneForApi,
+                    type: 'text',
+                    text: {
+                      body: agentResult.response
+                    }
                   })
                 }
               );
 
-              if (gptMakerResponse.ok) {
-                console.log('Message sent successfully via GPT Maker', { reqId });
+              if (whatsappResponse.ok) {
+                const responseData = await whatsappResponse.json();
+                console.log('Message sent successfully via WhatsApp Business API', { 
+                  reqId, 
+                  messageId: responseData.messages?.[0]?.id 
+                });
               } else {
                 let errorPayload: any = null;
                 try {
-                  const txt = await gptMakerResponse.text();
+                  const txt = await whatsappResponse.text();
                   try { errorPayload = JSON.parse(txt); } catch { errorPayload = { raw: txt }; }
                 } catch { /* ignore */ }
 
                 const errMsg = JSON.stringify(errorPayload).toLowerCase();
                 const hints: string[] = [];
-                if (gptMakerResponse.status === 403) hints.push('Token inválido ou sem permissão (403). Revise GPT_MAKER_TOKEN.');
-                if (gptMakerResponse.status === 400 && errMsg.includes('channel') && errMsg.includes('not') && errMsg.includes('found')) {
-                  hints.push('Channel ID não encontrado. Confirme o ID no painel do GPT Maker.');
-                }
-                if (gptMakerResponse.status === 400 && (errMsg.includes('phone') || errMsg.includes('telefone'))) {
-                  hints.push('Telefone inválido. O número deve incluir DDI (ex: 55...).');
+                if (whatsappResponse.status === 401) hints.push('Token inválido ou expirado. Revise WHATSAPP_ACCESS_TOKEN.');
+                if (whatsappResponse.status === 404) hints.push('Phone Number ID não encontrado. Confirme WHATSAPP_PHONE_NUMBER_ID.');
+                if (whatsappResponse.status === 400 && (errMsg.includes('phone') || errMsg.includes('telefone'))) {
+                  hints.push('Número de telefone inválido. O número deve incluir código do país (ex: 5511...).');
                 }
 
-                console.error('GPT Maker API error', {
+                console.error('WhatsApp Business API error', {
                   reqId,
-                  status: gptMakerResponse.status,
+                  status: whatsappResponse.status,
                   error: errorPayload,
                   hints,
                 });
               }
-            } catch (gptError) {
-              console.error('Error calling GPT Maker API:', gptError);
+            } catch (whatsappError) {
+              console.error('Error calling WhatsApp Business API:', whatsappError);
             }
           } else {
-            console.warn('GPT Maker credentials not configured', {
-              hasToken: !!gptMakerToken,
-              hasChannelId: !!gptMakerChannelId
+            console.warn('WhatsApp Business API credentials not configured', {
+              hasAccessToken: !!whatsappAccessToken,
+              hasPhoneNumberId: !!whatsappPhoneNumberId
             });
           }
           
