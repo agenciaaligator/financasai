@@ -224,8 +224,9 @@ const handler = async (req: Request): Promise<Response> => {
     let messageId: string | undefined;
 
     if (isGPTMakerFormat) {
-      // Ignorar mensagens do assistant (GPT Maker)
-      if (body.role === 'assistant') {
+      // CRITICAL FIX: Ignorar TODAS as mensagens do GPT Maker que não são do usuário
+      // Inclui 'assistant', 'tool', e mensagens vazias
+      if (body.role === 'assistant' || body.role === 'tool' || !body.message || body.message.trim() === '') {
         console.log('Ignoring GPT Maker assistant message - skipping to avoid duplication');
         return new Response(JSON.stringify({ 
           success: true, 
@@ -237,7 +238,7 @@ const handler = async (req: Request): Promise<Response> => {
         });
       }
       
-      // Formato GPT Maker - apenas processar role "user"
+      // Formato GPT Maker - apenas processar role "user" com mensagem válida
       from = body.contactPhone;
       text = body.message;
       messageId = body.messageId;

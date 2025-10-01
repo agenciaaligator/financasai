@@ -47,30 +47,21 @@ export function WhatsAppSetup() {
   const checkAuthenticationStatus = async () => {
     if (!user) return;
 
-    // Verificar se existe sessão ativa no banco de dados
-    const { data: session } = await supabase
-      .from('whatsapp_sessions')
-      .select('*')
-      .eq('user_id', user.id)
-      .gt('expires_at', new Date().toISOString())
-      .maybeSingle();
-
-    // Considerar autenticado se há uma sessão com user_id
-    if (session && session.user_id) {
-      setIsAuthenticated(true);
-      return;
-    }
-    
-    // Fallback: verificar flag authenticated no session_data
-    if (session && typeof session.session_data === 'object' && session.session_data !== null) {
-      const sessionData = session.session_data as { authenticated?: boolean };
-      if (sessionData.authenticated) {
-        setIsAuthenticated(true);
+    try {
+      // Usar função segura do banco que verifica diretamente
+      const { data, error } = await supabase.rpc('is_whatsapp_authenticated');
+      
+      if (error) {
+        console.error('Erro ao verificar autenticação:', error);
+        setIsAuthenticated(false);
         return;
       }
+      
+      setIsAuthenticated(data === true);
+    } catch (error) {
+      console.error('Erro ao verificar autenticação WhatsApp:', error);
+      setIsAuthenticated(false);
     }
-    
-    setIsAuthenticated(false);
   };
 
   const fetchPhoneNumber = async () => {

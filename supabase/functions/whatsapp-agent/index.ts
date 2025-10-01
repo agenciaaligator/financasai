@@ -221,33 +221,46 @@ class AuthManager {
 class DateParser {
   static parseDate(text: string): string | null {
     const normalizedText = text.toLowerCase().trim();
-    const today = new Date();
+    
+    // CRITICAL FIX: Usar UTC para evitar problemas de timezone
+    // Quando usuário diz "hoje", queremos a data LOCAL dele (Brasil)
+    const now = new Date();
+    const brazilOffset = -3 * 60; // UTC-3 (horário de Brasília)
+    const localTime = new Date(now.getTime() + (brazilOffset * 60 * 1000));
     
     // Hoje
     if (['hoje', 'hj'].includes(normalizedText)) {
-      return today.toISOString().split('T')[0];
+      const year = localTime.getUTCFullYear();
+      const month = String(localTime.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(localTime.getUTCDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     }
     
     // Ontem
     if (['ontem', 'yesterday'].includes(normalizedText)) {
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      return yesterday.toISOString().split('T')[0];
+      const yesterday = new Date(localTime.getTime() - (24 * 60 * 60 * 1000));
+      const year = yesterday.getUTCFullYear();
+      const month = String(yesterday.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(yesterday.getUTCDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     }
     
     // Formatos DD/MM ou DD/MM/AAAA
     const dateMatch = normalizedText.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
     if (dateMatch) {
       const day = parseInt(dateMatch[1]);
-      const month = parseInt(dateMatch[2]) - 1; // JS months are 0-indexed
-      const year = dateMatch[3] ? parseInt(dateMatch[3]) : today.getFullYear();
+      const month = parseInt(dateMatch[2]);
+      const year = dateMatch[3] ? parseInt(dateMatch[3]) : localTime.getUTCFullYear();
       
       // Ajustar ano se apenas 2 dígitos
       const fullYear = year < 100 ? 2000 + year : year;
       
-      const date = new Date(fullYear, month, day);
-      if (date.getMonth() === month) { // Validar se a data é válida
-        return date.toISOString().split('T')[0];
+      // Validar se a data é válida
+      if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+        const testDate = new Date(Date.UTC(fullYear, month - 1, day));
+        if (testDate.getUTCMonth() === month - 1 && testDate.getUTCDate() === day) {
+          return `${fullYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        }
       }
     }
     
