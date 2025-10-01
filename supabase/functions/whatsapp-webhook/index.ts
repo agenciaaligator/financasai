@@ -210,57 +210,101 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('WhatsApp webhook received (verified):', JSON.stringify(body, null, 2));
 
-    // Verificar se é uma mensagem de texto
-    if (body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
+    // Detectar formato da mensagem (GPT Maker ou WhatsApp Business API)
+    const isGPTMakerFormat = body.message || body.contactPhone;
+    let from: string | undefined;
+    let text: string | undefined;
+
+    if (isGPTMakerFormat) {
+      // Formato GPT Maker
+      from = body.contactPhone;
+      text = body.message;
+    } else if (body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
+      // Formato WhatsApp Business API padrão
       const message = body.entry[0].changes[0].value.messages[0];
-      const from = message.from;
-      const text = message.text?.body;
+      from = message.from;
+      text = message.text?.body;
+    }
 
-      if (text) {
-        console.log(`Message from ${from}: ${text}`);
+    // Processar mensagem se houver texto
+    if (from && text) {
 
-        // Call the WhatsApp Agent to handle the message
-        try {
-          const agentResponse = await fetch(`${supabaseUrl}/functions/v1/whatsapp-agent`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${supabaseServiceKey}`,
-              'Content-Type': 'application/json',
+      console.log(`Message from ${from}: ${text}`);
+
+      // Call the WhatsApp Agent to handle the message
+      try {
+        const agentResponse = await fetch(`${supabaseUrl}/functions/v1/whatsapp-agent`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            phone_number: from,
+            message: {
+              from: from,
+              body: text,
+              id: body.messageId || 'unknown',
+              type: 'text'
             },
-            body: JSON.stringify({
-              phone_number: from,
-              message: {
-                from: from,
-                body: text,
-                id: message.id,
-                type: message.type
-              },
-              action: 'process_message'
-            })
-          });
+            action: 'process_message'
+          })
+        });
 
-          const agentResult = await agentResponse.json();
-          console.log('Agent response:', agentResult);
+        const agentResult = await agentResponse.json();
+        console.log('Agent response:', agentResult);
 
-          if (agentResult.success && agentResult.response) {
-            // Here you would send the response back to WhatsApp using the WhatsApp Business API
-            console.log('Response to send to WhatsApp:', agentResult.response);
-            
-            return new Response(JSON.stringify({ 
-              success: true, 
-              message: agentResult.response,
-              agent_handled: true
-            }), {
-              status: 200,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
+        if (agentResult.success && agentResult.response) {
+          // Enviar resposta via GPT Maker API
+          const gptMakerToken = Deno.env.get('GPT_MAKER_TOKEN');
+          const gptMakerChannelId = Deno.env.get('GPT_MAKER_CHANNEL_ID');
+
+          if (gptMakerToken && gptMakerChannelId) {
+            try {
+              console.log('Sending response to GPT Maker API...');
+              const gptMakerResponse = await fetch(
+                `https://api.gptmaker.ai/v2/channel/${gptMakerChannelId}/start-conversation`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${gptMakerToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    phone: from,
+                    message: agentResult.response
+                  })
+                }
+              );
+
+              if (gptMakerResponse.ok) {
+                console.log('Message sent successfully via GPT Maker');
+              } else {
+                const errorText = await gptMakerResponse.text();
+                console.error('GPT Maker API error:', gptMakerResponse.status, errorText);
+              }
+            } catch (gptError) {
+              console.error('Error calling GPT Maker API:', gptError);
+            }
           } else {
-            console.error('Agent error:', agentResult.error);
-            throw new Error(agentResult.error || 'Agent processing failed');
+            console.warn('GPT Maker credentials not configured');
           }
+          
+          return new Response(JSON.stringify({ 
+            success: true, 
+            message: agentResult.response,
+            agent_handled: true
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        } else {
+          console.error('Agent error:', agentResult.error);
+          throw new Error(agentResult.error || 'Agent processing failed');
+        }
 
-        } catch (agentError) {
-          console.error('Error calling WhatsApp Agent, falling back to legacy:', agentError);
+      } catch (agentError) {
+        console.error('Error calling WhatsApp Agent, falling back to legacy:', agentError);
           
           // Fallback to legacy behavior
           const user = await findUserByPhone(from);
@@ -317,7 +361,6 @@ const handler = async (req: Request): Promise<Response> => {
               status: 400,
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
-          }
         }
       }
     }

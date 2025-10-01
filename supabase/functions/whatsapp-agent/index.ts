@@ -445,8 +445,9 @@ serve(async (req) => {
       throw new Error('Phone number is required');
     }
 
-    // Security: Phone number validation
-    if (!/^\+?[\d\s-()]{8,15}$/.test(phone_number)) {
+    // Security: Phone number validation - mais flexível para aceitar diferentes formatos
+    const cleanPhone = phone_number.replace(/[\s\-()]/g, '');
+    if (!/^\+?\d{8,15}$/.test(cleanPhone)) {
       throw new Error('Invalid phone number format');
     }
 
@@ -464,8 +465,14 @@ serve(async (req) => {
 
     // Se não há sessão ou não está autenticada
     if (!session || !session.user_id) {
-      // Comandos de autenticação
-      if (action === 'auth' || message?.body?.toLowerCase().includes('codigo')) {
+      // Normalizar mensagem removendo acentos e convertendo para minúsculas
+      const normalizedMessage = message?.body
+        ?.normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase() || '';
+      
+      // Comandos de autenticação (case-insensitive e sem acentos)
+      if (action === 'auth' || normalizedMessage.includes('codigo')) {
         try {
           const code = await AuthManager.generateAuthCode(phone_number);
           
@@ -507,8 +514,8 @@ serve(async (req) => {
         }
       }
 
-      // Verificar se é código de confirmação
-      const codeMatch = message?.body?.toLowerCase().match(/codigo\s+(\d{6})/);
+      // Verificar se é código de confirmação (case-insensitive e sem acentos)
+      const codeMatch = normalizedMessage.match(/codigo\s+(\d{6})/);
       if (codeMatch) {
         const userId = await AuthManager.validateAuthCode(phone_number, codeMatch[1]);
         
