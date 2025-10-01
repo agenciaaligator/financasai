@@ -255,41 +255,65 @@ const handler = async (req: Request): Promise<Response> => {
         console.log('Agent response:', agentResult);
 
         if (agentResult.success && agentResult.response) {
-          // Enviar resposta via GPT Maker API
-          const gptMakerToken = Deno.env.get('GPT_MAKER_TOKEN');
-          const gptMakerChannelId = Deno.env.get('GPT_MAKER_CHANNEL_ID');
+          // Enviar resposta via GPT Maker API com diagnóstico aprimorado
+          let gptMakerToken = Deno.env.get('GPT_MAKER_TOKEN') ?? '';
+          let gptMakerChannelId = Deno.env.get('GPT_MAKER_CHANNEL_ID') ?? '';
+
+          gptMakerToken = gptMakerToken.trim();
+          gptMakerChannelId = gptMakerChannelId.trim();
 
           if (gptMakerToken && gptMakerChannelId) {
             try {
+              const reqId = crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+              const phoneForApi = String(from).replace(/[\s\-()]/g, '');
+
               console.log('Sending response to GPT Maker API...', {
-                channelId: gptMakerChannelId.substring(0, 5) + '***',
-                phone: from.substring(0, 5) + '***',
+                reqId,
+                channelIdPreview: gptMakerChannelId.slice(0, 4) + '***' + gptMakerChannelId.slice(-4),
+                phonePreview: phoneForApi.slice(0, 5) + '***',
                 messageLength: agentResult.response.length
               });
               
               const gptMakerResponse = await fetch(
-                `https://api.gptmaker.ai/v2/channel/${gptMakerChannelId}/start-conversation`,
+                `https://api.gptmaker.ai/v2/channel/${encodeURIComponent(gptMakerChannelId)}/start-conversation`,
                 {
                   method: 'POST',
                   headers: {
                     'Authorization': `Bearer ${gptMakerToken}`,
                     'Content-Type': 'application/json',
+                    'X-Request-ID': reqId,
                   },
                   body: JSON.stringify({
-                    phone: from,
+                    phone: phoneForApi,
                     message: agentResult.response
                   })
                 }
               );
 
               if (gptMakerResponse.ok) {
-                console.log('Message sent successfully via GPT Maker');
+                console.log('Message sent successfully via GPT Maker', { reqId });
               } else {
-                const errorText = await gptMakerResponse.text();
-                console.error('GPT Maker API error:', {
+                let errorPayload: any = null;
+                try {
+                  const txt = await gptMakerResponse.text();
+                  try { errorPayload = JSON.parse(txt); } catch { errorPayload = { raw: txt }; }
+                } catch { /* ignore */ }
+
+                const errMsg = JSON.stringify(errorPayload).toLowerCase();
+                const hints: string[] = [];
+                if (gptMakerResponse.status === 403) hints.push('Token inválido ou sem permissão (403). Revise GPT_MAKER_TOKEN.');
+                if (gptMakerResponse.status === 400 && errMsg.includes('channel') && errMsg.includes('not') && errMsg.includes('found')) {
+                  hints.push('Channel ID não encontrado. Confirme o ID no painel do GPT Maker.');
+                }
+                if (gptMakerResponse.status === 400 && (errMsg.includes('phone') || errMsg.includes('telefone'))) {
+                  hints.push('Telefone inválido. O número deve incluir DDI (ex: 55...).');
+                }
+
+                console.error('GPT Maker API error', {
+                  reqId,
                   status: gptMakerResponse.status,
-                  error: errorText,
-                  channelId: gptMakerChannelId
+                  error: errorPayload,
+                  hints,
                 });
               }
             } catch (gptError) {

@@ -87,3 +87,6 @@ verify_jwt = false
 
 [functions.make-webhook]
 verify_jwt = false
+
+[functions.gptmaker-diagnostics]
+verify_jwt = false
