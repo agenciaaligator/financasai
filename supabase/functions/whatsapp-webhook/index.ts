@@ -42,22 +42,53 @@ const whatsappBusinessAccountId = Deno.env.get('WHATSAPP_BUSINESS_ACCOUNT_ID');
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Security functions
+// CRITICAL SECURITY: Enhanced signature verification
 async function verifyWhatsAppSignature(payload: string, signature: string): Promise<boolean> {
-  if (!whatsappAppSecret || !signature) {
-    console.warn('WhatsApp signature verification skipped - missing secret or signature');
-    return true; // Allow during development, but log warning
+  // NEVER allow unsigned requests
+  if (!signature) {
+    console.error('❌ SECURITY: Request rejected - no signature provided');
+    await logSecurityEvent('NO_SIGNATURE', { timestamp: new Date().toISOString() });
+    return false;
+  }
+
+  if (!whatsappAppSecret) {
+    console.error('❌ SECURITY: WHATSAPP_APP_SECRET not configured');
+    return false;
   }
 
   try {
-    const expectedSignature = `sha256=${await crypto.subtle.digest(
-      'SHA-256',
-      new TextEncoder().encode(whatsappAppSecret + payload)
-    ).then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join(''))}`;
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(whatsappAppSecret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+
+    const signatureBuffer = await crypto.subtle.sign(
+      'HMAC',
+      key,
+      encoder.encode(payload)
+    );
+
+    const calculatedSignature = 'sha256=' + Array.from(new Uint8Array(signatureBuffer))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    const isValid = calculatedSignature === signature;
     
-    return expectedSignature === signature;
+    if (!isValid) {
+      console.error('❌ SECURITY: Signature verification failed');
+      await logSecurityEvent('INVALID_SIGNATURE', {
+        signature_prefix: signature?.substring(0, 10),
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    return isValid;
   } catch (error) {
-    console.error('Signature verification error:', error);
+    console.error('❌ SECURITY: Error verifying signature:', error);
     return false;
   }
 }
@@ -80,47 +111,74 @@ function checkRateLimit(identifier: string): boolean {
   return true;
 }
 
+// SECURITY: Enhanced security event logging without PII
 async function logSecurityEvent(event: string, details: any): Promise<void> {
-  console.log(`SECURITY EVENT: ${event}`, details);
-  // You could store this in a security_logs table if needed
+  try {
+    // Hash phone numbers instead of storing plain text
+    const phoneHash = details.phone ? 
+      await crypto.subtle.digest('SHA-256', new TextEncoder().encode(details.phone))
+        .then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16))
+      : null;
+
+    await supabase
+      .from('security_events')
+      .insert({
+        event_type: event,
+        details: {
+          ...details,
+          phone: undefined, // Remove plain phone
+          phone_hash: phoneHash // Store hash instead
+        },
+        phone_number: null, // Never store plain phone
+        ip_address: details.ip || null,
+        user_agent: details.userAgent || null
+      });
+  } catch (error) {
+    console.error('Failed to log security event:', error);
+  }
 }
 
+// SECURITY: Enhanced input validation and sanitization
 function parseTransactionFromText(text: string): Partial<Transaction> | null {
-  // Security: Validate input length
-  if (!text || text.length > 500) {
+  if (!text || typeof text !== 'string') return null;
+
+  // Limit input length to prevent DoS
+  const MAX_LENGTH = 500;
+  if (text.length > MAX_LENGTH) {
+    console.error('❌ SECURITY: Input too long, possible attack');
     return null;
+  }
+
+  // Remove any HTML/script tags to prevent XSS
+  const sanitized = text.replace(/<[^>]*>/g, '').trim();
+  if (sanitized !== text.trim()) {
+    console.error('❌ SECURITY: HTML/script tags detected and removed');
   }
 
   // Padrões para identificar transações
   const patterns = [
-    // "gasto 50 mercado" ou "receita 1000 salario"
     /^(gasto|receita|despesa|ganho)\s+(\d+(?:[\.,]\d{2})?)\s+(.+)$/i,
-    // "50 mercado" (assume despesa)
     /^(\d+(?:[\.,]\d{2})?)\s+(.+)$/i,
-    // "+1000 salario" (receita) ou "-50 mercado" (despesa)
     /^([+-])(\d+(?:[\.,]\d{2})?)\s+(.+)$/i
   ];
 
   for (const pattern of patterns) {
-    const match = text.trim().match(pattern);
+    const match = sanitized.match(pattern);
     if (match) {
       let type: 'income' | 'expense' = 'expense';
       let amount: number;
       let title: string;
 
       if (match[1] && match[2] && match[3]) {
-        // Primeiro padrão: "gasto 50 mercado"
         const action = match[1].toLowerCase();
         type = ['receita', 'ganho'].includes(action) ? 'income' : 'expense';
         amount = parseFloat(match[2].replace(',', '.'));
         title = match[3];
       } else if (match[1] && match[2] && !match[3]) {
-        // Segundo padrão: "50 mercado"
         amount = parseFloat(match[1].replace(',', '.'));
         title = match[2];
-        type = 'expense'; // Assume despesa por padrão
+        type = 'expense';
       } else if (match[1] && match[2] && match[3]) {
-        // Terceiro padrão: "+1000 salario"
         type = match[1] === '+' ? 'income' : 'expense';
         amount = parseFloat(match[2].replace(',', '.'));
         title = match[3];
@@ -128,14 +186,24 @@ function parseTransactionFromText(text: string): Partial<Transaction> | null {
         continue;
       }
 
-      // Security: Transaction limits
-      const MAX_TRANSACTION_AMOUNT = 50000; // R$ 50,000
-      if (amount <= 0 || amount > MAX_TRANSACTION_AMOUNT) {
+      // Validate amount limits
+      const MAX_TRANSACTION_AMOUNT = 50000;
+      if (amount <= 0 || amount > MAX_TRANSACTION_AMOUNT || isNaN(amount)) {
+        console.error('❌ SECURITY: Invalid transaction amount');
         return null;
       }
 
-      // Security: Sanitize title
-      const sanitizedTitle = title.trim().substring(0, 100).replace(/[<>]/g, '');
+      // Sanitize title - remove dangerous characters
+      const sanitizedTitle = title
+        .trim()
+        .substring(0, 100)
+        .replace(/[<>"']/g, '')
+        .replace(/[\W\s\-.,áàâãéèêíïóôõöúçñÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇÑ]/g, '');
+
+      if (!sanitizedTitle || sanitizedTitle.length === 0) {
+        console.error('❌ SECURITY: Title sanitization resulted in empty string');
+        return null;
+      }
 
       return {
         title: sanitizedTitle,
@@ -150,16 +218,31 @@ function parseTransactionFromText(text: string): Partial<Transaction> | null {
   return null;
 }
 
+// SECURITY: Enhanced phone number validation
 async function findUserByPhone(phone: string) {
-  // Buscar usuário pelo telefone nos metadados
-  const { data: users } = await supabase.auth.admin.listUsers();
-  
-  const user = users?.users?.find(u => 
-    u.user_metadata?.phone === phone || 
-    u.phone === phone
-  );
-  
-  return user;
+  if (!phone || typeof phone !== 'string') {
+    console.error('❌ SECURITY: Invalid phone parameter');
+    return null;
+  }
+
+  // Validate phone format
+  const sanitizedPhone = phone.match(/^\+?[0-9]{10,20}$/)?.[0];
+  if (!sanitizedPhone) {
+    console.error('❌ SECURITY: Phone number failed format validation');
+    return null;
+  }
+
+  try {
+    const { data: users } = await supabase.auth.admin.listUsers();
+    const user = users?.users?.find(u => 
+      u.user_metadata?.phone === sanitizedPhone || 
+      u.phone === sanitizedPhone
+    );
+    return user;
+  } catch (error) {
+    console.error('Error finding user:', error);
+    return null;
+  }
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -168,7 +251,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    // Security: Rate limiting
+    // Rate limiting
     const clientIP = req.headers.get('x-forwarded-for') || 'unknown';
     if (!checkRateLimit(clientIP)) {
       await logSecurityEvent('RATE_LIMIT_EXCEEDED', { ip: clientIP, timestamp: new Date().toISOString() });
@@ -198,12 +281,11 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Security: Verify WhatsApp signature
+    // CRITICAL: Verify WhatsApp signature
     const signature = req.headers.get('x-hub-signature-256');
     if (!(await verifyWhatsAppSignature(rawBody, signature || ''))) {
       await logSecurityEvent('INVALID_SIGNATURE', { 
         ip: clientIP, 
-        signature,
         timestamp: new Date().toISOString()
       });
       return new Response(JSON.stringify({ 
@@ -215,17 +297,14 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    console.log('WhatsApp webhook received (verified):', JSON.stringify(body, null, 2));
+    console.log('WhatsApp webhook received (verified)');
 
-    // Detectar formato da mensagem (GPT Maker ou WhatsApp Business API)
     const isGPTMakerFormat = body.message || body.contactPhone;
     let from: string | undefined;
     let text: string | undefined;
     let messageId: string | undefined;
 
     if (isGPTMakerFormat) {
-      // CRITICAL FIX: Ignorar TODAS as mensagens do GPT Maker que não são do usuário
-      // Inclui 'assistant', 'tool', e mensagens vazias
       if (body.role === 'assistant' || body.role === 'tool' || !body.message || body.message.trim() === '') {
         console.log('Ignoring GPT Maker assistant message - skipping to avoid duplication');
         return new Response(JSON.stringify({ 
@@ -238,25 +317,23 @@ const handler = async (req: Request): Promise<Response> => {
         });
       }
       
-      // Formato GPT Maker - apenas processar role "user" com mensagem válida
       from = body.contactPhone;
       text = body.message;
       messageId = body.messageId;
     } else if (body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
-      // Formato WhatsApp Business API padrão
       const message = body.entry[0].changes[0].value.messages[0];
       from = message.from;
       text = message.text?.body;
       messageId = message.id;
     }
 
-    // Deduplicação de mensagens
+    // Message deduplication
     if (messageId) {
       const now = Date.now();
       const lastSeen = messageIdStore.get(messageId);
       
       if (lastSeen && (now - lastSeen < DEDUPE_WINDOW)) {
-        console.log(`Duplicate message detected and ignored: ${messageId}`);
+        console.log('Duplicate message detected and ignored');
         return new Response(JSON.stringify({ 
           success: true, 
           skipped: true,
@@ -267,10 +344,8 @@ const handler = async (req: Request): Promise<Response> => {
         });
       }
       
-      // Registrar messageId
       messageIdStore.set(messageId, now);
       
-      // Limpar mensagens antigas
       for (const [id, timestamp] of messageIdStore.entries()) {
         if (now - timestamp > DEDUPE_WINDOW) {
           messageIdStore.delete(id);
@@ -278,12 +353,9 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Processar mensagem se houver texto
     if (from && text) {
+      console.log('Message received from authenticated sender');
 
-      console.log(`Message from ${from}: ${text}`);
-
-      // Call the WhatsApp Agent to handle the message
       try {
         const agentResponse = await fetch(`${supabaseUrl}/functions/v1/whatsapp-agent`, {
           method: 'POST',
@@ -304,23 +376,19 @@ const handler = async (req: Request): Promise<Response> => {
         });
 
         const agentResult = await agentResponse.json();
-        console.log('Agent response:', agentResult);
+        console.log('Agent response received');
 
         if (agentResult.success && agentResult.response) {
-          // Enviar resposta via WhatsApp Business API oficial
           if (whatsappAccessToken && whatsappPhoneNumberId) {
             try {
               const reqId = crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
               
-              // Sanitizar e validar telefone
               let phoneForApi = String(from).replace(/[^\d+]/g, '');
-              console.log('Phone sanitization:', { original: from, sanitized: phoneForApi });
+              console.log('Phone validated for API');
               
-              // Detectar placeholders ou números inválidos (silenciosamente ignorar GPT Maker)
               if (phoneForApi.includes('{') || phoneForApi.includes('}') || 
                   !/^\+?\d{10,15}$/.test(phoneForApi)) {
-                console.log('Ignoring webhook with placeholder/invalid phone (GPT Maker legacy):', from);
-                // Retornar sucesso silenciosamente para não gerar erro
+                console.log('Ignoring webhook with placeholder/invalid phone (GPT Maker legacy)');
                 return new Response(JSON.stringify({ 
                   success: true, 
                   skipped: true
@@ -330,12 +398,7 @@ const handler = async (req: Request): Promise<Response> => {
                 });
               }
 
-              console.log('Sending response to WhatsApp Business API...', {
-                reqId,
-                phoneNumberIdPreview: whatsappPhoneNumberId.slice(0, 4) + '***' + whatsappPhoneNumberId.slice(-4),
-                phonePreview: phoneForApi.slice(0, 5) + '***',
-                messageLength: agentResult.response.length
-              });
+              console.log('Sending response to WhatsApp Business API...');
               
               const whatsappResponse = await fetch(
                 `https://graph.facebook.com/v18.0/${whatsappPhoneNumberId}/messages`,
@@ -358,10 +421,7 @@ const handler = async (req: Request): Promise<Response> => {
 
               if (whatsappResponse.ok) {
                 const responseData = await whatsappResponse.json();
-                console.log('Message sent successfully via WhatsApp Business API', { 
-                  reqId, 
-                  messageId: responseData.messages?.[0]?.id 
-                });
+                console.log('Message sent successfully via WhatsApp Business API');
               } else {
                 let errorPayload: any = null;
                 try {
@@ -369,29 +429,14 @@ const handler = async (req: Request): Promise<Response> => {
                   try { errorPayload = JSON.parse(txt); } catch { errorPayload = { raw: txt }; }
                 } catch { /* ignore */ }
 
-                const errMsg = JSON.stringify(errorPayload).toLowerCase();
-                const hints: string[] = [];
-                if (whatsappResponse.status === 401) hints.push('Token inválido ou expirado. Revise WHATSAPP_ACCESS_TOKEN.');
-                if (whatsappResponse.status === 404) hints.push('Phone Number ID não encontrado. Confirme WHATSAPP_PHONE_NUMBER_ID.');
-                if (whatsappResponse.status === 400 && (errMsg.includes('phone') || errMsg.includes('telefone'))) {
-                  hints.push('Número de telefone inválido. O número deve incluir código do país (ex: 5511...).');
-                }
-
                 console.error('WhatsApp Business API error', {
-                  reqId,
                   status: whatsappResponse.status,
-                  error: errorPayload,
-                  hints,
+                  error: errorPayload
                 });
               }
             } catch (whatsappError) {
               console.error('Error calling WhatsApp Business API:', whatsappError);
             }
-          } else {
-            console.warn('WhatsApp Business API credentials not configured', {
-              hasAccessToken: !!whatsappAccessToken,
-              hasPhoneNumberId: !!whatsappPhoneNumberId
-            });
           }
           
           return new Response(JSON.stringify({ 
@@ -410,66 +455,65 @@ const handler = async (req: Request): Promise<Response> => {
       } catch (agentError) {
         console.error('Error calling WhatsApp Agent, falling back to legacy:', agentError);
           
-          // Fallback to legacy behavior
-          const user = await findUserByPhone(from);
-          
-          if (!user) {
-            console.log(`User not found for phone: ${from}`);
+        const user = await findUserByPhone(from);
+        
+        if (!user) {
+          console.log('User not found - registration required');
+          return new Response(JSON.stringify({ 
+            success: false, 
+            message: 'Usuário não encontrado. Registre-se primeiro no app.' 
+          }), {
+            status: 404,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        const transaction = parseTransactionFromText(text);
+        
+        if (transaction) {
+          const { data, error } = await supabase
+            .from('transactions')
+            .insert([{
+              ...transaction,
+              user_id: user.id
+            }])
+            .select()
+            .single();
+
+          if (error) {
+            console.error('Error inserting transaction:', error);
             return new Response(JSON.stringify({ 
               success: false, 
-              message: 'Usuário não encontrado. Registre-se primeiro no app.' 
+              message: 'Erro ao salvar transação' 
             }), {
-              status: 404,
+              status: 500,
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
           }
 
-          const transaction = parseTransactionFromText(text);
+          console.log('Transaction created');
           
-          if (transaction) {
-            const { data, error } = await supabase
-              .from('transactions')
-              .insert([{
-                ...transaction,
-                user_id: user.id
-              }])
-              .select()
-              .single();
-
-            if (error) {
-              console.error('Error inserting transaction:', error);
-              return new Response(JSON.stringify({ 
-                success: false, 
-                message: 'Erro ao salvar transação' 
-              }), {
-                status: 500,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-              });
-            }
-
-            console.log('Transaction created:', data);
-            
-            return new Response(JSON.stringify({ 
-              success: true, 
-              message: `Transação registrada: ${transaction.type === 'income' ? 'Receita' : 'Despesa'} de R$ ${transaction.amount.toFixed(2)} - ${transaction.title}`,
-              transaction: data
-            }), {
-              status: 200,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
-          } else {
-            return new Response(JSON.stringify({ 
-              success: false, 
-              message: 'Mensagem não reconhecida. Use formatos como: "gasto 50 mercado", "receita 1000 salario", "+100 freelance" ou "-30 combustível"'
-            }), {
-              status: 400,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
+          return new Response(JSON.stringify({ 
+            success: true, 
+            message: `Transação registrada: ${transaction.type === 'income' ? 'Receita' : 'Despesa'} de R$ ${transaction.amount.toFixed(2)} - ${transaction.title}`,
+            transaction: data
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        } else {
+          return new Response(JSON.stringify({ 
+            success: false, 
+            message: 'Mensagem não reconhecida. Use formatos como: "gasto 50 mercado", "receita 1000 salario", "+100 freelance" ou "-30 combustível"'
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
         }
       }
     }
 
-    // Verificação de webhook do WhatsApp
+    // Webhook verification
     if (req.method === 'GET') {
       const url = new URL(req.url);
       const mode = url.searchParams.get('hub.mode');
@@ -482,22 +526,21 @@ const handler = async (req: Request): Promise<Response> => {
       } else {
         await logSecurityEvent('WEBHOOK_VERIFICATION_FAILED', { 
           mode, 
-          token,
           timestamp: new Date().toISOString()
         });
       }
     }
 
-    return new Response(JSON.stringify({ success: true, message: 'Webhook received' }), {
+    return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
-  } catch (error: any) {
-    console.error('Error in WhatsApp webhook:', error);
+  } catch (error) {
+    console.error('Error processing webhook:', error);
     return new Response(JSON.stringify({ 
       success: false, 
-      message: error.message 
+      error: error.message 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
