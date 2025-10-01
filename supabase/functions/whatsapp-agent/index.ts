@@ -445,14 +445,20 @@ serve(async (req) => {
       throw new Error('Phone number is required');
     }
 
-    // Security: Phone number validation - muito mais flexível
+    // Security: Phone number validation - ignorar placeholders do GPT Maker
     const cleanPhone = phone_number.replace(/[\s\-()]/g, '');
     console.log('Phone validation:', { original: phone_number, cleaned: cleanPhone });
     
-    // Aceitar números de 10 a 15 dígitos, com ou sem + no início
-    if (!/^\+?\d{10,15}$/.test(cleanPhone)) {
-      console.error('Invalid phone format:', { phone_number, cleanPhone });
-      throw new Error('Invalid phone number format');
+    // Detectar placeholders (ex: {contact.phone}) e ignorar silenciosamente
+    if (cleanPhone.includes('{') || cleanPhone.includes('}') || !/^\+?\d{10,15}$/.test(cleanPhone)) {
+      console.log('Ignoring request with placeholder/invalid phone (GPT Maker legacy):', phone_number);
+      return new Response(JSON.stringify({
+        success: true,
+        response: '🔐 Configure o webhook do WhatsApp Business API para usar este assistente.',
+        ignored: true
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     console.log('WhatsApp Agent called:', { 

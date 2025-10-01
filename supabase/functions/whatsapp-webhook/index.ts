@@ -267,14 +267,13 @@ const handler = async (req: Request): Promise<Response> => {
               let phoneForApi = String(from).replace(/[^\d+]/g, '');
               console.log('Phone sanitization:', { original: from, sanitized: phoneForApi });
               
-              // Detectar placeholders ou números inválidos
+              // Detectar placeholders ou números inválidos (silenciosamente ignorar GPT Maker)
               if (phoneForApi.includes('{') || phoneForApi.includes('}') || 
                   !/^\+?\d{10,15}$/.test(phoneForApi)) {
-                console.error('Invalid phone number detected (placeholder or malformed):', from);
-                // Não enviar mensagem para números inválidos - evitar 500
+                console.log('Ignoring webhook with placeholder/invalid phone (GPT Maker legacy):', from);
+                // Retornar sucesso silenciosamente para não gerar erro
                 return new Response(JSON.stringify({ 
                   success: true, 
-                  message: 'Invalid phone number in webhook payload',
                   skipped: true
                 }), {
                   status: 200,
