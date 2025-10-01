@@ -470,6 +470,28 @@ serve(async (req) => {
     // Limpar dados expirados
     await supabase.rpc('cleanup_expired_whatsapp_data');
 
+    // Verificar se o usuário está cadastrado (tem perfil com este telefone)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('user_id')
+      .eq('phone_number', phone_number)
+      .maybeSingle();
+
+    // Se não há perfil cadastrado, direcionar para cadastro
+    if (!profile) {
+      console.log(`User not registered: ${phone_number.substring(0, 5)}***`);
+      return new Response(JSON.stringify({
+        success: true,
+        response: `👋 *Bem-vindo ao Aligator Financeiro!*\n\n` +
+                 `📱 Este número ainda não está cadastrado.\n\n` +
+                 `Para começar a usar o assistente financeiro, cadastre-se gratuitamente em:\n` +
+                 `https://financasai.lovable.app\n\n` +
+                 `Depois do cadastro, volte aqui e envie qualquer mensagem para começar! 🚀`
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     // Buscar sessão existente
     let session = await SessionManager.getSession(phone_number);
 
@@ -536,11 +558,12 @@ serve(async (req) => {
           });
         } catch (error) {
           if (error.message === 'USER_NOT_FOUND') {
+            // Não deve acontecer pois já verificamos no início, mas mantemos por segurança
             return new Response(JSON.stringify({
               success: true,
               response: `❌ *Usuário não encontrado*\n\n` +
-                       `Este número não está registrado.\n` +
-                       `Cadastre-se primeiro em: ${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '')}.vercel.app`
+                       `Cadastre-se gratuitamente em:\n` +
+                       `https://financasai.lovable.app`
             }), {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
