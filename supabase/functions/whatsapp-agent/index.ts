@@ -23,9 +23,18 @@ interface Session {
   id: string;
   phone_number: string;
   user_id?: string;
-  session_data: any;
+  session_data: SessionData;
   last_activity: string;
   expires_at: string;
+}
+
+interface SessionData {
+  authenticated?: boolean;
+  last_command?: string | null;
+  context?: any;
+  conversation_state?: 'idle' | 'waiting_date' | 'waiting_confirmation';
+  pending_transaction?: Partial<Transaction>;
+  last_question?: string;
 }
 
 interface Transaction {
@@ -37,6 +46,7 @@ interface Transaction {
   date: string;
   description?: string;
   source: string;
+  requiresConfirmation?: boolean;
 }
 
 // Inicializar Supabase
@@ -186,6 +196,43 @@ class AuthManager {
   }
 }
 
+class DateParser {
+  static parseDate(text: string): string | null {
+    const normalizedText = text.toLowerCase().trim();
+    const today = new Date();
+    
+    // Hoje
+    if (['hoje', 'hj'].includes(normalizedText)) {
+      return today.toISOString().split('T')[0];
+    }
+    
+    // Ontem
+    if (['ontem', 'yesterday'].includes(normalizedText)) {
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      return yesterday.toISOString().split('T')[0];
+    }
+    
+    // Formatos DD/MM ou DD/MM/AAAA
+    const dateMatch = normalizedText.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+    if (dateMatch) {
+      const day = parseInt(dateMatch[1]);
+      const month = parseInt(dateMatch[2]) - 1; // JS months are 0-indexed
+      const year = dateMatch[3] ? parseInt(dateMatch[3]) : today.getFullYear();
+      
+      // Ajustar ano se apenas 2 dígitos
+      const fullYear = year < 100 ? 2000 + year : year;
+      
+      const date = new Date(fullYear, month, day);
+      if (date.getMonth() === month) { // Validar se a data é válida
+        return date.toISOString().split('T')[0];
+      }
+    }
+    
+    return null;
+  }
+}
+
 class TransactionParser {
   static parseTransactionFromText(text: string): Partial<Transaction> | null {
     // Security: Input validation
@@ -257,38 +304,178 @@ class TransactionParser {
 }
 
 class WhatsAppAgent {
-  static async processMessage(session: Session, message: WhatsAppMessage): Promise<string> {
+  static async processMessage(session: Session, message: WhatsAppMessage): Promise<{ response: string, sessionData: SessionData }> {
     const messageText = message.body?.toLowerCase().trim() || '';
+    const sessionData = session.session_data || {};
     
-    // Comandos de ajuda
+    console.log('Processing message with state:', {
+      state: sessionData.conversation_state || 'idle',
+      hasPendingTransaction: !!sessionData.pending_transaction
+    });
+    
+    // Comandos que sempre funcionam (prioridade máxima)
     if (['ajuda', 'help', 'menu', 'comandos'].includes(messageText)) {
-      return this.getHelpMenu();
+      return {
+        response: this.getHelpMenu(),
+        sessionData: { ...sessionData, conversation_state: 'idle', pending_transaction: undefined }
+      };
+    }
+
+    if (['cancelar', 'cancel', 'sair'].includes(messageText)) {
+      return {
+        response: '❌ Operação cancelada.',
+        sessionData: { ...sessionData, conversation_state: 'idle', pending_transaction: undefined }
+      };
+    }
+
+    // Verificar se há conversa em andamento
+    if (sessionData.conversation_state && sessionData.conversation_state !== 'idle') {
+      return await this.handleConversationState(session, messageText, sessionData);
     }
 
     // Comandos de relatório
     if (['relatorio', 'relatório', 'resumo', 'extrato'].includes(messageText)) {
-      return await this.generateReport(session.user_id!);
+      return {
+        response: await this.generateReport(session.user_id!),
+        sessionData
+      };
     }
 
     // Comandos de saldo
     if (['saldo', 'balance', 'total'].includes(messageText)) {
-      return await this.getBalance(session.user_id!);
+      return {
+        response: await this.getBalance(session.user_id!),
+        sessionData
+      };
     }
 
     // Tentar processar como transação
     const transaction = TransactionParser.parseTransactionFromText(messageText);
     if (transaction && session.user_id) {
-      return await this.createTransaction(session.user_id, transaction);
+      // Verificar se requer confirmação de valor alto
+      if (transaction.requiresConfirmation) {
+        console.log('High-value transaction detected, requesting confirmation');
+        return {
+          response: `⚠️ *Confirmação Necessária*\n\n` +
+                   `Transação de alto valor: R$ ${transaction.amount?.toFixed(2)}\n` +
+                   `📝 ${transaction.title}\n` +
+                   `${transaction.type === 'income' ? '💰 Receita' : '💸 Despesa'}\n\n` +
+                   `Digite *"sim"* para confirmar ou *"não"* para cancelar.`,
+          sessionData: {
+            ...sessionData,
+            conversation_state: 'waiting_confirmation',
+            pending_transaction: transaction
+          }
+        };
+      }
+      
+      // Perguntar data
+      console.log('Transaction parsed, requesting date');
+      return {
+        response: `📅 *Para qual data é essa transação?*\n\n` +
+                 `💵 R$ ${transaction.amount?.toFixed(2)} - ${transaction.title}\n\n` +
+                 `Digite:\n` +
+                 `• *"hoje"* para hoje\n` +
+                 `• *"ontem"* para ontem\n` +
+                 `• ou uma data (ex: 28/09)`,
+        sessionData: {
+          ...sessionData,
+          conversation_state: 'waiting_date',
+          pending_transaction: transaction
+        }
+      };
     }
 
     // Resposta padrão para mensagens não compreendidas
-    return `❓ *Não compreendi a mensagem.*\n\n` +
-           `Você pode:\n` +
-           `• Adicionar gastos: "gasto 50 mercado"\n` +
-           `• Adicionar receitas: "receita 1000 salario"\n` +
-           `• Ver saldo: "saldo"\n` +
-           `• Ver relatório: "relatorio"\n` +
-           `• Ver comandos: "ajuda"`;
+    return {
+      response: `❓ *Não compreendi a mensagem.*\n\n` +
+               `Você pode:\n` +
+               `• Adicionar gastos: "gasto 50 mercado"\n` +
+               `• Adicionar receitas: "receita 1000 salario"\n` +
+               `• Ver saldo: "saldo"\n` +
+               `• Ver relatório: "relatorio"\n` +
+               `• Ver comandos: "ajuda"`,
+      sessionData
+    };
+  }
+
+  static async handleConversationState(
+    session: Session, 
+    messageText: string, 
+    sessionData: SessionData
+  ): Promise<{ response: string, sessionData: SessionData }> {
+    console.log('Handling conversation state:', sessionData.conversation_state);
+
+    // Estado: aguardando data
+    if (sessionData.conversation_state === 'waiting_date' && sessionData.pending_transaction) {
+      const date = DateParser.parseDate(messageText);
+      
+      if (!date) {
+        return {
+          response: `❌ Data inválida.\n\n` +
+                   `Por favor, digite:\n` +
+                   `• *"hoje"* ou *"ontem"*\n` +
+                   `• ou uma data válida (ex: 28/09)`,
+          sessionData
+        };
+      }
+      
+      // Atualizar transação com a data
+      const transaction = {
+        ...sessionData.pending_transaction,
+        date
+      };
+      
+      console.log('Date parsed, saving transaction:', { date, amount: transaction.amount });
+      
+      // Salvar a transação
+      const saveResult = await this.saveTransaction(session.user_id!, transaction);
+      
+      return {
+        response: saveResult,
+        sessionData: { ...sessionData, conversation_state: 'idle', pending_transaction: undefined }
+      };
+    }
+
+    // Estado: aguardando confirmação
+    if (sessionData.conversation_state === 'waiting_confirmation' && sessionData.pending_transaction) {
+      const affirmative = ['sim', 's', 'yes', 'y', 'confirmo', 'confirmar', 'ok'];
+      const negative = ['não', 'nao', 'n', 'no', 'cancelar', 'cancel'];
+      
+      if (affirmative.includes(messageText)) {
+        console.log('Transaction confirmed, requesting date');
+        // Confirmado, agora pedir data
+        return {
+          response: `✅ *Confirmado!*\n\n` +
+                   `📅 Para qual data é essa transação?\n\n` +
+                   `Digite:\n` +
+                   `• *"hoje"* para hoje\n` +
+                   `• *"ontem"* para ontem\n` +
+                   `• ou uma data (ex: 28/09)`,
+          sessionData: {
+            ...sessionData,
+            conversation_state: 'waiting_date'
+          }
+        };
+      } else if (negative.includes(messageText)) {
+        console.log('Transaction cancelled by user');
+        return {
+          response: `❌ Transação cancelada.`,
+          sessionData: { ...sessionData, conversation_state: 'idle', pending_transaction: undefined }
+        };
+      } else {
+        return {
+          response: `Por favor, responda *"sim"* para confirmar ou *"não"* para cancelar.`,
+          sessionData
+        };
+      }
+    }
+
+    // Estado desconhecido, resetar
+    return {
+      response: `❌ Conversa interrompida. Digite *"ajuda"* para ver os comandos.`,
+      sessionData: { ...sessionData, conversation_state: 'idle', pending_transaction: undefined }
+    };
   }
 
   static getHelpMenu(): string {
@@ -305,47 +492,62 @@ class WhatsAppAgent {
            `💡 *Dica:* Use valores com pontos ou vírgulas (ex: 50.30 ou 50,30)`;
   }
 
-  static async createTransaction(userId: string, transaction: Partial<Transaction>): Promise<string> {
+  static async saveTransaction(userId: string, transaction: Partial<Transaction>): Promise<string> {
     try {
       // Security: Validate user ID
       if (!userId || typeof userId !== 'string') {
         throw new Error('Invalid user ID');
       }
 
-      // Security: High-value transaction confirmation (you could implement this in session_data)
-      if (transaction.requiresConfirmation) {
-        return `⚠️ *Confirmação Necessária*\n\n` +
-               `Transação de alto valor: R$ ${transaction.amount?.toFixed(2)}\n` +
-               `📝 ${transaction.title}\n\n` +
-               `Digite "confirmar" para prosseguir ou "cancelar" para cancelar.`;
-      }
+      console.log('Saving transaction to database:', {
+        userId: userId.substring(0, 8) + '***',
+        amount: transaction.amount,
+        type: transaction.type,
+        date: transaction.date
+      });
+
+      const transactionData = {
+        user_id: userId,
+        amount: transaction.amount,
+        title: transaction.title,
+        type: transaction.type,
+        date: transaction.date,
+        description: transaction.description,
+        source: 'whatsapp'
+      };
 
       const { data, error } = await supabase
         .from('transactions')
-        .insert({
-          ...transaction,
-          user_id: userId
-        })
+        .insert(transactionData)
         .select()
         .single();
 
       if (error) {
         console.error('Transaction insert error:', error);
+        console.error('Transaction data that failed:', transactionData);
         throw error;
       }
 
       const emoji = transaction.type === 'income' ? '💰' : '💸';
       const typeText = transaction.type === 'income' ? 'Receita' : 'Despesa';
       
-      console.log(`Transaction created for user ${userId}: ${transaction.amount}`);
+      console.log(`Transaction created successfully:`, {
+        id: data.id,
+        amount: data.amount
+      });
       
-      return `✅ *${typeText} adicionada!*\n\n` +
+      const dateObj = new Date(transaction.date + 'T00:00:00');
+      const dateStr = dateObj.toLocaleDateString('pt-BR');
+      
+      return `✅ *${typeText} registrada com sucesso!*\n\n` +
              `${emoji} R$ ${transaction.amount?.toFixed(2)}\n` +
              `📝 ${transaction.title}\n` +
-             `📅 ${new Date().toLocaleDateString('pt-BR')}`;
+             `📅 ${dateStr}`;
     } catch (error) {
-      console.error('Error creating transaction:', error);
-      return `❌ *Erro ao salvar transação.*\n\nTente novamente em alguns instantes.`;
+      console.error('Error saving transaction:', error);
+      return `❌ *Erro ao salvar transação.*\n\n` +
+             `Detalhes: ${error.message}\n\n` +
+             `Tente novamente em alguns instantes.`;
     }
   }
 
@@ -594,12 +796,12 @@ serve(async (req) => {
     }
 
     // Usuário autenticado - processar mensagem
-    const response = await WhatsAppAgent.processMessage(session, message);
+    const result = await WhatsAppAgent.processMessage(session, message);
 
-    // Atualizar sessão
+    // Atualizar sessão com novo estado
     await SessionManager.updateSession(session.id, {
       session_data: {
-        ...session.session_data,
+        ...result.sessionData,
         last_command: message?.body,
         last_processed: new Date().toISOString()
       }
@@ -607,7 +809,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
-      response
+      response: result.response
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
