@@ -12,7 +12,10 @@ interface TransactionListProps {
 
 export function TransactionList({ transactions, onDelete, onEdit }: TransactionListProps) {
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+    // Parse date manually to avoid timezone issues
+    // dateString is in format YYYY-MM-DD
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
   };
 
   if (transactions.length === 0) {

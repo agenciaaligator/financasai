@@ -20,6 +20,28 @@ export function WhatsAppSetup() {
   useEffect(() => {
     fetchPhoneNumber();
     checkAuthenticationStatus();
+    
+    // Setup real-time listener for session changes
+    const channel = supabase
+      .channel('whatsapp-session-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'whatsapp_sessions',
+          filter: `user_id=eq.${user?.id}`
+        },
+        () => {
+          // Re-check authentication when session changes
+          checkAuthenticationStatus();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const checkAuthenticationStatus = async () => {
@@ -33,12 +55,22 @@ export function WhatsAppSetup() {
       .gt('expires_at', new Date().toISOString())
       .maybeSingle();
 
+    // Considerar autenticado se há uma sessão com user_id
+    if (session && session.user_id) {
+      setIsAuthenticated(true);
+      return;
+    }
+    
+    // Fallback: verificar flag authenticated no session_data
     if (session && typeof session.session_data === 'object' && session.session_data !== null) {
       const sessionData = session.session_data as { authenticated?: boolean };
       if (sessionData.authenticated) {
         setIsAuthenticated(true);
+        return;
       }
     }
+    
+    setIsAuthenticated(false);
   };
 
   const fetchPhoneNumber = async () => {

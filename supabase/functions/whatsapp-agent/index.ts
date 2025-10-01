@@ -107,10 +107,32 @@ class SessionManager {
   }
 
   static async updateSession(sessionId: string, updates: Partial<Session>): Promise<void> {
+    // Merge session_data to preserve existing keys
+    let finalUpdates = { ...updates };
+    
+    if (updates.session_data) {
+      // Get current session
+      const { data: currentSession } = await supabase
+        .from('whatsapp_sessions')
+        .select('session_data, user_id')
+        .eq('id', sessionId)
+        .single();
+      
+      if (currentSession) {
+        // Merge new session_data with existing
+        finalUpdates.session_data = {
+          ...currentSession.session_data,
+          ...updates.session_data,
+          // Preserve authenticated flag if user_id exists
+          authenticated: currentSession.user_id ? true : updates.session_data.authenticated
+        };
+      }
+    }
+    
     const { error } = await supabase
       .from('whatsapp_sessions')
       .update({
-        ...updates,
+        ...finalUpdates,
         last_activity: new Date().toISOString()
       })
       .eq('id', sessionId);
@@ -234,13 +256,35 @@ class DateParser {
 }
 
 class TransactionParser {
-  static parseTransactionFromText(text: string): Partial<Transaction> | null {
+  static parseTransactionFromText(text: string): { transaction: Partial<Transaction>, detectedDate?: string } | null {
     // Security: Input validation
     if (!text || text.length > 500) {
       return null;
     }
 
     const normalizedText = text.toLowerCase().trim();
+    
+    // Primeiro, tentar detectar data no texto
+    let detectedDate: string | null = null;
+    let textWithoutDate = normalizedText;
+    
+    // Detectar "hoje", "ontem" no final ou no meio do texto
+    const dateWords = ['hoje', 'hj', 'ontem'];
+    for (const word of dateWords) {
+      const regex = new RegExp(`\\b${word}\\b`, 'i');
+      if (regex.test(normalizedText)) {
+        detectedDate = DateParser.parseDate(word);
+        textWithoutDate = normalizedText.replace(regex, '').trim();
+        break;
+      }
+    }
+    
+    // Detectar formatos DD/MM ou DD/MM/AAAA
+    const dateMatch = normalizedText.match(/(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)/);
+    if (dateMatch && !detectedDate) {
+      detectedDate = DateParser.parseDate(dateMatch[1]);
+      textWithoutDate = normalizedText.replace(dateMatch[0], '').trim();
+    }
     
     // Patterns para detectar transações
     const patterns = [
@@ -253,7 +297,7 @@ class TransactionParser {
     ];
 
     for (const pattern of patterns) {
-      const match = normalizedText.match(pattern);
+      const match = textWithoutDate.match(pattern);
       if (match) {
         let type: 'income' | 'expense';
         let amount: number;
@@ -288,14 +332,16 @@ class TransactionParser {
         // Security: Confirmation for high-value transactions
         const requiresConfirmation = amount > 1000;
 
-        return {
+        const transaction = {
           amount,
           title: sanitizedTitle.charAt(0).toUpperCase() + sanitizedTitle.slice(1),
           type,
-          date: new Date().toISOString().split('T')[0],
+          date: detectedDate || new Date().toISOString().split('T')[0],
           source: 'whatsapp',
           requiresConfirmation
         };
+
+        return { transaction, detectedDate: detectedDate || undefined };
       }
     }
 
@@ -386,8 +432,20 @@ class WhatsAppAgent {
     }
 
     // Tentar processar como transação
-    const transaction = TransactionParser.parseTransactionFromText(messageText);
-    if (transaction && session.user_id) {
+    const parseResult = TransactionParser.parseTransactionFromText(messageText);
+    if (parseResult && session.user_id) {
+      const { transaction, detectedDate } = parseResult;
+      
+      // Se a data já foi detectada no texto, salvar direto
+      if (detectedDate) {
+        console.log('Transaction with date detected, saving directly:', { date: detectedDate, amount: transaction.amount });
+        const saveResult = await this.saveTransaction(session.user_id, transaction);
+        return {
+          response: saveResult,
+          sessionData
+        };
+      }
+      
       // Verificar se requer confirmação de valor alto
       if (transaction.requiresConfirmation) {
         console.log('High-value transaction detected, requesting confirmation');
