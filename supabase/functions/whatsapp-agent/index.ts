@@ -123,11 +123,14 @@ class AuthManager {
       current.count++;
     }
 
-    // Verificar se o usuário existe
-    const { data: user } = await supabase
-      .rpc('check_user_exists', { email_to_check: `${phoneNumber}@whatsapp.temp` });
+    // Buscar usuário pelo phone_number na tabela profiles
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('user_id')
+      .eq('phone_number', phoneNumber)
+      .maybeSingle();
 
-    if (!user) {
+    if (!profile || profileError) {
       throw new Error('USER_NOT_FOUND');
     }
 
@@ -172,11 +175,14 @@ class AuthManager {
       .update({ used: true })
       .eq('id', data.id);
 
-    // Buscar usuário
-    const { data: authUsers } = await supabase.auth.admin.listUsers();
-    const user = authUsers.users.find(u => u.email === `${phoneNumber}@whatsapp.temp`);
+    // Buscar usuário pelo phone_number na tabela profiles
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('user_id')
+      .eq('phone_number', phoneNumber)
+      .maybeSingle();
     
-    return user?.id || null;
+    return profile?.user_id || null;
   }
 }
 

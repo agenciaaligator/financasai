@@ -10,6 +10,7 @@ import { User, Mail, Lock } from "lucide-react";
 
 export function ProfileSettings() {
   const [fullName, setFullName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -24,14 +25,15 @@ export function ProfileSettings() {
   const fetchProfile = async () => {
     if (!user) return;
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('full_name')
-    .eq('user_id', user.id)
-    .maybeSingle();
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('full_name, phone_number')
+      .eq('user_id', user.id)
+      .maybeSingle();
 
     if (data) {
       setFullName(data.full_name || "");
+      setPhoneNumber(data.phone_number || "");
     }
   };
 
@@ -44,7 +46,8 @@ export function ProfileSettings() {
     const { error } = await supabase
       .from('profiles')
       .update({
-        full_name: fullName.trim()
+        full_name: fullName.trim(),
+        phone_number: phoneNumber.trim() || null
       })
       .eq('user_id', user.id);
 
@@ -144,6 +147,20 @@ export function ProfileSettings() {
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Digite seu nome completo"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phoneNumber">WhatsApp</Label>
+              <Input
+                id="phoneNumber"
+                type="text"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="5511999999999"
+              />
+              <p className="text-xs text-muted-foreground">
+                Formato internacional sem o + (ex: 5511999999999)
+              </p>
             </div>
 
             <Button 

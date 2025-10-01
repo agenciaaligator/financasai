@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { Phone, Shield, MessageSquare, BarChart3, Copy } from "lucide-react";
 
 export function WhatsAppSetup() {
@@ -12,7 +14,26 @@ export function WhatsAppSetup() {
   const [authCode, setAuthCode] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
   const { toast } = useToast();
+
+  useEffect(() => {
+    fetchPhoneNumber();
+  }, [user]);
+
+  const fetchPhoneNumber = async () => {
+    if (!user) return;
+
+    const { data } = await supabase
+      .from('profiles')
+      .select('phone_number')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (data?.phone_number) {
+      setPhoneNumber(data.phone_number);
+    }
+  };
 
   const supabaseUrl = "https://fsamlnlabdjoqpiuhgex.supabase.co";
   const webhookUrl = `${supabaseUrl}/functions/v1/whatsapp-webhook`;
@@ -21,7 +42,7 @@ export function WhatsAppSetup() {
     if (!phoneNumber) {
       toast({
         title: "Número necessário",
-        description: "Digite seu número de WhatsApp",
+        description: "Digite seu número de WhatsApp no seu perfil primeiro",
         variant: "destructive"
       });
       return;
@@ -29,6 +50,14 @@ export function WhatsAppSetup() {
 
     setLoading(true);
     try {
+      // Salvar número no perfil se o usuário alterou
+      if (user) {
+        await supabase
+          .from('profiles')
+          .update({ phone_number: phoneNumber.trim() })
+          .eq('user_id', user.id);
+      }
+
       const response = await fetch(`${supabaseUrl}/functions/v1/whatsapp-agent`, {
         method: 'POST',
         headers: {
@@ -43,17 +72,25 @@ export function WhatsAppSetup() {
       const result = await response.json();
       
       if (result.success) {
-        toast({
-          title: "Código enviado!",
-          description: "Verifique as mensagens do WhatsApp",
-        });
+        if (result.response.includes('não encontrado') || result.response.includes('não está registrado')) {
+          toast({
+            title: "Número não cadastrado",
+            description: "Salve o número no seu perfil primeiro",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Código gerado!",
+            description: result.response,
+          });
+        }
       } else {
         throw new Error(result.error || 'Falha ao enviar código');
       }
     } catch (error) {
       toast({
         title: "Erro",
-        description: "Falha ao solicitar código de autenticação",
+        description: error instanceof Error ? error.message : "Falha ao solicitar código",
         variant: "destructive"
       });
     } finally {
