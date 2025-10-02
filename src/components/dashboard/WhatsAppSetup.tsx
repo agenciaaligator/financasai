@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Phone, Shield, MessageSquare, BarChart3, Copy } from "lucide-react";
+import { Phone, Shield, MessageSquare, BarChart3 } from "lucide-react";
 
 export function WhatsAppSetup() {
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -79,13 +79,12 @@ export function WhatsAppSetup() {
   };
 
   const supabaseUrl = "https://fsamlnlabdjoqpiuhgex.supabase.co";
-  const webhookUrl = `${supabaseUrl}/functions/v1/whatsapp-webhook`;
 
   const handleRequestCode = async () => {
     if (!phoneNumber) {
       toast({
         title: "Número necessário",
-        description: "Digite seu número de WhatsApp no seu perfil primeiro",
+        description: "Por favor, digite seu número de WhatsApp para continuar",
         variant: "destructive"
       });
       return;
@@ -118,13 +117,13 @@ export function WhatsAppSetup() {
         if (result.response.includes('não encontrado') || result.response.includes('não está registrado')) {
           toast({
             title: "Número não cadastrado",
-            description: "Salve o número no seu perfil primeiro",
+            description: "Atualize seu número no perfil e tente novamente",
             variant: "destructive"
           });
         } else {
           toast({
-            title: "Código gerado!",
-            description: result.response,
+            title: "Código enviado!",
+            description: "Verifique o código gerado e insira abaixo para validar",
           });
         }
       } else {
@@ -145,7 +144,7 @@ export function WhatsAppSetup() {
     if (!authCode) {
       toast({
         title: "Código necessário",
-        description: "Digite o código recebido no WhatsApp",
+        description: "Por favor, digite o código de 6 dígitos",
         variant: "destructive"
       });
       return;
@@ -171,9 +170,10 @@ export function WhatsAppSetup() {
       if (result.success && result.response.includes('sucesso')) {
         setIsAuthenticated(true);
         toast({
-          title: "Autenticado com sucesso!",
-          description: "Agora você pode usar o assistente via WhatsApp",
+          title: "✅ WhatsApp autenticado!",
+          description: "Agora você pode gerenciar suas finanças pelo WhatsApp",
         });
+        setAuthCode("");
       } else {
         throw new Error('Código inválido');
       }
@@ -188,13 +188,6 @@ export function WhatsAppSetup() {
     }
   };
 
-  const copyWebhookUrl = () => {
-    navigator.clipboard.writeText(webhookUrl);
-    toast({
-      title: "Copiado!",
-      description: "URL do webhook copiada para a área de transferência",
-    });
-  };
 
   return (
     <div className="space-y-6">
@@ -226,7 +219,7 @@ export function WhatsAppSetup() {
                   onChange={(e) => setPhoneNumber(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Use o formato internacional sem o sinal de +
+                  Use o formato internacional (sem +): exemplo 5511999999999
                 </p>
               </div>
 
@@ -244,11 +237,14 @@ export function WhatsAppSetup() {
                   <Label htmlFor="code">Código de Verificação</Label>
                   <Input
                     id="code"
-                    placeholder="123456"
+                    placeholder="Digite o código de 6 dígitos"
                     value={authCode}
                     onChange={(e) => setAuthCode(e.target.value)}
                     maxLength={6}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Insira o código gerado acima na plataforma
+                  </p>
                   <Button 
                     onClick={handleVerifyCode} 
                     disabled={loading || !authCode}
@@ -256,26 +252,12 @@ export function WhatsAppSetup() {
                     className="w-full"
                   >
                     <Shield className="h-4 w-4 mr-2" />
-                    {loading ? "Verificando..." : "Verificar Código"}
+                    {loading ? "Verificando..." : "Validar Código"}
                   </Button>
                 </div>
               )}
             </div>
           )}
-
-          {/* Webhook URL para desenvolvedores */}
-          <div className="space-y-2">
-            <Label>Webhook URL (para configuração do WhatsApp)</Label>
-            <div className="flex gap-2">
-              <Input value={webhookUrl} readOnly className="font-mono text-xs" />
-              <Button onClick={copyWebhookUrl} size="sm" variant="outline">
-                <Copy className="h-4 w-4" />
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Use esta URL para configurar o webhook no WhatsApp Business API
-            </p>
-          </div>
         </CardContent>
       </Card>
 
