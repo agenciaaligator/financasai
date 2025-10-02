@@ -485,9 +485,52 @@ class WhatsAppAgent {
       };
     }
 
+    // Detectar perguntas sobre cadastro/confirmação
+    const confirmationQuestions = [
+      'cadastrou', 'cadastrado', 'registrou', 'registrado', 'salvou', 'salvado',
+      'anotou', 'anotado', 'foi', 'confirmou', 'confirmado'
+    ];
+    if (confirmationQuestions.some(q => messageText.includes(q))) {
+      // Buscar a última transação do usuário
+      const { data: lastTransaction } = await supabase
+        .from('transactions')
+        .select('*, categories(name)')
+        .eq('user_id', session.user_id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (lastTransaction) {
+        const emoji = lastTransaction.type === 'income' ? '💰' : '💸';
+        const typeText = lastTransaction.type === 'income' ? 'Receita' : 'Despesa';
+        const dateObj = new Date(lastTransaction.date + 'T00:00:00');
+        const dateStr = dateObj.toLocaleDateString('pt-BR');
+        const categoryName = lastTransaction.categories?.name || 'Sem categoria';
+        
+        return {
+          response: `✅ *SIM! Sua transação foi cadastrada com sucesso!*\n\n` +
+                   `*Última transação registrada:*\n` +
+                   `${emoji} ${typeText}: R$ ${Number(lastTransaction.amount).toFixed(2)}\n` +
+                   `📝 ${lastTransaction.title}\n` +
+                   `📅 ${dateStr}\n` +
+                   `📁 ${categoryName}\n\n` +
+                   `✨ *Tudo salvo no sistema!* Pode conferir no app.`,
+          sessionData
+        };
+      } else {
+        return {
+          response: `📋 *Ainda não há transações cadastradas.*\n\n` +
+                   `Para adicionar, digite:\n` +
+                   `• "gasto 50 mercado"\n` +
+                   `• "receita 1000 salario"`,
+          sessionData
+        };
+      }
+    }
+
     // Detectar cumprimentos
     const greetings = ['oi', 'olá', 'ola', 'bom dia', 'boa tarde', 'boa noite', 'hey', 'alo', 'alô'];
-    if (greetings.some(greeting => messageText === greeting || messageText.startsWith(greeting + ' '))) {
+    if (greetings.some(greeting => messageText === greeting || messageText.startsWith(greeting + ' ')))
       console.log('Greeting detected');
       
       // Buscar nome do usuário
@@ -573,12 +616,12 @@ class WhatsAppAgent {
     // Resposta padrão para mensagens não compreendidas
     return {
       response: `❓ *Não compreendi a mensagem.*\n\n` +
-               `Você pode:\n` +
-               `• Adicionar gastos: "gasto 50 mercado"\n` +
-               `• Adicionar receitas: "receita 1000 salario"\n` +
+               `*Comandos disponíveis:*\n` +
+               `• Adicionar: "gasto 50 mercado"\n` +
                `• Ver saldo: "saldo"\n` +
                `• Ver relatório: "relatorio"\n` +
-               `• Ver comandos: "ajuda"`,
+               `• Ver comandos: "ajuda"\n\n` +
+               `💡 Digite *"ajuda"* para ver todos os comandos.`,
       sessionData
     };
   }
@@ -745,8 +788,8 @@ class WhatsAppAgent {
       const dateObj = new Date(transaction.date + 'T00:00:00');
       const dateStr = dateObj.toLocaleDateString('pt-BR');
       
-      // Mensagem mais detalhada com categoria
-      let response = `✅ *${typeText} registrada!*\n\n` +
+      // Mensagem mais detalhada e ENFÁTICA com categoria
+      let response = `✅ *${typeText} registrada com sucesso!*\n\n` +
                      `${emoji} R$ ${transaction.amount?.toFixed(2)}\n` +
                      `📝 ${transaction.title}\n` +
                      `📅 ${dateStr}`;
@@ -761,6 +804,10 @@ class WhatsAppAgent {
           response += `\n📁 Categoria: *${categoryInfo.category_name}*\n💡 O título "${transaction.title}" será mantido nos seus relatórios`;
         }
       }
+      
+      // Adicionar confirmação explícita de que foi salvo no banco
+      response += `\n\n💾 *Transação salva no sistema!*\n` +
+                 `Você pode conferir no aplicativo.`;
       
       return response;
     } catch (error) {
