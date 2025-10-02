@@ -32,7 +32,7 @@ interface SessionData {
   authenticated?: boolean;
   last_command?: string | null;
   context?: any;
-  conversation_state?: 'idle' | 'waiting_date' | 'waiting_confirmation';
+  conversation_state?: 'idle' | 'waiting_date' | 'waiting_confirmation' | 'awaiting_category';
   pending_transaction?: Partial<Transaction>;
   last_question?: string;
 }
@@ -336,14 +336,17 @@ class TransactionParser {
       textWithoutDate = normalizedText.replace(dateMatch[0], '').trim();
     }
     
-    // Patterns para detectar transações (ADICIONADO: "recebi" para receitas)
+    // Patterns para detectar transações (MELHORADO: inclui "gastei", preposições, etc)
     const patterns = [
-      // Padrão: "gasto 50 mercado" ou "receita 1000 salario" ou "recebi 1000 salario"
-      /^(gasto|receita|recebi|despesa|entrada)\s+(\d+(?:[\.,]\d{2})?)\s+(.+)$/,
-      // Padrão: "+100 freelance" ou "-30 combustível" 
+      // Pattern 1: "gasto 50 mercado" ou "receita 1000 salario" ou "recebi 1000 salario"
+      // Agora com preposições opcionais: "gastei 50 na padaria"
+      /^(gasto|gastei|receita|recebi|despesa|entrada)\s+(\d+(?:[\.,]\d{2})?)\s+(?:na|no|em|de|com|para)?\s*(.+)$/,
+      // Pattern 2: "+100 freelance" ou "-30 combustível" 
       /^([+-])(\d+(?:[\.,]\d{2})?)\s+(.+)$/,
-      // Padrão: "50 mercado" (assume despesa)
-      /^(\d+(?:[\.,]\d{2})?)\s+(.+)$/
+      // Pattern 3: "50 mercado" (assume despesa)
+      /^(\d+(?:[\.,]\d{2})?)\s+(.+)$/,
+      // Pattern 4: "gastei 64 na padaria" - formato mais natural
+      /^gastei\s+(\d+(?:[\.,]\d{2})?)\s+(?:na|no|em|de)\s+(.+)$/
     ];
 
     console.log('🔵 Parser: Testing patterns against:', textWithoutDate);
@@ -359,23 +362,29 @@ class TransactionParser {
         let title: string;
 
         if (pattern === patterns[0]) {
-          // Primeiro padrão (ADICIONADO: "recebi" para receitas)
+          // Pattern 1: com suporte a preposições
           type = ['receita', 'recebi', 'entrada'].includes(match[1]) ? 'income' : 'expense';
           amount = parseFloat(match[2].replace(',', '.'));
           title = match[3].trim();
           console.log('🔵 Parser: Pattern 1 matched -', { type, amount, title });
         } else if (pattern === patterns[1]) {
-          // Segundo padrão
+          // Pattern 2: sinais + ou -
           type = match[1] === '+' ? 'income' : 'expense';
           amount = parseFloat(match[2].replace(',', '.'));
           title = match[3].trim();
           console.log('🔵 Parser: Pattern 2 matched -', { type, amount, title });
-        } else {
-          // Terceiro padrão (assume despesa)
+        } else if (pattern === patterns[2]) {
+          // Pattern 3: apenas número e descrição (assume despesa)
           type = 'expense';
           amount = parseFloat(match[1].replace(',', '.'));
           title = match[2].trim();
           console.log('🔵 Parser: Pattern 3 matched -', { type, amount, title });
+        } else if (pattern === patterns[3]) {
+          // Pattern 4: "gastei X na/no Y"
+          type = 'expense';
+          amount = parseFloat(match[1].replace(',', '.'));
+          title = match[2].trim();
+          console.log('🔵 Parser: Pattern 4 matched (gastei X na/no Y) -', { type, amount, title });
         }
 
         // Security: Transaction limits and validation
@@ -491,12 +500,44 @@ class WhatsAppAgent {
     const messageText = message.body?.toLowerCase().trim() || '';
     const sessionData = session.session_data || {};
     
+    console.log('📨 Processing message:', { 
+      messageText: messageText.substring(0, 30) + '...', 
+      isAuthenticated: !!session.user_id 
+    });
     console.log('Processing message with state:', {
       state: sessionData.conversation_state || 'idle',
       hasPendingTransaction: !!sessionData.pending_transaction
     });
     
-    // Comandos que sempre funcionam (prioridade máxima)
+    // PRIORIDADE 1: Se estamos aguardando categoria, processar resposta
+    if (sessionData.conversation_state === 'awaiting_category' && sessionData.pending_transaction) {
+      console.log('🔵 User is responding to category question');
+      const category = messageText.trim();
+      const transaction = sessionData.pending_transaction;
+      
+      // Salvar transação com a categoria informada (título será usado para match)
+      const txToSave = {
+        ...transaction,
+        title: category, // Usar a categoria como título para o match automático
+        date: transaction.date || new Date().toISOString().split('T')[0]
+      };
+      
+      console.log('🚀 Saving transaction with user-provided category:', { 
+        title: category, 
+        amount: transaction.amount 
+      });
+      
+      const saveResult = await this.saveTransaction(session.user_id!, txToSave);
+      
+      return {
+        response: saveResult,
+        sessionData: { ...sessionData, conversation_state: 'idle', pending_transaction: undefined }
+      };
+    }
+    
+    // PRIORIDADE 2: Comandos que sempre funcionam
+    console.log('🔵 Checking if message is a command:', messageText);
+    
     if (['ajuda', 'help', 'menu', 'comandos'].includes(messageText)) {
       return {
         response: this.getHelpMenu(),
@@ -546,8 +587,9 @@ class WhatsAppAgent {
       };
     }
 
-    // Comandos de saldo
+    // Comandos de saldo (MELHORADO: processar antes do parsing)
     if (['saldo', 'balance', 'total'].includes(messageText)) {
+      console.log('🔵 COMMAND DETECTED: saldo');
       return {
         response: await this.getBalance(session.user_id!),
         sessionData
@@ -633,10 +675,49 @@ class WhatsAppAgent {
       };
     }
 
-    // Tentar processar como transação
+    // PRIORIDADE 3: Tentar processar como transação
     console.log('🔵 Attempting to parse transaction from message:', messageText);
     const parseResult = TransactionParser.parseTransactionFromText(messageText);
     console.log('🔵 Parse result:', parseResult ? 'SUCCESS' : 'FAILED', parseResult);
+    
+    // Se o parsing falhou mas detectamos um número, perguntar a categoria
+    if (!parseResult && /\d+/.test(messageText)) {
+      console.log('🔵 Parser failed but number detected, asking for category');
+      
+      // Extrair o número da mensagem
+      const numberMatch = messageText.match(/(\d+(?:[\.,]\d{2})?)/);
+      if (numberMatch) {
+        const amount = parseFloat(numberMatch[1].replace(',', '.'));
+        
+        // Determinar tipo baseado em palavras-chave
+        const isIncome = /recebi|receita|entrada|ganho|salario|salário/.test(messageText);
+        const type = isIncome ? 'income' : 'expense';
+        
+        // Salvar transação pendente
+        const pendingTransaction: Partial<Transaction> = {
+          amount,
+          title: 'Sem título', // Será substituído pela categoria
+          type,
+          date: new Date().toISOString().split('T')[0],
+          source: 'whatsapp'
+        };
+        
+        return {
+          response: `💡 Detectei um valor de R$ ${amount.toFixed(2)}\n\n` +
+                   `Para qual categoria essa ${type === 'income' ? 'receita' : 'despesa'}?\n\n` +
+                   `Exemplos:\n` +
+                   `• Alimentação\n` +
+                   `• Transporte\n` +
+                   `• Moradia\n` +
+                   `• Salário`,
+          sessionData: {
+            ...sessionData,
+            conversation_state: 'awaiting_category',
+            pending_transaction: pendingTransaction
+          }
+        };
+      }
+    }
     
     if (parseResult && session.user_id) {
       const { transaction, detectedDate } = parseResult;
