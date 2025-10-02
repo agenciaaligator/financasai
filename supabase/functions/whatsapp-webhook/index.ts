@@ -481,11 +481,12 @@ const handler = async (req: Request): Promise<Response> => {
       
       console.log('📨 GPT Maker user message - calling whatsapp-agent', {
         cleanPhone: cleanPhone.substring(0, 8) + '***',
-        hasText: !!text
+        hasText: !!text,
+        messageId: messageId || 'unknown'
       });
       
       try {
-        console.log('🔵 Calling whatsapp-agent...');
+        console.log('🔵 Calling whatsapp-agent with messageId:', messageId);
         const agentResponse = await fetch(`${supabaseUrl}/functions/v1/whatsapp-agent`, {
           method: 'POST',
           headers: {
@@ -497,7 +498,7 @@ const handler = async (req: Request): Promise<Response> => {
             message: {
               from: cleanPhone,
               body: text,
-              id: messageId || 'unknown',
+              id: messageId || `${Date.now()}-${cleanPhone}`,
               type: 'text'
             },
             action: 'process_message'

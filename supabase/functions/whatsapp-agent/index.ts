@@ -625,6 +625,7 @@ class WhatsAppAgent {
     // "hoje" ou "relatorio dia" -> relatório do dia
     if (normalizedText === 'hoje' || normalizedText === 'relatorio dia' || normalizedText === 'extrato dia') {
       console.log('🔵 COMMAND DETECTED: relatorio dia');
+      console.log('REPORT_TYPE: day');
       return {
         response: await this.generateAIReport(session.user_id!, 'day'),
         sessionData
@@ -634,15 +635,18 @@ class WhatsAppAgent {
     // "semana" ou "relatorio semana" -> relatório da semana
     if (['semana', 'semanal', 'relatorio semana', 'extrato semana', 'resumo semana'].includes(normalizedText)) {
       console.log('🔵 COMMAND DETECTED: relatorio semana');
+      console.log('REPORT_TYPE: week');
       return {
         response: await this.generateAIReport(session.user_id!, 'week'),
         sessionData
       };
     }
 
-    // "mes", "mês", "relatorio mes", "relatorio" ou "extrato" sozinho -> relatório mensal
-    if (['mes', 'mensal', 'relatorio mes', 'extrato mes', 'relatorio', 'extrato', 'resumo'].includes(normalizedText)) {
+    // "mes", "mês", "relatorio mes", "extrato" -> relatório mensal
+    // IMPORTANTE: "saldo" NÃO deve cair aqui!
+    if (['mes', 'mensal', 'relatorio mes', 'extrato mes', 'relatorio', 'extrato'].includes(normalizedText)) {
       console.log('🔵 COMMAND DETECTED: relatorio mensal (variant:', messageText, ')');
+      console.log('REPORT_TYPE: month');
       return {
         response: await this.generateAIReport(session.user_id!, 'month'),
         sessionData
@@ -652,6 +656,7 @@ class WhatsAppAgent {
     // "ano" ou "relatorio ano" -> relatório anual
     if (['ano', 'anual', 'relatorio ano', 'extrato ano'].includes(normalizedText)) {
       console.log('🔵 COMMAND DETECTED: relatorio anual');
+      console.log('REPORT_TYPE: year');
       return {
         response: await this.generateAIReport(session.user_id!, 'year'),
         sessionData
