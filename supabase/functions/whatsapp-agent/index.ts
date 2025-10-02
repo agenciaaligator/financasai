@@ -569,17 +569,7 @@ class WhatsAppAgent {
     if (parseResult && session.user_id) {
       const { transaction, detectedDate } = parseResult;
       
-      // Se a data já foi detectada no texto, salvar direto
-      if (detectedDate) {
-        console.log('Transaction with date detected, saving directly:', { date: detectedDate, amount: transaction.amount });
-        const saveResult = await this.saveTransaction(session.user_id, transaction);
-        return {
-          response: saveResult,
-          sessionData
-        };
-      }
-      
-      // Verificar se requer confirmação de valor alto
+      // Se valor muito alto, manter confirmação antes de salvar
       if (transaction.requiresConfirmation) {
         console.log('High-value transaction detected, requesting confirmation');
         return {
@@ -591,25 +581,18 @@ class WhatsAppAgent {
           sessionData: {
             ...sessionData,
             conversation_state: 'waiting_confirmation',
-            pending_transaction: transaction
+            pending_transaction: { ...transaction, date: detectedDate || new Date().toISOString().split('T')[0] }
           }
         };
       }
       
-      // Perguntar data
-      console.log('Transaction parsed, requesting date');
+      // Salvar imediatamente usando a data detectada ou HOJE por padrão
+      const txToSave = { ...transaction, date: detectedDate || new Date().toISOString().split('T')[0] };
+      console.log('Saving transaction immediately (no date question):', { date: txToSave.date, amount: txToSave.amount });
+      const saveResult = await this.saveTransaction(session.user_id, txToSave);
       return {
-        response: `📅 *Para qual data é essa transação?*\n\n` +
-                 `💵 R$ ${transaction.amount?.toFixed(2)} - ${transaction.title}\n\n` +
-                 `Digite:\n` +
-                 `• *"hoje"* para hoje\n` +
-                 `• *"ontem"* para ontem\n` +
-                 `• ou uma data (ex: 28/09)`,
-        sessionData: {
-          ...sessionData,
-          conversation_state: 'waiting_date',
-          pending_transaction: transaction
-        }
+        response: saveResult,
+        sessionData
       };
     }
 
