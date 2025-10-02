@@ -7,13 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Phone, Shield, MessageSquare, BarChart3 } from "lucide-react";
+import { Phone, Shield, MessageSquare, BarChart3, Activity } from "lucide-react";
 
 export function WhatsAppSetup() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [authCode, setAuthCode] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -188,6 +189,39 @@ export function WhatsAppSetup() {
     }
   };
 
+  const handleRunDiagnostics = async () => {
+    setDiagnosticsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('gptmaker-diagnostics');
+      
+      if (error) throw error;
+      
+      console.log('📊 Diagnóstico GPT Maker:', data);
+      
+      if (data.success || data.tokenValid) {
+        toast({
+          title: "✅ Configuração OK",
+          description: "GPT Maker está configurado. Verifique o console para detalhes.",
+        });
+      } else {
+        toast({
+          title: "⚠️ Problemas detectados",
+          description: data.issues?.join('\n') || "Verifique o console para detalhes",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Erro no diagnóstico:', error);
+      toast({
+        title: "Erro no diagnóstico",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive"
+      });
+    } finally {
+      setDiagnosticsLoading(false);
+    }
+  };
+
 
   return (
     <div className="space-y-6">
@@ -260,6 +294,32 @@ export function WhatsAppSetup() {
           )}
         </CardContent>
       </Card>
+
+      {/* Diagnóstico */}
+      {isAuthenticated && (
+        <Card className="bg-gradient-card shadow-card border-0">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5" />
+              Diagnóstico de Conexão
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Teste se o GPT Maker está enviando mensagens corretamente para o sistema
+            </p>
+            <Button
+              onClick={handleRunDiagnostics}
+              disabled={diagnosticsLoading}
+              variant="outline"
+              className="w-full"
+            >
+              <Activity className="mr-2 h-4 w-4" />
+              {diagnosticsLoading ? "Testando..." : "Executar Diagnóstico"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Comandos disponíveis */}
       <Card className="bg-gradient-card shadow-card border-0">

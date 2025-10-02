@@ -246,6 +246,12 @@ async function findUserByPhone(phone: string) {
 }
 
 const handler = async (req: Request): Promise<Response> => {
+  console.log('🔵 Webhook recebido:', {
+    method: req.method,
+    url: req.url,
+    headers: Object.fromEntries(req.headers.entries())
+  });
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -253,6 +259,8 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     // Rate limiting
     const clientIP = req.headers.get('x-forwarded-for') || 'unknown';
+    console.log('🔵 IP do cliente:', clientIP);
+    
     if (!checkRateLimit(clientIP)) {
       await logSecurityEvent('RATE_LIMIT_EXCEEDED', { ip: clientIP, timestamp: new Date().toISOString() });
       return new Response(JSON.stringify({ 
@@ -300,13 +308,18 @@ const handler = async (req: Request): Promise<Response> => {
     console.log('WhatsApp webhook received (verified)');
 
     const isGPTMakerFormat = body.message || body.contactPhone;
+    console.log('🔵 Formato detectado:', isGPTMakerFormat ? 'GPT Maker' : 'WhatsApp Official');
+    console.log('🔵 Body recebido:', JSON.stringify(body, null, 2));
+    
     let from: string | undefined;
     let text: string | undefined;
     let messageId: string | undefined;
 
     if (isGPTMakerFormat) {
+      console.log('🔵 GPT Maker - role:', body.role, 'message:', body.message);
+      
       if (body.role === 'assistant' || body.role === 'tool' || !body.message || body.message.trim() === '') {
-        console.log('Ignoring GPT Maker assistant message - skipping to avoid duplication');
+        console.log('⚠️ Ignorando mensagem assistant/tool do GPT Maker');
         return new Response(JSON.stringify({ 
           success: true, 
           skipped: true,
@@ -320,6 +333,7 @@ const handler = async (req: Request): Promise<Response> => {
       from = body.contactPhone;
       text = body.message;
       messageId = body.messageId;
+      console.log('🔵 GPT Maker parsed:', { from, text, messageId });
     } else if (body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
       const message = body.entry[0].changes[0].value.messages[0];
       from = message.from;
@@ -354,9 +368,11 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     if (from && text) {
-      console.log('Message received from authenticated sender');
+      console.log('✅ Mensagem válida recebida de:', from);
+      console.log('📝 Conteúdo:', text);
 
       try {
+        console.log('🔵 Chamando whatsapp-agent...');
         const agentResponse = await fetch(`${supabaseUrl}/functions/v1/whatsapp-agent`, {
           method: 'POST',
           headers: {
