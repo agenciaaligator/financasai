@@ -355,27 +355,18 @@ const handler = async (req: Request): Promise<Response> => {
     let from: string | undefined;
     let text: string | undefined;
     let messageId: string | undefined;
+    let isGptAssistant: boolean = false;
 
     if (isGPTMakerFormat) {
       console.log('🔵 GPT Maker - role:', body.role, 'message:', body.message || body.text);
       
+      // Always parse and set a flag; we will handle routing after dedup
       const incomingText = (body.message ?? body.text ?? '').trim();
-      if (body.role === 'assistant' || body.role === 'tool' || !incomingText) {
-        console.log('⚠️ Ignorando mensagem assistant/tool do GPT Maker');
-        return new Response(JSON.stringify({ 
-          success: true, 
-          skipped: true,
-          reason: 'gpt_maker_assistant_message'
-        }), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-      
+      isGptAssistant = body.role === 'assistant' || body.role === 'tool';
       from = body.contactPhone || body.from || body.phone || body.phoneNumber;
-      text = body.message || body.text || body.body;
+      text = incomingText;
       messageId = body.messageId || body.id;
-      console.log('🔵 GPT Maker parsed:', { from, text, messageId });
+      console.log('🔵 GPT Maker parsed:', { from, text, messageId, isGptAssistant });
     } else if (body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
       const message = body.entry[0].changes[0].value.messages[0];
       from = message.from;
@@ -406,6 +397,31 @@ const handler = async (req: Request): Promise<Response> => {
         if (now - timestamp > DEDUPE_WINDOW) {
           messageIdStore.delete(id);
         }
+      }
+    }
+
+    // Handle GPT Maker routing before calling our agent
+    if (isGPTMakerFormat) {
+      if (isGptAssistant && from && text) {
+        if (whatsappAccessToken && whatsappPhoneNumberId) {
+          try {
+            let phoneForApi = String(from).replace(/[^\d+]/g, '');
+            if (/^\+?\d{10,15}$/.test(phoneForApi)) {
+              console.log('Forwarding GPT Maker assistant message to WhatsApp Business API...');
+              await fetch(`https://graph.facebook.com/v18.0/${whatsappPhoneNumberId}/messages`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${whatsappAccessToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messaging_product: 'whatsapp', to: phoneForApi, type: 'text', text: { body: text } })
+              });
+            } else {
+              console.log('Skipping send due to invalid phone for API');
+            }
+          } catch (err) { console.error('Error forwarding assistant message:', err); }
+        }
+        return new Response(JSON.stringify({ success: true, forwarded: true, via: 'gpt_maker_assistant' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      } else {
+        // Ignore user messages from GPT Maker to avoid duplicate replies/auth prompts
+        return new Response(JSON.stringify({ success: true, skipped: true, reason: 'gpt_maker_user_noop' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
     }
 
