@@ -70,12 +70,17 @@ const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
 // Classes para gerenciamento de sessão e autenticação
 class SessionManager {
   static async getSession(phoneNumber: string): Promise<Session | null> {
+    // Check both with and without + prefix
+    const phoneVariants = phoneNumber.startsWith('+') 
+      ? [phoneNumber, phoneNumber.substring(1)]
+      : [phoneNumber, '+' + phoneNumber];
+    
     const { data, error } = await supabase
       .from('whatsapp_sessions')
       .select('*')
-      .eq('phone_number', phoneNumber)
+      .or(`phone_number.in.(${phoneVariants.map(p => `"${p}"`).join(',')})`)
       .gt('expires_at', new Date().toISOString())
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.log('No active session found for:', phoneNumber);
@@ -162,11 +167,15 @@ class AuthManager {
       current.count++;
     }
 
-    // Buscar usuário pelo phone_number na tabela profiles
+    // Buscar usuário pelo phone_number na tabela profiles (check both formats)
+    const phoneVariants = phoneNumber.startsWith('+') 
+      ? [phoneNumber, phoneNumber.substring(1)]
+      : [phoneNumber, '+' + phoneNumber];
+    
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('user_id')
-      .eq('phone_number', phoneNumber)
+      .or(`phone_number.in.(${phoneVariants.map(p => `"${p}"`).join(',')})`)
       .maybeSingle();
 
     if (!profile || profileError) {
@@ -214,11 +223,15 @@ class AuthManager {
       .update({ used: true })
       .eq('id', data.id);
 
-    // Buscar usuário pelo phone_number na tabela profiles
+    // Buscar usuário pelo phone_number na tabela profiles (check both formats)
+    const phoneVariants = phoneNumber.startsWith('+') 
+      ? [phoneNumber, phoneNumber.substring(1)]
+      : [phoneNumber, '+' + phoneNumber];
+    
     const { data: profile } = await supabase
       .from('profiles')
       .select('user_id')
-      .eq('phone_number', phoneNumber)
+      .or(`phone_number.in.(${phoneVariants.map(p => `"${p}"`).join(',')})`)
       .maybeSingle();
     
     return profile?.user_id || null;
@@ -922,11 +935,17 @@ serve(async (req) => {
     await supabase.rpc('cleanup_expired_whatsapp_data');
 
     // SEGUNDO: Verificar se o usuário está cadastrado (tem perfil com este telefone)
-    // CRITICAL: Use cleanPhone normalizado para comparação
+    // CRITICAL: Check both with and without + prefix to handle format variations
+    const phoneVariants = cleanPhone.startsWith('+') 
+      ? [cleanPhone, cleanPhone.substring(1)] // Try +5511... and 5511...
+      : [cleanPhone, '+' + cleanPhone]; // Try 5511... and +5511...
+    
+    console.log('🔍 Looking for profile with phone variants:', phoneVariants.map(p => p.substring(0, 8) + '***'));
+    
     const { data: profile } = await supabase
       .from('profiles')
       .select('user_id, phone_number')
-      .eq('phone_number', cleanPhone)
+      .or(`phone_number.in.(${phoneVariants.map(p => `"${p}"`).join(',')})`)
       .maybeSingle();
 
     // Se não há perfil cadastrado, retornar IMEDIATAMENTE
