@@ -46,13 +46,16 @@ const gptMakerChannelId = Deno.env.get('GPT_MAKER_CHANNEL_ID');
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// CRITICAL SECURITY: Enhanced signature verification
+// CRITICAL SECURITY: Enhanced signature verification with detailed logging
 async function verifyWhatsAppSignature(payload: string, signature: string): Promise<boolean> {
-  // Se não há secret configurado, permitir temporariamente (modo desenvolvimento)
+  // 🔍 DEBUG: Log secret status (first 5 chars only for security)
   if (!whatsappAppSecret) {
     console.warn('⚠️ WHATSAPP_APP_SECRET não configurado - modo desenvolvimento ativo');
     return true; // Permitir em modo dev
   }
+  
+  console.log('🔍 DEBUG - Secret carregado (primeiros 5 chars):', whatsappAppSecret.substring(0, 5) + '***');
+  console.log('🔍 DEBUG - Payload size:', payload.length, 'bytes');
 
   // Se há secret mas não há assinatura, rejeitar
   if (!signature) {
@@ -85,14 +88,14 @@ async function verifyWhatsAppSignature(payload: string, signature: string): Prom
     
     if (!isValid) {
       console.error('❌ SECURITY: Signature mismatch');
-      console.error('Esperado:', calculatedSignature.substring(0, 20) + '...');
-      console.error('Recebido:', signature.substring(0, 20) + '...');
+      console.error('Esperado:', calculatedSignature);
+      console.error('Recebido:', signature);
       await logSecurityEvent('INVALID_SIGNATURE', {
         signature_prefix: signature?.substring(0, 10),
         timestamp: new Date().toISOString()
       });
     } else {
-      console.log('✅ Signature válida');
+      console.log('✅ Signature válida!');
     }
 
     return isValid;
