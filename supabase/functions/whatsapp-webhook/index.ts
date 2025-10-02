@@ -40,6 +40,10 @@ const whatsappAccessToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
 const whatsappPhoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID');
 const whatsappBusinessAccountId = Deno.env.get('WHATSAPP_BUSINESS_ACCOUNT_ID');
 
+// GPT Maker auth (used when messages come via GPT Maker, not Meta webhook)
+const gptMakerToken = Deno.env.get('GPT_MAKER_TOKEN');
+const gptMakerChannelId = Deno.env.get('GPT_MAKER_CHANNEL_ID');
+
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // CRITICAL SECURITY: Enhanced signature verification
@@ -89,6 +93,29 @@ async function verifyWhatsAppSignature(payload: string, signature: string): Prom
     return isValid;
   } catch (error) {
     console.error('❌ SECURITY: Error verifying signature:', error);
+    return false;
+  }
+}
+
+// Verify GPT Maker authorization via token header or Bearer token
+async function verifyGptMakerAuth(req: Request, body: any): Promise<boolean> {
+  try {
+    const authHeader = req.headers.get('authorization') || '';
+    const tokenHeader = req.headers.get('x-gptmaker-token') || '';
+    const provided = authHeader.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : tokenHeader;
+
+    if (!gptMakerToken || !provided || provided !== gptMakerToken) {
+      return false;
+    }
+
+    // If a channel id is provided, validate it as well for extra safety
+    if (gptMakerChannelId && body?.channelId && body.channelId !== gptMakerChannelId) {
+      return false;
+    }
+    return true;
+  } catch (_err) {
     return false;
   }
 }
@@ -289,20 +316,38 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // CRITICAL: Verify WhatsApp signature
-    const signature = req.headers.get('x-hub-signature-256');
-    if (!(await verifyWhatsAppSignature(rawBody, signature || ''))) {
-      await logSecurityEvent('INVALID_SIGNATURE', { 
-        ip: clientIP, 
-        timestamp: new Date().toISOString()
-      });
-      return new Response(JSON.stringify({ 
-        success: false, 
-        message: 'Invalid signature' 
-      }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+    // CRITICAL: Verify auth (GPT Maker) or WhatsApp signature
+    const isPotentialGptMaker = !!(body?.message || body?.contactPhone || body?.channelId);
+    if (isPotentialGptMaker) {
+      const ok = await verifyGptMakerAuth(req, body);
+      if (!ok) {
+        await logSecurityEvent('INVALID_GPTMAKER_AUTH', { 
+          ip: clientIP, 
+          timestamp: new Date().toISOString()
+        });
+        return new Response(JSON.stringify({ 
+          success: false, 
+          message: 'Unauthorized' 
+        }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    } else {
+      const signature = req.headers.get('x-hub-signature-256');
+      if (!(await verifyWhatsAppSignature(rawBody, signature || ''))) {
+        await logSecurityEvent('INVALID_SIGNATURE', { 
+          ip: clientIP, 
+          timestamp: new Date().toISOString()
+        });
+        return new Response(JSON.stringify({ 
+          success: false, 
+          message: 'Invalid signature' 
+        }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
     }
 
     console.log('WhatsApp webhook received (verified)');
