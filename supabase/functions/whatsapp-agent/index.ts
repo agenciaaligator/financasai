@@ -303,12 +303,16 @@ class DateParser {
 
 class TransactionParser {
   static parseTransactionFromText(text: string): { transaction: Partial<Transaction>, detectedDate?: string } | null {
+    console.log('🔵 TransactionParser.parseTransactionFromText() called:', { originalText: text });
+    
     // Security: Input validation
     if (!text || text.length > 500) {
+      console.log('❌ Parser: Text validation failed (empty or too long)');
       return null;
     }
 
     const normalizedText = text.toLowerCase().trim();
+    console.log('🔵 Parser: Normalized text:', normalizedText);
     
     // Primeiro, tentar detectar data no texto
     let detectedDate: string | null = null;
@@ -332,38 +336,46 @@ class TransactionParser {
       textWithoutDate = normalizedText.replace(dateMatch[0], '').trim();
     }
     
-    // Patterns para detectar transações
+    // Patterns para detectar transações (ADICIONADO: "recebi" para receitas)
     const patterns = [
-      // Padrão: "gasto 50 mercado" ou "receita 1000 salario"
-      /^(gasto|receita|despesa|entrada)\s+(\d+(?:[\.,]\d{2})?)\s+(.+)$/,
+      // Padrão: "gasto 50 mercado" ou "receita 1000 salario" ou "recebi 1000 salario"
+      /^(gasto|receita|recebi|despesa|entrada)\s+(\d+(?:[\.,]\d{2})?)\s+(.+)$/,
       // Padrão: "+100 freelance" ou "-30 combustível" 
       /^([+-])(\d+(?:[\.,]\d{2})?)\s+(.+)$/,
       // Padrão: "50 mercado" (assume despesa)
       /^(\d+(?:[\.,]\d{2})?)\s+(.+)$/
     ];
 
-    for (const pattern of patterns) {
+    console.log('🔵 Parser: Testing patterns against:', textWithoutDate);
+
+    for (let i = 0; i < patterns.length; i++) {
+      const pattern = patterns[i];
       const match = textWithoutDate.match(pattern);
+      console.log(`🔵 Parser: Pattern ${i + 1} match:`, match ? 'YES' : 'NO', match);
+      
       if (match) {
         let type: 'income' | 'expense';
         let amount: number;
         let title: string;
 
         if (pattern === patterns[0]) {
-          // Primeiro padrão
-          type = ['receita', 'entrada'].includes(match[1]) ? 'income' : 'expense';
+          // Primeiro padrão (ADICIONADO: "recebi" para receitas)
+          type = ['receita', 'recebi', 'entrada'].includes(match[1]) ? 'income' : 'expense';
           amount = parseFloat(match[2].replace(',', '.'));
           title = match[3].trim();
+          console.log('🔵 Parser: Pattern 1 matched -', { type, amount, title });
         } else if (pattern === patterns[1]) {
           // Segundo padrão
           type = match[1] === '+' ? 'income' : 'expense';
           amount = parseFloat(match[2].replace(',', '.'));
           title = match[3].trim();
+          console.log('🔵 Parser: Pattern 2 matched -', { type, amount, title });
         } else {
           // Terceiro padrão (assume despesa)
           type = 'expense';
           amount = parseFloat(match[1].replace(',', '.'));
           title = match[2].trim();
+          console.log('🔵 Parser: Pattern 3 matched -', { type, amount, title });
         }
 
         // Security: Transaction limits and validation
@@ -387,10 +399,19 @@ class TransactionParser {
           requiresConfirmation
         };
 
+        console.log('✅ Parser: Transaction successfully parsed:', {
+          amount: transaction.amount,
+          title: transaction.title,
+          type: transaction.type,
+          date: transaction.date,
+          requiresConfirmation: transaction.requiresConfirmation
+        });
+
         return { transaction, detectedDate: detectedDate || undefined };
       }
     }
 
+    console.log('❌ Parser: No pattern matched - returning null');
     return null;
   }
 }
@@ -613,9 +634,13 @@ class WhatsAppAgent {
     }
 
     // Tentar processar como transação
+    console.log('🔵 Attempting to parse transaction from message:', messageText);
     const parseResult = TransactionParser.parseTransactionFromText(messageText);
+    console.log('🔵 Parse result:', parseResult ? 'SUCCESS' : 'FAILED', parseResult);
+    
     if (parseResult && session.user_id) {
       const { transaction, detectedDate } = parseResult;
+      console.log('🔵 Transaction parsed successfully, user_id:', session.user_id?.substring(0, 8) + '***');
       
       // Se valor muito alto, manter confirmação antes de salvar
       if (transaction.requiresConfirmation) {
@@ -636,8 +661,18 @@ class WhatsAppAgent {
       
       // Salvar imediatamente usando a data detectada ou HOJE por padrão
       const txToSave = { ...transaction, date: detectedDate || new Date().toISOString().split('T')[0] };
-      console.log('Saving transaction immediately (no date question):', { date: txToSave.date, amount: txToSave.amount });
+      console.log('🚀 CALLING saveTransaction() with:', {
+        user_id: session.user_id?.substring(0, 8) + '***',
+        amount: txToSave.amount,
+        title: txToSave.title,
+        type: txToSave.type,
+        date: txToSave.date
+      });
+      
       const saveResult = await this.saveTransaction(session.user_id, txToSave);
+      
+      console.log('✅ saveTransaction() completed, response:', saveResult.substring(0, 50) + '...');
+      
       return {
         response: saveResult,
         sessionData: { ...sessionData, conversation_state: 'idle', pending_transaction: undefined }
@@ -762,19 +797,26 @@ class WhatsAppAgent {
   }
 
   static async saveTransaction(userId: string, transaction: Partial<Transaction>): Promise<string> {
+    console.log('🔵 saveTransaction() STARTED');
+    console.log('🔵 Input parameters:', {
+      userId: userId?.substring(0, 8) + '***',
+      transaction: {
+        amount: transaction.amount,
+        title: transaction.title,
+        type: transaction.type,
+        date: transaction.date,
+        source: transaction.source
+      }
+    });
+    
     try {
       // Security: Validate user ID
       if (!userId || typeof userId !== 'string') {
+        console.error('❌ saveTransaction: Invalid user ID');
         throw new Error('Invalid user ID');
       }
 
-      console.log('Saving transaction to database:', {
-        userId: userId.substring(0, 8) + '***',
-        amount: transaction.amount,
-        type: transaction.type,
-        date: transaction.date,
-        title: transaction.title
-      });
+      console.log('✅ saveTransaction: User ID validated');
 
       // Buscar melhor categoria automaticamente se não foi especificada
       let categoryInfo = { category_id: null, category_name: 'Sem categoria', suggested: false };
@@ -799,6 +841,8 @@ class WhatsAppAgent {
         source: 'whatsapp'
       };
 
+      console.log('🔵 saveTransaction: Calling Supabase insert with:', transactionData);
+      
       const { data, error } = await supabase
         .from('transactions')
         .insert(transactionData)
@@ -806,18 +850,25 @@ class WhatsAppAgent {
         .single();
 
       if (error) {
-        console.error('Transaction insert error:', error);
-        console.error('Transaction data that failed:', transactionData);
+        console.error('❌ saveTransaction: Database insert ERROR:', error);
+        console.error('❌ saveTransaction: Failed transaction data:', transactionData);
         throw error;
       }
+      
+      console.log('✅ saveTransaction: Database insert SUCCESSFUL');
 
       const emoji = transaction.type === 'income' ? '💰' : '💸';
       const typeText = transaction.type === 'income' ? 'Receita' : 'Despesa';
       
-      console.log(`Transaction created successfully:`, {
+      console.log('✅✅✅ TRANSACTION CREATED SUCCESSFULLY ✅✅✅');
+      console.log('Transaction details:', {
         id: data.id,
         amount: data.amount,
-        category: categoryInfo.category_name
+        title: data.title,
+        type: data.type,
+        date: data.date,
+        category: categoryInfo.category_name,
+        user_id: userId.substring(0, 8) + '***'
       });
       
       // Mensagem simplificada e direta conforme treinamento
@@ -825,7 +876,7 @@ class WhatsAppAgent {
         ? `💰 Receita de R$ ${transaction.amount?.toFixed(2)} registrada com sucesso!`
         : `💸 Despesa de R$ ${transaction.amount?.toFixed(2)} registrada com sucesso!`;
       
-      console.log('TRANSACTION_SAVED:', `R$ ${transaction.amount?.toFixed(2)}`);
+      console.log('🔵 saveTransaction: Returning response:', response);
       
       return response;
     } catch (error) {
