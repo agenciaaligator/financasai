@@ -474,11 +474,14 @@ const handler = async (req: Request): Promise<Response> => {
         
         const agentResult = await agentResponse.json();
         console.log('AGENT_RESPONSE');
+        console.log('AUTH_STATUS:', agentResult.authenticated || false);
         
         // Return agent response directly to GPT Maker (no WABA)
+        // CRITICAL: Add role: "assistant" and stop: true to force GPT Maker to use only this response
         return new Response(JSON.stringify({
           success: agentResult.success || true,
           message: agentResult.response || agentResult.message,
+          role: 'assistant',
           stop: true,
           via: 'gpt_maker_webhook'
         }), {

@@ -492,10 +492,35 @@ class WhatsAppAgent {
 
     // Estados de conversa serão tratados mais adiante, após tentarmos detectar uma nova transação
 
-    // Comandos de relatório
-    if (['relatorio', 'relatório', 'resumo', 'extrato'].includes(messageText)) {
+    // Comandos de relatório com IA
+    if (['hoje'].includes(messageText)) {
+      console.log('COMMAND_DETECTED: hoje');
       return {
-        response: await this.generateReport(session.user_id!),
+        response: await this.generateAIReport(session.user_id!, 'day'),
+        sessionData
+      };
+    }
+
+    if (['semana', 'resumo semana', 'semanal'].includes(messageText)) {
+      console.log('COMMAND_DETECTED: semana');
+      return {
+        response: await this.generateAIReport(session.user_id!, 'week'),
+        sessionData
+      };
+    }
+
+    if (['relatorio', 'relatório', 'resumo', 'extrato', 'mes', 'mês'].includes(messageText)) {
+      console.log('COMMAND_DETECTED: relatorio/mes');
+      return {
+        response: await this.generateAIReport(session.user_id!, 'month'),
+        sessionData
+      };
+    }
+
+    if (['ano', 'anual'].includes(messageText)) {
+      console.log('COMMAND_DETECTED: ano');
+      return {
+        response: await this.generateAIReport(session.user_id!, 'year'),
         sessionData
       };
     }
@@ -722,7 +747,10 @@ class WhatsAppAgent {
            `• gasto 150 alimentação ontem\n\n` +
            `*📊 Consultas:*\n` +
            `• *saldo* - Ver saldo atual\n` +
-           `• *relatorio* - Resumo mensal\n` +
+           `• *hoje* - Resumo do dia\n` +
+           `• *semana* - Resumo da semana\n` +
+           `• *relatorio* ou *mês* - Resumo mensal\n` +
+           `• *ano* - Resumo anual\n` +
            `• *ajuda* - Este menu\n\n` +
            `*📁 Categorias Automáticas:*\n` +
            `O sistema identifica automaticamente a categoria mais adequada!\n` +
@@ -792,29 +820,12 @@ class WhatsAppAgent {
         category: categoryInfo.category_name
       });
       
-      const dateObj = new Date(transaction.date + 'T00:00:00');
-      const dateStr = dateObj.toLocaleDateString('pt-BR');
+      // Mensagem simplificada e direta conforme treinamento
+      const response = transaction.type === 'income'
+        ? `💰 Receita de R$ ${transaction.amount?.toFixed(2)} registrada com sucesso!`
+        : `💸 Despesa de R$ ${transaction.amount?.toFixed(2)} registrada com sucesso!`;
       
-      // Mensagem mais detalhada e ENFÁTICA com categoria
-      let response = `✅ *${typeText} registrada com sucesso!*\n\n` +
-                     `${emoji} R$ ${transaction.amount?.toFixed(2)}\n` +
-                     `📝 ${transaction.title}\n` +
-                     `📅 ${dateStr}`;
-      
-      // Adicionar informação sobre categoria se foi encontrada
-      if (categoryInfo.category_id) {
-        if (categoryInfo.suggested) {
-          response += `\n📁 Categoria sugerida: *${categoryInfo.category_name}*`;
-        } else if (categoryInfo.category_name !== 'Outros') {
-          response += `\n📁 Categoria: *${categoryInfo.category_name}*`;
-        } else {
-          response += `\n📁 Categoria: *${categoryInfo.category_name}*\n💡 O título "${transaction.title}" será mantido nos seus relatórios`;
-        }
-      }
-      
-      // Adicionar confirmação explícita de que foi salvo no banco
-      response += `\n\n💾 *Transação salva no sistema!*\n` +
-                 `Você pode conferir no aplicativo.`;
+      console.log('TRANSACTION_SAVED:', `R$ ${transaction.amount?.toFixed(2)}`);
       
       return response;
     } catch (error) {
@@ -855,12 +866,74 @@ class WhatsAppAgent {
     }
   }
 
-  static async generateReport(userId: string): Promise<string> {
+  static async generateAIReport(userId: string, period: 'day' | 'week' | 'month' | 'year'): Promise<string> {
     try {
-      // Buscar transações do mês atual
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      const startDate = startOfMonth.toISOString().split('T')[0];
+      console.log('REPORT_TYPE:', period);
+      
+      // Chamar edge function ai-reports para gerar relatório com IA
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      
+      const response = await fetch(`${supabaseUrl}/functions/v1/ai-reports`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          period,
+          user_id: userId
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`AI Reports API error: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.report) {
+        return result.report;
+      } else {
+        throw new Error('No report generated');
+      }
+    } catch (error) {
+      console.error('Error generating AI report:', error);
+      
+      // Fallback: gerar relatório simples sem IA
+      return await this.generateSimpleReport(userId, period);
+    }
+  }
+
+  static async generateSimpleReport(userId: string, period: 'day' | 'week' | 'month' | 'year'): Promise<string> {
+    try {
+      // Calcular data de início baseada no período
+      const now = new Date();
+      let startDate: string;
+      let periodLabel: string;
+      
+      switch (period) {
+        case 'day':
+          startDate = now.toISOString().split('T')[0];
+          periodLabel = 'Hoje';
+          break;
+        case 'week':
+          const weekStart = new Date(now);
+          weekStart.setDate(now.getDate() - 7);
+          startDate = weekStart.toISOString().split('T')[0];
+          periodLabel = 'Últimos 7 dias';
+          break;
+        case 'year':
+          const yearStart = new Date(now.getFullYear(), 0, 1);
+          startDate = yearStart.toISOString().split('T')[0];
+          periodLabel = now.getFullYear().toString();
+          break;
+        case 'month':
+        default:
+          const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+          startDate = monthStart.toISOString().split('T')[0];
+          periodLabel = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      }
 
       const { data: transactions, error } = await supabase
         .from('transactions')
@@ -872,7 +945,7 @@ class WhatsAppAgent {
       if (error) throw error;
 
       if (!transactions || transactions.length === 0) {
-        return `📊 *Relatório do Mês*\n\n❌ Nenhuma transação encontrada este mês.`;
+        return `📊 *Relatório - ${periodLabel}*\n\n❌ Nenhuma transação encontrada.`;
       }
 
       const income = transactions
@@ -885,7 +958,7 @@ class WhatsAppAgent {
 
       const balance = income - expenses;
 
-      let report = `📊 *Relatório - ${new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}*\n\n`;
+      let report = `📊 *Relatório - ${periodLabel}*\n\n`;
       report += `📈 Receitas: R$ ${income.toFixed(2)}\n`;
       report += `📉 Despesas: R$ ${expenses.toFixed(2)}\n`;
       report += `💰 Saldo: R$ ${balance.toFixed(2)}\n\n`;
@@ -901,7 +974,7 @@ class WhatsAppAgent {
 
       return report;
     } catch (error) {
-      console.error('Error generating report:', error);
+      console.error('Error generating simple report:', error);
       return `❌ *Erro ao gerar relatório.*\n\nTente novamente em alguns instantes.`;
     }
   }
