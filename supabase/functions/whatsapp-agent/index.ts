@@ -588,12 +588,23 @@ class WhatsAppAgent {
     }
 
     // Comandos de saldo (MELHORADO: processar antes do parsing)
-    if (['saldo', 'balance', 'total'].includes(messageText)) {
-      console.log('🔵 COMMAND DETECTED: saldo');
-      return {
-        response: await this.getBalance(session.user_id!),
-        sessionData
-      };
+    if (['saldo', 'balance', 'total', 'extrato', 'conta'].includes(messageText)) {
+      console.log('🔵 COMMAND DETECTED: saldo (variant:', messageText, ')');
+      
+      try {
+        const balanceResponse = await this.getBalance(session.user_id!);
+        return {
+          response: balanceResponse,
+          sessionData
+        };
+      } catch (error) {
+        console.error('❌ Failed to get balance, suggesting report:', error);
+        return {
+          response: `Não consegui consultar o saldo agora.\n\n` +
+                   `Tente: "relatorio dia" para ver suas transações de hoje.`,
+          sessionData
+        };
+      }
     }
 
     // Detectar perguntas sobre cadastro/confirmação
@@ -969,14 +980,35 @@ class WhatsAppAgent {
   }
 
   static async getBalance(userId: string): Promise<string> {
+    console.log('🔵 getBalance() STARTED for user:', userId.substring(0, 8) + '***');
+    
     try {
-      const { data: transactions, error } = await supabase
+      // Query com timeout de 5 segundos
+      const queryPromise = supabase
         .from('transactions')
         .select('amount, type')
         .eq('user_id', userId);
 
-      if (error) throw error;
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Query timeout')), 5000)
+      );
 
+      const { data: transactions, error } = await Promise.race([
+        queryPromise,
+        timeoutPromise
+      ]) as any;
+
+      console.log('🔵 Query completed:', { 
+        transactionCount: transactions?.length || 0,
+        hasError: !!error 
+      });
+
+      if (error) {
+        console.error('❌ Database error:', error);
+        throw error;
+      }
+
+      // Calcular saldo
       const income = transactions
         ?.filter(t => t.type === 'income')
         .reduce((sum, t) => sum + Number(t.amount), 0) || 0;
@@ -988,13 +1020,20 @@ class WhatsAppAgent {
       const balance = income - expenses;
       const balanceEmoji = balance >= 0 ? '💚' : '🔴';
 
-      return `💰 *Seu Saldo Atual*\n\n` +
+      const response = `💰 *Saldo Atual*\n\n` +
              `📈 Receitas: R$ ${income.toFixed(2)}\n` +
              `📉 Despesas: R$ ${expenses.toFixed(2)}\n` +
-             `${balanceEmoji} *Saldo: R$ ${balance.toFixed(2)}*`;
+             `${balanceEmoji} Saldo: R$ ${balance.toFixed(2)}`;
+
+      console.log('✅ getBalance() SUCCESS:', { 
+        responseLength: response.length,
+        balance: balance.toFixed(2)
+      });
+
+      return response;
     } catch (error) {
-      console.error('Error getting balance:', error);
-      return `❌ *Erro ao consultar saldo.*\n\nTente novamente em alguns instantes.`;
+      console.error('❌ getBalance() ERROR:', error.message);
+      return `Saldo temporariamente indisponível. Tente: "relatorio dia"`;
     }
   }
 
@@ -1347,7 +1386,9 @@ serve(async (req) => {
     const responseBody = {
       success: true,
       response: result.response,
-      stop: true // CRÍTICO: Instrui GPT Maker a usar APENAS esta resposta
+      stop: true, // CRÍTICO: Instrui GPT Maker a usar APENAS esta resposta
+      force_response: true, // Força GPT Maker a usar esta resposta
+      bypass_ai: true // Não processar com IA
     };
     
     console.log('✅ Response:', { 
