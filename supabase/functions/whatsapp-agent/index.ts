@@ -1211,10 +1211,19 @@ serve(async (req) => {
       }
     });
 
-    return new Response(JSON.stringify({
+    // Resposta formatada para GPT Maker
+    const responseBody = {
       success: true,
-      response: result.response
-    }), {
+      response: result.response,
+      stop: true // CRÍTICO: Instrui GPT Maker a usar APENAS esta resposta
+    };
+    
+    console.log('✅ Response:', { 
+      length: result.response?.length,
+      stop: true 
+    });
+    
+    return new Response(JSON.stringify(responseBody), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
