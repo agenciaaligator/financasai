@@ -102,11 +102,17 @@ async function verifyGptMakerAuth(req: Request, body: any): Promise<boolean> {
   try {
     const authHeader = req.headers.get('authorization') || '';
     const tokenHeader = req.headers.get('x-gptmaker-token') || '';
+    const bodyToken = body?.token;
+    
     const provided = authHeader.startsWith('Bearer ')
       ? authHeader.slice(7)
-      : tokenHeader;
+      : (tokenHeader || bodyToken);
 
-    if (!gptMakerToken || !provided || provided !== gptMakerToken) {
+    if (!gptMakerToken) {
+      return false; // Token not configured
+    }
+    
+    if (!provided || provided !== gptMakerToken) {
       return false;
     }
 
@@ -324,9 +330,16 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (isPotentialGptMaker) {
       const ok = await verifyGptMakerAuth(req, body);
-      if (!ok) {
-        console.warn('⚠️ GPT Maker auth failed or not configured — allowing temporarily to capture payload');
-        await logSecurityEvent('GPTMAKER_AUTH_BYPASS', { ip: clientIP, timestamp: new Date().toISOString() });
+      if (!ok && gptMakerToken) {
+        console.warn('⚠️ GPT Maker auth failed');
+        await logSecurityEvent('GPTMAKER_AUTH_FAILED', { ip: clientIP, timestamp: new Date().toISOString() });
+        return new Response(JSON.stringify({ 
+          success: false, 
+          message: 'Unauthorized - Invalid GPT Maker token' 
+        }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
       }
     } else {
       const signature = req.headers.get('x-hub-signature-256') || '';
@@ -400,28 +413,92 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Handle GPT Maker routing before calling our agent
+    // Handle GPT Maker routing (no WABA calls)
     if (isGPTMakerFormat) {
-      if (isGptAssistant && from && text) {
-        if (whatsappAccessToken && whatsappPhoneNumberId) {
-          try {
-            let phoneForApi = String(from).replace(/[^\d+]/g, '');
-            if (/^\+?\d{10,15}$/.test(phoneForApi)) {
-              console.log('Forwarding GPT Maker assistant message to WhatsApp Business API...');
-              await fetch(`https://graph.facebook.com/v18.0/${whatsappPhoneNumberId}/messages`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${whatsappAccessToken}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messaging_product: 'whatsapp', to: phoneForApi, type: 'text', text: { body: text } })
-              });
-            } else {
-              console.log('Skipping send due to invalid phone for API');
-            }
-          } catch (err) { console.error('Error forwarding assistant message:', err); }
-        }
-        return new Response(JSON.stringify({ success: true, forwarded: true, via: 'gpt_maker_assistant' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      } else {
-        // Ignore user messages from GPT Maker to avoid duplicate replies/auth prompts
-        return new Response(JSON.stringify({ success: true, skipped: true, reason: 'gpt_maker_user_noop' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      // Assistant/tool messages from GPT Maker: just acknowledge
+      if (isGptAssistant) {
+        console.log('📥 GPT Maker assistant/tool message acknowledged (no action needed)');
+        return new Response(JSON.stringify({ 
+          success: true, 
+          skipped: true, 
+          reason: 'gpt_maker_assistant' 
+        }), { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
+      }
+      
+      // User messages from GPT Maker: process via whatsapp-agent
+      if (!from || !text) {
+        console.error('❌ GPT Maker user message missing contactPhone or text');
+        return new Response(JSON.stringify({ 
+          success: false, 
+          message: 'Missing contactPhone or message text' 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      // Normalize phone number
+      const cleanPhone = String(from).replace(/[^\d+]/g, '');
+      if (!cleanPhone || !/^\+?\d{10,15}$/.test(cleanPhone)) {
+        console.error('❌ Invalid phone number format from GPT Maker:', from);
+        return new Response(JSON.stringify({ 
+          success: false, 
+          message: 'Invalid phone number format' 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      console.log('📨 GPT Maker user message - calling whatsapp-agent', {
+        cleanPhone: cleanPhone.substring(0, 8) + '***',
+        hasText: !!text
+      });
+      
+      try {
+        const agentResponse = await fetch(`${supabaseUrl}/functions/v1/whatsapp-agent`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            phone_number: cleanPhone,
+            message: {
+              from: cleanPhone,
+              body: text,
+              id: messageId || 'unknown',
+              type: 'text'
+            },
+            action: 'process_message'
+          })
+        });
+        
+        const agentResult = await agentResponse.json();
+        console.log('✅ Agent response received for GPT Maker');
+        
+        // Return agent response directly to GPT Maker (no WABA)
+        return new Response(JSON.stringify({
+          success: agentResult.success || true,
+          message: agentResult.response || agentResult.message,
+          via: 'gpt_maker_webhook'
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (agentError) {
+        console.error('❌ Error calling whatsapp-agent for GPT Maker:', agentError);
+        return new Response(JSON.stringify({
+          success: false,
+          message: 'Erro ao processar mensagem',
+          error: agentError.message
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
       }
     }
 

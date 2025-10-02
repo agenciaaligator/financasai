@@ -895,9 +895,16 @@ serve(async (req) => {
       throw new Error('Phone number is required');
     }
 
-    // Security: Phone number validation - ignorar placeholders do GPT Maker
-    const cleanPhone = phone_number.replace(/[\s\-()]/g, '');
-    console.log('Phone validation:', { original: phone_number, cleaned: cleanPhone });
+    // Security: Phone number normalization - remove all except digits and +
+    let cleanPhone = phone_number.replace(/[\s\-()]/g, '');
+    // Ensure starts with + if it has country code
+    if (/^\d{11,15}$/.test(cleanPhone)) {
+      cleanPhone = '+' + cleanPhone; // Add + if missing
+    }
+    console.log('📞 Phone normalized:', { 
+      original: phone_number.substring(0, 8) + '***', 
+      cleaned: cleanPhone.substring(0, 8) + '***' 
+    });
     
     // Detectar placeholders (ex: {contact.phone}) e ignorar silenciosamente
     if (cleanPhone.includes('{') || cleanPhone.includes('}') || !/^\+?\d{10,15}$/.test(cleanPhone)) {
@@ -915,28 +922,30 @@ serve(async (req) => {
     await supabase.rpc('cleanup_expired_whatsapp_data');
 
     // SEGUNDO: Verificar se o usuário está cadastrado (tem perfil com este telefone)
-    // CRITICAL: Esta verificação DEVE acontecer ANTES de qualquer processamento
+    // CRITICAL: Use cleanPhone normalizado para comparação
     const { data: profile } = await supabase
       .from('profiles')
-      .select('user_id')
-      .eq('phone_number', phone_number)
+      .select('user_id, phone_number')
+      .eq('phone_number', cleanPhone)
       .maybeSingle();
 
     // Se não há perfil cadastrado, retornar IMEDIATAMENTE
     if (!profile) {
-      console.log('User not registered - redirecting to signup');
+      console.log('❌ User not registered - redirecting to signup');
       return new Response(JSON.stringify({
         success: true,
         response: `👋 *Bem-vindo ao Assistente Financeiro!*\n\n` +
                  `*Passo 1:* Cadastre-se gratuitamente\n` +
                  `🔗 https://financasai.lovable.app\n\n` +
-                 `*Passo 2:* No cadastro, use este número do WhatsApp: ${phone_number}\n\n` +
-                 `*Passo 3:* Depois de cadastrado, volte aqui e digite: *codigo*\n\n` +
+                 `*Passo 2:* No cadastro, use este número do WhatsApp: ${cleanPhone}\n\n` +
+                 `*Passo 3:* Depois de cadastrado, volte aqui e comece a usar!\n\n` +
                  `É rápido e fácil! 🚀`
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
+    
+    console.log('✅ Profile found for phone:', cleanPhone.substring(0, 8) + '***');
 
     // SECURITY: Log without any phone number information
     console.log('WhatsApp Agent called:', { 
@@ -946,10 +955,17 @@ serve(async (req) => {
       timestamp: new Date().toISOString()
     });
 
-    // TERCEIRO: Buscar sessão existente
-    let session = await SessionManager.getSession(phone_number);
+    // TERCEIRO: Buscar sessão existente (usando cleanPhone)
+    let session = await SessionManager.getSession(cleanPhone);
 
-    // Se não há sessão ou não está autenticada
+    // CRITICAL: Se profile existe mas não há sessão autenticada, criar automaticamente
+    if (!session || !session.user_id) {
+      console.log('⚡ Profile exists but no authenticated session - creating automatically');
+      session = await SessionManager.createSession(cleanPhone, profile.user_id);
+      console.log('✅ Session auto-created with user_id:', profile.user_id.substring(0, 8) + '***');
+    }
+
+    // Se ainda não há sessão ou não está autenticada (não deveria acontecer)
     if (!session || !session.user_id) {
       // Normalizar mensagem removendo acentos e convertendo para minúsculas
       const normalizedMessage = message?.body
@@ -960,13 +976,13 @@ serve(async (req) => {
       // 1. PRIMEIRO: Verificar se é código de confirmação (case-insensitive e sem acentos)
       const codeMatch = normalizedMessage.match(/codigo\s+(\d{6})/);
       if (codeMatch) {
-        console.log(`Auth code VALIDATION attempt for ${phone_number.substring(0, 5)}***`);
-        const userId = await AuthManager.validateAuthCode(phone_number, codeMatch[1]);
+        console.log(`Auth code VALIDATION attempt for ${cleanPhone.substring(0, 5)}***`);
+        const userId = await AuthManager.validateAuthCode(cleanPhone, codeMatch[1]);
         
         if (userId) {
           // Atualizar sessão com user_id
-          session = await SessionManager.createSession(phone_number, userId);
-          console.log(`Auth code VALIDATED successfully for ${phone_number.substring(0, 5)}***`);
+          session = await SessionManager.createSession(cleanPhone, userId);
+          console.log(`✅ Auth code VALIDATED successfully for ${cleanPhone.substring(0, 5)}***`);
           
           // Mensagem de boas-vindas completa com lista de comandos
           return new Response(JSON.stringify({
@@ -988,7 +1004,7 @@ serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         } else {
-          console.log(`Auth code VALIDATION failed for ${phone_number.substring(0, 5)}***`);
+          console.log(`❌ Auth code VALIDATION failed for ${cleanPhone.substring(0, 5)}***`);
           return new Response(JSON.stringify({
             success: true,
             response: `❌ *Código inválido ou expirado*\n\n` +
@@ -1002,12 +1018,12 @@ serve(async (req) => {
       // 2. SEGUNDO: Gerar novo código apenas se mensagem for exatamente "codigo" (sem números)
       if (action === 'auth' || normalizedMessage.trim() === 'codigo') {
         try {
-          console.log(`Auth code GENERATION requested for ${phone_number.substring(0, 5)}***`);
-          const code = await AuthManager.generateAuthCode(phone_number);
+          console.log(`📩 Auth code GENERATION requested for ${cleanPhone.substring(0, 5)}***`);
+          const code = await AuthManager.generateAuthCode(cleanPhone);
           
           // Criar sessão temporária
           if (!session) {
-            session = await SessionManager.createSession(phone_number);
+            session = await SessionManager.createSession(cleanPhone);
           }
 
           return new Response(JSON.stringify({
