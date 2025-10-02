@@ -289,6 +289,30 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Handle GET verification from Meta BEFORE any body parsing
+  if (req.method === 'GET') {
+    const url = new URL(req.url);
+    const mode = url.searchParams.get('hub.mode');
+    const token = url.searchParams.get('hub.verify_token');
+    const challenge = url.searchParams.get('hub.challenge');
+
+    console.log('🔵 GET Verification:', { mode, token: token?.substring(0, 10) + '***', challenge });
+
+    if (mode === 'subscribe' && token === whatsappVerifyToken) {
+      console.log('✅ Webhook verified successfully');
+      return new Response(challenge, { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'text/plain' }
+      });
+    } else {
+      console.error('❌ Verification failed:', { mode, tokenMatch: token === whatsappVerifyToken });
+      return new Response('Forbidden', { 
+        status: 403,
+        headers: corsHeaders
+      });
+    }
+  }
+
   try {
     // Rate limiting
     const clientIP = req.headers.get('x-forwarded-for') || 'unknown';
@@ -305,7 +329,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Get raw body for signature verification
+    // Get raw body for signature verification (POST only)
     const rawBody = await req.text();
     let body;
     
