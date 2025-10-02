@@ -321,27 +321,17 @@ const handler = async (req: Request): Promise<Response> => {
       body?.message || body?.contactPhone || body?.channelId || body?.from || body?.text || body?.role
     );
     console.log('🔎 Detectando origem. Chaves no body:', Object.keys(body || {}));
+
     if (isPotentialGptMaker) {
       const ok = await verifyGptMakerAuth(req, body);
       if (!ok) {
-        console.log('⚠️ GPT Maker auth not configured or failed, but allowing for debug');
-        // Temporarily allow without auth for debugging
-        // await logSecurityEvent('INVALID_GPTMAKER_AUTH', { 
-        //   ip: clientIP, 
-        //   timestamp: new Date().toISOString()
-        // });
-        // return new Response(JSON.stringify({ 
-        //   success: false, 
-        //   message: 'Unauthorized' 
-        // }), {
-        //   status: 401,
-        //   headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        // });
+        console.warn('⚠️ GPT Maker auth failed or not configured — allowing temporarily to capture payload');
+        await logSecurityEvent('GPTMAKER_AUTH_BYPASS', { ip: clientIP, timestamp: new Date().toISOString() });
       }
-    }
     } else {
-      const signature = req.headers.get('x-hub-signature-256');
-      if (!(await verifyWhatsAppSignature(rawBody, signature || ''))) {
+      const signature = req.headers.get('x-hub-signature-256') || '';
+      const valid = await verifyWhatsAppSignature(rawBody, signature);
+      if (!valid) {
         await logSecurityEvent('INVALID_SIGNATURE', { 
           ip: clientIP, 
           timestamp: new Date().toISOString()
