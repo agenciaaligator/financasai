@@ -572,18 +572,50 @@ class WhatsAppAgent {
     const saldoRegex = /^(saldo|meu saldo|ver saldo|qual(?: o)? saldo|balance|total|conta)$/;
     if (saldoRegex.test(normalizedText)) {
       console.log('🔵 COMMAND DETECTED: saldo (variant:', messageText, ')');
+      console.log('🔵 Session data for balance:', {
+        hasUserId: !!session.user_id,
+        userIdPrefix: session.user_id?.substring(0, 8) + '***',
+        sessionId: session.id?.substring(0, 8) + '***'
+      });
+      
+      if (!session.user_id) {
+        console.error('❌ CRITICAL: session.user_id is missing for saldo command');
+        return {
+          response: `❌ Erro de autenticação.\n\nDigite "codigo" para autenticar novamente.`,
+          sessionData
+        };
+      }
       
       try {
-        const balanceResponse = await this.getBalance(session.user_id!);
+        console.log('🔵 Calling getBalance() with userId:', session.user_id.substring(0, 8) + '***');
+        const balanceResponse = await this.getBalance(session.user_id);
+        console.log('🔵 Balance response received, length:', balanceResponse.length);
         return {
           response: balanceResponse,
           sessionData
         };
       } catch (error) {
-        console.error('❌ Failed to get balance, suggesting report:', error);
+        console.error('❌ getBalance() threw error:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack?.substring(0, 300)
+        });
+        
+        // Retornar mensagem de erro mais específica baseada no tipo de erro
+        let errorMessage = `❌ Não consegui consultar o saldo.`;
+        
+        if (error.message?.includes('TIMEOUT')) {
+          errorMessage += `\n\n⏱️ A consulta demorou muito. Tente novamente.`;
+        } else if (error.message?.includes('DB_ERROR')) {
+          errorMessage += `\n\n🔧 Erro no banco de dados. Tente: "relatorio dia"`;
+        } else if (error.message?.includes('USER_ID_MISSING')) {
+          errorMessage += `\n\n🔐 Erro de autenticação. Digite "codigo"`;
+        } else {
+          errorMessage += `\n\n💡 Tente: "relatorio dia" para ver transações.`;
+        }
+        
         return {
-          response: `Não consegui consultar o saldo agora.\n\n` +
-                   `Tente: "relatorio dia" para ver suas transações de hoje.`,
+          response: errorMessage,
           sessionData
         };
       }
@@ -1002,17 +1034,30 @@ class WhatsAppAgent {
   }
 
   static async getBalance(userId: string): Promise<string> {
-    console.log('🔵 getBalance() STARTED for user:', userId.substring(0, 8) + '***');
+    console.log('🔵 getBalance() STARTED for user:', userId?.substring(0, 8) + '***');
+    console.log('🔵 userId validation:', { 
+      type: typeof userId, 
+      isNull: userId === null, 
+      isUndefined: userId === undefined,
+      value: userId?.substring(0, 10) + '***'
+    });
+    
+    if (!userId) {
+      console.error('❌ getBalance() FATAL: userId is null or undefined');
+      throw new Error('USER_ID_MISSING');
+    }
     
     try {
-      // Query com timeout de 5 segundos
+      console.log('🔵 Starting Supabase query...');
+      
+      // Query com timeout de 10 segundos (aumentado de 5)
       const queryPromise = supabase
         .from('transactions')
         .select('amount, type')
         .eq('user_id', userId);
 
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Query timeout')), 5000)
+        setTimeout(() => reject(new Error('TIMEOUT: Query exceeded 10 seconds')), 10000)
       );
 
       const { data: transactions, error } = await Promise.race([
@@ -1022,22 +1067,31 @@ class WhatsAppAgent {
 
       console.log('🔵 Query completed:', { 
         transactionCount: transactions?.length || 0,
-        hasError: !!error 
+        hasError: !!error,
+        errorCode: error?.code,
+        errorMessage: error?.message
       });
 
       if (error) {
-        console.error('❌ Database error:', error);
-        throw error;
+        console.error('❌ Database error:', JSON.stringify(error, null, 2));
+        throw new Error(`DB_ERROR: ${error.message || error.code || 'Unknown'}`);
+      }
+
+      if (!transactions) {
+        console.error('❌ Transactions is null/undefined after query');
+        throw new Error('NO_DATA_RETURNED');
       }
 
       // Calcular saldo
+      console.log('🔵 Calculating balance from', transactions.length, 'transactions');
+      
       const income = transactions
-        ?.filter(t => t.type === 'income')
-        .reduce((sum, t) => sum + Number(t.amount), 0) || 0;
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + Number(t.amount), 0);
 
       const expenses = transactions
-        ?.filter(t => t.type === 'expense')
-        .reduce((sum, t) => sum + Number(t.amount), 0) || 0;
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + Number(t.amount), 0);
 
       const balance = income - expenses;
       const balanceEmoji = balance >= 0 ? '💚' : '🔴';
@@ -1049,13 +1103,23 @@ class WhatsAppAgent {
 
       console.log('✅ getBalance() SUCCESS:', { 
         responseLength: response.length,
-        balance: balance.toFixed(2)
+        balance: balance.toFixed(2),
+        income: income.toFixed(2),
+        expenses: expenses.toFixed(2),
+        transactionCount: transactions.length
       });
 
       return response;
     } catch (error) {
-      console.error('❌ getBalance() ERROR:', error.message);
-      return `Saldo temporariamente indisponível. Tente: "relatorio dia"`;
+      console.error('❌ getBalance() CRITICAL ERROR:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack?.substring(0, 200),
+        userId: userId?.substring(0, 8) + '***'
+      });
+      
+      // Re-throw para que o caller possa capturar e logar
+      throw error;
     }
   }
 

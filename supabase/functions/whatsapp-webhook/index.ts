@@ -477,7 +477,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
       
       try {
-        console.log('AGENT_CALLED');
+        console.log('🔵 Calling whatsapp-agent...');
         const agentResponse = await fetch(`${supabaseUrl}/functions/v1/whatsapp-agent`, {
           method: 'POST',
           headers: {
@@ -496,27 +496,53 @@ const handler = async (req: Request): Promise<Response> => {
           })
         });
         
+        if (!agentResponse.ok) {
+          console.error('❌ Agent HTTP error:', agentResponse.status, agentResponse.statusText);
+          throw new Error(`Agent returned ${agentResponse.status}: ${agentResponse.statusText}`);
+        }
+        
         const agentResult = await agentResponse.json();
-        console.log('AGENT_RESPONSE');
-        console.log('AUTH_STATUS:', agentResult.authenticated || false);
+        console.log('✅ Agent response received:', {
+          success: agentResult.success,
+          hasResponse: !!agentResult.response,
+          responseLength: agentResult.response?.length,
+          hasError: !!agentResult.error
+        });
+        
+        // Check if agent returned an error
+        if (!agentResult.success && agentResult.error) {
+          console.error('❌ Agent processing error:', agentResult.error);
+          throw new Error(agentResult.error);
+        }
+        
+        // Ensure we have a response
+        const responseText = agentResult.response || agentResult.message || 'Sem resposta do agente';
         
         // Return agent response directly to GPT Maker (no WABA)
-        // CRITICAL: Add role: "assistant" and stop: true to force GPT Maker to use only this response
+        // CRITICAL: Use 'message' field for GPT Maker compatibility
         return new Response(JSON.stringify({
-          success: agentResult.success || true,
-          message: agentResult.response || agentResult.message,
+          success: true,
+          message: responseText,
           role: 'assistant',
           stop: true,
+          bypass_ai: true,
           via: 'gpt_maker_webhook'
         }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       } catch (agentError) {
-        console.error('❌ Error calling whatsapp-agent for GPT Maker:', agentError);
+        console.error('❌ Error calling whatsapp-agent for GPT Maker:', {
+          name: agentError.name,
+          message: agentError.message,
+          stack: agentError.stack?.substring(0, 200)
+        });
+        
         return new Response(JSON.stringify({
           success: false,
-          message: 'Erro ao processar mensagem',
+          message: '❌ Erro ao processar sua mensagem. Tente novamente em alguns instantes.',
+          role: 'assistant',
+          stop: true,
           error: agentError.message
         }), {
           status: 500,
