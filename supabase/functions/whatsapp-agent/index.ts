@@ -987,7 +987,14 @@ serve(async (req) => {
   }
 
   try {
-    const { phone_number, message, action } = await req.json();
+    const body = await req.json();
+    const { phone_number, message, action } = body;
+    
+    console.log('📥 Request body:', { 
+      hasPhoneNumber: !!phone_number, 
+      hasMessage: !!message,
+      bodyKeys: Object.keys(body)
+    });
     
     // Security: Input validation
     if (!phone_number || typeof phone_number !== 'string') {
@@ -1072,8 +1079,9 @@ serve(async (req) => {
 
     // Se ainda não há sessão ou não está autenticada (não deveria acontecer)
     if (!session || !session.user_id) {
-      // Normalizar mensagem removendo acentos e convertendo para minúsculas
-      const normalizedMessage = message?.body
+      // Normalizar mensagem - suporta tanto string direta quanto objeto WhatsApp
+      const messageText = typeof message === 'string' ? message : (message?.body || '');
+      const normalizedMessage = messageText
         ?.normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .toLowerCase() || '';
@@ -1178,13 +1186,27 @@ serve(async (req) => {
     }
 
     // Usuário autenticado - processar mensagem
-    const result = await WhatsAppAgent.processMessage(session, message);
+    // Suportar tanto formato GPT Maker (string) quanto WhatsApp oficial (objeto)
+    const messageText = typeof message === 'string' ? message : (message?.body || '');
+    const whatsappMessage: WhatsAppMessage = {
+      from: cleanPhone,
+      body: messageText,
+      type: message?.type || 'text',
+      id: message?.id
+    };
+    
+    console.log('📨 Processing message:', { 
+      messageText: messageText.substring(0, 30) + '...', 
+      isAuthenticated: !!session.user_id 
+    });
+    
+    const result = await WhatsAppAgent.processMessage(session, whatsappMessage);
 
     // Atualizar sessão com novo estado
     await SessionManager.updateSession(session.id, {
       session_data: {
         ...result.sessionData,
-        last_command: message?.body,
+        last_command: messageText,
         last_processed: new Date().toISOString()
       }
     });
