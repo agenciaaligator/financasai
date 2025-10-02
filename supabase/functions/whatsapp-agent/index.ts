@@ -496,12 +496,27 @@ class CategoryMatcher {
 }
 
 class WhatsAppAgent {
+  /**
+   * Normaliza comandos removendo acentos, pontuação e espaços extras
+   */
+  static normalizeCommand(text: string): string {
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+      .replace(/[?!.,;:]/g, '') // Remove pontuação
+      .trim()
+      .replace(/\s+/g, ' '); // Remove espaços extras
+  }
+
   static async processMessage(session: Session, message: WhatsAppMessage): Promise<{ response: string, sessionData: SessionData }> {
     const messageText = message.body?.toLowerCase().trim() || '';
+    const normalizedText = this.normalizeCommand(messageText);
     const sessionData = session.session_data || {};
     
     console.log('📨 Processing message:', { 
-      messageText: messageText.substring(0, 30) + '...', 
+      original: messageText.substring(0, 30) + '...', 
+      normalized: normalizedText.substring(0, 30) + '...',
       isAuthenticated: !!session.user_id 
     });
     console.log('Processing message with state:', {
@@ -536,59 +551,26 @@ class WhatsAppAgent {
     }
     
     // PRIORIDADE 2: Comandos que sempre funcionam
-    console.log('🔵 Checking if message is a command:', messageText);
+    console.log('🔵 Checking normalized command:', normalizedText);
     
-    if (['ajuda', 'help', 'menu', 'comandos'].includes(messageText)) {
+    if (['ajuda', 'help', 'menu', 'comandos'].includes(normalizedText)) {
       return {
         response: this.getHelpMenu(),
         sessionData: { ...sessionData, conversation_state: 'idle', pending_transaction: undefined }
       };
     }
 
-    if (['cancelar', 'cancel', 'sair'].includes(messageText)) {
+    if (['cancelar', 'cancel', 'sair'].includes(normalizedText)) {
       return {
         response: '❌ Operação cancelada.',
         sessionData: { ...sessionData, conversation_state: 'idle', pending_transaction: undefined }
       };
     }
 
-    // Estados de conversa serão tratados mais adiante, após tentarmos detectar uma nova transação
-
-    // Comandos de relatório com IA
-    if (['hoje'].includes(messageText)) {
-      console.log('COMMAND_DETECTED: hoje');
-      return {
-        response: await this.generateAIReport(session.user_id!, 'day'),
-        sessionData
-      };
-    }
-
-    if (['semana', 'resumo semana', 'semanal'].includes(messageText)) {
-      console.log('COMMAND_DETECTED: semana');
-      return {
-        response: await this.generateAIReport(session.user_id!, 'week'),
-        sessionData
-      };
-    }
-
-    if (['relatorio', 'relatório', 'resumo', 'extrato', 'mes', 'mês'].includes(messageText)) {
-      console.log('COMMAND_DETECTED: relatorio/mes');
-      return {
-        response: await this.generateAIReport(session.user_id!, 'month'),
-        sessionData
-      };
-    }
-
-    if (['ano', 'anual'].includes(messageText)) {
-      console.log('COMMAND_DETECTED: ano');
-      return {
-        response: await this.generateAIReport(session.user_id!, 'year'),
-        sessionData
-      };
-    }
-
-    // Comandos de saldo (MELHORADO: processar antes do parsing)
-    if (['saldo', 'balance', 'total', 'extrato', 'conta'].includes(messageText)) {
+    // PRIORIDADE 3: Comandos de SALDO (verificar ANTES de relatórios)
+    // Aceita: saldo, meu saldo, ver saldo, qual saldo, conta
+    const saldoRegex = /^(saldo|meu saldo|ver saldo|qual(?: o)? saldo|balance|total|conta)$/;
+    if (saldoRegex.test(normalizedText)) {
       console.log('🔵 COMMAND DETECTED: saldo (variant:', messageText, ')');
       
       try {
@@ -605,6 +587,43 @@ class WhatsAppAgent {
           sessionData
         };
       }
+    }
+
+    // PRIORIDADE 4: Comandos de RELATÓRIO
+    // "hoje" ou "relatorio dia" -> relatório do dia
+    if (normalizedText === 'hoje' || normalizedText === 'relatorio dia' || normalizedText === 'extrato dia') {
+      console.log('🔵 COMMAND DETECTED: relatorio dia');
+      return {
+        response: await this.generateAIReport(session.user_id!, 'day'),
+        sessionData
+      };
+    }
+
+    // "semana" ou "relatorio semana" -> relatório da semana
+    if (['semana', 'semanal', 'relatorio semana', 'extrato semana', 'resumo semana'].includes(normalizedText)) {
+      console.log('🔵 COMMAND DETECTED: relatorio semana');
+      return {
+        response: await this.generateAIReport(session.user_id!, 'week'),
+        sessionData
+      };
+    }
+
+    // "mes", "mês", "relatorio mes", "relatorio" ou "extrato" sozinho -> relatório mensal
+    if (['mes', 'mensal', 'relatorio mes', 'extrato mes', 'relatorio', 'extrato', 'resumo'].includes(normalizedText)) {
+      console.log('🔵 COMMAND DETECTED: relatorio mensal (variant:', messageText, ')');
+      return {
+        response: await this.generateAIReport(session.user_id!, 'month'),
+        sessionData
+      };
+    }
+
+    // "ano" ou "relatorio ano" -> relatório anual
+    if (['ano', 'anual', 'relatorio ano', 'extrato ano'].includes(normalizedText)) {
+      console.log('🔵 COMMAND DETECTED: relatorio anual');
+      return {
+        response: await this.generateAIReport(session.user_id!, 'year'),
+        sessionData
+      };
     }
 
     // Detectar perguntas sobre cadastro/confirmação
@@ -651,8 +670,8 @@ class WhatsAppAgent {
     }
 
     // Detectar cumprimentos
-    const greetings = ['oi', 'olá', 'ola', 'bom dia', 'boa tarde', 'boa noite', 'hey', 'alo', 'alô'];
-    if (greetings.some(greeting => messageText === greeting || messageText.startsWith(greeting + ' '))) {
+    const greetings = ['oi', 'ola', 'bom dia', 'boa tarde', 'boa noite', 'hey', 'alo'];
+    if (greetings.some(greeting => normalizedText === greeting || normalizedText.startsWith(greeting + ' '))) {
       console.log('Greeting detected');
       
       // Buscar nome do usuário
@@ -872,20 +891,23 @@ class WhatsAppAgent {
            `• +100 freelance\n` +
            `• -30 lanche hoje\n` +
            `• gasto 150 alimentação ontem\n\n` +
-           `*📊 Consultas:*\n` +
-           `• *saldo* - Ver saldo atual\n` +
-           `• *hoje* - Resumo do dia\n` +
-           `• *semana* - Resumo da semana\n` +
-           `• *relatorio* ou *mês* - Resumo mensal\n` +
-           `• *ano* - Resumo anual\n` +
-           `• *ajuda* - Este menu\n\n` +
+           `*💳 Ver Saldo:*\n` +
+           `• *saldo* ou *meu saldo*\n` +
+           `• *qual o saldo?*\n` +
+           `• *conta*\n\n` +
+           `*📊 Relatórios:*\n` +
+           `• *hoje* ou *relatorio dia*\n` +
+           `• *semana* ou *relatorio semana*\n` +
+           `• *mes* ou *relatorio mes*\n` +
+           `• *extrato* ou *relatorio* (mensal)\n` +
+           `• *ano* ou *relatorio ano*\n\n` +
            `*📁 Categorias Automáticas:*\n` +
            `O sistema identifica automaticamente a categoria mais adequada!\n` +
            `Exemplo: "lanche" → categoria "Alimentação"\n\n` +
            `💡 *Dicas:*\n` +
            `• Use valores com pontos ou vírgulas (ex: 50.30 ou 50,30)\n` +
            `• Pode adicionar a data: "hoje", "ontem" ou "28/09"\n` +
-           `• Seus gastos mantêm o nome original para relatórios precisos`;
+           `• Não se preocupe com acentos ou pontuação!`;
   }
 
   static async saveTransaction(userId: string, transaction: Partial<Transaction>): Promise<string> {
