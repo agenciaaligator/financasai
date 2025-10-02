@@ -317,7 +317,10 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // CRITICAL: Verify auth (GPT Maker) or WhatsApp signature
-    const isPotentialGptMaker = !!(body?.message || body?.contactPhone || body?.channelId);
+    const isPotentialGptMaker = Boolean(
+      body?.message || body?.contactPhone || body?.channelId || body?.from || body?.text || body?.role
+    );
+    console.log('🔎 Detectando origem. Chaves no body:', Object.keys(body || {}));
     if (isPotentialGptMaker) {
       const ok = await verifyGptMakerAuth(req, body);
       if (!ok) {
@@ -335,6 +338,7 @@ const handler = async (req: Request): Promise<Response> => {
         //   headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         // });
       }
+    }
     } else {
       const signature = req.headers.get('x-hub-signature-256');
       if (!(await verifyWhatsAppSignature(rawBody, signature || ''))) {
@@ -354,7 +358,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('WhatsApp webhook received (verified)');
 
-    const isGPTMakerFormat = body.message || body.contactPhone;
+    const isGPTMakerFormat = Boolean(body.message || body.contactPhone || body.from || body.text || body.role);
     console.log('🔵 Formato detectado:', isGPTMakerFormat ? 'GPT Maker' : 'WhatsApp Official');
     console.log('🔵 Body recebido:', JSON.stringify(body, null, 2));
     
@@ -363,9 +367,10 @@ const handler = async (req: Request): Promise<Response> => {
     let messageId: string | undefined;
 
     if (isGPTMakerFormat) {
-      console.log('🔵 GPT Maker - role:', body.role, 'message:', body.message);
+      console.log('🔵 GPT Maker - role:', body.role, 'message:', body.message || body.text);
       
-      if (body.role === 'assistant' || body.role === 'tool' || !body.message || body.message.trim() === '') {
+      const incomingText = (body.message ?? body.text ?? '').trim();
+      if (body.role === 'assistant' || body.role === 'tool' || !incomingText) {
         console.log('⚠️ Ignorando mensagem assistant/tool do GPT Maker');
         return new Response(JSON.stringify({ 
           success: true, 
@@ -377,9 +382,9 @@ const handler = async (req: Request): Promise<Response> => {
         });
       }
       
-      from = body.contactPhone;
-      text = body.message;
-      messageId = body.messageId;
+      from = body.contactPhone || body.from || body.phone || body.phoneNumber;
+      text = body.message || body.text || body.body;
+      messageId = body.messageId || body.id;
       console.log('🔵 GPT Maker parsed:', { from, text, messageId });
     } else if (body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
       const message = body.entry[0].changes[0].value.messages[0];
