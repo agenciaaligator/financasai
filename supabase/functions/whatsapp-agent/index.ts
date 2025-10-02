@@ -464,10 +464,7 @@ class WhatsAppAgent {
       };
     }
 
-    // Verificar se há conversa em andamento
-    if (sessionData.conversation_state && sessionData.conversation_state !== 'idle') {
-      return await this.handleConversationState(session, messageText, sessionData);
-    }
+    // Estados de conversa serão tratados mais adiante, após tentarmos detectar uma nova transação
 
     // Comandos de relatório
     if (['relatorio', 'relatório', 'resumo', 'extrato'].includes(messageText)) {
@@ -530,7 +527,7 @@ class WhatsAppAgent {
 
     // Detectar cumprimentos
     const greetings = ['oi', 'olá', 'ola', 'bom dia', 'boa tarde', 'boa noite', 'hey', 'alo', 'alô'];
-    if (greetings.some(greeting => messageText === greeting || messageText.startsWith(greeting + ' ')))
+    if (greetings.some(greeting => messageText === greeting || messageText.startsWith(greeting + ' '))) {
       console.log('Greeting detected');
       
       // Buscar nome do usuário
@@ -592,8 +589,13 @@ class WhatsAppAgent {
       const saveResult = await this.saveTransaction(session.user_id, txToSave);
       return {
         response: saveResult,
-        sessionData
+        sessionData: { ...sessionData, conversation_state: 'idle', pending_transaction: undefined }
       };
+    }
+
+    // Se ainda há estado pendente, tratar agora
+    if (sessionData.conversation_state && sessionData.conversation_state !== 'idle') {
+      return await this.handleConversationState(session, messageText, sessionData);
     }
 
     // Resposta padrão para mensagens não compreendidas
@@ -653,19 +655,15 @@ class WhatsAppAgent {
       const negative = ['não', 'nao', 'n', 'no', 'cancelar', 'cancel'];
       
       if (affirmative.includes(messageText)) {
-        console.log('Transaction confirmed, requesting date');
-        // Confirmado, agora pedir data
+        console.log('Transaction confirmed, saving with default date if missing');
+        const tx = {
+          ...sessionData.pending_transaction,
+          date: sessionData.pending_transaction?.date || new Date().toISOString().split('T')[0]
+        };
+        const saveResult = await this.saveTransaction(session.user_id!, tx);
         return {
-          response: `✅ *Confirmado!*\n\n` +
-                   `📅 Para qual data é essa transação?\n\n` +
-                   `Digite:\n` +
-                   `• *"hoje"* para hoje\n` +
-                   `• *"ontem"* para ontem\n` +
-                   `• ou uma data (ex: 28/09)`,
-          sessionData: {
-            ...sessionData,
-            conversation_state: 'waiting_date'
-          }
+          response: saveResult,
+          sessionData: { ...sessionData, conversation_state: 'idle', pending_transaction: undefined }
         };
       } else if (negative.includes(messageText)) {
         console.log('Transaction cancelled by user');
