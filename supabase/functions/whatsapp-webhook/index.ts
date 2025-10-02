@@ -453,6 +453,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
       
       try {
+        console.log('AGENT_CALLED');
         const agentResponse = await fetch(`${supabaseUrl}/functions/v1/whatsapp-agent`, {
           method: 'POST',
           headers: {
@@ -472,12 +473,13 @@ const handler = async (req: Request): Promise<Response> => {
         });
         
         const agentResult = await agentResponse.json();
-        console.log('✅ Agent response received for GPT Maker');
+        console.log('AGENT_RESPONSE');
         
         // Return agent response directly to GPT Maker (no WABA)
         return new Response(JSON.stringify({
           success: agentResult.success || true,
           message: agentResult.response || agentResult.message,
+          stop: true,
           via: 'gpt_maker_webhook'
         }), {
           status: 200,

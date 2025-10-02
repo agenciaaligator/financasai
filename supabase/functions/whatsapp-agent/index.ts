@@ -91,11 +91,15 @@ class SessionManager {
   }
 
   static async createSession(phoneNumber: string, userId?: string): Promise<Session> {
-    // Limpar sessões antigas primeiro
+    // Limpar sessões antigas primeiro (considerando variações com e sem +)
+    const phoneVariants = phoneNumber.startsWith('+')
+      ? [phoneNumber, phoneNumber.substring(1)]
+      : [phoneNumber, '+' + phoneNumber];
+
     await supabase
       .from('whatsapp_sessions')
       .delete()
-      .eq('phone_number', phoneNumber);
+      .or(`phone_number.in.(${phoneVariants.map(p => `"${p}"`).join(',')})`);
 
     const sessionData = {
       phone_number: phoneNumber,
@@ -141,11 +145,20 @@ class SessionManager {
       }
     }
     
+    // If user_id is provided in updates, ensure authenticated true
+    if ((finalUpdates as any).user_id) {
+      (finalUpdates as any).session_data = {
+        ...((finalUpdates as any).session_data || {}),
+        authenticated: true
+      } as any;
+    }
+    
     const { error } = await supabase
       .from('whatsapp_sessions')
       .update({
         ...finalUpdates,
-        last_activity: new Date().toISOString()
+        last_activity: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       })
       .eq('id', sessionId);
 

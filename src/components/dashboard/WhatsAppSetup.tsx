@@ -13,6 +13,7 @@ export function WhatsAppSetup() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [authCode, setAuthCode] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [hasRecentWhatsAppActivity, setHasRecentWhatsAppActivity] = useState(false);
   const [loading, setLoading] = useState(false);
   const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
   const { user } = useAuth();
@@ -45,6 +46,27 @@ export function WhatsAppSetup() {
     };
   }, [user]);
 
+  // Poll status for a short period to reflect changes quickly
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    let count = 0;
+    let timer: any;
+
+    const poll = async () => {
+      if (!active) return;
+      await checkAuthenticationStatus();
+      await checkRecentWhatsAppActivity();
+      count++;
+      if (active && count < 12) { // ~1 min @ 5s
+        timer = setTimeout(poll, 5000);
+      }
+    };
+
+    poll();
+    return () => { active = false; if (timer) clearTimeout(timer); };
+  }, [user]);
+
   const checkAuthenticationStatus = async () => {
     if (!user) return;
 
@@ -62,6 +84,32 @@ export function WhatsAppSetup() {
     } catch (error) {
       console.error('Erro ao verificar autenticação WhatsApp:', error);
       setIsAuthenticated(false);
+    }
+  };
+
+  const checkRecentWhatsAppActivity = async () => {
+    if (!user) return false;
+    try {
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('source', 'whatsapp')
+        .gte('created_at', since)
+        .limit(1);
+      if (error) {
+        console.error('Erro ao verificar atividade WhatsApp:', error);
+        setHasRecentWhatsAppActivity(false);
+        return false;
+      }
+      const has = Array.isArray(data) && data.length > 0;
+      setHasRecentWhatsAppActivity(has);
+      return has;
+    } catch (e) {
+      console.error('Erro ao verificar atividade WhatsApp:', e);
+      setHasRecentWhatsAppActivity(false);
+      return false;
     }
   };
 
@@ -130,6 +178,9 @@ export function WhatsAppSetup() {
       } else {
         throw new Error(result.error || 'Falha ao enviar código');
       }
+
+      await checkAuthenticationStatus();
+      await checkRecentWhatsAppActivity();
     } catch (error) {
       toast({
         title: "Erro",
@@ -175,6 +226,8 @@ export function WhatsAppSetup() {
           description: "Agora você pode gerenciar suas finanças pelo WhatsApp",
         });
         setAuthCode("");
+        await checkAuthenticationStatus();
+        await checkRecentWhatsAppActivity();
       } else {
         throw new Error('Código inválido');
       }
@@ -223,6 +276,8 @@ export function WhatsAppSetup() {
   };
 
 
+  const effectiveAuthenticated = isAuthenticated || hasRecentWhatsAppActivity;
+
   return (
     <div className="space-y-6">
       <Card className="bg-gradient-card shadow-card border-0">
@@ -236,9 +291,19 @@ export function WhatsAppSetup() {
           {/* Status */}
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">Status:</span>
-            <Badge variant={isAuthenticated ? "default" : "secondary"}>
-              {isAuthenticated ? "Autenticado" : "Não autenticado"}
+            <Badge variant={effectiveAuthenticated ? "default" : "secondary"}>
+              {effectiveAuthenticated ? "Autenticado" : "Não autenticado"}
             </Badge>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                await checkAuthenticationStatus();
+                await checkRecentWhatsAppActivity();
+              }}
+            >
+              Verificar status
+            </Button>
           </div>
 
           {/* Autenticação */}
