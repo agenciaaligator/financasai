@@ -18,7 +18,12 @@ const DEDUPE_WINDOW = 15 * 60 * 1000; // 15 minutes - para cobrir delays do What
 
 interface WhatsAppMessage {
   from: string;
-  text: string;
+  text?: string;
+  type?: 'text' | 'audio' | 'image' | 'video';
+  audio?: {
+    id: string;
+    mime_type: string;
+  };
   timestamp: string;
 }
 
@@ -45,6 +50,94 @@ const gptMakerToken = Deno.env.get('GPT_MAKER_TOKEN');
 const gptMakerChannelId = Deno.env.get('GPT_MAKER_CHANNEL_ID');
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+// Função para transcrever áudio usando ElevenLabs
+async function transcribeAudio(audioId: string, phoneNumber: string): Promise<string> {
+  try {
+    console.log('🎙️ Processing audio message:', { 
+      audioId: audioId.substring(0, 10) + '***', 
+      phoneNumber: phoneNumber.substring(0, 8) + '***' 
+    });
+    
+    // 1. Download do áudio da API do WhatsApp
+    const audioUrl = `https://graph.facebook.com/v21.0/${audioId}`;
+    console.log('📥 Downloading audio from WhatsApp...');
+    
+    const audioResponse = await fetch(audioUrl, {
+      headers: {
+        'Authorization': `Bearer ${whatsappAccessToken}`
+      }
+    });
+    
+    if (!audioResponse.ok) {
+      const errorText = await audioResponse.text();
+      console.error('❌ Failed to download audio:', audioResponse.status, errorText);
+      throw new Error(`Failed to download audio: ${audioResponse.statusText}`);
+    }
+    
+    const audioBlob = await audioResponse.blob();
+    console.log('✅ Audio downloaded, size:', audioBlob.size, 'bytes, type:', audioBlob.type);
+    
+    // 2. Verificar se temos a chave da API
+    const elevenlabsApiKey = Deno.env.get('ELEVENLABS_API_KEY');
+    if (!elevenlabsApiKey) {
+      console.error('❌ ELEVENLABS_API_KEY não configurada');
+      throw new Error('Serviço de transcrição não disponível');
+    }
+    
+    // 3. Transcrever usando ElevenLabs Scribe
+    console.log('🔄 Sending to ElevenLabs for transcription...');
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'audio.ogg');
+    formData.append('model', 'scribe'); // Modelo de transcrição
+    formData.append('language', 'pt'); // Português
+    
+    const elevenlabsResponse = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
+      method: 'POST',
+      headers: {
+        'xi-api-key': elevenlabsApiKey
+      },
+      body: formData
+    });
+    
+    if (!elevenlabsResponse.ok) {
+      const error = await elevenlabsResponse.text();
+      console.error('❌ ElevenLabs transcription failed:', elevenlabsResponse.status, error);
+      throw new Error(`Falha na transcrição: ${elevenlabsResponse.statusText}`);
+    }
+    
+    const transcription = await elevenlabsResponse.json();
+    const transcribedText = transcription.text?.trim() || '';
+    
+    if (!transcribedText || transcribedText.length === 0) {
+      console.warn('⚠️ Empty transcription result');
+      throw new Error('Não consegui entender o áudio. Pode repetir?');
+    }
+    
+    console.log('✅ Audio transcribed successfully:', {
+      length: transcribedText.length,
+      preview: transcribedText.substring(0, 100) + (transcribedText.length > 100 ? '...' : '')
+    });
+    
+    return transcribedText;
+    
+  } catch (error) {
+    console.error('❌ Error transcribing audio:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack?.substring(0, 200)
+    });
+    
+    // Mensagens de erro amigáveis
+    if (error.message.includes('download')) {
+      throw new Error('Desculpe, não consegui acessar seu áudio. Ele pode ter expirado. Tente enviar novamente.');
+    } else if (error.message.includes('transcrição') || error.message.includes('ElevenLabs')) {
+      throw new Error('Desculpe, não consegui processar seu áudio no momento. Tente enviar uma mensagem de texto.');
+    } else {
+      throw new Error(error.message || 'Erro ao processar áudio');
+    }
+  }
+}
 
 // CRITICAL SECURITY: Enhanced signature verification with detailed logging
 async function verifyWhatsAppSignature(payload: string, signature: string): Promise<boolean> {
@@ -409,14 +502,36 @@ const handler = async (req: Request): Promise<Response> => {
     } else if (body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
       const message = body.entry[0].changes[0].value.messages[0];
       from = message.from;
-      text = message.text?.body;
       messageId = message.id;
+      
+      // Detectar tipo de mensagem e processar áudio se necessário
+      if (message.type === 'audio' && message.audio?.id) {
+        console.log('🎙️ Audio message detected, transcribing...');
+        try {
+          text = await transcribeAudio(message.audio.id, message.from);
+          console.log('🎙️ Audio message transcribed:', {
+            from: message.from.substring(0, 8) + '***',
+            transcribedLength: text.length,
+            preview: text.substring(0, 50) + '...'
+          });
+        } catch (transcribeError) {
+          console.error('❌ Audio transcription error:', transcribeError.message);
+          // Enviar mensagem de erro de volta ao usuário
+          text = transcribeError.message;
+        }
+      } else if (message.type === 'text') {
+        text = message.text?.body;
+      } else {
+        console.log(`⚠️ Unsupported message type: ${message.type}`);
+        text = 'Desculpe, esse tipo de mensagem não é suportado no momento. Por favor, envie texto ou áudio.';
+      }
       
       // Adicionar timestamp logging
       const messageTimestamp = message.timestamp;
       const webhookReceived = Date.now();
       console.log('📨 WhatsApp message timing:', {
         messageId: messageId?.substring(0, 10) + '***',
+        messageType: message.type || 'text',
         sentAt: messageTimestamp ? new Date(Number(messageTimestamp) * 1000).toISOString() : 'unknown',
         receivedAt: new Date(webhookReceived).toISOString(),
         delaySeconds: messageTimestamp ? Math.round((webhookReceived - Number(messageTimestamp) * 1000) / 1000) : 'unknown'
