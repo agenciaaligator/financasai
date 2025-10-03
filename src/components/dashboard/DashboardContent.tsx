@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FinancialChart } from "../FinancialChart";
 import { CategoryManager } from "../CategoryManager";
@@ -8,6 +8,7 @@ import { AIReportsChat } from "../AIReportsChat";
 import { FutureFeatures } from "../FutureFeatures";
 import { BalanceAlert } from "./BalanceAlert";
 import { SummaryCards } from "./SummaryCards";
+import { FilteredSummaryCards } from "./FilteredSummaryCards";
 import { Transaction } from "@/hooks/useTransactions";
 import { TransactionList } from "../TransactionList";
 import { TransactionFilters, TransactionFiltersState } from "../TransactionFilters";
@@ -27,6 +28,7 @@ import {
 import { toZonedTime } from "date-fns-tz";
 
 const TIMEZONE = 'America/Sao_Paulo';
+const ITEMS_PER_PAGE = 10;
 
 interface DashboardContentProps {
   currentTab: string;
@@ -61,6 +63,13 @@ export function DashboardContent({
     source: 'all',
     searchText: ''
   });
+
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset para página 1 quando filtros mudarem
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
 
   const filteredTransactions = useMemo(() => {
     const now = toZonedTime(new Date(), TIMEZONE);
@@ -184,6 +193,17 @@ export function DashboardContent({
   }
 
   if (currentTab === "transactions") {
+    const totalPages = Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const paginatedTransactions = filteredTransactions.slice(startIndex, endIndex);
+
+    const hasActiveFilters = filters.period !== 'all' || 
+                            filters.type !== 'all' || 
+                            filters.categories.length > 0 || 
+                            filters.source !== 'all' || 
+                            filters.searchText.trim() !== '';
+
     return (
       <div className="space-y-4">
         <TransactionFilters 
@@ -191,20 +211,30 @@ export function DashboardContent({
           onFiltersChange={setFilters}
           categories={categories}
         />
+        
+        {hasActiveFilters && (
+          <FilteredSummaryCards transactions={filteredTransactions} />
+        )}
+
         <Card className="bg-gradient-card shadow-card border-0">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span>Todas as Transações</span>
               <span className="text-sm font-normal text-muted-foreground">
-                Mostrando {filteredTransactions.length} de {transactions.length} transações
+                {filteredTransactions.length} de {transactions.length} transações
               </span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <TransactionList 
-              transactions={filteredTransactions} 
+              transactions={paginatedTransactions} 
               onDelete={onDelete}
               onEdit={onEdit}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              itemsPerPage={ITEMS_PER_PAGE}
+              totalItems={filteredTransactions.length}
+              onPageChange={setCurrentPage}
             />
           </CardContent>
         </Card>

@@ -3,19 +3,50 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, TrendingDown, Trash2, Edit } from "lucide-react";
 import { Transaction } from '@/hooks/useTransactions';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 interface TransactionListProps {
   transactions: Transaction[];
   onDelete?: (id: string) => void;
   onEdit?: (transaction: Transaction) => void;
+  currentPage?: number;
+  totalPages?: number;
+  itemsPerPage?: number;
+  totalItems?: number;
+  onPageChange?: (page: number) => void;
 }
 
-export function TransactionList({ transactions, onDelete, onEdit }: TransactionListProps) {
+export function TransactionList({ 
+  transactions, 
+  onDelete, 
+  onEdit,
+  currentPage,
+  totalPages,
+  itemsPerPage,
+  totalItems,
+  onPageChange
+}: TransactionListProps) {
   const formatDate = (dateString: string) => {
     // Parse date manually to avoid timezone issues
     // dateString is in format YYYY-MM-DD
     const [year, month, day] = dateString.split('-');
     return `${day}/${month}/${year}`;
+  };
+
+  const handlePageChange = (page: number) => {
+    if (onPageChange && page >= 1 && totalPages && page <= totalPages) {
+      onPageChange(page);
+      // Scroll to top suavemente
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   if (transactions.length === 0) {
@@ -26,8 +57,21 @@ export function TransactionList({ transactions, onDelete, onEdit }: TransactionL
     );
   }
 
+  const showPagination = totalPages && totalPages > 1;
+  const startItem = currentPage && itemsPerPage ? (currentPage - 1) * itemsPerPage + 1 : 1;
+  const endItem = currentPage && itemsPerPage && totalItems 
+    ? Math.min(currentPage * itemsPerPage, totalItems) 
+    : transactions.length;
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      {showPagination && totalItems && (
+        <div className="text-sm text-muted-foreground text-center sm:text-left">
+          Mostrando {startItem}-{endItem} de {totalItems} transações
+        </div>
+      )}
+      
+      <div className="space-y-3">
       {transactions.map((transaction) => (
         <Card key={transaction.id} className="border-l-4 border-l-primary/20 hover:shadow-soft transition-shadow">
           <CardContent className="pt-4">
@@ -107,6 +151,55 @@ export function TransactionList({ transactions, onDelete, onEdit }: TransactionL
           </CardContent>
         </Card>
       ))}
+      </div>
+
+      {showPagination && currentPage && totalPages && (
+        <Pagination className="mt-6">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious 
+                onClick={() => handlePageChange(currentPage - 1)}
+                className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+              />
+            </PaginationItem>
+            
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+              // Mostrar apenas algumas páginas
+              if (
+                page === 1 ||
+                page === totalPages ||
+                (page >= currentPage - 1 && page <= currentPage + 1)
+              ) {
+                return (
+                  <PaginationItem key={page}>
+                    <PaginationLink
+                      onClick={() => handlePageChange(page)}
+                      isActive={currentPage === page}
+                      className="cursor-pointer"
+                    >
+                      {page}
+                    </PaginationLink>
+                  </PaginationItem>
+                );
+              } else if (page === currentPage - 2 || page === currentPage + 2) {
+                return (
+                  <PaginationItem key={page}>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                );
+              }
+              return null;
+            })}
+
+            <PaginationItem>
+              <PaginationNext 
+                onClick={() => handlePageChange(currentPage + 1)}
+                className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
     </div>
   );
 }
