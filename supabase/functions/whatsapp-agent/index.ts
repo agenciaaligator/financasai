@@ -454,13 +454,13 @@ class TransactionParser {
             cleanTitle: title 
           });
         } else if (pattern === patterns[2]) {
-          // Pattern 3: apenas número e descrição (assume despesa)
-          type = 'expense';
+          // Pattern 3: apenas número e descrição → SEMPRE DESPESA IMPLÍCITA
+          type = 'expense'; // ⬅️ SEMPRE DESPESA
           amount = parseBrazilianNumber(match[1]);
           const rawTitle = match[2];
           title = this.cleanTitle(rawTitle);
-          console.log('✅ Parser: Pattern 3 matched -', { 
-            type, 
+          console.log('✅ Parser: Pattern 3 matched (implicit expense) -', { 
+            type: 'expense (implicit)', 
             rawAmount: match[1], 
             parsedAmount: amount, 
             rawTitle, 
@@ -778,6 +778,15 @@ class WhatsAppAgent {
       });
       
       const saveResult = await this.saveTransaction(session.user_id!, txToSave);
+      
+      // 🔧 LIMPAR ESTADO após salvar para evitar processar próxima mensagem como comando
+      await SessionManager.updateSession(session.id, {
+        session_data: {
+          ...sessionData,
+          conversation_state: 'idle',
+          pending_transaction: undefined
+        }
+      });
       
       return {
         response: saveResult,
@@ -1099,6 +1108,15 @@ class WhatsAppAgent {
       
       console.log('✅ saveTransaction() completed, response:', saveResult.substring(0, 50) + '...');
       
+      // 🔧 LIMPAR ESTADO após salvar para evitar processar próxima mensagem como comando
+      await SessionManager.updateSession(session.id, {
+        session_data: {
+          ...sessionData,
+          conversation_state: 'idle',
+          pending_transaction: undefined
+        }
+      });
+      
       return {
         response: saveResult,
         sessionData: { ...sessionData, conversation_state: 'idle', pending_transaction: undefined }
@@ -1155,6 +1173,15 @@ class WhatsAppAgent {
       // Salvar a transação
       const saveResult = await this.saveTransaction(session.user_id!, transaction);
       
+      // 🔧 LIMPAR ESTADO após salvar
+      await SessionManager.updateSession(session.id, {
+        session_data: {
+          ...sessionData,
+          conversation_state: 'idle',
+          pending_transaction: undefined
+        }
+      });
+      
       return {
         response: saveResult,
         sessionData: { ...sessionData, conversation_state: 'idle', pending_transaction: undefined }
@@ -1178,6 +1205,16 @@ class WhatsAppAgent {
           date: sessionData.pending_transaction?.date || defaultDate
         };
         const saveResult = await this.saveTransaction(session.user_id!, tx);
+        
+        // 🔧 LIMPAR ESTADO após salvar
+        await SessionManager.updateSession(session.id, {
+          session_data: {
+            ...sessionData,
+            conversation_state: 'idle',
+            pending_transaction: undefined
+          }
+        });
+        
         return {
           response: saveResult,
           sessionData: { ...sessionData, conversation_state: 'idle', pending_transaction: undefined }
