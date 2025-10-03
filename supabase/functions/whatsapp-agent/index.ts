@@ -67,6 +67,33 @@ const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
   }
 });
 
+// Função auxiliar para formatar período
+function formatPeriod(period: 'day' | 'week' | 'month' | 'year' = 'month'): string {
+  const now = new Date();
+  const brazilOffset = -3 * 60; // UTC-3 (horário de Brasília)
+  const localTime = new Date(now.getTime() + (brazilOffset * 60 * 1000));
+  
+  const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
+                  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  
+  const year = localTime.getUTCFullYear();
+  const month = localTime.getUTCMonth();
+  const day = localTime.getUTCDate();
+  
+  switch(period) {
+    case 'day':
+      return `Hoje (${day}/${month + 1}/${year})`;
+    case 'week':
+      return `Esta Semana`;
+    case 'month':
+      return `${months[month]}/${year}`;
+    case 'year':
+      return `Ano ${year}`;
+    default:
+      return `${months[month]}/${year}`;
+  }
+}
+
 // Classes para gerenciamento de sessão e autenticação
 class SessionManager {
   static async getSession(phoneNumber: string): Promise<Session | null> {
@@ -1101,10 +1128,11 @@ class WhatsAppAgent {
       const balance = income - expenses;
       const balanceEmoji = balance >= 0 ? '💚' : '🔴';
 
-      const response = `💰 *Saldo Atual*\n\n` +
+      const response = `💰 *Saldo Atual (${formatPeriod('month')})*\n\n` +
              `📈 Receitas: R$ ${income.toFixed(2)}\n` +
              `📉 Despesas: R$ ${expenses.toFixed(2)}\n` +
-             `${balanceEmoji} Saldo: R$ ${balance.toFixed(2)}`;
+             `${balanceEmoji} Saldo: R$ ${balance.toFixed(2)}\n\n` +
+             `📊 Total de ${transactions.length} transações este mês`;
 
       console.log('✅ getBalance() SUCCESS:', { 
         responseLength: response.length,
@@ -1220,10 +1248,14 @@ class WhatsAppAgent {
 
       const balance = income - expenses;
 
-      let report = `📊 *Relatório - ${periodLabel}*\n\n`;
-      report += `📈 Receitas: R$ ${income.toFixed(2)}\n`;
-      report += `📉 Despesas: R$ ${expenses.toFixed(2)}\n`;
-      report += `💰 Saldo: R$ ${balance.toFixed(2)}\n\n`;
+      // Usar a função formatPeriod() para formatar o período
+      const formattedPeriod = formatPeriod(period);
+      
+      let report = `📊 *RELATÓRIO FINANCEIRO (${formattedPeriod})*\n\n`;
+      report += `💰 *RESUMO GERAL:*\n`;
+      report += `• Receitas: R$ ${income.toFixed(2)}\n`;
+      report += `• Despesas: R$ ${expenses.toFixed(2)}\n`;
+      report += `• Lucro: R$ ${balance.toFixed(2)}\n\n`;
 
       // Últimas 5 transações
       report += `*🕒 Últimas Transações:*\n`;
