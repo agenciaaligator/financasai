@@ -458,10 +458,138 @@ class TransactionParser {
   }
 }
 
+class AICategorizer {
+  /**
+   * Usa IA para determinar a melhor categoria baseada no contexto da mensagem
+   */
+  static async suggestCategoryWithAI(
+    userId: string,
+    messageText: string,
+    transactionType: 'income' | 'expense'
+  ): Promise<{ category_id: string | null, category_name: string, confidence: number }> {
+    try {
+      console.log('🤖 AI Categorization started:', { messageText, transactionType });
+      
+      // Buscar categorias disponíveis do usuário
+      const { data: userCategories, error: catError } = await supabase
+        .from('categories')
+        .select('id, name, type')
+        .eq('user_id', userId)
+        .eq('type', transactionType);
+
+      if (catError || !userCategories || userCategories.length === 0) {
+        console.log('No categories found, returning null');
+        return { category_id: null, category_name: 'Sem categoria', confidence: 0 };
+      }
+
+      // Preparar lista de categorias para a IA
+      const categoriesText = userCategories.map(cat => cat.name).join(', ');
+      
+      const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+      if (!LOVABLE_API_KEY) {
+        console.error('LOVABLE_API_KEY not configured');
+        return { category_id: null, category_name: 'Sem categoria', confidence: 0 };
+      }
+
+      // Chamar a IA para análise semântica
+      const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [
+            {
+              role: 'system',
+              content: `Você é um assistente que categoriza transações financeiras. 
+              
+Seu trabalho é analisar a mensagem do usuário e escolher a categoria MAIS ADEQUADA da lista fornecida.
+
+IMPORTANTE:
+- Analise o CONTEXTO e SIGNIFICADO das palavras, não apenas correspondência exata
+- Palavras como "mercado", "supermercado", "feira" devem ir para "Alimentação"
+- "padaria", "lanche", "restaurante" devem ir para "Alimentação"
+- "uber", "ônibus", "gasolina" devem ir para "Transporte"
+- "conta de luz", "água", "aluguel" devem ir para "Moradia"
+- Se nenhuma categoria se adequar bem, retorne "Outros" se existir, ou null
+
+Responda APENAS com um JSON válido no formato:
+{"category": "Nome da Categoria", "confidence": 0.95}
+
+Onde confidence é um número entre 0 e 1 indicando sua confiança na escolha.`
+            },
+            {
+              role: 'user',
+              content: `Mensagem do usuário: "${messageText}"
+              
+Categorias disponíveis: ${categoriesText}
+
+Tipo da transação: ${transactionType === 'income' ? 'receita' : 'despesa'}
+
+Qual a melhor categoria?`
+            }
+          ],
+          temperature: 0.3,
+          max_tokens: 100
+        }),
+      });
+
+      if (!aiResponse.ok) {
+        console.error('AI API error:', aiResponse.status, await aiResponse.text());
+        return { category_id: null, category_name: 'Sem categoria', confidence: 0 };
+      }
+
+      const aiResult = await aiResponse.json();
+      const aiContent = aiResult.choices[0]?.message?.content;
+      
+      console.log('🤖 AI Response:', aiContent);
+
+      // Parse da resposta da IA
+      const jsonMatch = aiContent.match(/\{[^}]+\}/);
+      if (!jsonMatch) {
+        console.error('Failed to parse AI response');
+        return { category_id: null, category_name: 'Sem categoria', confidence: 0 };
+      }
+
+      const aiSuggestion = JSON.parse(jsonMatch[0]);
+      const suggestedCategory = aiSuggestion.category;
+      const confidence = aiSuggestion.confidence || 0;
+
+      // Buscar o ID da categoria sugerida
+      const matchedCategory = userCategories.find(cat => 
+        cat.name.toLowerCase() === suggestedCategory.toLowerCase()
+      );
+
+      if (matchedCategory && confidence > 0.5) {
+        console.log(`🎯 AI matched category: ${matchedCategory.name} (confidence: ${confidence})`);
+        return {
+          category_id: matchedCategory.id,
+          category_name: matchedCategory.name,
+          confidence: confidence
+        };
+      }
+
+      // Fallback para "Outros"
+      const outrosCategory = userCategories.find(cat => cat.name.toLowerCase() === 'outros');
+      if (outrosCategory) {
+        return { category_id: outrosCategory.id, category_name: 'Outros', confidence: 0.3 };
+      }
+
+      return { category_id: null, category_name: 'Sem categoria', confidence: 0 };
+
+    } catch (error) {
+      console.error('AI Categorization error:', error);
+      return { category_id: null, category_name: 'Sem categoria', confidence: 0 };
+    }
+  }
+}
+
 class CategoryMatcher {
   /**
    * Busca a melhor categoria para uma transação baseada no título
-   * Prioridade: 1) Match exato, 2) Similaridade, 3) "Outros"
+   * Prioridade: 1) Match exato, 2) Similaridade, 3) AI, 4) "Outros"
    */
   static async findBestCategory(
     userId: string, 
@@ -507,7 +635,16 @@ class CategoryMatcher {
         return { category_id: bestMatch.id, category_name: bestMatch.name, suggested: true };
       }
 
-      // 3. Buscar categoria "Outros"
+      // 3. 🤖 NOVO: Usar IA para sugestão inteligente baseada no contexto
+      console.log('🤖 No exact/similar match, trying AI categorization...');
+      const aiResult = await AICategorizer.suggestCategoryWithAI(userId, title, type);
+      
+      if (aiResult.category_id && aiResult.confidence > 0.7) {
+        console.log(`🎯 AI suggested category with high confidence: ${aiResult.category_name}`);
+        return { category_id: aiResult.category_id, category_name: aiResult.category_name, suggested: true };
+      }
+
+      // 4. Buscar categoria "Outros"
       const outrosMatch = categories.find(cat => 
         cat.name.toLowerCase() === 'outros'
       );
@@ -517,7 +654,7 @@ class CategoryMatcher {
         return { category_id: outrosMatch.id, category_name: 'Outros', suggested: false };
       }
 
-      // 4. Se não encontrou "Outros", usar primeira categoria disponível
+      // 5. Se não encontrou "Outros", usar primeira categoria disponível
       console.log(`No suitable category found, using first available: ${categories[0].name}`);
       return { category_id: categories[0].id, category_name: categories[0].name, suggested: false };
 
