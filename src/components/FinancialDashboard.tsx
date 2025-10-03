@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TransactionForm } from "./TransactionForm";
 import { EditTransactionModal } from "./EditTransactionModal";
 import { useAuth } from "@/hooks/useAuth";
@@ -58,6 +58,11 @@ export function FinancialDashboard() {
       setMobileMenuOpen(false);
     }
   };
+
+  // Scroll para o topo quando mudar de tab
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentTab]);
 
   if (isMobile) {
     return (
