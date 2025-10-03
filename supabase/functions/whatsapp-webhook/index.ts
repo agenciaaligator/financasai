@@ -598,16 +598,39 @@ const handler = async (req: Request): Promise<Response> => {
         text = 'Desculpe, esse tipo de mensagem não é suportado no momento. Por favor, envie texto ou áudio.';
       }
       
-      // Adicionar timestamp logging
+      // Adicionar timestamp logging e validação de delay
       const messageTimestamp = message.timestamp;
       const webhookReceived = Date.now();
+      const delayMs = messageTimestamp ? (webhookReceived - Number(messageTimestamp) * 1000) : 0;
+      const delaySeconds = Math.round(delayMs / 1000);
+      
       console.log('📨 WhatsApp message timing:', {
         messageId: messageId?.substring(0, 10) + '***',
         messageType: message.type || 'text',
         sentAt: messageTimestamp ? new Date(Number(messageTimestamp) * 1000).toISOString() : 'unknown',
         receivedAt: new Date(webhookReceived).toISOString(),
-        delaySeconds: messageTimestamp ? Math.round((webhookReceived - Number(messageTimestamp) * 1000) / 1000) : 'unknown'
+        delaySeconds
       });
+      
+      // VALIDAÇÃO: Rejeitar mensagens com delay excessivo (>5 minutos)
+      const MAX_DELAY_MS = 5 * 60 * 1000; // 5 minutos
+      if (messageTimestamp && delayMs > MAX_DELAY_MS) {
+        console.log('⏰ Mensagem expirada (delay excessivo):', {
+          messageTime: new Date(Number(messageTimestamp) * 1000).toISOString(),
+          now: new Date(webhookReceived).toISOString(),
+          delaySeconds,
+          maxDelaySeconds: MAX_DELAY_MS / 1000
+        });
+        
+        return new Response(JSON.stringify({ 
+          success: true, 
+          skipped: true,
+          reason: 'message_expired'
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
     } else if (body.entry?.[0]?.changes?.[0]?.value?.statuses) {
       // Webhook de STATUS apenas (delivered/read/sent) - IGNORAR
       console.log('📊 Status webhook received - IGNORING (no message content)');

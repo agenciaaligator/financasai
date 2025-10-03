@@ -67,11 +67,16 @@ const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
   }
 });
 
-// Função auxiliar para formatar período
-function formatPeriod(period: 'day' | 'week' | 'month' | 'year' = 'month'): string {
+// Função auxiliar para obter a data/hora local do Brasil (UTC-3)
+function getBrazilTime(): Date {
   const now = new Date();
   const brazilOffset = -3 * 60; // UTC-3 (horário de Brasília)
-  const localTime = new Date(now.getTime() + (brazilOffset * 60 * 1000));
+  return new Date(now.getTime() + (brazilOffset * 60 * 1000));
+}
+
+// Função auxiliar para formatar período
+function formatPeriod(period: 'day' | 'week' | 'month' | 'year' = 'month'): string {
+  const localTime = getBrazilTime();
   
   const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
                   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
@@ -282,11 +287,8 @@ class DateParser {
   static parseDate(text: string): string | null {
     const normalizedText = text.toLowerCase().trim();
     
-    // CRITICAL FIX: Usar UTC para evitar problemas de timezone
-    // Quando usuário diz "hoje", queremos a data LOCAL dele (Brasil)
-    const now = new Date();
-    const brazilOffset = -3 * 60; // UTC-3 (horário de Brasília)
-    const localTime = new Date(now.getTime() + (brazilOffset * 60 * 1000));
+    // Usar horário local do Brasil (UTC-3)
+    const localTime = getBrazilTime();
     
     // Hoje
     if (['hoje', 'hj'].includes(normalizedText)) {
@@ -426,11 +428,15 @@ class TransactionParser {
         // Security: Confirmation for high-value transactions
         const requiresConfirmation = amount > 1000;
 
+        // Usar data local do Brasil se não foi especificada
+        const localTime = getBrazilTime();
+        const defaultDate = `${localTime.getUTCFullYear()}-${String(localTime.getUTCMonth() + 1).padStart(2, '0')}-${String(localTime.getUTCDate()).padStart(2, '0')}`;
+        
         const transaction = {
           amount,
           title: sanitizedTitle.charAt(0).toUpperCase() + sanitizedTitle.slice(1),
           type,
-          date: detectedDate || new Date().toISOString().split('T')[0],
+          date: detectedDate || defaultDate,
           source: 'whatsapp',
           requiresConfirmation
         };
@@ -927,9 +933,14 @@ class WhatsAppAgent {
       
       if (affirmative.includes(messageText)) {
         console.log('Transaction confirmed, saving with default date if missing');
+        
+        // Usar data local do Brasil se não especificada
+        const localTime = getBrazilTime();
+        const defaultDate = `${localTime.getUTCFullYear()}-${String(localTime.getUTCMonth() + 1).padStart(2, '0')}-${String(localTime.getUTCDate()).padStart(2, '0')}`;
+        
         const tx = {
           ...sessionData.pending_transaction,
-          date: sessionData.pending_transaction?.date || new Date().toISOString().split('T')[0]
+          date: sessionData.pending_transaction?.date || defaultDate
         };
         const saveResult = await this.saveTransaction(session.user_id!, tx);
         return {
