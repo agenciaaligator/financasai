@@ -283,6 +283,24 @@ class AuthManager {
   }
 }
 
+// Função para parsear números no formato brasileiro
+function parseBrazilianNumber(value: string): number {
+  // Remove todos os pontos (separador de milhares)
+  // Substitui vírgula por ponto (separador decimal)
+  // Exemplos:
+  // "1.000" → 1000
+  // "1.000,00" → 1000.00
+  // "50,50" → 50.50
+  // "1000" → 1000
+  const normalized = value
+    .replace(/\./g, '')  // Remove pontos (milhares)
+    .replace(',', '.');  // Substitui vírgula por ponto (decimal)
+  
+  const result = parseFloat(normalized);
+  console.log(`🔵 parseBrazilianNumber: "${value}" → ${result}`);
+  return result;
+}
+
 class DateParser {
   static parseDate(text: string): string | null {
     const normalizedText = text.toLowerCase().trim();
@@ -393,27 +411,27 @@ class TransactionParser {
         if (pattern === patterns[0]) {
           // Pattern 1: com suporte a preposições
           type = ['receita', 'recebi', 'entrada'].includes(match[1]) ? 'income' : 'expense';
-          amount = parseFloat(match[2].replace(',', '.'));
+          amount = parseBrazilianNumber(match[2]);
           title = match[3].trim();
-          console.log('🔵 Parser: Pattern 1 matched -', { type, amount, title });
+          console.log('🔵 Parser: Pattern 1 matched -', { type, amount, title, rawAmount: match[2] });
         } else if (pattern === patterns[1]) {
           // Pattern 2: sinais + ou -
           type = match[1] === '+' ? 'income' : 'expense';
-          amount = parseFloat(match[2].replace(',', '.'));
+          amount = parseBrazilianNumber(match[2]);
           title = match[3].trim();
-          console.log('🔵 Parser: Pattern 2 matched -', { type, amount, title });
+          console.log('🔵 Parser: Pattern 2 matched -', { type, amount, title, rawAmount: match[2] });
         } else if (pattern === patterns[2]) {
           // Pattern 3: apenas número e descrição (assume despesa)
           type = 'expense';
-          amount = parseFloat(match[1].replace(',', '.'));
+          amount = parseBrazilianNumber(match[1]);
           title = match[2].trim();
-          console.log('🔵 Parser: Pattern 3 matched -', { type, amount, title });
+          console.log('🔵 Parser: Pattern 3 matched -', { type, amount, title, rawAmount: match[1] });
         } else if (pattern === patterns[3]) {
           // Pattern 4: "gastei X na/no Y"
           type = 'expense';
-          amount = parseFloat(match[1].replace(',', '.'));
+          amount = parseBrazilianNumber(match[1]);
           title = match[2].trim();
-          console.log('🔵 Parser: Pattern 4 matched (gastei X na/no Y) -', { type, amount, title });
+          console.log('🔵 Parser: Pattern 4 matched (gastei X na/no Y) -', { type, amount, title, rawAmount: match[1] });
         }
 
         // Security: Transaction limits and validation
@@ -921,14 +939,42 @@ class WhatsAppAgent {
     if (!parseResult && /\d+/.test(messageText)) {
       console.log('🔵 Parser failed but number detected, asking for category');
       
-      // Extrair o número da mensagem
-      const numberMatch = messageText.match(/(\d+(?:[\.,]\d{2})?)/);
+      // Extrair o número da mensagem (formato brasileiro: 1.000,00 ou 1000)
+      const numberMatch = messageText.match(/(\d+(?:[.,]\d+)*(?:[.,]\d{2})?)/);
       if (numberMatch) {
-        const amount = parseFloat(numberMatch[1].replace(',', '.'));
+        const amount = parseBrazilianNumber(numberMatch[1]);
+        console.log(`🔵 Extracted amount: raw="${numberMatch[1]}" parsed=${amount}`);
         
         // Determinar tipo baseado em palavras-chave
         const isIncome = /recebi|receita|entrada|ganho|salario|salário/.test(messageText);
         const type = isIncome ? 'income' : 'expense';
+        
+        // Buscar categorias do tipo correto para sugerir
+        let categoryExamples = '• Alimentação\n• Transporte\n• Moradia';
+        try {
+          const supabase = createClient(
+            Deno.env.get('SUPABASE_URL')!,
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+          );
+          
+          const { data: categories } = await supabase
+            .from('categories')
+            .select('name')
+            .eq('user_id', session.user_id)
+            .eq('type', type)
+            .limit(4);
+          
+          if (categories && categories.length > 0) {
+            categoryExamples = categories.map(c => `• ${c.name}`).join('\n');
+          } else {
+            // Exemplos padrão baseados no tipo
+            categoryExamples = type === 'income' 
+              ? '• Salário\n• Freelance\n• Projetos\n• Investimentos'
+              : '• Alimentação\n• Transporte\n• Moradia\n• Saúde';
+          }
+        } catch (error) {
+          console.log('Error fetching categories for examples:', error);
+        }
         
         // Salvar transação pendente
         const pendingTransaction: Partial<Transaction> = {
@@ -942,11 +988,8 @@ class WhatsAppAgent {
         return {
           response: `💡 Detectei um valor de R$ ${amount.toFixed(2)}\n\n` +
                    `Para qual categoria essa ${type === 'income' ? 'receita' : 'despesa'}?\n\n` +
-                   `Exemplos:\n` +
-                   `• Alimentação\n` +
-                   `• Transporte\n` +
-                   `• Moradia\n` +
-                   `• Salário`,
+                   `Exemplos de categorias de ${type === 'income' ? 'receita' : 'despesa'}:\n` +
+                   categoryExamples,
           sessionData: {
             ...sessionData,
             conversation_state: 'awaiting_category',
