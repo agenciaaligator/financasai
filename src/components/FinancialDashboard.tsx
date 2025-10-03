@@ -26,6 +26,11 @@ export function FinancialDashboard() {
   const { transactions, categories, loading, balance, totalIncome, totalExpenses, addTransaction, deleteTransaction, refetch } = useTransactions();
   const isMobile = useIsMobile();
 
+  // Scroll para o topo quando mudar de tab (DEVE estar antes de qualquer early return)
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentTab]);
+
   console.log('Dashboard renderizado - user:', user?.email);
   console.log('Categories carregadas:', categories?.length);
   console.log('Transactions carregadas:', transactions?.length);
@@ -58,11 +63,6 @@ export function FinancialDashboard() {
       setMobileMenuOpen(false);
     }
   };
-
-  // Scroll para o topo quando mudar de tab
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [currentTab]);
 
   if (isMobile) {
     return (
