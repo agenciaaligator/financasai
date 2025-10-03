@@ -349,6 +349,14 @@ class DateParser {
 }
 
 class TransactionParser {
+  // Função auxiliar para limpar o título
+  private static cleanTitle(title: string): string {
+    return title
+      .replace(/^(na|no|em|de|para|com|a|o|as|os)\s+/i, '') // Remove preposições iniciais
+      .replace(/[.,!?]+$/, '') // Remove pontuação final
+      .trim();
+  }
+
   static parseTransactionFromText(text: string): { transaction: Partial<Transaction>, detectedDate?: string } | null {
     console.log('🔵 TransactionParser.parseTransactionFromText() called:', { originalText: text });
     
@@ -383,24 +391,35 @@ class TransactionParser {
       textWithoutDate = normalizedText.replace(dateMatch[0], '').trim();
     }
     
-    // Patterns para detectar transações (ATUALIZADO: aceita "gastei X reais Y")
+    // SANITIZAÇÃO PRÉ-PROCESSAMENTO para tolerância total
+    let workingText = textWithoutDate
+      .replace(/\br\$\s*/gi, '') // Remove "R$"
+      .replace(/\breais?\b/gi, '') // Remove "reais" ou "real"
+      .trim();
+    
+    console.log('🔵 Parser: Working text after sanitization:', { 
+      original: text, 
+      normalized: normalizedText,
+      working: workingText 
+    });
+    
+    // Patterns ATUALIZADOS para máxima tolerância com números brasileiros
     const patterns = [
-      // Pattern 1: "gasto 50 mercado" ou "receita 1000 salario" ou "recebi 1000 salario"
-      // Agora com preposições opcionais: "gastei 50 na padaria"
-      /^(gasto|gastei|receita|recebi|despesa|entrada)\s+(\d+(?:[\.,]\d{2})?)\s+(?:na|no|em|de|com|para|reais?)?\s*(.+)$/,
+      // Pattern 1: "gasto/despesa/receita X Y" - super flexível
+      /^(gasto|gastei|receita|recebi|despesa|entrada|saida|paguei)\s+(\d+(?:[.,]\d{3})*(?:[.,]\d{2})?)\s*(?:na|no|em|de|com|para|a|o)?\s*(.+)?$/i,
       // Pattern 2: "+100 freelance" ou "-30 combustível" 
-      /^([+-])(\d+(?:[\.,]\d{2})?)\s+(.+)$/,
+      /^([+-])\s*(\d+(?:[.,]\d{3})*(?:[.,]\d{2})?)\s+(.+)$/i,
       // Pattern 3: "50 mercado" (assume despesa)
-      /^(\d+(?:[\.,]\d{2})?)\s+(.+)$/,
-      // Pattern 4: "gastei 64 na padaria" - formato mais natural
-      /^gastei\s+(\d+(?:[\.,]\d{2})?)\s+(?:na|no|em|de)\s+(.+)$/
+      /^(\d+(?:[.,]\d{3})*(?:[.,]\d{2})?)\s+(.+)$/i,
+      // Pattern 4: "gastei X na/em Y"
+      /^gastei\s+(\d+(?:[.,]\d{3})*(?:[.,]\d{2})?)\s+(?:na|no|em|de|com|para|a|o)?\s*(.+)$/i
     ];
 
-    console.log('🔵 Parser: Testing patterns against:', textWithoutDate);
+    console.log('🔵 Parser: Testing patterns against:', workingText);
 
     for (let i = 0; i < patterns.length; i++) {
       const pattern = patterns[i];
-      const match = textWithoutDate.match(pattern);
+      const match = workingText.match(pattern);
       console.log(`🔵 Parser: Pattern ${i + 1} match:`, match ? 'YES' : 'NO', match);
       
       if (match) {
@@ -409,29 +428,57 @@ class TransactionParser {
         let title: string;
 
         if (pattern === patterns[0]) {
-          // Pattern 1: com suporte a preposições
-          type = ['receita', 'recebi', 'entrada'].includes(match[1]) ? 'income' : 'expense';
+          // Pattern 1: com suporte a preposições e números brasileiros
+          type = ['receita', 'recebi', 'entrada'].includes(match[1].toLowerCase()) ? 'income' : 'expense';
           amount = parseBrazilianNumber(match[2]);
-          title = match[3].trim();
-          console.log('🔵 Parser: Pattern 1 matched -', { type, amount, title, rawAmount: match[2] });
+          const rawTitle = match[3] || '';
+          title = this.cleanTitle(rawTitle);
+          console.log('✅ Parser: Pattern 1 matched -', { 
+            type, 
+            rawAmount: match[2], 
+            parsedAmount: amount, 
+            rawTitle, 
+            cleanTitle: title 
+          });
         } else if (pattern === patterns[1]) {
           // Pattern 2: sinais + ou -
           type = match[1] === '+' ? 'income' : 'expense';
           amount = parseBrazilianNumber(match[2]);
-          title = match[3].trim();
-          console.log('🔵 Parser: Pattern 2 matched -', { type, amount, title, rawAmount: match[2] });
+          const rawTitle = match[3];
+          title = this.cleanTitle(rawTitle);
+          console.log('✅ Parser: Pattern 2 matched -', { 
+            type, 
+            rawAmount: match[2], 
+            parsedAmount: amount, 
+            rawTitle, 
+            cleanTitle: title 
+          });
         } else if (pattern === patterns[2]) {
           // Pattern 3: apenas número e descrição (assume despesa)
           type = 'expense';
           amount = parseBrazilianNumber(match[1]);
-          title = match[2].trim();
-          console.log('🔵 Parser: Pattern 3 matched -', { type, amount, title, rawAmount: match[1] });
+          const rawTitle = match[2];
+          title = this.cleanTitle(rawTitle);
+          console.log('✅ Parser: Pattern 3 matched -', { 
+            type, 
+            rawAmount: match[1], 
+            parsedAmount: amount, 
+            rawTitle, 
+            cleanTitle: title 
+          });
         } else if (pattern === patterns[3]) {
           // Pattern 4: "gastei X na/no Y"
           type = 'expense';
           amount = parseBrazilianNumber(match[1]);
-          title = match[2].trim();
-          console.log('🔵 Parser: Pattern 4 matched (gastei X na/no Y) -', { type, amount, title, rawAmount: match[1] });
+          const rawTitle = match[2] || '';
+          title = this.cleanTitle(rawTitle);
+          console.log('✅ Parser: Pattern 4 matched (gastei X na/no Y) -', { 
+            type, 
+            rawAmount: match[1], 
+            parsedAmount: amount, 
+            rawTitle, 
+            cleanTitle: title 
+          });
         }
 
         // Security: Transaction limits and validation
@@ -756,8 +803,8 @@ class WhatsAppAgent {
     }
 
     // PRIORIDADE 3: Comandos de SALDO (verificar ANTES de relatórios)
-    // Aceita: saldo, meu saldo, ver saldo, qual saldo, conta
-    const saldoRegex = /^(saldo|meu saldo|ver saldo|qual(?: o)? saldo|balance|total|conta)$/;
+    // REGEX SUPER TOLERANTE: aceita variações como "saldo", "saúdo", "meu saldo", etc.
+    const saldoRegex = /\b(saldo|balance|total|conta)\b/i;
     if (saldoRegex.test(normalizedText)) {
       console.log('🔵 COMMAND DETECTED: saldo (variant:', messageText, ')');
       console.log('🔵 Session data for balance:', {
@@ -809,9 +856,13 @@ class WhatsAppAgent {
       }
     }
 
-    // PRIORIDADE 4: Comandos de RELATÓRIO
+    // PRIORIDADE 4: Comandos de RELATÓRIO com TOLERÂNCIA TOTAL
+    // Normalizar e remover acentos para aceitar "relatorio" e "relatório"
+    const removeAccents = (str: string) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const normalizedNoAccents = removeAccents(normalizedText);
+    
     // "hoje" ou "relatorio dia" -> relatório do dia
-    if (normalizedText === 'hoje' || normalizedText === 'relatorio dia' || normalizedText === 'extrato dia') {
+    if (normalizedText === 'hoje' || normalizedNoAccents.includes('relatorio dia') || normalizedNoAccents.includes('extrato dia')) {
       console.log('🔵 COMMAND DETECTED: relatorio dia');
       console.log('REPORT_TYPE: day');
       return {
@@ -821,7 +872,8 @@ class WhatsAppAgent {
     }
 
     // "semana" ou "relatorio semana" -> relatório da semana
-    if (['semana', 'semanal', 'relatorio semana', 'extrato semana', 'resumo semana'].includes(normalizedText)) {
+    if (normalizedText.includes('semana') || normalizedNoAccents.includes('semanal') || 
+        normalizedNoAccents.includes('relatorio semana') || normalizedNoAccents.includes('extrato semana')) {
       console.log('🔵 COMMAND DETECTED: relatorio semana');
       console.log('REPORT_TYPE: week');
       return {
@@ -832,7 +884,9 @@ class WhatsAppAgent {
 
     // "mes", "mês", "relatorio mes", "extrato" -> relatório mensal
     // IMPORTANTE: "saldo" NÃO deve cair aqui!
-    if (['mes', 'mensal', 'relatorio mes', 'extrato mes', 'relatorio', 'extrato'].includes(normalizedText)) {
+    if (removeAccents(normalizedText).includes('mes') || normalizedText.includes('mensal') || 
+        normalizedNoAccents.includes('relatorio mes') || normalizedNoAccents.includes('extrato mes') ||
+        normalizedNoAccents === 'relatorio' || normalizedNoAccents === 'extrato') {
       console.log('🔵 COMMAND DETECTED: relatorio mensal (variant:', messageText, ')');
       console.log('REPORT_TYPE: month');
       return {
@@ -842,7 +896,8 @@ class WhatsAppAgent {
     }
 
     // "ano" ou "relatorio ano" -> relatório anual
-    if (['ano', 'anual', 'relatorio ano', 'extrato ano'].includes(normalizedText)) {
+    if (normalizedText.includes('ano') || normalizedText.includes('anual') || 
+        normalizedNoAccents.includes('relatorio ano') || normalizedNoAccents.includes('extrato ano')) {
       console.log('🔵 COMMAND DETECTED: relatorio anual');
       console.log('REPORT_TYPE: year');
       return {
