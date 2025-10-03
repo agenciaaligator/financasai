@@ -59,11 +59,36 @@ async function transcribeAudio(audioId: string, phoneNumber: string): Promise<st
       phoneNumber: phoneNumber.substring(0, 8) + '***' 
     });
     
-    // 1. Download do áudio da API do WhatsApp
-    const audioUrl = `https://graph.facebook.com/v21.0/${audioId}`;
-    console.log('📥 Downloading audio from WhatsApp...');
+    // 1. ETAPA 1: Obter URL do áudio do WhatsApp
+    const metadataUrl = `https://graph.facebook.com/v21.0/${audioId}`;
+    console.log('📍 Step 1: Getting audio URL from WhatsApp API...');
     
-    const audioResponse = await fetch(audioUrl, {
+    const metadataResponse = await fetch(metadataUrl, {
+      headers: {
+        'Authorization': `Bearer ${whatsappAccessToken}`
+      }
+    });
+    
+    if (!metadataResponse.ok) {
+      const errorText = await metadataResponse.text();
+      console.error('❌ Failed to get audio metadata:', metadataResponse.status, errorText);
+      throw new Error(`Failed to get audio metadata: ${metadataResponse.statusText}`);
+    }
+    
+    const metadata = await metadataResponse.json();
+    const audioDownloadUrl = metadata.url;
+    
+    if (!audioDownloadUrl) {
+      console.error('❌ No audio URL in metadata:', metadata);
+      throw new Error('Audio URL não encontrado');
+    }
+    
+    console.log('✅ Audio URL obtained:', audioDownloadUrl.substring(0, 50) + '...');
+    
+    // 2. ETAPA 2: Baixar o arquivo de áudio real
+    console.log('📍 Step 2: Downloading actual audio file...');
+    
+    const audioResponse = await fetch(audioDownloadUrl, {
       headers: {
         'Authorization': `Bearer ${whatsappAccessToken}`
       }
@@ -71,25 +96,31 @@ async function transcribeAudio(audioId: string, phoneNumber: string): Promise<st
     
     if (!audioResponse.ok) {
       const errorText = await audioResponse.text();
-      console.error('❌ Failed to download audio:', audioResponse.status, errorText);
-      throw new Error(`Failed to download audio: ${audioResponse.statusText}`);
+      console.error('❌ Failed to download audio file:', audioResponse.status, errorText);
+      throw new Error(`Failed to download audio file: ${audioResponse.statusText}`);
     }
     
     const audioBlob = await audioResponse.blob();
     console.log('✅ Audio downloaded, size:', audioBlob.size, 'bytes, type:', audioBlob.type);
     
-    // 2. Verificar se temos a chave da API
+    // Verificar se realmente é áudio
+    if (!audioBlob.type.startsWith('audio/')) {
+      console.error('❌ Downloaded file is not audio:', audioBlob.type);
+      throw new Error('Arquivo baixado não é áudio');
+    }
+    
+    // 3. Verificar se temos a chave da API
     const elevenlabsApiKey = Deno.env.get('ELEVENLABS_API_KEY');
     if (!elevenlabsApiKey) {
       console.error('❌ ELEVENLABS_API_KEY não configurada');
       throw new Error('Serviço de transcrição não disponível');
     }
     
-    // 3. Transcrever usando ElevenLabs Scribe
-    console.log('🔄 Sending to ElevenLabs for transcription...');
+    // 4. ETAPA 3: Transcrever usando ElevenLabs Scribe
+    console.log('📍 Step 3: Sending to ElevenLabs for transcription...');
     const formData = new FormData();
     formData.append('audio', audioBlob, 'audio.ogg');
-    formData.append('model', 'scribe'); // Modelo de transcrição
+    formData.append('model_id', 'scribe'); // CORRIGIDO: model_id ao invés de model
     formData.append('language', 'pt'); // Português
     
     const elevenlabsResponse = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
@@ -129,7 +160,7 @@ async function transcribeAudio(audioId: string, phoneNumber: string): Promise<st
     });
     
     // Mensagens de erro amigáveis
-    if (error.message.includes('download')) {
+    if (error.message.includes('download') || error.message.includes('metadata')) {
       throw new Error('Desculpe, não consegui acessar seu áudio. Ele pode ter expirado. Tente enviar novamente.');
     } else if (error.message.includes('transcrição') || error.message.includes('ElevenLabs')) {
       throw new Error('Desculpe, não consegui processar seu áudio no momento. Tente enviar uma mensagem de texto.');
