@@ -51,7 +51,7 @@ const gptMakerChannelId = Deno.env.get('GPT_MAKER_CHANNEL_ID');
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Função para transcrever áudio usando ElevenLabs
+// Função para transcrever áudio usando ElevenLabs ou OpenAI Whisper (fallback)
 async function transcribeAudio(audioId: string, phoneNumber: string): Promise<string> {
   try {
     console.log('🎙️ Processing audio message:', { 
@@ -109,49 +109,84 @@ async function transcribeAudio(audioId: string, phoneNumber: string): Promise<st
       throw new Error('Arquivo baixado não é áudio');
     }
     
-    // 3. Verificar se temos a chave da API
+    // 3. Tentar ElevenLabs primeiro
     const elevenlabsApiKey = Deno.env.get('ELEVENLABS_API_KEY');
-    if (!elevenlabsApiKey) {
-      console.error('❌ ELEVENLABS_API_KEY não configurada');
+    if (elevenlabsApiKey) {
+      console.log('📍 Step 3: Attempting transcription with ElevenLabs...');
+      
+      try {
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'audio.ogg');
+        formData.append('model_id', 'scribe');
+        formData.append('language', 'pt');
+        
+        const elevenlabsResponse = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
+          method: 'POST',
+          headers: {
+            'xi-api-key': elevenlabsApiKey
+          },
+          body: formData
+        });
+        
+        if (elevenlabsResponse.ok) {
+          const transcription = await elevenlabsResponse.json();
+          const transcribedText = transcription.text?.trim() || '';
+          
+          if (transcribedText && transcribedText.length > 0) {
+            console.log('✅ ElevenLabs transcription successful:', {
+              length: transcribedText.length,
+              preview: transcribedText.substring(0, 100)
+            });
+            return transcribedText;
+          }
+        } else {
+          const error = await elevenlabsResponse.text();
+          console.error('❌ ElevenLabs failed:', elevenlabsResponse.status, error);
+          // Continua para tentar Whisper
+        }
+      } catch (error) {
+        console.error('❌ ElevenLabs exception:', error.message);
+        // Continua para tentar Whisper
+      }
+    }
+    
+    // 4. Fallback para OpenAI Whisper
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openaiApiKey) {
+      console.error('❌ Nenhum serviço de transcrição disponível');
       throw new Error('Serviço de transcrição não disponível');
     }
     
-    // 4. ETAPA 3: Transcrever usando ElevenLabs Scribe
-    console.log('📍 Step 3: Sending to ElevenLabs for transcription...');
-    const formData = new FormData();
-    formData.append('file', audioBlob, 'audio.ogg'); // CORRIGIDO: 'file' é o campo esperado
-    formData.append('model_id', 'scribe');
-    formData.append('language', 'pt');
+    console.log('📍 Step 4: Fallback to OpenAI Whisper...');
     
-    const elevenlabsResponse = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
+    const whisperFormData = new FormData();
+    whisperFormData.append('file', audioBlob, 'audio.ogg');
+    whisperFormData.append('model', 'whisper-1');
+    whisperFormData.append('language', 'pt');
+    
+    const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
-        'xi-api-key': elevenlabsApiKey
+        'Authorization': `Bearer ${openaiApiKey}`
       },
-      body: formData
+      body: whisperFormData
     });
     
-    if (!elevenlabsResponse.ok) {
-      const error = await elevenlabsResponse.text();
-      console.error('❌ ElevenLabs transcription failed:', elevenlabsResponse.status, error);
-      
-      // Mensagem amigável para erro de parâmetros inválidos
-      if (elevenlabsResponse.status === 400 && error.includes('invalid_parameters')) {
-        throw new Error('Não consegui processar o formato do áudio. Tente enviar novamente.');
-      }
-      
-      throw new Error(`Falha na transcrição: ${elevenlabsResponse.statusText}`);
+    if (!whisperResponse.ok) {
+      const error = await whisperResponse.text();
+      console.error('❌ Whisper transcription failed:', whisperResponse.status, error);
+      throw new Error(`Falha na transcrição: ${whisperResponse.statusText}`);
     }
     
-    const transcription = await elevenlabsResponse.json();
-    const transcribedText = transcription.text?.trim() || '';
+    const whisperTranscription = await whisperResponse.json();
+    const transcribedText = whisperTranscription.text?.trim() || '';
     
     if (!transcribedText || transcribedText.length === 0) {
-      console.warn('⚠️ Empty transcription result');
+      console.warn('⚠️ Empty transcription result from Whisper');
       throw new Error('Não consegui entender o áudio. Pode repetir?');
     }
     
-    console.log('✅ Audio transcribed successfully:', {
+    console.log('✅ Whisper transcription successful:', {
       length: transcribedText.length,
       preview: transcribedText.substring(0, 100) + (transcribedText.length > 100 ? '...' : '')
     });

@@ -22,11 +22,22 @@ interface TransactionFormProps {
 }
 
 export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
+  // Calcular data local (Brasil UTC-3) para evitar data do dia seguinte
+  const getLocalDate = () => {
+    const now = new Date();
+    const brazilOffset = -3 * 60; // UTC-3 em minutos
+    const localTime = new Date(now.getTime() + (brazilOffset * 60 * 1000));
+    const year = localTime.getUTCFullYear();
+    const month = String(localTime.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(localTime.getUTCDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [categoryId, setCategoryId] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(getLocalDate());
   const [description, setDescription] = useState("");
   const { categories } = useTransactions();
 
@@ -52,7 +63,7 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
     setAmount("");
     setType('expense');
     setCategoryId("");
-    setDate(new Date().toISOString().split('T')[0]);
+    setDate(getLocalDate());
     setDescription("");
   };
 

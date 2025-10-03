@@ -363,11 +363,11 @@ class TransactionParser {
       textWithoutDate = normalizedText.replace(dateMatch[0], '').trim();
     }
     
-    // Patterns para detectar transações (MELHORADO: inclui "gastei", preposições, etc)
+    // Patterns para detectar transações (ATUALIZADO: aceita "gastei X reais Y")
     const patterns = [
       // Pattern 1: "gasto 50 mercado" ou "receita 1000 salario" ou "recebi 1000 salario"
       // Agora com preposições opcionais: "gastei 50 na padaria"
-      /^(gasto|gastei|receita|recebi|despesa|entrada)\s+(\d+(?:[\.,]\d{2})?)\s+(?:na|no|em|de|com|para)?\s*(.+)$/,
+      /^(gasto|gastei|receita|recebi|despesa|entrada)\s+(\d+(?:[\.,]\d{2})?)\s+(?:na|no|em|de|com|para|reais?)?\s*(.+)$/,
       // Pattern 2: "+100 freelance" ou "-30 combustível" 
       /^([+-])(\d+(?:[\.,]\d{2})?)\s+(.+)$/,
       // Pattern 3: "50 mercado" (assume despesa)
@@ -834,8 +834,18 @@ class WhatsAppAgent {
         };
       }
       
-      // Salvar imediatamente usando a data detectada ou HOJE por padrão
-      const txToSave = { ...transaction, date: detectedDate || new Date().toISOString().split('T')[0] };
+        // Salvar imediatamente usando a data detectada ou HOJE (horário local Brasil) por padrão
+      const today = (() => {
+        const now = new Date();
+        const brazilOffset = -3 * 60; // UTC-3
+        const localTime = new Date(now.getTime() + (brazilOffset * 60 * 1000));
+        const year = localTime.getUTCFullYear();
+        const month = String(localTime.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(localTime.getUTCDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      })();
+      
+      const txToSave = { ...transaction, date: detectedDate || today };
       console.log('🚀 CALLING saveTransaction() with:', {
         user_id: session.user_id?.substring(0, 8) + '***',
         amount: txToSave.amount,
@@ -1197,32 +1207,41 @@ class WhatsAppAgent {
 
   static async generateSimpleReport(userId: string, period: 'day' | 'week' | 'month' | 'year'): Promise<string> {
     try {
-      // Calcular data de início baseada no período
+      // Usar horário de Brasília (UTC-3) para cálculo de datas
       const now = new Date();
+      const brazilOffset = -3 * 60; // UTC-3
+      const localTime = new Date(now.getTime() + (brazilOffset * 60 * 1000));
+      
       let startDate: string;
       let periodLabel: string;
       
+      const year = localTime.getUTCFullYear();
+      const month = localTime.getUTCMonth();
+      const day = localTime.getUTCDate();
+      
       switch (period) {
         case 'day':
-          startDate = now.toISOString().split('T')[0];
+          startDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           periodLabel = 'Hoje';
           break;
         case 'week':
-          const weekStart = new Date(now);
-          weekStart.setDate(now.getDate() - 7);
-          startDate = weekStart.toISOString().split('T')[0];
+          const weekStart = new Date(localTime.getTime() - (7 * 24 * 60 * 60 * 1000));
+          const wYear = weekStart.getUTCFullYear();
+          const wMonth = weekStart.getUTCMonth();
+          const wDay = weekStart.getUTCDate();
+          startDate = `${wYear}-${String(wMonth + 1).padStart(2, '0')}-${String(wDay).padStart(2, '0')}`;
           periodLabel = 'Últimos 7 dias';
           break;
         case 'year':
-          const yearStart = new Date(now.getFullYear(), 0, 1);
-          startDate = yearStart.toISOString().split('T')[0];
-          periodLabel = now.getFullYear().toString();
+          startDate = `${year}-01-01`;
+          periodLabel = year.toString();
           break;
         case 'month':
         default:
-          const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-          startDate = monthStart.toISOString().split('T')[0];
-          periodLabel = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+          startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+          const months = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+                         'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+          periodLabel = `${months[month]} de ${year}`;
       }
 
       const { data: transactions, error } = await supabase
