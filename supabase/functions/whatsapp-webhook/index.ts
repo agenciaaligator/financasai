@@ -119,9 +119,9 @@ async function transcribeAudio(audioId: string, phoneNumber: string): Promise<st
     // 4. ETAPA 3: Transcrever usando ElevenLabs Scribe
     console.log('📍 Step 3: Sending to ElevenLabs for transcription...');
     const formData = new FormData();
-    formData.append('audio', audioBlob, 'audio.ogg');
-    formData.append('model_id', 'scribe'); // CORRIGIDO: model_id ao invés de model
-    formData.append('language', 'pt'); // Português
+    formData.append('file', audioBlob, 'audio.ogg'); // CORRIGIDO: 'file' é o campo esperado
+    formData.append('model_id', 'scribe');
+    formData.append('language', 'pt');
     
     const elevenlabsResponse = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
       method: 'POST',
@@ -134,6 +134,12 @@ async function transcribeAudio(audioId: string, phoneNumber: string): Promise<st
     if (!elevenlabsResponse.ok) {
       const error = await elevenlabsResponse.text();
       console.error('❌ ElevenLabs transcription failed:', elevenlabsResponse.status, error);
+      
+      // Mensagem amigável para erro de parâmetros inválidos
+      if (elevenlabsResponse.status === 400 && error.includes('invalid_parameters')) {
+        throw new Error('Não consegui processar o formato do áudio. Tente enviar novamente.');
+      }
+      
       throw new Error(`Falha na transcrição: ${elevenlabsResponse.statusText}`);
     }
     
