@@ -14,7 +14,7 @@ const MAX_REQUESTS_PER_WINDOW = 10;
 
 // Message deduplication storage
 const messageIdStore = new Map<string, number>();
-const DEDUPE_WINDOW = 2 * 60 * 1000; // 2 minutes
+const DEDUPE_WINDOW = 15 * 60 * 1000; // 15 minutes - para cobrir delays do WhatsApp
 
 interface WhatsAppMessage {
   from: string;
@@ -411,6 +411,27 @@ const handler = async (req: Request): Promise<Response> => {
       from = message.from;
       text = message.text?.body;
       messageId = message.id;
+      
+      // Adicionar timestamp logging
+      const messageTimestamp = message.timestamp;
+      const webhookReceived = Date.now();
+      console.log('📨 WhatsApp message timing:', {
+        messageId: messageId?.substring(0, 10) + '***',
+        sentAt: messageTimestamp ? new Date(Number(messageTimestamp) * 1000).toISOString() : 'unknown',
+        receivedAt: new Date(webhookReceived).toISOString(),
+        delaySeconds: messageTimestamp ? Math.round((webhookReceived - Number(messageTimestamp) * 1000) / 1000) : 'unknown'
+      });
+    } else if (body.entry?.[0]?.changes?.[0]?.value?.statuses) {
+      // Webhook de STATUS apenas (delivered/read/sent) - IGNORAR
+      console.log('📊 Status webhook received - IGNORING (no message content)');
+      return new Response(JSON.stringify({ 
+        success: true, 
+        skipped: true,
+        reason: 'status_webhook_only'
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     // Message deduplication
@@ -419,7 +440,12 @@ const handler = async (req: Request): Promise<Response> => {
       const lastSeen = messageIdStore.get(messageId);
       
       if (lastSeen && (now - lastSeen < DEDUPE_WINDOW)) {
-        console.log('Duplicate message detected and ignored');
+        const secondsAgo = Math.round((now - lastSeen) / 1000);
+        console.log('🚫 Duplicate message detected and ignored', {
+          messageId: messageId?.substring(0, 10) + '***',
+          lastSeenSecondsAgo: secondsAgo,
+          dedupeWindowMinutes: DEDUPE_WINDOW / 60000
+        });
         return new Response(JSON.stringify({ 
           success: true, 
           skipped: true,
