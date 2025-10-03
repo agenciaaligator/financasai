@@ -201,7 +201,7 @@ export function DashboardTabs({
         </div>
       </TabsContent>
 
-      <TabsContent value="transactions">
+      <TabsContent value="transactions" className="space-y-4">
         <TransactionFilters 
           filters={filters}
           onFiltersChange={setFilters}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   Settings, 
   Smartphone, 
@@ -24,7 +26,12 @@ import {
 
 export function FutureFeatures() {
   const [selectedFeature, setSelectedFeature] = useState<string | null>(null);
+  const [suggestionTitle, setSuggestionTitle] = useState("");
+  const [suggestionDescription, setSuggestionDescription] = useState("");
+  const [userVotes, setUserVotes] = useState<Set<string>>(new Set());
+  const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const features = [
     {
@@ -157,11 +164,113 @@ export function FutureFeatures() {
     ai: "Inteligência Artificial"
   };
 
-  const handleVote = (featureId: string) => {
-    toast({
-      title: "Voto registrado!",
-      description: "Obrigado por votar nesta funcionalidade. Sua opinião é muito importante!",
-    });
+  useEffect(() => {
+    if (user) {
+      fetchUserVotes();
+    }
+  }, [user]);
+
+  const fetchUserVotes = async () => {
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from('feature_votes')
+      .select('feature_id')
+      .eq('user_id', user.id);
+    
+    if (data) {
+      setUserVotes(new Set(data.map(v => v.feature_id)));
+    }
+  };
+
+  const handleVote = async (featureId: string) => {
+    if (!user) {
+      toast({
+        title: "Login necessário",
+        description: "Faça login para votar nas funcionalidades",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (userVotes.has(featureId)) {
+      // Remover voto
+      const { error } = await supabase
+        .from('feature_votes')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('feature_id', featureId);
+      
+      if (!error) {
+        setUserVotes(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(featureId);
+          return newSet;
+        });
+        toast({
+          title: "Voto removido",
+          description: "Seu voto foi removido desta funcionalidade",
+        });
+      }
+    } else {
+      // Adicionar voto
+      const { error } = await supabase
+        .from('feature_votes')
+        .insert({ user_id: user.id, feature_id: featureId });
+      
+      if (!error) {
+        setUserVotes(prev => new Set([...prev, featureId]));
+        toast({
+          title: "Voto registrado!",
+          description: "Obrigado por votar nesta funcionalidade. Sua opinião é muito importante!",
+        });
+      }
+    }
+  };
+
+  const handleSubmitSuggestion = async () => {
+    if (!user) {
+      toast({
+        title: "Login necessário",
+        description: "Faça login para enviar sugestões",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!suggestionTitle.trim() || !suggestionDescription.trim()) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Preencha o título e a descrição da sugestão",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    const { error } = await supabase
+      .from('feature_suggestions')
+      .insert({
+        user_id: user.id,
+        title: suggestionTitle,
+        description: suggestionDescription
+      });
+
+    if (error) {
+      toast({
+        title: "Erro ao enviar",
+        description: "Não foi possível enviar sua sugestão. Tente novamente.",
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Sugestão enviada!",
+        description: "Obrigado por contribuir! Sua sugestão será analisada pela equipe.",
+      });
+      setSuggestionTitle("");
+      setSuggestionDescription("");
+    }
+    setSubmitting(false);
   };
 
   const categories = [...new Set(features.map(f => f.category))];
@@ -222,11 +331,11 @@ export function FutureFeatures() {
                         {categoryNames[feature.category as keyof typeof categoryNames]}
                       </Badge>
                       <Button 
-                        variant="outline" 
+                        variant={userVotes.has(feature.id) ? "default" : "outline"}
                         size="sm"
                         onClick={() => handleVote(feature.id)}
                       >
-                        👍 Votar
+                        {userVotes.has(feature.id) ? "✓ Votado" : "👍 Votar"}
                       </Button>
                     </div>
                   </CardContent>
@@ -240,10 +349,22 @@ export function FutureFeatures() {
               Sugira uma nova funcionalidade que gostaria de ver no app!
             </p>
             <div className="space-y-4">
-              <Input placeholder="Título da funcionalidade" />
-              <Textarea placeholder="Descreva sua ideia em detalhes..." />
-              <Button className="bg-blue-600 hover:bg-blue-700">
-                Enviar Sugestão
+              <Input 
+                placeholder="Título da funcionalidade" 
+                value={suggestionTitle}
+                onChange={(e) => setSuggestionTitle(e.target.value)}
+              />
+              <Textarea 
+                placeholder="Descreva sua ideia em detalhes..." 
+                value={suggestionDescription}
+                onChange={(e) => setSuggestionDescription(e.target.value)}
+              />
+              <Button 
+                className="bg-blue-600 hover:bg-blue-700"
+                onClick={handleSubmitSuggestion}
+                disabled={submitting}
+              >
+                {submitting ? "Enviando..." : "Enviar Sugestão"}
               </Button>
             </div>
           </div>

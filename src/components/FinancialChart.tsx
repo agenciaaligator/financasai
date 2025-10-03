@@ -35,7 +35,7 @@ export function FinancialChart({ transactions }: FinancialChartProps) {
 
   // Dados para o gráfico de barras por categoria
   const categoryData = transactions.reduce((acc, transaction) => {
-    const categoryName = transaction.categories?.name || 'Sem categoria';
+    const categoryName = transaction.categories?.name || 'Sem Categoria';
     const existing = acc.find(item => item.category === categoryName);
     if (existing) {
       if (transaction.type === 'income') {

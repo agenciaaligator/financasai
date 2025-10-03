@@ -64,27 +64,67 @@ export function ReportsPage() {
   }, [transactions, period]);
 
   const chartData = useMemo(() => {
-    const categoryMap = new Map();
+    const categoryMap = new Map<string, { name: string; receitas: number; despesas: number }>();
     
     filteredData.transactions.forEach(transaction => {
       const category = categories?.find(c => c.id === transaction.category_id);
-      const categoryName = category?.name || 'Outros';
-      const key = `${categoryName}-${transaction.type}`;
+      const categoryName = category?.name || 'Sem Categoria';
       
-      if (!categoryMap.has(key)) {
-        categoryMap.set(key, {
+      if (!categoryMap.has(categoryName)) {
+        categoryMap.set(categoryName, {
           name: categoryName,
-          type: transaction.type,
-          value: 0,
-          color: category?.color || '#8884d8'
+          receitas: 0,
+          despesas: 0
         });
       }
       
-      const existing = categoryMap.get(key);
-      existing.value += Number(transaction.amount);
+      const existing = categoryMap.get(categoryName)!;
+      if (transaction.type === 'income') {
+        existing.receitas += Number(transaction.amount);
+      } else {
+        existing.despesas += Number(transaction.amount);
+      }
     });
 
     return Array.from(categoryMap.values());
+  }, [filteredData.transactions, categories]);
+
+  const expenseDataForPie = useMemo(() => {
+    const categoryMap = new Map<string, number>();
+    
+    filteredData.transactions
+      .filter(t => t.type === 'expense')
+      .forEach(transaction => {
+        const category = categories?.find(c => c.id === transaction.category_id);
+        const categoryName = category?.name || 'Sem Categoria';
+        
+        const current = categoryMap.get(categoryName) || 0;
+        categoryMap.set(categoryName, current + Number(transaction.amount));
+      });
+
+    return Array.from(categoryMap.entries()).map(([name, value]) => ({
+      name,
+      value
+    }));
+  }, [filteredData.transactions, categories]);
+
+  const incomeDataForPie = useMemo(() => {
+    const categoryMap = new Map<string, number>();
+    
+    filteredData.transactions
+      .filter(t => t.type === 'income')
+      .forEach(transaction => {
+        const category = categories?.find(c => c.id === transaction.category_id);
+        const categoryName = category?.name || 'Sem Categoria';
+        
+        const current = categoryMap.get(categoryName) || 0;
+        categoryMap.set(categoryName, current + Number(transaction.amount));
+      });
+
+    return Array.from(categoryMap.entries()).map(([name, value]) => ({
+      name,
+      value
+    }));
   }, [filteredData.transactions, categories]);
 
   const dailyData = useMemo(() => {
@@ -125,8 +165,6 @@ export function ReportsPage() {
     }
   };
 
-  const incomeData = chartData.filter(d => d.type === 'income');
-  const expenseData = chartData.filter(d => d.type === 'expense');
 
   return (
     <div className="space-y-6">
@@ -246,20 +284,21 @@ export function ReportsPage() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={[...incomeData, ...expenseData]}>
+              <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis tickFormatter={(value) => formatCurrency(value)} />
                 <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                 <Legend />
-                <Bar dataKey="value" fill="#8884d8" />
+                <Bar dataKey="receitas" fill="#10b981" name="Receitas" />
+                <Bar dataKey="despesas" fill="#ef4444" name="Despesas" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
         {/* Pizza de Receitas */}
-        {incomeData.length > 0 && (
+        {incomeDataForPie.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle>Distribuição de Receitas</CardTitle>
@@ -268,7 +307,7 @@ export function ReportsPage() {
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
-                    data={incomeData}
+                    data={incomeDataForPie}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
@@ -277,7 +316,7 @@ export function ReportsPage() {
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {incomeData.map((entry, index) => (
+                    {incomeDataForPie.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -289,7 +328,7 @@ export function ReportsPage() {
         )}
 
         {/* Pizza de Despesas */}
-        {expenseData.length > 0 && (
+        {expenseDataForPie.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle>Distribuição de Despesas</CardTitle>
@@ -298,7 +337,7 @@ export function ReportsPage() {
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
-                    data={expenseData}
+                    data={expenseDataForPie}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
@@ -307,7 +346,7 @@ export function ReportsPage() {
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {expenseData.map((entry, index) => (
+                    {expenseDataForPie.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
