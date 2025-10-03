@@ -1,5 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 import { FinancialChart } from "../FinancialChart";
 import { CategoryManager } from "../CategoryManager";
 import { ProfileSettings } from "../ProfileSettings";
@@ -9,6 +11,7 @@ import { FutureFeatures } from "../FutureFeatures";
 import { BalanceAlert } from "./BalanceAlert";
 import { SummaryCards } from "./SummaryCards";
 import { FilteredSummaryCards } from "./FilteredSummaryCards";
+import { AddTransactionButton } from "./AddTransactionButton";
 import { Transaction } from "@/hooks/useTransactions";
 import { TransactionList } from "../TransactionList";
 import { TransactionFilters, TransactionFiltersState } from "../TransactionFilters";
@@ -41,6 +44,8 @@ interface DashboardContentProps {
   totalIncome: number;
   totalExpenses: number;
   isNegative: boolean;
+  showTransactionForm: boolean;
+  onToggleTransactionForm: () => void;
 }
 
 export function DashboardContent({ 
@@ -53,7 +58,9 @@ export function DashboardContent({
   balance,
   totalIncome,
   totalExpenses,
-  isNegative
+  isNegative,
+  showTransactionForm,
+  onToggleTransactionForm
 }: DashboardContentProps) {
   const [filters, setFilters] = useState<TransactionFiltersState>({
     period: 'all',
@@ -65,6 +72,7 @@ export function DashboardContent({
   });
 
   const [currentPage, setCurrentPage] = useState(1);
+  const [showCategoryForm, setShowCategoryForm] = useState(false);
 
   // Reset para página 1 quando filtros mudarem
   useEffect(() => {
@@ -206,6 +214,11 @@ export function DashboardContent({
 
     return (
       <div className="space-y-4">
+        <AddTransactionButton 
+          showForm={showTransactionForm}
+          onToggle={onToggleTransactionForm}
+        />
+        
         <TransactionFilters 
           filters={filters}
           onFiltersChange={setFilters}
@@ -244,12 +257,22 @@ export function DashboardContent({
 
   if (currentTab === "categories") {
     return (
-      <CategoryManager 
-        categories={categories} 
-        onRefresh={onRefresh} 
-        showForm={false}
-        setShowForm={() => {}}
-      />
+      <div className="space-y-4">
+        <Button 
+          onClick={() => setShowCategoryForm(!showCategoryForm)}
+          className="bg-gradient-primary hover:shadow-primary transition-all duration-200"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          {showCategoryForm ? 'Cancelar' : 'Nova Categoria'}
+        </Button>
+        
+        <CategoryManager 
+          categories={categories} 
+          onRefresh={onRefresh} 
+          showForm={showCategoryForm}
+          setShowForm={setShowCategoryForm}
+        />
+      </div>
     );
   }
 

@@ -195,18 +195,20 @@ export function FinancialDashboard() {
             </div>
           )}
 
-          <DashboardContent 
-            currentTab={currentTab}
-            transactions={transactions}
-            categories={categories}
-            onDelete={deleteTransaction}
-            onEdit={setEditingTransaction}
-            onRefresh={refetch}
-            balance={balance}
-            totalIncome={totalIncome}
-            totalExpenses={totalExpenses}
-            isNegative={isNegative}
-          />
+            <DashboardContent 
+              currentTab={currentTab}
+              transactions={transactions}
+              categories={categories}
+              onDelete={deleteTransaction}
+              onEdit={setEditingTransaction}
+              onRefresh={refetch}
+              balance={balance}
+              totalIncome={totalIncome}
+              totalExpenses={totalExpenses}
+              isNegative={isNegative}
+              showTransactionForm={showForm}
+              onToggleTransactionForm={() => setShowForm(!showForm)}
+            />
 
           <WhatsAppInfo />
           <WhatsAppSetup />
@@ -283,6 +285,8 @@ export function FinancialDashboard() {
               totalIncome={totalIncome}
               totalExpenses={totalExpenses}
               isNegative={isNegative}
+              showTransactionForm={showForm}
+              onToggleTransactionForm={() => setShowForm(!showForm)}
             />
 
             <WhatsAppInfo />
