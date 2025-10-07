@@ -37,35 +37,35 @@ serve(async (req) => {
     if (!user?.id) throw new Error("User not authenticated");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // Check if user has already used trial
-    const { data: existingTrials, error: trialCheckError } = await supabaseClient
+    // Check if user has any existing subscription
+    const { data: existingSubscriptions, error: subCheckError } = await supabaseClient
       .from("user_subscriptions")
-      .select("id, status")
+      .select("id, status, plan_id")
       .eq("user_id", user.id)
-      .eq("plan_id", (
-        await supabaseClient
-          .from("subscription_plans")
-          .select("id")
-          .eq("name", "trial")
-          .single()
-      ).data?.id ?? "");
+      .order("created_at", { ascending: false })
+      .limit(1);
 
-    if (trialCheckError && trialCheckError.code !== "PGRST116") {
-      throw new Error(`Error checking existing trials: ${trialCheckError.message}`);
+    if (subCheckError && subCheckError.code !== "PGRST116") {
+      throw new Error(`Error checking existing subscriptions: ${subCheckError.message}`);
     }
 
-    if (existingTrials && existingTrials.length > 0) {
-      logStep("User already used trial", { existingTrials });
-      return new Response(
-        JSON.stringify({ 
-          error: "Trial já utilizado",
-          message: "Você já ativou o período de teste anteriormente" 
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
-        }
-      );
+    // Check if user already has active subscription
+    if (existingSubscriptions && existingSubscriptions.length > 0) {
+      const lastSub = existingSubscriptions[0];
+      
+      if (lastSub.status === "active") {
+        logStep("User already has active subscription", { subscription: lastSub });
+        return new Response(
+          JSON.stringify({ 
+            error: "Plano ativo existente",
+            message: "Você já possui um plano ativo" 
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400,
+          }
+        );
+      }
     }
 
     // Get trial plan ID
@@ -82,22 +82,48 @@ serve(async (req) => {
     const trialEndDate = new Date();
     trialEndDate.setDate(trialEndDate.getDate() + 14);
 
-    // Create subscription record
-    const { data: subscription, error: subError } = await supabaseClient
-      .from("user_subscriptions")
-      .insert({
-        user_id: user.id,
-        plan_id: trialPlan.id,
-        status: "active",
-        current_period_start: new Date().toISOString(),
-        current_period_end: trialEndDate.toISOString(),
-        billing_cycle: "trial",
-      })
-      .select()
-      .single();
+    let subscription;
 
-    if (subError) throw new Error(`Error creating subscription: ${subError.message}`);
-    logStep("Subscription created", { subscriptionId: subscription.id });
+    // If user has inactive subscription, update it instead of creating new
+    if (existingSubscriptions && existingSubscriptions.length > 0) {
+      const lastSub = existingSubscriptions[0];
+      logStep("Updating existing subscription to trial", { subscriptionId: lastSub.id });
+
+      const { data: updatedSub, error: updateError } = await supabaseClient
+        .from("user_subscriptions")
+        .update({
+          plan_id: trialPlan.id,
+          status: "active",
+          current_period_start: new Date().toISOString(),
+          current_period_end: trialEndDate.toISOString(),
+          billing_cycle: "trial",
+        })
+        .eq("id", lastSub.id)
+        .select()
+        .single();
+
+      if (updateError) throw new Error(`Error updating subscription: ${updateError.message}`);
+      subscription = updatedSub;
+      logStep("Subscription updated", { subscriptionId: subscription.id });
+    } else {
+      // Create new subscription record
+      const { data: newSub, error: insertError } = await supabaseClient
+        .from("user_subscriptions")
+        .insert({
+          user_id: user.id,
+          plan_id: trialPlan.id,
+          status: "active",
+          current_period_start: new Date().toISOString(),
+          current_period_end: trialEndDate.toISOString(),
+          billing_cycle: "trial",
+        })
+        .select()
+        .single();
+
+      if (insertError) throw new Error(`Error creating subscription: ${insertError.message}`);
+      subscription = newSub;
+      logStep("Subscription created", { subscriptionId: subscription.id });
+    }
 
     // Update user role to trial
     const { error: roleError } = await supabaseClient
