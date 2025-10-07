@@ -24,6 +24,14 @@ interface ProfileWithCoupon {
   user_coupons: UserCoupon[];
 }
 
+interface Profile {
+  id: string;
+  user_id: string;
+  full_name: string | null;
+  email: string | null;
+  user_coupons: UserCoupon[];
+}
+
 interface UserWithAccess {
   id: string;
   email: string;
@@ -48,13 +56,14 @@ export function AccessManagement() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Buscar usuários com cupons aplicados
-      const { data: usersData, error: usersError } = await supabase
+      // Buscar usuários com cupons aplicados diretamente da tabela profiles
+      const { data: profilesData, error: usersError } = await supabase
         .from('profiles')
         .select(`
           id,
           user_id,
           full_name,
+          email,
           user_coupons (
             applied_at,
             discount_coupons (
@@ -65,20 +74,15 @@ export function AccessManagement() {
         `);
 
       if (usersError) throw usersError;
-
-      // Buscar emails dos usuários
-      const { data: authResponse } = await supabase.auth.admin.listUsers();
-      const authUsers = authResponse?.users || [];
       
-      const profilesData = usersData as unknown as ProfileWithCoupon[];
+      const profiles = profilesData as unknown as Profile[];
       
-      const usersWithAccess = profilesData?.map(profile => {
-        const authUser = authUsers.find((u: any) => u.id === profile.user_id);
+      const usersWithAccess = profiles?.map(profile => {
         const userCoupon = profile.user_coupons?.[0];
         
         return {
           id: profile.user_id,
-          email: authUser?.email || 'N/A',
+          email: profile.email || 'N/A',
           full_name: profile.full_name,
           coupon_code: userCoupon?.discount_coupons?.code || null,
           coupon_type: userCoupon?.discount_coupons?.type || null,
@@ -120,17 +124,19 @@ export function AccessManagement() {
     }
 
     try {
-      // Buscar user_id pelo email
-      const { data: authResponse } = await supabase.auth.admin.listUsers();
-      const authUsers = authResponse?.users || [];
-      const user = authUsers.find((u: any) => u.email === selectedEmail);
+      // Buscar user_id pelo email diretamente da tabela profiles
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .eq('email', selectedEmail)
+        .single();
       
-      if (!user) {
+      if (profileError || !profile) {
         throw new Error('Usuário não encontrado');
       }
 
       const { error } = await supabase.from('user_coupons').insert({
-        user_id: user.id,
+        user_id: profile.user_id,
         coupon_id: selectedCoupon
       });
 
