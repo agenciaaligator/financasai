@@ -16,6 +16,15 @@ export function useAuth() {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Check subscription status after authentication
+        if (session?.user && event === 'SIGNED_IN') {
+          setTimeout(() => {
+            supabase.functions.invoke('check-subscription').catch(error => {
+              console.error('Error checking subscription on login:', error);
+            });
+          }, 0);
+        }
       }
     );
 
@@ -24,6 +33,15 @@ export function useAuth() {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+
+      // Check subscription on initial load
+      if (session?.user) {
+        setTimeout(() => {
+          supabase.functions.invoke('check-subscription').catch(error => {
+            console.error('Error checking subscription on load:', error);
+          });
+        }, 0);
+      }
     });
 
     return () => subscription.unsubscribe();

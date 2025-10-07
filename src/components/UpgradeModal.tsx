@@ -4,6 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Check, X, Sparkles, Crown, Gift } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useCheckout } from "@/hooks/useCheckout";
+import { useState } from "react";
 
 interface UpgradeModalProps {
   open: boolean;
@@ -13,6 +15,8 @@ interface UpgradeModalProps {
 
 export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
   const { planName, isFreePlan, isTrial, isPremium } = useSubscription();
+  const { createCheckoutSession, loading } = useCheckout();
+  const [selectedCycle, setSelectedCycle] = useState<'monthly' | 'yearly'>('monthly');
 
   const plans = [
     {
@@ -100,6 +104,25 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
           )}
         </DialogHeader>
 
+        {!isFreePlan && !isTrial && (
+          <div className="flex justify-center gap-4 mb-6">
+            <Button
+              variant={selectedCycle === 'monthly' ? 'default' : 'outline'}
+              onClick={() => setSelectedCycle('monthly')}
+              size="sm"
+            >
+              Mensal
+            </Button>
+            <Button
+              variant={selectedCycle === 'yearly' ? 'default' : 'outline'}
+              onClick={() => setSelectedCycle('yearly')}
+              size="sm"
+            >
+              Anual (Economize 17%)
+            </Button>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
           {plans.map((plan) => {
             const Icon = plan.icon;
@@ -158,14 +181,17 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
                 <Button
                   className="w-full"
                   variant={plan.variant}
-                  disabled={plan.disabled}
-                  onClick={() => {
-                    // TODO: Implementar lógica de assinatura na Semana 5
-                    console.log('Assinar plano:', plan.name);
-                    onClose();
+                  disabled={plan.disabled || loading}
+                  onClick={async () => {
+                    if (plan.name === 'premium' && !isPremium) {
+                      const priceId = selectedCycle === 'monthly' 
+                        ? 'price_1SFTA4JH1fRNsXz1VdkYkfEg'
+                        : 'price_1SFTBQJH1fRNsXz1MXPjabkC';
+                      await createCheckoutSession(priceId);
+                    }
                   }}
                 >
-                  {plan.buttonText}
+                  {loading ? 'Processando...' : plan.buttonText}
                 </Button>
 
                 {plan.current && (

@@ -8,10 +8,11 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Mail, Lock, Crown, Calendar, Check, X } from "lucide-react";
+import { User, Mail, Lock, Crown, Calendar, Check, X, ExternalLink } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useFeatureLimits } from "@/hooks/useFeatureLimits";
 import { UpgradeModal } from "./UpgradeModal";
+import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
 
 export function ProfileSettings() {
   const [fullName, setFullName] = useState("");
@@ -25,6 +26,8 @@ export function ProfileSettings() {
   const { toast } = useToast();
   const { subscription, planName, isFreePlan, isTrial, isPremium } = useSubscription();
   const { currentUsage, getTransactionProgress, getCategoryProgress } = useFeatureLimits();
+  const { status: subscriptionStatus } = useSubscriptionStatus();
+  const [managingSubscription, setManagingSubscription] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -119,6 +122,32 @@ export function ProfileSettings() {
     }
 
     setLoading(false);
+  };
+
+  const handleManageSubscription = async () => {
+    setManagingSubscription(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal');
+
+      if (error) throw error;
+
+      if (data?.url) {
+        window.open(data.url, '_blank');
+        toast({
+          title: "Portal aberto!",
+          description: "Gerencie sua assinatura na nova aba",
+        });
+      }
+    } catch (error) {
+      console.error('Error opening customer portal:', error);
+      toast({
+        title: "Erro ao abrir portal",
+        description: "Tente novamente mais tarde",
+        variant: "destructive",
+      });
+    } finally {
+      setManagingSubscription(false);
+    }
   };
 
   return (
@@ -341,15 +370,35 @@ export function ProfileSettings() {
             </div>
           </div>
 
-          {(isFreePlan || isTrial) && (
-            <Button 
-              className="w-full bg-gradient-primary hover:shadow-primary"
-              onClick={() => setShowUpgradeModal(true)}
-            >
-              <Crown className="h-4 w-4 mr-2" />
-              Fazer Upgrade para Premium
-            </Button>
-          )}
+          <div className="space-y-3">
+            {(isFreePlan || isTrial) && (
+              <Button 
+                className="w-full bg-gradient-primary hover:shadow-primary"
+                onClick={() => setShowUpgradeModal(true)}
+              >
+                <Crown className="h-4 w-4 mr-2" />
+                Fazer Upgrade para Premium
+              </Button>
+            )}
+
+            {isPremium && subscriptionStatus?.stripe_customer_id && (
+              <Button 
+                className="w-full"
+                variant="outline"
+                onClick={handleManageSubscription}
+                disabled={managingSubscription}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                {managingSubscription ? 'Abrindo...' : 'Gerenciar Assinatura'}
+              </Button>
+            )}
+
+            {subscriptionStatus?.stripe_subscription_id && (
+              <p className="text-xs text-muted-foreground text-center">
+                ID da Assinatura: {subscriptionStatus.stripe_subscription_id}
+              </p>
+            )}
+          </div>
         </CardContent>
       </Card>
 
