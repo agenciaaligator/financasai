@@ -127,56 +127,62 @@ export function SubscriptionsManagement() {
         <CardTitle>Gerenciamento de Assinaturas</CardTitle>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Usuário</TableHead>
-              <TableHead>Plano</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Ciclo</TableHead>
-              <TableHead>Próximo Pagamento</TableHead>
-              <TableHead>Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {subscriptions.map((sub) => (
-              <TableRow key={sub.id}>
-                <TableCell className="font-medium">{sub.user_name}</TableCell>
-                <TableCell>{sub.plan_name}</TableCell>
-                <TableCell>{getStatusBadge(sub.status)}</TableCell>
-                <TableCell className="capitalize">
-                  {sub.status === 'active' 
-                    ? (sub.billing_cycle === 'monthly' ? 'Mensal' : 'Anual')
-                    : '—'
-                  }
-                </TableCell>
-                <TableCell>
-                  {sub.status === 'active' ? (
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      {sub.current_period_end 
-                        ? new Date(sub.current_period_end).toLocaleDateString('pt-BR')
-                        : '—'}
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {sub.status === 'active' && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleCancelSubscription(sub.id)}
-                    >
-                      Cancelar
-                    </Button>
-                  )}
-                </TableCell>
+        {subscriptions.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            Nenhuma assinatura ativa no momento
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Usuário</TableHead>
+                <TableHead>Plano</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Ciclo</TableHead>
+                <TableHead>Próximo Pagamento</TableHead>
+                <TableHead>Ações</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {subscriptions.map((sub) => (
+                <TableRow key={sub.id}>
+                  <TableCell className="font-medium">{sub.user_name}</TableCell>
+                  <TableCell>{sub.plan_name}</TableCell>
+                  <TableCell>{getStatusBadge(sub.status)}</TableCell>
+                  <TableCell className="capitalize">
+                    {sub.status === 'active' 
+                      ? (sub.billing_cycle === 'monthly' ? 'Mensal' : 'Anual')
+                      : '—'
+                    }
+                  </TableCell>
+                  <TableCell>
+                    {sub.status === 'active' ? (
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        {sub.current_period_end 
+                          ? new Date(sub.current_period_end).toLocaleDateString('pt-BR')
+                          : '—'}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {sub.status === 'active' && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleCancelSubscription(sub.id)}
+                      >
+                        Cancelar
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </CardContent>
     </Card>
   );

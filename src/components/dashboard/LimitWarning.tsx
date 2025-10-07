@@ -13,6 +13,10 @@ interface LimitWarningProps {
 
 export const LimitWarning = ({ type, current, limit, planName }: LimitWarningProps) => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  
+  // Don't show warning for unlimited plans (admin, premium)
+  if (limit === null || limit === undefined) return null;
+  
   const percentage = (current / limit) * 100;
   
   // Only show warning at 80% or above
