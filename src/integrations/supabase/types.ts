@@ -176,6 +176,87 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_plans: {
+        Row: {
+          created_at: string
+          description: string | null
+          discount_percentage: number | null
+          display_name: string
+          has_ai_reports: boolean | null
+          has_bank_integration: boolean | null
+          has_google_calendar: boolean | null
+          has_multi_user: boolean | null
+          has_priority_support: boolean | null
+          has_whatsapp: boolean | null
+          id: string
+          is_active: boolean | null
+          max_categories: number | null
+          max_transactions: number | null
+          mercadopago_plan_id: string | null
+          name: string
+          price_monthly: number | null
+          price_yearly: number | null
+          promotion_valid_until: string | null
+          promotional_price: number | null
+          role: Database["public"]["Enums"]["app_role"]
+          stripe_price_id_monthly: string | null
+          stripe_price_id_yearly: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          discount_percentage?: number | null
+          display_name: string
+          has_ai_reports?: boolean | null
+          has_bank_integration?: boolean | null
+          has_google_calendar?: boolean | null
+          has_multi_user?: boolean | null
+          has_priority_support?: boolean | null
+          has_whatsapp?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          max_categories?: number | null
+          max_transactions?: number | null
+          mercadopago_plan_id?: string | null
+          name: string
+          price_monthly?: number | null
+          price_yearly?: number | null
+          promotion_valid_until?: string | null
+          promotional_price?: number | null
+          role: Database["public"]["Enums"]["app_role"]
+          stripe_price_id_monthly?: string | null
+          stripe_price_id_yearly?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          discount_percentage?: number | null
+          display_name?: string
+          has_ai_reports?: boolean | null
+          has_bank_integration?: boolean | null
+          has_google_calendar?: boolean | null
+          has_multi_user?: boolean | null
+          has_priority_support?: boolean | null
+          has_whatsapp?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          max_categories?: number | null
+          max_transactions?: number | null
+          mercadopago_plan_id?: string | null
+          name?: string
+          price_monthly?: number | null
+          price_yearly?: number | null
+          promotion_valid_until?: string | null
+          promotional_price?: number | null
+          role?: Database["public"]["Enums"]["app_role"]
+          stripe_price_id_monthly?: string | null
+          stripe_price_id_yearly?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number
@@ -252,6 +333,74 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_subscriptions: {
+        Row: {
+          billing_cycle: string | null
+          cancel_at_period_end: boolean | null
+          cancelled_at: string | null
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          mercadopago_customer_id: string | null
+          mercadopago_subscription_id: string | null
+          payment_gateway: string | null
+          plan_id: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_price_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          billing_cycle?: string | null
+          cancel_at_period_end?: boolean | null
+          cancelled_at?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          mercadopago_customer_id?: string | null
+          mercadopago_subscription_id?: string | null
+          payment_gateway?: string | null
+          plan_id: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          billing_cycle?: string | null
+          cancel_at_period_end?: boolean | null
+          cancelled_at?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          mercadopago_customer_id?: string | null
+          mercadopago_subscription_id?: string | null
+          payment_gateway?: string | null
+          plan_id?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       whatsapp_auth_codes: {
         Row: {
@@ -337,6 +486,20 @@ export type Database = {
       cleanup_rate_limit_events: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      get_user_active_plan: {
+        Args: { _user_id: string }
+        Returns: {
+          has_ai_reports: boolean
+          has_bank_integration: boolean
+          has_google_calendar: boolean
+          has_multi_user: boolean
+          has_priority_support: boolean
+          has_whatsapp: boolean
+          max_categories: number
+          max_transactions: number
+          plan_name: string
+        }[]
       }
       get_user_role: {
         Args: { _user_id: string }

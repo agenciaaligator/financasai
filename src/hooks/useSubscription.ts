@@ -1,0 +1,88 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from './useAuth';
+import { getPlanLimits, PlanLimits } from '@/lib/featureFlags';
+
+interface SubscriptionPlan {
+  id: string;
+  name: string;
+  display_name: string;
+  description: string;
+  price_monthly: number;
+  price_yearly: number;
+  role: string;
+  max_transactions: number | null;
+  max_categories: number | null;
+  has_whatsapp: boolean;
+  has_ai_reports: boolean;
+  has_google_calendar: boolean;
+  has_bank_integration: boolean;
+  has_multi_user: boolean;
+  has_priority_support: boolean;
+}
+
+interface UserSubscription {
+  id: string;
+  user_id: string;
+  plan_id: string;
+  status: string;
+  billing_cycle: string;
+  current_period_start: string;
+  current_period_end: string;
+  subscription_plans: SubscriptionPlan;
+}
+
+export function useSubscription() {
+  const { user } = useAuth();
+  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
+  const [planLimits, setPlanLimits] = useState<PlanLimits | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) {
+      setSubscription(null);
+      setPlanLimits(null);
+      setLoading(false);
+      return;
+    }
+
+    fetchSubscription();
+  }, [user]);
+
+  const fetchSubscription = async () => {
+    if (!user) return;
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('user_subscriptions')
+        .select('*, subscription_plans(*)')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (error) throw error;
+
+      setSubscription(data as UserSubscription | null);
+      
+      const limits = await getPlanLimits(user.id);
+      setPlanLimits(limits);
+    } catch (error) {
+      console.error('Error fetching subscription:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { 
+    subscription, 
+    planLimits, 
+    loading, 
+    refetch: fetchSubscription,
+    isFreePlan: !subscription || subscription.subscription_plans?.name === 'free',
+    isPremium: subscription?.subscription_plans?.name === 'premium',
+    isTrial: subscription?.subscription_plans?.name === 'trial',
+    planName: subscription?.subscription_plans?.display_name || 'Gratuito',
+    billingCycle: subscription?.billing_cycle || 'monthly'
+  };
+}
