@@ -97,7 +97,12 @@ export function useFeatureLimits() {
   };
 
   const getTransactionProgress = () => {
-    if (!planLimits?.maxTransactions) return null;
+    if (!planLimits || currentUsage.transactions === undefined) {
+      return { current: 0, limit: null, percentage: 0, isNearLimit: false };
+    }
+    if (!planLimits.maxTransactions) {
+      return { current: currentUsage.transactions, limit: null, percentage: 0, isNearLimit: false };
+    }
     const percentage = (currentUsage.transactions / planLimits.maxTransactions) * 100;
     return {
       current: currentUsage.transactions,
@@ -108,7 +113,12 @@ export function useFeatureLimits() {
   };
 
   const getCategoryProgress = () => {
-    if (!planLimits?.maxCategories) return null;
+    if (!planLimits || currentUsage.categories === undefined) {
+      return { current: 0, limit: null, percentage: 0, isNearLimit: false };
+    }
+    if (!planLimits.maxCategories) {
+      return { current: currentUsage.categories, limit: null, percentage: 0, isNearLimit: false };
+    }
     const percentage = (currentUsage.categories / planLimits.maxCategories) * 100;
     return {
       current: currentUsage.categories,

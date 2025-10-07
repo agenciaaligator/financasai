@@ -121,54 +121,51 @@ export function SubscriptionsManagement() {
     );
   }
 
+  const activeSubscriptions = subscriptions.filter(s => s.status === 'active');
+  const inactiveSubscriptions = subscriptions.filter(s => s.status !== 'active');
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Gerenciamento de Assinaturas</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {subscriptions.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            Nenhuma assinatura ativa no momento
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Usuário</TableHead>
-                <TableHead>Plano</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Ciclo</TableHead>
-                <TableHead>Próximo Pagamento</TableHead>
-                <TableHead>Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {subscriptions.map((sub) => (
-                <TableRow key={sub.id}>
-                  <TableCell className="font-medium">{sub.user_name}</TableCell>
-                  <TableCell>{sub.plan_name}</TableCell>
-                  <TableCell>{getStatusBadge(sub.status)}</TableCell>
-                  <TableCell className="capitalize">
-                    {sub.status === 'active' 
-                      ? (sub.billing_cycle === 'monthly' ? 'Mensal' : 'Anual')
-                      : '—'
-                    }
-                  </TableCell>
-                  <TableCell>
-                    {sub.status === 'active' ? (
+    <div className="space-y-6">
+      {/* Assinaturas Ativas */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Assinaturas Ativas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {activeSubscriptions.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Nenhuma assinatura ativa no momento
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Usuário</TableHead>
+                  <TableHead>Plano</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Ciclo</TableHead>
+                  <TableHead>Próximo Pagamento</TableHead>
+                  <TableHead>Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {activeSubscriptions.map((sub) => (
+                  <TableRow key={sub.id}>
+                    <TableCell className="font-medium">{sub.user_name}</TableCell>
+                    <TableCell>{sub.plan_name}</TableCell>
+                    <TableCell>{getStatusBadge(sub.status)}</TableCell>
+                    <TableCell className="capitalize">
+                      {sub.billing_cycle === 'monthly' ? 'Mensal' : 'Anual'}
+                    </TableCell>
+                    <TableCell>
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
                         {sub.current_period_end 
                           ? new Date(sub.current_period_end).toLocaleDateString('pt-BR')
                           : '—'}
                       </div>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {sub.status === 'active' && (
+                    </TableCell>
+                    <TableCell>
                       <Button
                         variant="destructive"
                         size="sm"
@@ -176,14 +173,53 @@ export function SubscriptionsManagement() {
                       >
                         Cancelar
                       </Button>
-                    )}
-                  </TableCell>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Assinaturas Recentes (Não Ativas) */}
+      {inactiveSubscriptions.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Assinaturas Recentes (Não Ativas)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Usuário</TableHead>
+                  <TableHead>Plano</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Ciclo</TableHead>
+                  <TableHead>Data de Criação</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+              </TableHeader>
+              <TableBody>
+                {inactiveSubscriptions.map((sub) => (
+                  <TableRow key={sub.id}>
+                    <TableCell className="font-medium">{sub.user_name}</TableCell>
+                    <TableCell>{sub.plan_name}</TableCell>
+                    <TableCell>{getStatusBadge(sub.status)}</TableCell>
+                    <TableCell className="capitalize">
+                      {sub.billing_cycle === 'monthly' ? 'Mensal' : 'Anual'}
+                    </TableCell>
+                    <TableCell>
+                      {sub.created_at 
+                        ? new Date(sub.created_at).toLocaleDateString('pt-BR')
+                        : '—'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }

@@ -583,18 +583,47 @@ const handler = async (req: Request): Promise<Response> => {
       
       // Detectar tipo de mensagem e processar áudio se necessário
       if (message.type === 'audio' && message.audio?.id) {
-        console.log('🎙️ Audio message detected, transcribing...');
+        console.log(`🎙️ [${messageId?.substring(0,10)}] Audio detected, transcribing...`);
         try {
           text = await transcribeAudio(message.audio.id, message.from);
-          console.log('🎙️ Audio message transcribed:', {
+          console.log(`✅ [${messageId?.substring(0,10)}] Transcription successful:`, {
             from: message.from.substring(0, 8) + '***',
-            transcribedLength: text.length,
-            preview: text.substring(0, 50) + '...'
+            length: text.length,
+            preview: text.substring(0, 50)
           });
         } catch (transcribeError) {
-          console.error('❌ Audio transcription error:', transcribeError.message);
-          // Enviar mensagem de erro de volta ao usuário
-          text = transcribeError.message;
+          console.error(`❌ [${messageId?.substring(0,10)}] Transcription failed:`, transcribeError.message);
+          // Enviar mensagem padrão de erro ao usuário
+          const errorMessage = 'Desculpe, não consegui transcrever seu áudio agora. Envie texto como: "despesa 50 mercado".';
+          
+          // Enviar erro direto ao usuário (não ao agente)
+          try {
+            await fetch(`https://graph.facebook.com/v21.0/${whatsappPhoneNumberId}/messages`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${whatsappAccessToken}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                messaging_product: 'whatsapp',
+                to: message.from,
+                text: { body: errorMessage }
+              })
+            });
+            console.log(`📤 [${messageId?.substring(0,10)}] Erro de transcrição enviado ao usuário`);
+          } catch (sendError) {
+            console.error('❌ Erro ao enviar mensagem de erro:', sendError);
+          }
+          
+          // Retornar sem processar pelo agente
+          return new Response(JSON.stringify({ 
+            success: true, 
+            skipped: true,
+            reason: 'transcription_failed'
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
         }
       } else if (message.type === 'text') {
         text = message.text?.body;

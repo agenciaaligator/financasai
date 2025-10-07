@@ -92,49 +92,54 @@ export function DashboardContent({
     return transactions.filter(transaction => {
       // Filtro de período
       if (filters.period !== 'all') {
-        const transactionDate = toZonedTime(parseISO(transaction.date), TIMEZONE);
-        let startDate: Date;
-        let endDate: Date;
+        try {
+          const transactionDate = toZonedTime(parseISO(transaction.date), TIMEZONE);
+          let startDate: Date;
+          let endDate: Date;
 
-        switch (filters.period) {
-          case 'today':
-            startDate = startOfDay(now);
-            endDate = endOfDay(now);
-            break;
-          case 'week':
-            startDate = startOfWeek(now, { weekStartsOn: 0 });
-            endDate = endOfWeek(now, { weekStartsOn: 0 });
-            break;
-          case 'month':
-            startDate = startOfMonth(now);
-            endDate = endOfMonth(now);
-            break;
-          case '30days':
-            startDate = startOfDay(subDays(now, 30));
-            endDate = endOfDay(now);
-            break;
-          case '90days':
-            startDate = startOfDay(subDays(now, 90));
-            endDate = endOfDay(now);
-            break;
-          case 'year':
-            startDate = startOfYear(now);
-            endDate = endOfYear(now);
-            break;
-          case 'custom':
-            if (filters.customDateRange.start && filters.customDateRange.end) {
-              startDate = startOfDay(toZonedTime(filters.customDateRange.start, TIMEZONE));
-              endDate = endOfDay(toZonedTime(filters.customDateRange.end, TIMEZONE));
-            } else {
+          switch (filters.period) {
+            case 'today':
+              startDate = startOfDay(now);
+              endDate = endOfDay(now);
+              break;
+            case 'week':
+              startDate = startOfWeek(now, { weekStartsOn: 0 });
+              endDate = endOfWeek(now, { weekStartsOn: 0 });
+              break;
+            case 'month':
+              startDate = startOfMonth(now);
+              endDate = endOfMonth(now);
+              break;
+            case '30days':
+              startDate = startOfDay(subDays(now, 30));
+              endDate = endOfDay(now);
+              break;
+            case '90days':
+              startDate = startOfDay(subDays(now, 90));
+              endDate = endOfDay(now);
+              break;
+            case 'year':
+              startDate = startOfYear(now);
+              endDate = endOfYear(now);
+              break;
+            case 'custom':
+              if (filters.customDateRange.start && filters.customDateRange.end) {
+                startDate = startOfDay(toZonedTime(filters.customDateRange.start, TIMEZONE));
+                endDate = endOfDay(toZonedTime(filters.customDateRange.end, TIMEZONE));
+              } else {
+                return true;
+              }
+              break;
+            default:
               return true;
-            }
-            break;
-          default:
-            return true;
-        }
+          }
 
-        if (!isWithinInterval(transactionDate, { start: startDate, end: endDate })) {
-          return false;
+          if (!isWithinInterval(transactionDate, { start: startDate, end: endDate })) {
+            return false;
+          }
+        } catch (error) {
+          console.warn('[DashboardContent] Data inválida na transação:', transaction.id, transaction.date);
+          return true; // Incluir transações com data inválida
         }
       }
 

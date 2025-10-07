@@ -56,29 +56,55 @@ export function AccessManagement() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Buscar usuários com cupons aplicados diretamente da tabela profiles
-      const { data: profilesData, error: usersError } = await supabase
+      console.log('[AccessManagement] Iniciando busca de dados...');
+      
+      // 1. Buscar profiles separadamente
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select(`
-          id,
-          user_id,
-          full_name,
-          email,
-          user_coupons (
-            applied_at,
-            discount_coupons (
-              code,
-              type
-            )
-          )
-        `);
+        .select('id, user_id, full_name, email');
 
-      if (usersError) throw usersError;
+      if (profilesError) {
+        console.error('[AccessManagement] Erro ao buscar profiles:', profilesError);
+        throw new Error(profilesError.message || 'Erro ao buscar perfis');
+      }
       
-      const profiles = profilesData as unknown as Profile[];
+      console.log('[AccessManagement] Profiles encontrados:', profilesData?.length);
       
-      const usersWithAccess = profiles?.map(profile => {
-        const userCoupon = profile.user_coupons?.[0];
+      if (!profilesData || profilesData.length === 0) {
+        setUsers([]);
+        setCoupons([]);
+        return;
+      }
+
+      // 2. Buscar user_coupons para esses usuários
+      const userIds = profilesData.map(p => p.user_id);
+      const { data: userCouponsData, error: couponsError } = await supabase
+        .from('user_coupons')
+        .select(`
+          user_id,
+          applied_at,
+          discount_coupons (
+            code,
+            type
+          )
+        `)
+        .in('user_id', userIds);
+
+      if (couponsError) {
+        console.error('[AccessManagement] Erro ao buscar user_coupons:', couponsError);
+        throw new Error(couponsError.message || 'Erro ao buscar cupons de usuários');
+      }
+
+      console.log('[AccessManagement] User coupons encontrados:', userCouponsData?.length);
+
+      // 3. Mapear dados em memória
+      const couponsByUser = new Map();
+      userCouponsData?.forEach(uc => {
+        couponsByUser.set(uc.user_id, uc);
+      });
+
+      const usersWithAccess = profilesData.map(profile => {
+        const userCoupon = couponsByUser.get(profile.user_id);
         
         return {
           id: profile.user_id,
@@ -88,24 +114,30 @@ export function AccessManagement() {
           coupon_type: userCoupon?.discount_coupons?.type || null,
           applied_at: userCoupon?.applied_at || null
         };
-      }) || [];
+      });
 
       setUsers(usersWithAccess.filter(u => u.coupon_code));
 
-      // Buscar cupons disponíveis
-      const { data: couponsData, error: couponsError } = await supabase
+      // 4. Buscar cupons disponíveis
+      const { data: availableCouponsData, error: availableCouponsError } = await supabase
         .from('discount_coupons')
         .select('id, code')
         .eq('is_active', true)
         .order('code');
 
-      if (couponsError) throw couponsError;
-      setCoupons(couponsData || []);
-    } catch (error) {
-      console.error('Error fetching data:', error);
+      if (availableCouponsError) {
+        console.error('[AccessManagement] Erro ao buscar cupons disponíveis:', availableCouponsError);
+        throw new Error(availableCouponsError.message || 'Erro ao buscar cupons disponíveis');
+      }
+      
+      setCoupons(availableCouponsData || []);
+      console.log('[AccessManagement] Dados carregados com sucesso');
+      
+    } catch (error: any) {
+      console.error('[AccessManagement] Erro detalhado:', error);
       toast({
         title: 'Erro ao carregar dados',
-        description: 'Não foi possível carregar os dados.',
+        description: error.message || 'Não foi possível carregar os dados.',
         variant: 'destructive'
       });
     } finally {
@@ -124,7 +156,7 @@ export function AccessManagement() {
     }
 
     try {
-      // Buscar user_id pelo email diretamente da tabela profiles
+      // Buscar user_id pelo email
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('user_id')
@@ -135,12 +167,31 @@ export function AccessManagement() {
         throw new Error('Usuário não encontrado');
       }
 
+      // Verificar se já tem cupom
+      const { data: existingCoupon } = await supabase
+        .from('user_coupons')
+        .select('id')
+        .eq('user_id', profile.user_id)
+        .maybeSingle();
+
+      if (existingCoupon) {
+        toast({
+          title: 'Cupom já aplicado',
+          description: 'Este usuário já possui um cupom. Remova o cupom atual antes de aplicar um novo.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
       const { error } = await supabase.from('user_coupons').insert({
         user_id: profile.user_id,
         coupon_id: selectedCoupon
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[AccessManagement] Erro ao inserir cupom:', error);
+        throw new Error(error.message || 'Erro ao aplicar cupom');
+      }
 
       toast({
         title: 'Cupom aplicado',
@@ -151,9 +202,10 @@ export function AccessManagement() {
       setSelectedCoupon('');
       fetchData();
     } catch (error: any) {
+      console.error('[AccessManagement] handleApplyCoupon error:', error);
       toast({
         title: 'Erro ao aplicar cupom',
-        description: error.message,
+        description: error.message || 'Erro desconhecido',
         variant: 'destructive'
       });
     }
