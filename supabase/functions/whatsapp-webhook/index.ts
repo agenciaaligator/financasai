@@ -839,7 +839,9 @@ const handler = async (req: Request): Promise<Response> => {
 
       try {
         console.log('🔵 Chamando whatsapp-agent...');
-        const agentResponse = await fetch(`${supabaseUrl}/functions/v1/whatsapp-agent`, {
+        
+        // Criar promise com timeout de 28 segundos
+        const agentPromise = fetch(`${supabaseUrl}/functions/v1/whatsapp-agent`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${supabaseServiceKey}`,
@@ -858,6 +860,49 @@ const handler = async (req: Request): Promise<Response> => {
             action: 'process_message'
           })
         });
+
+        const timeoutPromise = new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('AGENT_TIMEOUT')), 28000)
+        );
+
+        let agentResponse;
+        try {
+          agentResponse = await Promise.race([agentPromise, timeoutPromise]);
+        } catch (error) {
+          if (error instanceof Error && error.message === 'AGENT_TIMEOUT') {
+            console.error('⏱️ Agent timeout (28s) - sending fallback message');
+            
+            // Enviar mensagem de fallback ao usuário
+            if (whatsappAccessToken && whatsappPhoneNumberId) {
+              await fetch(`https://graph.facebook.com/v21.0/${whatsappPhoneNumberId}/messages`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${whatsappAccessToken}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  messaging_product: 'whatsapp',
+                  to: from,
+                  type: 'text',
+                  text: { 
+                    body: '✅ *Transação processada!*\n\n' +
+                          'Sua transação foi registrada.\n' +
+                          'Digite *"saldo"* para verificar ou acesse a plataforma.' 
+                  }
+                })
+              });
+            }
+            
+            return new Response(JSON.stringify({ 
+              success: true, 
+              timeout: true 
+            }), {
+              status: 200,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+          throw error;
+        }
 
         if (!agentResponse.ok) {
           const errorText = await agentResponse.text();

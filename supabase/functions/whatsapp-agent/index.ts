@@ -1512,7 +1512,8 @@ class WhatsAppAgent {
       const negative = ['não', 'nao', 'n', 'no', 'cancelar', 'cancel'];
       
       if (affirmative.includes(messageText)) {
-        console.log('Transaction confirmed, saving with default date if missing');
+        console.log('✅ CONFIRMATION: User confirmed transaction');
+        console.log('🔵 Transaction data:', JSON.stringify(sessionData.pending_transaction, null, 2));
         
         // Usar data local do Brasil se não especificada
         const localTime = getBrazilTime();
@@ -1522,7 +1523,12 @@ class WhatsAppAgent {
           ...sessionData.pending_transaction,
           date: sessionData.pending_transaction?.date || defaultDate
         };
+        
+        console.log('🚀 Calling saveTransaction...');
+        const startTime = Date.now();
         const saveResult = await this.saveTransaction(session.user_id!, tx);
+        console.log(`✅ saveTransaction completed in ${Date.now() - startTime}ms`);
+        console.log('📤 Response to send:', typeof saveResult === 'string' ? saveResult.substring(0, 100) + '...' : 'object');
         
         // 🔧 LIMPAR ESTADO após salvar
         await SessionManager.updateSession(session.id, {
@@ -1532,6 +1538,8 @@ class WhatsAppAgent {
             pending_transaction: undefined
           }
         });
+        
+        console.log('✅ Session cleared, returning response to webhook');
         
         return {
           response: saveResult,
@@ -1783,8 +1791,9 @@ class WhatsAppAgent {
                     `1️⃣ Valor\n` +
                     `2️⃣ Categoria\n` +
                     `3️⃣ Título\n` +
-                    `4️⃣ Data\n\n` +
-                    `Digite o número ou "cancelar"`;
+                    `4️⃣ Data\n` +
+                    `5️⃣ Cancelar\n\n` +
+                    `Digite o número:`;
 
     return {
       response,
@@ -1811,19 +1820,36 @@ class WhatsAppAgent {
       };
     }
 
-    const fieldMap: Record<string, 'amount' | 'category' | 'title' | 'date'> = {
+    const fieldMap: Record<string, 'amount' | 'category' | 'title' | 'date' | 'cancel'> = {
       '1': 'amount',
       '2': 'category',
       '3': 'title',
-      '4': 'date'
+      '4': 'date',
+      '5': 'cancel'
     };
 
     const field = fieldMap[messageText.trim()];
 
     if (!field) {
       return {
-        response: '❌ Opção inválida.\n\nDigite 1, 2, 3 ou 4, ou "cancelar"',
+        response: '❌ Opção inválida.\n\nDigite 1, 2, 3, 4 ou 5',
         sessionData
+      };
+    }
+
+    // Se escolheu cancelar (5)
+    if (field === 'cancel') {
+      await SessionManager.updateSession(session.id, {
+        session_data: {
+          ...sessionData,
+          conversation_state: 'idle',
+          pending_edit: undefined
+        }
+      });
+
+      return {
+        response: '❌ Edição cancelada.',
+        sessionData: { ...sessionData, conversation_state: 'idle', pending_edit: undefined }
       };
     }
 
