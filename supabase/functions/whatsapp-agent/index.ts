@@ -17,6 +17,14 @@ interface WhatsAppMessage {
   id?: string;
   body?: string;
   type?: string;
+  image?: {
+    id: string;
+    mime_type: string;
+  };
+  audio?: {
+    id: string;
+    mime_type: string;
+  };
 }
 
 interface Session {
@@ -32,9 +40,27 @@ interface SessionData {
   authenticated?: boolean;
   last_command?: string | null;
   context?: any;
-  conversation_state?: 'idle' | 'waiting_date' | 'waiting_confirmation' | 'awaiting_category';
+  conversation_state?: 'idle' | 'waiting_date' | 'waiting_confirmation' | 'awaiting_category' | 'confirming_ocr' | 'awaiting_delete_confirmation' | 'awaiting_edit_field' | 'awaiting_edit_value';
   pending_transaction?: Partial<Transaction>;
+  pending_ocr_data?: {
+    amount: number;
+    merchant: string;
+    category: string;
+    date?: string;
+    imageUrl?: string;
+  };
+  pending_delete?: {
+    transaction_id: string;
+    transaction_title: string;
+    transaction_amount: number;
+  };
+  pending_edit?: {
+    transaction_id: string;
+    field?: 'amount' | 'category' | 'title' | 'date';
+    original_transaction?: any;
+  };
   last_question?: string;
+  full_name?: string;
 }
 
 interface Transaction {
@@ -651,6 +677,207 @@ Qual a melhor categoria?`
   }
 }
 
+// 📸 Classe para OCR de Notas Fiscais com Gemini Vision
+class ReceiptOCR {
+  /**
+   * Baixa mídia do WhatsApp
+   */
+  static async downloadWhatsAppMedia(mediaId: string): Promise<Uint8Array> {
+    const WHATSAPP_ACCESS_TOKEN = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
+    if (!WHATSAPP_ACCESS_TOKEN) {
+      throw new Error('WHATSAPP_ACCESS_TOKEN não configurado');
+    }
+
+    // 1. Obter URL da mídia
+    const mediaInfoResponse = await fetch(
+      `https://graph.facebook.com/v17.0/${mediaId}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${WHATSAPP_ACCESS_TOKEN}`
+        }
+      }
+    );
+
+    if (!mediaInfoResponse.ok) {
+      throw new Error(`Erro ao obter URL da mídia: ${mediaInfoResponse.status}`);
+    }
+
+    const mediaInfo = await mediaInfoResponse.json();
+    const mediaUrl = mediaInfo.url;
+
+    // 2. Baixar a mídia
+    const mediaResponse = await fetch(mediaUrl, {
+      headers: {
+        'Authorization': `Bearer ${WHATSAPP_ACCESS_TOKEN}`
+      }
+    });
+
+    if (!mediaResponse.ok) {
+      throw new Error(`Erro ao baixar mídia: ${mediaResponse.status}`);
+    }
+
+    return new Uint8Array(await mediaResponse.arrayBuffer());
+  }
+
+  /**
+   * Analisa nota fiscal usando Gemini Vision
+   */
+  static async analyzeReceipt(imageBase64: string): Promise<{
+    amount: number;
+    merchant: string;
+    category: string;
+    date?: string;
+  }> {
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY não configurado');
+    }
+
+    console.log('🤖 Analisando nota fiscal com Gemini Vision...');
+
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `Analise esta nota fiscal brasileira e extraia as seguintes informações:
+
+1. Valor total (apenas número, ex: 87.50)
+2. Nome do estabelecimento
+3. Categoria provável (escolha UMA das opções: Alimentação, Transporte, Moradia, Saúde, Entretenimento, Educação, Vestuário, Outros)
+4. Data (formato DD/MM/AAAA, se visível)
+
+IMPORTANTE:
+- Para "valor", retorne APENAS o número decimal (use ponto como separador)
+- Para "merchant", retorne o nome do estabelecimento
+- Para "category", escolha UMA categoria da lista acima
+- Para "date", use formato DD/MM/AAAA ou deixe vazio se não encontrar
+
+Retorne APENAS um JSON válido no formato:
+{"amount": 87.50, "merchant": "Nome do Local", "category": "Alimentação", "date": "07/10/2025"}`
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:image/jpeg;base64,${imageBase64}`
+              }
+            }
+          ]
+        }],
+        temperature: 0.2,
+        max_tokens: 300
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Erro na API Gemini:', response.status, errorText);
+      throw new Error(`Erro na API Gemini: ${response.status}`);
+    }
+
+    const result = await response.json();
+    const content = result.choices[0]?.message?.content;
+    
+    console.log('🤖 Resposta Gemini Vision:', content);
+
+    // Parse do JSON
+    const jsonMatch = content.match(/\{[^}]+\}/);
+    if (!jsonMatch) {
+      throw new Error('Não consegui extrair dados da nota fiscal');
+    }
+
+    const extractedData = JSON.parse(jsonMatch[0]);
+    
+    return {
+      amount: parseFloat(extractedData.amount) || 0,
+      merchant: extractedData.merchant || 'Desconhecido',
+      category: extractedData.category || 'Outros',
+      date: extractedData.date || undefined
+    };
+  }
+}
+
+// 🎭 Classe para Respostas Personalizadas
+class PersonalizedResponses {
+  private static categoryEmojis: Record<string, string> = {
+    'Alimentação': '🍽️',
+    'Transporte': '🚗',
+    'Moradia': '🏠',
+    'Saúde': '💊',
+    'Entretenimento': '🎬',
+    'Educação': '📚',
+    'Vestuário': '👔',
+    'Salário': '💼',
+    'Freelance': '💻',
+    'Investimentos': '📈',
+    'Outros': '📌'
+  };
+
+  /**
+   * Gera resposta personalizada para transação salva
+   */
+  static async generateSaveResponse(
+    userName: string | undefined,
+    transaction: {
+      type: 'income' | 'expense';
+      amount: number;
+      title: string;
+      category_name?: string;
+    },
+    balance: { income: number; expense: number; total: number }
+  ): Promise<string> {
+    const greeting = userName ? userName.split(' ')[0] : 'você';
+    const emoji = this.categoryEmojis[transaction.category_name || 'Outros'] || '📌';
+    const typeEmoji = transaction.type === 'income' ? '💰' : '💸';
+    const typeText = transaction.type === 'income' ? 'Receita' : 'Despesa';
+
+    // Templates variados para soar natural
+    const templates = [
+      `${typeEmoji} Registrado, ${greeting}! ${typeText} de R$ ${transaction.amount.toFixed(2)} em ${transaction.category_name || 'Outros'} ${emoji}\n\n💰 Saldo: R$ ${balance.total.toFixed(2)}`,
+      `Aí sim! ${typeEmoji} ${typeText} de R$ ${transaction.amount.toFixed(2)} salva com sucesso ${emoji}\n\n📊 Receitas: R$ ${balance.income.toFixed(2)}\n💸 Despesas: R$ ${balance.expense.toFixed(2)}\n💰 Saldo: R$ ${balance.total.toFixed(2)}`,
+      `Pronto, ${greeting}! ✅ ${typeText} de R$ ${transaction.amount.toFixed(2)} cadastrada em ${transaction.category_name || 'Outros'} ${emoji}\n\nSeu saldo atual: R$ ${balance.total.toFixed(2)}`
+    ];
+
+    // Template especial para despesas altas
+    if (transaction.type === 'expense' && transaction.amount > 200) {
+      templates.push(`Eita! ${typeEmoji} Despesa de R$ ${transaction.amount.toFixed(2)} registrada em ${transaction.category_name || 'Outros'} ${emoji}\n\nFique de olho no orçamento! Saldo: R$ ${balance.total.toFixed(2)}`);
+    }
+
+    // Template especial para receitas
+    if (transaction.type === 'income') {
+      templates.push(`Aê! 🎉 Receita de R$ ${transaction.amount.toFixed(2)} cadastrada! ${emoji}\n\nBom ver o dinheiro entrando! 💚\nSaldo: R$ ${balance.total.toFixed(2)}`);
+    }
+
+    // Escolher template aleatório
+    const randomIndex = Math.floor(Math.random() * templates.length);
+    return templates[randomIndex];
+  }
+
+  /**
+   * Gera saudação personalizada
+   */
+  static getGreeting(userName: string | undefined): string {
+    const name = userName ? userName.split(' ')[0] : 'você';
+    const hour = new Date().getHours();
+    
+    if (hour < 12) {
+      return `Bom dia, ${name}! ☀️`;
+    } else if (hour < 18) {
+      return `Boa tarde, ${name}! 🌤️`;
+    } else {
+      return `Boa noite, ${name}! 🌙`;
+    }
+  }
+}
+
 class CategoryMatcher {
   /**
    * Busca a melhor categoria para uma transação baseada no título
@@ -749,6 +976,33 @@ class WhatsAppAgent {
     const normalizedText = this.normalizeCommand(messageText);
     const sessionData = session.session_data || {};
     
+    // 🔍 DEBUG: Log detalhado de TODA mensagem recebida
+    console.log('📨 === DEBUG: MENSAGEM RECEBIDA ===');
+    console.log('De:', message.from);
+    console.log('Tipo:', message.type);
+    console.log('Texto original:', message.body);
+    console.log('Texto normalizado:', normalizedText);
+    console.log('Estado da sessão:', sessionData.conversation_state || 'idle');
+    console.log('Autenticado:', !!session.user_id);
+    console.log('=====================================');
+    
+    // 📸 PRIORIDADE 0: Processar imagens (OCR de notas fiscais)
+    if (message.type === 'image' && message.image) {
+      console.log('📸 Imagem recebida, iniciando OCR...');
+      return await this.handleImageMessage(session, message);
+    }
+
+    // 🎤 PRIORIDADE 0.5: Processar áudios
+    if (message.type === 'audio' && message.audio) {
+      console.log('🎤 Áudio recebido');
+      // Por enquanto, apenas informar que áudio foi recebido
+      // TODO: Implementar transcrição com ElevenLabs ou Whisper
+      return {
+        response: '🎤 Áudio recebido!\n\nPor favor, use comandos de texto como:\n• "despesa 50 mercado"\n• "saldo"\n• "ajuda"',
+        sessionData
+      };
+    }
+    
     console.log('📨 Processing message:', { 
       original: messageText.substring(0, 30) + '...', 
       normalized: normalizedText.substring(0, 30) + '...',
@@ -759,6 +1013,25 @@ class WhatsAppAgent {
       hasPendingTransaction: !!sessionData.pending_transaction
     });
     
+    // PRIORIDADE 0.8: Confirmação de OCR
+    if (sessionData.conversation_state === 'confirming_ocr' && sessionData.pending_ocr_data) {
+      return await this.handleOCRConfirmation(session, messageText);
+    }
+
+    // PRIORIDADE 0.9: Confirmação de exclusão
+    if (sessionData.conversation_state === 'awaiting_delete_confirmation' && sessionData.pending_delete) {
+      return await this.handleDeleteConfirmation(session, messageText);
+    }
+
+    // PRIORIDADE 0.95: Edição de transação
+    if (sessionData.conversation_state === 'awaiting_edit_field' && sessionData.pending_edit) {
+      return await this.handleEditFieldSelection(session, messageText);
+    }
+
+    if (sessionData.conversation_state === 'awaiting_edit_value' && sessionData.pending_edit) {
+      return await this.handleEditValueInput(session, messageText);
+    }
+
     // PRIORIDADE 1: Se estamos aguardando categoria, processar resposta
     if (sessionData.conversation_state === 'awaiting_category' && sessionData.pending_transaction) {
       console.log('🔵 User is responding to category question');
@@ -809,6 +1082,20 @@ class WhatsAppAgent {
         response: '❌ Operação cancelada.',
         sessionData: { ...sessionData, conversation_state: 'idle', pending_transaction: undefined }
       };
+    }
+
+    // PRIORIDADE 2.5: Comandos de EDITAR e EXCLUIR
+    const editRegex = /\b(editar|alterar|corrigir|modificar)\s*(ultima|last|anterior)?\b/i;
+    const deleteRegex = /\b(excluir|deletar|apagar|remover)\s*(ultima|last|anterior)?\b/i;
+
+    if (editRegex.test(normalizedText)) {
+      console.log('🔵 COMMAND DETECTED: editar última');
+      return await this.handleEditCommand(session);
+    }
+
+    if (deleteRegex.test(normalizedText)) {
+      console.log('🔵 COMMAND DETECTED: excluir última');
+      return await this.handleDeleteCommand(session);
     }
 
     // PRIORIDADE 3: Comandos de SALDO (verificar ANTES de relatórios)
@@ -1248,6 +1535,10 @@ class WhatsAppAgent {
            `• +100 freelance\n` +
            `• -30 lanche hoje\n` +
            `• gasto 150 alimentação ontem\n\n` +
+           `*📸 Enviar Nota Fiscal:*\n` +
+           `• Tire uma foto da nota fiscal\n` +
+           `• Envie a imagem aqui\n` +
+           `• Eu vou extrair os dados automaticamente!\n\n` +
            `*💳 Ver Saldo:*\n` +
            `• *saldo* ou *meu saldo*\n` +
            `• *qual o saldo?*\n` +
@@ -1258,6 +1549,9 @@ class WhatsAppAgent {
            `• *mes* ou *relatorio mes*\n` +
            `• *extrato* ou *relatorio* (mensal)\n` +
            `• *ano* ou *relatorio ano*\n\n` +
+           `*✏️ Editar/Excluir Transações:*\n` +
+           `• *editar última* - edita a última transação\n` +
+           `• *excluir última* - deleta a última transação\n\n` +
            `*📁 Categorias Automáticas:*\n` +
            `O sistema identifica automaticamente a categoria mais adequada!\n` +
            `Exemplo: "lanche" → categoria "Alimentação"\n\n` +
@@ -1265,6 +1559,498 @@ class WhatsAppAgent {
            `• Use valores com pontos ou vírgulas (ex: 50.30 ou 50,30)\n` +
            `• Pode adicionar a data: "hoje", "ontem" ou "28/09"\n` +
            `• Não se preocupe com acentos ou pontuação!`;
+  }
+
+  // 📸 Método para processar imagens (OCR)
+  static async handleImageMessage(session: Session, message: WhatsAppMessage): Promise<{ response: string, sessionData: SessionData }> {
+    const sessionData = session.session_data || {};
+    
+    if (!session.user_id) {
+      return {
+        response: '❌ Você precisa estar autenticado para enviar notas fiscais.\n\nDigite "codigo" para autenticar.',
+        sessionData
+      };
+    }
+
+    try {
+      console.log('📸 Baixando imagem...');
+      const imageData = await ReceiptOCR.downloadWhatsAppMedia(message.image!.id);
+      
+      // Converter para base64
+      const base64Image = btoa(String.fromCharCode(...imageData));
+      
+      console.log('🤖 Analisando nota fiscal com Gemini Vision...');
+      const ocrData = await ReceiptOCR.analyzeReceipt(base64Image);
+      
+      console.log('✅ OCR concluído:', ocrData);
+
+      // Salvar dados OCR pendentes
+      const updatedSessionData = {
+        ...sessionData,
+        conversation_state: 'confirming_ocr' as const,
+        pending_ocr_data: ocrData
+      };
+
+      await SessionManager.updateSession(session.id, {
+        session_data: updatedSessionData
+      });
+
+      const response = `📸 *Nota Fiscal Analisada!*\n\n` +
+                      `💰 Valor: R$ ${ocrData.amount.toFixed(2)}\n` +
+                      `🏪 Local: ${ocrData.merchant}\n` +
+                      `📂 Categoria: ${ocrData.category}\n` +
+                      `${ocrData.date ? `📅 Data: ${ocrData.date}\n` : ''}\n` +
+                      `Salvar essa despesa? *(sim/não)*`;
+
+      return {
+        response,
+        sessionData: updatedSessionData
+      };
+
+    } catch (error) {
+      console.error('❌ Erro ao processar imagem:', error);
+      return {
+        response: `❌ Não consegui processar a nota fiscal.\n\n` +
+                 `Tente:\n` +
+                 `• Foto mais nítida\n` +
+                 `• Boa iluminação\n` +
+                 `• Nota fiscal completa na imagem\n\n` +
+                 `Ou adicione manualmente: "gasto 50 mercado"`,
+        sessionData
+      };
+    }
+  }
+
+  // ✅ Confirmar OCR
+  static async handleOCRConfirmation(session: Session, messageText: string): Promise<{ response: string, sessionData: SessionData }> {
+    const sessionData = session.session_data || {};
+    const ocrData = sessionData.pending_ocr_data!;
+
+    const affirmative = ['sim', 's', 'yes', 'y', 'confirmo', 'ok', 'salvar'];
+    const negative = ['não', 'nao', 'n', 'no', 'cancelar'];
+
+    if (affirmative.includes(messageText.toLowerCase().trim())) {
+      // Parsear data se existir
+      let parsedDate = ocrData.date ? DateParser.parseDate(ocrData.date) : null;
+      
+      // Usar data de hoje se não encontrou
+      if (!parsedDate) {
+        const localTime = getBrazilTime();
+        parsedDate = `${localTime.getUTCFullYear()}-${String(localTime.getUTCMonth() + 1).padStart(2, '0')}-${String(localTime.getUTCDate()).padStart(2, '0')}`;
+      }
+
+      // Criar transação
+      const transaction: Partial<Transaction> = {
+        amount: ocrData.amount,
+        title: ocrData.merchant,
+        type: 'expense',
+        date: parsedDate,
+        source: 'whatsapp'
+      };
+
+      // Buscar nome do usuário para resposta personalizada
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('user_id', session.user_id!)
+        .maybeSingle();
+
+      const saveResult = await this.saveTransaction(session.user_id!, transaction);
+
+      // Buscar saldo atual
+      const { data: allTransactions } = await supabase
+        .from('transactions')
+        .select('amount, type')
+        .eq('user_id', session.user_id!);
+
+      const income = allTransactions?.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0) || 0;
+      const expense = allTransactions?.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0) || 0;
+
+      // Resposta personalizada
+      const personalizedResponse = await PersonalizedResponses.generateSaveResponse(
+        profile?.full_name,
+        {
+          type: 'expense',
+          amount: ocrData.amount,
+          title: ocrData.merchant,
+          category_name: ocrData.category
+        },
+        {
+          income,
+          expense,
+          total: income - expense
+        }
+      );
+
+      // Limpar estado
+      await SessionManager.updateSession(session.id, {
+        session_data: {
+          ...sessionData,
+          conversation_state: 'idle',
+          pending_ocr_data: undefined
+        }
+      });
+
+      return {
+        response: personalizedResponse,
+        sessionData: { ...sessionData, conversation_state: 'idle', pending_ocr_data: undefined }
+      };
+
+    } else if (negative.includes(messageText.toLowerCase().trim())) {
+      await SessionManager.updateSession(session.id, {
+        session_data: {
+          ...sessionData,
+          conversation_state: 'idle',
+          pending_ocr_data: undefined
+        }
+      });
+
+      return {
+        response: '❌ Operação cancelada.',
+        sessionData: { ...sessionData, conversation_state: 'idle', pending_ocr_data: undefined }
+      };
+    } else {
+      return {
+        response: 'Por favor, responda *"sim"* para confirmar ou *"não"* para cancelar.',
+        sessionData
+      };
+    }
+  }
+
+  // ✏️ Métodos para editar transações
+  static async handleEditCommand(session: Session): Promise<{ response: string, sessionData: SessionData }> {
+    const sessionData = session.session_data || {};
+
+    if (!session.user_id) {
+      return {
+        response: '❌ Você precisa estar autenticado.\n\nDigite "codigo" para autenticar.',
+        sessionData
+      };
+    }
+
+    // Buscar última transação
+    const { data: lastTransaction } = await supabase
+      .from('transactions')
+      .select('*, categories(name)')
+      .eq('user_id', session.user_id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!lastTransaction) {
+      return {
+        response: '❌ Nenhuma transação encontrada para editar.',
+        sessionData
+      };
+    }
+
+    const emoji = lastTransaction.type === 'income' ? '💰' : '💸';
+    const typeText = lastTransaction.type === 'income' ? 'Receita' : 'Despesa';
+    const categoryName = lastTransaction.categories?.name || 'Sem categoria';
+
+    const updatedSessionData = {
+      ...sessionData,
+      conversation_state: 'awaiting_edit_field' as const,
+      pending_edit: {
+        transaction_id: lastTransaction.id,
+        original_transaction: lastTransaction
+      }
+    };
+
+    await SessionManager.updateSession(session.id, {
+      session_data: updatedSessionData
+    });
+
+    const response = `✏️ *Editar Transação*\n\n` +
+                    `${emoji} *${typeText}*\n` +
+                    `💰 Valor: R$ ${lastTransaction.amount}\n` +
+                    `📝 Título: ${lastTransaction.title}\n` +
+                    `📂 Categoria: ${categoryName}\n` +
+                    `📅 Data: ${new Date(lastTransaction.date + 'T00:00:00').toLocaleDateString('pt-BR')}\n\n` +
+                    `O que deseja editar?\n` +
+                    `1️⃣ Valor\n` +
+                    `2️⃣ Categoria\n` +
+                    `3️⃣ Título\n` +
+                    `4️⃣ Data\n\n` +
+                    `Digite o número ou "cancelar"`;
+
+    return {
+      response,
+      sessionData: updatedSessionData
+    };
+  }
+
+  static async handleEditFieldSelection(session: Session, messageText: string): Promise<{ response: string, sessionData: SessionData }> {
+    const sessionData = session.session_data || {};
+    const pendingEdit = sessionData.pending_edit!;
+
+    if (messageText.toLowerCase() === 'cancelar') {
+      await SessionManager.updateSession(session.id, {
+        session_data: {
+          ...sessionData,
+          conversation_state: 'idle',
+          pending_edit: undefined
+        }
+      });
+
+      return {
+        response: '❌ Edição cancelada.',
+        sessionData: { ...sessionData, conversation_state: 'idle', pending_edit: undefined }
+      };
+    }
+
+    const fieldMap: Record<string, 'amount' | 'category' | 'title' | 'date'> = {
+      '1': 'amount',
+      '2': 'category',
+      '3': 'title',
+      '4': 'date'
+    };
+
+    const field = fieldMap[messageText.trim()];
+
+    if (!field) {
+      return {
+        response: '❌ Opção inválida.\n\nDigite 1, 2, 3 ou 4, ou "cancelar"',
+        sessionData
+      };
+    }
+
+    const updatedSessionData = {
+      ...sessionData,
+      conversation_state: 'awaiting_edit_value' as const,
+      pending_edit: {
+        ...pendingEdit,
+        field
+      }
+    };
+
+    await SessionManager.updateSession(session.id, {
+      session_data: updatedSessionData
+    });
+
+    const promptMap = {
+      amount: '💰 Digite o novo valor:\nEx: 150 ou 150.50',
+      category: '📂 Digite a nova categoria:\nEx: Alimentação, Transporte, etc.',
+      title: '📝 Digite o novo título:\nEx: Supermercado, Uber, etc.',
+      date: '📅 Digite a nova data:\nEx: hoje, ontem, 28/09'
+    };
+
+    return {
+      response: promptMap[field],
+      sessionData: updatedSessionData
+    };
+  }
+
+  static async handleEditValueInput(session: Session, messageText: string): Promise<{ response: string, sessionData: SessionData }> {
+    const sessionData = session.session_data || {};
+    const pendingEdit = sessionData.pending_edit!;
+    const field = pendingEdit.field!;
+
+    let updateData: any = {};
+
+    try {
+      switch (field) {
+        case 'amount':
+          const amount = parseBrazilianNumber(messageText);
+          if (amount <= 0 || isNaN(amount)) {
+            return {
+              response: '❌ Valor inválido. Digite um número positivo.',
+              sessionData
+            };
+          }
+          updateData.amount = amount;
+          break;
+
+        case 'category':
+          // Buscar categoria pelo nome
+          const { data: category } = await supabase
+            .from('categories')
+            .select('id')
+            .eq('user_id', session.user_id!)
+            .ilike('name', messageText.trim())
+            .maybeSingle();
+
+          if (!category) {
+            return {
+              response: '❌ Categoria não encontrada.\n\nDigite o nome exato de uma categoria existente.',
+              sessionData
+            };
+          }
+          updateData.category_id = category.id;
+          break;
+
+        case 'title':
+          if (messageText.trim().length < 2) {
+            return {
+              response: '❌ Título muito curto. Digite pelo menos 2 caracteres.',
+              sessionData
+            };
+          }
+          updateData.title = messageText.trim();
+          break;
+
+        case 'date':
+          const parsedDate = DateParser.parseDate(messageText);
+          if (!parsedDate) {
+            return {
+              response: '❌ Data inválida.\n\nUse: hoje, ontem, ou DD/MM',
+              sessionData
+            };
+          }
+          updateData.date = parsedDate;
+          break;
+      }
+
+      // Atualizar transação
+      const { error } = await supabase
+        .from('transactions')
+        .update(updateData)
+        .eq('id', pendingEdit.transaction_id)
+        .eq('user_id', session.user_id!);
+
+      if (error) throw error;
+
+      // Limpar estado
+      await SessionManager.updateSession(session.id, {
+        session_data: {
+          ...sessionData,
+          conversation_state: 'idle',
+          pending_edit: undefined
+        }
+      });
+
+      const fieldNameMap = {
+        amount: 'Valor',
+        category: 'Categoria',
+        title: 'Título',
+        date: 'Data'
+      };
+
+      return {
+        response: `✅ ${fieldNameMap[field]} atualizado com sucesso!`,
+        sessionData: { ...sessionData, conversation_state: 'idle', pending_edit: undefined }
+      };
+
+    } catch (error) {
+      console.error('Erro ao editar transação:', error);
+      return {
+        response: '❌ Erro ao editar transação. Tente novamente.',
+        sessionData
+      };
+    }
+  }
+
+  // 🗑️ Métodos para excluir transações
+  static async handleDeleteCommand(session: Session): Promise<{ response: string, sessionData: SessionData }> {
+    const sessionData = session.session_data || {};
+
+    if (!session.user_id) {
+      return {
+        response: '❌ Você precisa estar autenticado.\n\nDigite "codigo" para autenticar.',
+        sessionData
+      };
+    }
+
+    // Buscar última transação
+    const { data: lastTransaction } = await supabase
+      .from('transactions')
+      .select('*, categories(name)')
+      .eq('user_id', session.user_id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!lastTransaction) {
+      return {
+        response: '❌ Nenhuma transação encontrada para excluir.',
+        sessionData
+      };
+    }
+
+    const emoji = lastTransaction.type === 'income' ? '💰' : '💸';
+    const typeText = lastTransaction.type === 'income' ? 'Receita' : 'Despesa';
+
+    const updatedSessionData = {
+      ...sessionData,
+      conversation_state: 'awaiting_delete_confirmation' as const,
+      pending_delete: {
+        transaction_id: lastTransaction.id,
+        transaction_title: lastTransaction.title,
+        transaction_amount: lastTransaction.amount
+      }
+    };
+
+    await SessionManager.updateSession(session.id, {
+      session_data: updatedSessionData
+    });
+
+    const response = `🗑️ *Confirmar Exclusão*\n\n` +
+                    `${emoji} ${typeText}: R$ ${lastTransaction.amount}\n` +
+                    `📝 ${lastTransaction.title}\n\n` +
+                    `Tem certeza que deseja excluir? *(sim/não)*`;
+
+    return {
+      response,
+      sessionData: updatedSessionData
+    };
+  }
+
+  static async handleDeleteConfirmation(session: Session, messageText: string): Promise<{ response: string, sessionData: SessionData }> {
+    const sessionData = session.session_data || {};
+    const pendingDelete = sessionData.pending_delete!;
+
+    const affirmative = ['sim', 's', 'yes', 'y', 'confirmo', 'ok', 'excluir', 'deletar'];
+    const negative = ['não', 'nao', 'n', 'no', 'cancelar'];
+
+    if (affirmative.includes(messageText.toLowerCase().trim())) {
+      // Excluir transação
+      const { error } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('id', pendingDelete.transaction_id)
+        .eq('user_id', session.user_id!);
+
+      if (error) {
+        console.error('Erro ao excluir transação:', error);
+        return {
+          response: '❌ Erro ao excluir transação. Tente novamente.',
+          sessionData
+        };
+      }
+
+      // Limpar estado
+      await SessionManager.updateSession(session.id, {
+        session_data: {
+          ...sessionData,
+          conversation_state: 'idle',
+          pending_delete: undefined
+        }
+      });
+
+      return {
+        response: `✅ Transação excluída com sucesso!\n\n🗑️ ${pendingDelete.transaction_title} - R$ ${pendingDelete.transaction_amount}`,
+        sessionData: { ...sessionData, conversation_state: 'idle', pending_delete: undefined }
+      };
+
+    } else if (negative.includes(messageText.toLowerCase().trim())) {
+      await SessionManager.updateSession(session.id, {
+        session_data: {
+          ...sessionData,
+          conversation_state: 'idle',
+          pending_delete: undefined
+        }
+      });
+
+      return {
+        response: '❌ Exclusão cancelada.',
+        sessionData: { ...sessionData, conversation_state: 'idle', pending_delete: undefined }
+      };
+    } else {
+      return {
+        response: 'Por favor, responda *"sim"* para confirmar ou *"não"* para cancelar.',
+        sessionData
+      };
+    }
   }
 
   static async saveTransaction(userId: string, transaction: Partial<Transaction>): Promise<string> {
@@ -1342,12 +2128,39 @@ class WhatsAppAgent {
         user_id: userId.substring(0, 8) + '***'
       });
       
-      // Mensagem simplificada e direta conforme treinamento
-      const response = transaction.type === 'income'
-        ? `💰 Receita de R$ ${transaction.amount?.toFixed(2)} registrada com sucesso!`
-        : `💸 Despesa de R$ ${transaction.amount?.toFixed(2)} registrada com sucesso!`;
+      // 🎭 Buscar nome do usuário para resposta personalizada
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      // Buscar saldo atual
+      const { data: allTransactions } = await supabase
+        .from('transactions')
+        .select('amount, type')
+        .eq('user_id', userId);
+
+      const income = allTransactions?.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0) || 0;
+      const expense = allTransactions?.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0) || 0;
+
+      // 🎭 Gerar resposta personalizada
+      const response = await PersonalizedResponses.generateSaveResponse(
+        profile?.full_name,
+        {
+          type: transaction.type!,
+          amount: transaction.amount!,
+          title: transaction.title!,
+          category_name: categoryInfo.category_name
+        },
+        {
+          income,
+          expense,
+          total: income - expense
+        }
+      );
       
-      console.log('🔵 saveTransaction: Returning response:', response);
+      console.log('🔵 saveTransaction: Returning personalized response');
       
       return response;
     } catch (error) {
