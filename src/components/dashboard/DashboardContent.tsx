@@ -8,6 +8,7 @@ import { ProfileSettings } from "../ProfileSettings";
 import { ReportsPage } from "../ReportsPage";
 import { AIReportsChat } from "../AIReportsChat";
 import { FutureFeatures } from "../FutureFeatures";
+import { AdminPanel } from "../admin/AdminPanel";
 import { BalanceAlert } from "./BalanceAlert";
 import { SummaryCards } from "./SummaryCards";
 import { FilteredSummaryCards } from "./FilteredSummaryCards";
@@ -290,6 +291,10 @@ export function DashboardContent({
 
   if (currentTab === "profile") {
     return <ProfileSettings />;
+  }
+
+  if (currentTab === "admin") {
+    return <AdminPanel />;
   }
 
   // Fallback para dashboard

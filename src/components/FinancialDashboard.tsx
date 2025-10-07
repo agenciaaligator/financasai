@@ -3,6 +3,7 @@ import { TransactionForm } from "./TransactionForm";
 import { EditTransactionModal } from "./EditTransactionModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useTransactions } from "@/hooks/useTransactions";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Transaction } from "@/hooks/useTransactions";
 import { DashboardHeader } from "./dashboard/DashboardHeader";
 import { BalanceAlert } from "./dashboard/BalanceAlert";
@@ -23,6 +24,7 @@ export function FinancialDashboard() {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, signOut } = useAuth();
+  const { isAdmin } = useUserRole();
   const { transactions, categories, loading, balance, totalIncome, totalExpenses, addTransaction, deleteTransaction, refetch } = useTransactions();
   const isMobile = useIsMobile();
 
@@ -232,6 +234,7 @@ export function FinancialDashboard() {
           onTabChange={setCurrentTab}
           showForm={showForm}
           onToggleForm={() => setShowForm(!showForm)}
+          isAdmin={isAdmin}
         />
         
         <main className="flex-1 flex flex-col">
@@ -249,6 +252,7 @@ export function FinancialDashboard() {
                     {currentTab === "ai-chat" && "IA Reports"}
                     {currentTab === "future" && "Novidades"}
                     {currentTab === "profile" && "Perfil"}
+                    {currentTab === "admin" && "Painel Administrativo"}
                   </h1>
                   <p className="text-sm text-muted-foreground">
                     Olá, {user?.email}
