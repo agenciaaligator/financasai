@@ -1396,7 +1396,11 @@ class WhatsAppAgent {
       
       const saveResult = await this.saveTransaction(session.user_id, txToSave);
       
-      console.log('✅ saveTransaction() completed, response:', saveResult.substring(0, 50) + '...');
+      const saveResponse = typeof saveResult === 'string' ? saveResult : saveResult.response;
+      const transactionId = typeof saveResult === 'object' ? saveResult.transactionId : undefined;
+      const sendButtons = typeof saveResult === 'object' ? saveResult.sendButtons : false;
+      
+      console.log('✅ saveTransaction() completed, response:', saveResponse.substring(0, 50) + '...');
       
       // 🔧 LIMPAR ESTADO após salvar para evitar processar próxima mensagem como comando
       await SessionManager.updateSession(session.id, {
@@ -1408,7 +1412,9 @@ class WhatsAppAgent {
       });
       
       return {
-        response: saveResult,
+        response: saveResponse,
+        transactionId,
+        sendButtons,
         sessionData: { ...sessionData, conversation_state: 'idle', pending_transaction: undefined }
       };
     }
@@ -1659,31 +1665,10 @@ class WhatsAppAgent {
         .maybeSingle();
 
       const saveResult = await this.saveTransaction(session.user_id!, transaction);
-
-      // Buscar saldo atual
-      const { data: allTransactions } = await supabase
-        .from('transactions')
-        .select('amount, type')
-        .eq('user_id', session.user_id!);
-
-      const income = allTransactions?.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0) || 0;
-      const expense = allTransactions?.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0) || 0;
-
-      // Resposta personalizada
-      const personalizedResponse = await PersonalizedResponses.generateSaveResponse(
-        profile?.full_name,
-        {
-          type: 'expense',
-          amount: ocrData.amount,
-          title: ocrData.merchant,
-          category_name: ocrData.category
-        },
-        {
-          income,
-          expense,
-          total: income - expense
-        }
-      );
+      
+      const saveResponse = typeof saveResult === 'string' ? saveResult : saveResult.response;
+      const transactionId = typeof saveResult === 'object' ? saveResult.transactionId : undefined;
+      const sendButtons = typeof saveResult === 'object' ? saveResult.sendButtons : false;
 
       // Limpar estado
       await SessionManager.updateSession(session.id, {
@@ -1695,7 +1680,9 @@ class WhatsAppAgent {
       });
 
       return {
-        response: personalizedResponse,
+        response: saveResponse,
+        transactionId,
+        sendButtons,
         sessionData: { ...sessionData, conversation_state: 'idle', pending_ocr_data: undefined }
       };
 
@@ -1930,7 +1917,7 @@ class WhatsAppAgent {
       };
 
       return {
-        response: `✅ ${fieldNameMap[field]} atualizado com sucesso!\n\n📊 Para visualizar mais detalhes, acesse a plataforma em https://app.meuassessor.com`,
+        response: `✅ ${fieldNameMap[field]} atualizado com sucesso!\n\n📊 Para visualizar mais detalhes e relatórios, acesse a plataforma:\n🔗 https://bc45aac3-c622-434f-ad58-afc37c18c6c2.lovableproject.com`,
         sessionData: { ...sessionData, conversation_state: 'idle', pending_edit: undefined }
       };
 
@@ -2031,7 +2018,7 @@ class WhatsAppAgent {
       });
 
       return {
-        response: `✅ Transação excluída com sucesso!\n\n🗑️ ${pendingDelete.transaction_title} - R$ ${pendingDelete.transaction_amount}`,
+        response: `✅ Transação excluída com sucesso!\n\n🗑️ ${pendingDelete.transaction_title} - R$ ${pendingDelete.transaction_amount}\n\n📊 Para visualizar mais detalhes e relatórios, acesse a plataforma:\n🔗 https://bc45aac3-c622-434f-ad58-afc37c18c6c2.lovableproject.com`,
         sessionData: { ...sessionData, conversation_state: 'idle', pending_delete: undefined }
       };
 
@@ -2056,7 +2043,7 @@ class WhatsAppAgent {
     }
   }
 
-  static async saveTransaction(userId: string, transaction: Partial<Transaction>): Promise<string> {
+  static async saveTransaction(userId: string, transaction: Partial<Transaction>): Promise<{ response: string, transactionId?: string, sendButtons?: boolean }> {
     console.log('🔵 saveTransaction() STARTED');
     console.log('🔵 Input parameters:', {
       userId: userId?.substring(0, 8) + '***',
@@ -2163,26 +2150,34 @@ class WhatsAppAgent {
       
       console.log('🔵 saveTransaction: Formatting structured response');
       
-      // Formatar resposta estruturada como "Meu Assessor"
+      // Formatar resposta estruturada como "Meu Assessor" com botões interativos
       const emoji = transaction.type === 'expense' ? '💸' : '💰';
       const categoryEmoji = PersonalizedResponses.categoryEmojis[categoryInfo.category_name] || '📦';
       const currentBalance = income - expense;
+      const typeText = transaction.type === 'income' ? 'Receita' : 'Despesa';
       
-      const structuredResponse = `${personalized}\n\n` +
-        `📋 *Resumo da Transação de ${transaction.type === 'expense' ? 'Despesa' : 'Receita'}:*\n\n` +
-        `📝 *Descrição:* ${transaction.title}\n` +
-        `💵 *Valor:* R$ ${transaction.amount!.toFixed(2)}\n` +
+      const structuredResponse = `✅ *Transação registrada com sucesso!*\n\n` +
+        `📝 *Título:* ${transaction.title}\n` +
+        `${emoji} *Valor:* R$ ${transaction.amount!.toFixed(2)}\n` +
         `${categoryEmoji} *Categoria:* ${categoryInfo.category_name}\n` +
-        `📅 *Data:* ${new Date(transaction.date!).toLocaleDateString('pt-BR')}\n` +
-        `✅ *Status:* pago\n\n` +
-        `📊 Para visualizar mais detalhes e relatórios, acesse a plataforma em app.meuassessor.com. Se precisar de algo a mais é só me chamar! 😊🚀`;
+        `📅 *Data:* ${new Date(transaction.date!).toLocaleDateString('pt-BR')}\n\n` +
+        `💰 *Saldo atual:* R$ ${currentBalance.toFixed(2)}\n\n` +
+        `📊 Para visualizar mais detalhes e relatórios, acesse a plataforma:\n` +
+        `🔗 https://bc45aac3-c622-434f-ad58-afc37c18c6c2.lovableproject.com`;
       
-      return structuredResponse;
+      return {
+        response: structuredResponse,
+        transactionId: data.id,
+        sendButtons: true
+      };
     } catch (error) {
       console.error('Error saving transaction:', error);
-      return `❌ *Erro ao salvar transação.*\n\n` +
-             `Detalhes: ${error.message}\n\n` +
-             `Tente novamente em alguns instantes.`;
+      return {
+        response: `❌ *Erro ao salvar transação.*\n\n` +
+                  `Detalhes: ${error.message}\n\n` +
+                  `Tente novamente em alguns instantes.`,
+        sendButtons: false
+      };
     }
   }
 

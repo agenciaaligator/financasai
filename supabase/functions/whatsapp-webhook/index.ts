@@ -596,6 +596,23 @@ const handler = async (req: Request): Promise<Response> => {
       } else if (message.type === 'image' && message.image?.id) {
         console.log('📸 Image message detected - will process via agent');
         text = '[IMAGE]'; // Placeholder para o agente detectar
+      } else if (message.type === 'interactive') {
+        // Handle button clicks
+        console.log('🔘 Interactive button message detected');
+        const buttonReply = message.interactive?.button_reply;
+        if (buttonReply) {
+          const buttonId = buttonReply.id;
+          console.log('Button clicked:', buttonId);
+          
+          // Convert button click to text command
+          if (buttonId.startsWith('edit_')) {
+            text = 'editar última';
+          } else if (buttonId.startsWith('delete_')) {
+            text = 'excluir última';
+          } else {
+            text = buttonReply.title; // Fallback to button title
+          }
+        }
       } else {
         console.log(`⚠️ Unsupported message type: ${message.type}`);
         text = 'Desculpe, esse tipo de mensagem não é suportado no momento. Por favor, envie texto ou áudio.';
@@ -895,6 +912,53 @@ const handler = async (req: Request): Promise<Response> => {
 
               console.log('Sending response to WhatsApp Business API...');
               
+              // Check if the response should include interactive buttons
+              const shouldSendButtons = agentResult.sendButtons && agentResult.transactionId;
+              
+              let messagePayload: any;
+              
+              if (shouldSendButtons) {
+                // Send interactive message with buttons
+                messagePayload = {
+                  messaging_product: 'whatsapp',
+                  recipient_type: 'individual',
+                  to: phoneForApi,
+                  type: 'interactive',
+                  interactive: {
+                    type: 'button',
+                    body: {
+                      text: agentResult.response
+                    },
+                    action: {
+                      buttons: [
+                        {
+                          type: 'reply',
+                          reply: {
+                            id: `edit_${agentResult.transactionId}`,
+                            title: '✏️ Editar'
+                          }
+                        },
+                        {
+                          type: 'reply',
+                          reply: {
+                            id: `delete_${agentResult.transactionId}`,
+                            title: '🗑️ Excluir'
+                          }
+                        }
+                      ]
+                    }
+                  }
+                };
+              } else {
+                // Send regular text message
+                messagePayload = {
+                  messaging_product: 'whatsapp',
+                  to: phoneForApi,
+                  type: 'text',
+                  text: { body: agentResult.response }
+                };
+              }
+              
               const whatsappResponse = await fetch(
                 `https://graph.facebook.com/v18.0/${whatsappPhoneNumberId}/messages`,
                 {
@@ -903,14 +967,7 @@ const handler = async (req: Request): Promise<Response> => {
                     'Authorization': `Bearer ${whatsappAccessToken}`,
                     'Content-Type': 'application/json',
                   },
-                  body: JSON.stringify({
-                    messaging_product: 'whatsapp',
-                    to: phoneForApi,
-                    type: 'text',
-                    text: {
-                      body: agentResult.response
-                    }
-                  })
+                  body: JSON.stringify(messagePayload)
                 }
               );
 
