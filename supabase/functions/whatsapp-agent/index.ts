@@ -2116,8 +2116,6 @@ class WhatsAppAgent {
       }
       
       console.log('✅ saveTransaction: Database insert SUCCESSFUL');
-
-      const emoji = transaction.type === 'income' ? '💰' : '💸';
       const typeText = transaction.type === 'income' ? 'Receita' : 'Despesa';
       
       console.log('✅✅✅ TRANSACTION CREATED SUCCESSFULLY ✅✅✅');

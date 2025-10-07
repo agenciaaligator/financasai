@@ -593,6 +593,9 @@ const handler = async (req: Request): Promise<Response> => {
         }
       } else if (message.type === 'text') {
         text = message.text?.body;
+      } else if (message.type === 'image' && message.image?.id) {
+        console.log('📸 Image message detected - will process via agent');
+        text = '[IMAGE]'; // Placeholder para o agente detectar
       } else {
         console.log(`⚠️ Unsupported message type: ${message.type}`);
         text = 'Desculpe, esse tipo de mensagem não é suportado no momento. Por favor, envie texto ou áudio.';
@@ -800,6 +803,18 @@ const handler = async (req: Request): Promise<Response> => {
       console.log('✅ Mensagem válida recebida de:', from);
       console.log('📝 Conteúdo:', text);
 
+      // Detectar tipo de mensagem para o agente
+      const whatsappMessage = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+      const messageType = whatsappMessage?.type || 'text';
+      const imageData = whatsappMessage?.image;
+      const audioData = whatsappMessage?.audio;
+
+      console.log('🔍 Message details:', { 
+        type: messageType, 
+        hasImage: !!imageData, 
+        hasAudio: !!audioData 
+      });
+
       try {
         console.log('🔵 Chamando whatsapp-agent...');
         const agentResponse = await fetch(`${supabaseUrl}/functions/v1/whatsapp-agent`, {
@@ -814,11 +829,46 @@ const handler = async (req: Request): Promise<Response> => {
               from: from,
               body: text,
               id: body.messageId || 'unknown',
-              type: 'text'
+              type: messageType,
+              image: imageData,
+              audio: audioData
             },
             action: 'process_message'
           })
         });
+
+        if (!agentResponse.ok) {
+          const errorText = await agentResponse.text();
+          console.error('❌ Agent HTTP error:', agentResponse.status, errorText);
+          
+          // Fallback: responder diretamente ao usuário
+          const fallbackMessage = '⚠️ Desculpe, estou com dificuldades no momento. Por favor, tente novamente em alguns segundos.';
+          
+          if (whatsappAccessToken && whatsappPhoneNumberId) {
+            await fetch(`https://graph.facebook.com/v21.0/${whatsappPhoneNumberId}/messages`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${whatsappAccessToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                messaging_product: 'whatsapp',
+                to: from,
+                type: 'text',
+                text: { body: fallbackMessage }
+              })
+            });
+          }
+          
+          return new Response(JSON.stringify({ 
+            success: true, 
+            fallback: true,
+            error: 'Agent failed, fallback sent'
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
 
         const agentResult = await agentResponse.json();
         console.log('Agent response received');
