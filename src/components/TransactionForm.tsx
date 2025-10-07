@@ -7,6 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { X } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
+import { useFeatureLimits } from "@/hooks/useFeatureLimits";
+import { UpgradeModal } from "./UpgradeModal";
+import { useToast } from "@/hooks/use-toast";
 
 interface TransactionFormProps {
   onSubmit: (transaction: {
@@ -39,12 +42,29 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
   const [categoryId, setCategoryId] = useState("");
   const [date, setDate] = useState(getLocalDate());
   const [description, setDescription] = useState("");
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeReason, setUpgradeReason] = useState("");
   const { categories } = useTransactions();
+  const { canCreateTransaction, refetchUsage } = useFeatureLimits();
+  const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!title || !amount) {
+      return;
+    }
+
+    // Verificar limite antes de criar
+    const limitCheck = canCreateTransaction();
+    if (!limitCheck.allowed) {
+      setUpgradeReason(limitCheck.reason || 'Upgrade necessário para criar mais transações.');
+      setShowUpgradeModal(true);
+      toast({
+        title: "Limite atingido",
+        description: limitCheck.reason,
+        variant: "destructive"
+      });
       return;
     }
 
@@ -57,6 +77,9 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
       description: description || undefined,
       source: 'manual'
     });
+
+    // Atualizar uso após criar
+    await refetchUsage();
 
     // Reset form
     setTitle("");
@@ -172,6 +195,12 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
           </div>
         </form>
       </CardContent>
+      
+      <UpgradeModal 
+        open={showUpgradeModal} 
+        onClose={() => setShowUpgradeModal(false)}
+        reason={upgradeReason}
+      />
     </Card>
   );
 }

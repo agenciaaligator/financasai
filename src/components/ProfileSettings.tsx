@@ -3,10 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Mail, Lock } from "lucide-react";
+import { User, Mail, Lock, Crown, Calendar, Check, X } from "lucide-react";
+import { useSubscription } from "@/hooks/useSubscription";
+import { useFeatureLimits } from "@/hooks/useFeatureLimits";
+import { UpgradeModal } from "./UpgradeModal";
 
 export function ProfileSettings() {
   const [fullName, setFullName] = useState("");
@@ -15,8 +20,11 @@ export function ProfileSettings() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
+  const { subscription, planName, isFreePlan, isTrial, isPremium } = useSubscription();
+  const { currentUsage, getTransactionProgress, getCategoryProgress } = useFeatureLimits();
 
   useEffect(() => {
     fetchProfile();
@@ -217,6 +225,138 @@ export function ProfileSettings() {
           </form>
         </CardContent>
       </Card>
+
+      <Card className="bg-gradient-card shadow-card border-0">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Crown className="h-5 w-5 text-primary" />
+            <span>Minha Assinatura</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold">{planName}</h3>
+                {subscription && (
+                  <p className="text-sm text-muted-foreground">
+                    {subscription.billing_cycle === 'yearly' ? 'Anual' : 'Mensal'}
+                  </p>
+                )}
+              </div>
+              <Badge variant={isPremium ? "default" : isTrial ? "secondary" : "outline"}>
+                {isPremium ? 'Premium' : isTrial ? 'Trial' : 'Gratuito'}
+              </Badge>
+            </div>
+
+            {subscription?.current_period_end && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                <Calendar className="h-4 w-4" />
+                <span>
+                  Renova em: {new Date(subscription.current_period_end).toLocaleDateString('pt-BR')}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="font-semibold text-sm">Uso do Plano</h4>
+            
+            {getTransactionProgress() && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span>Transações</span>
+                  <span className="font-medium">
+                    {currentUsage.transactions}/{getTransactionProgress()?.limit || '∞'}
+                  </span>
+                </div>
+                <Progress value={getTransactionProgress()?.percentage || 0} className="h-2" />
+              </div>
+            )}
+
+            {getCategoryProgress() && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span>Categorias</span>
+                  <span className="font-medium">
+                    {currentUsage.categories}/{getCategoryProgress()?.limit || '∞'}
+                  </span>
+                </div>
+                <Progress value={getCategoryProgress()?.percentage || 0} className="h-2" />
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="font-semibold text-sm">Recursos Disponíveis</h4>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center gap-2 text-sm">
+                {subscription?.subscription_plans?.has_whatsapp ? (
+                  <Check className="h-4 w-4 text-success" />
+                ) : (
+                  <X className="h-4 w-4 text-muted-foreground" />
+                )}
+                <span>WhatsApp</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                {subscription?.subscription_plans?.has_ai_reports ? (
+                  <Check className="h-4 w-4 text-success" />
+                ) : (
+                  <X className="h-4 w-4 text-muted-foreground" />
+                )}
+                <span>IA Reports</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                {subscription?.subscription_plans?.has_google_calendar ? (
+                  <Check className="h-4 w-4 text-success" />
+                ) : (
+                  <X className="h-4 w-4 text-muted-foreground" />
+                )}
+                <span>Google Calendar</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                {subscription?.subscription_plans?.has_bank_integration ? (
+                  <Check className="h-4 w-4 text-success" />
+                ) : (
+                  <X className="h-4 w-4 text-muted-foreground" />
+                )}
+                <span>Integração Bancária</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                {subscription?.subscription_plans?.has_multi_user ? (
+                  <Check className="h-4 w-4 text-success" />
+                ) : (
+                  <X className="h-4 w-4 text-muted-foreground" />
+                )}
+                <span>Multi-usuário</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                {subscription?.subscription_plans?.has_priority_support ? (
+                  <Check className="h-4 w-4 text-success" />
+                ) : (
+                  <X className="h-4 w-4 text-muted-foreground" />
+                )}
+                <span>Suporte Prioritário</span>
+              </div>
+            </div>
+          </div>
+
+          {(isFreePlan || isTrial) && (
+            <Button 
+              className="w-full bg-gradient-primary hover:shadow-primary"
+              onClick={() => setShowUpgradeModal(true)}
+            >
+              <Crown className="h-4 w-4 mr-2" />
+              Fazer Upgrade para Premium
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      <UpgradeModal 
+        open={showUpgradeModal} 
+        onClose={() => setShowUpgradeModal(false)}
+      />
     </div>
   );
 }
