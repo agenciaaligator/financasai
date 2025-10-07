@@ -19,6 +19,7 @@ export function useUserRole() {
 
   useEffect(() => {
     if (!user) {
+      console.log('[useUserRole] Nenhum usuário autenticado');
       setRole(null);
       setIsAdmin(false);
       setIsPremium(false);
@@ -27,6 +28,7 @@ export function useUserRole() {
       return;
     }
 
+    console.log('[useUserRole] Usuário autenticado:', user.id, user.email);
     fetchUserRole();
   }, [user]);
 

@@ -53,7 +53,9 @@ export function DashboardTabs({
   onEdit, 
   onRefresh 
 }: DashboardTabsProps) {
-  const { isAdmin } = useUserRole();
+  const { isAdmin, role, loading } = useUserRole();
+  
+  console.log('[DashboardTabs] Role status:', { isAdmin, role, loading });
   const [filters, setFilters] = useState<TransactionFiltersState>({
     period: 'all',
     customDateRange: { start: null, end: null },
