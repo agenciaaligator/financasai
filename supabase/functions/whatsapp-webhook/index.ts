@@ -361,11 +361,11 @@ function parseTransactionFromText(text: string): Partial<Transaction> | null {
     console.error('❌ SECURITY: HTML/script tags detected and removed');
   }
 
-  // Padrões para identificar transações
+  // Padrões para identificar transações (REORDENADOS: +/- primeiro)
   const patterns = [
-    /^(gasto|receita|despesa|ganho)\s+(\d+(?:[\.,]\d{2})?)\s+(.+)$/i,
-    /^(\d+(?:[\.,]\d{2})?)\s+(.+)$/i,
-    /^([+-])(\d+(?:[\.,]\d{2})?)\s+(.+)$/i
+    /^([+-])\s*(\d+(?:[.,]\d{1,2})?)\s+(.+)$/i,           // PRIORIDADE: +25 açaí
+    /^(gasto|receita|despesa|ganho)\s+(\d+(?:[.,]\d{2})?)\s+(.+)$/i,
+    /^(\d+(?:[.,]\d{2})?)\s+(.+)$/i
   ];
 
   for (const pattern of patterns) {
@@ -375,20 +375,26 @@ function parseTransactionFromText(text: string): Partial<Transaction> | null {
       let amount: number;
       let title: string;
 
-      if (match[1] && match[2] && match[3]) {
+      // Caso 1: +/- no início
+      if (match[1] === '+' || match[1] === '-') {
+        type = match[1] === '+' ? 'income' : 'expense';
+        amount = parseFloat(match[2].replace(',', '.'));
+        title = match[3];
+      }
+      // Caso 2: palavra-chave
+      else if (['gasto', 'receita', 'despesa', 'ganho'].includes(match[1]?.toLowerCase())) {
         const action = match[1].toLowerCase();
         type = ['receita', 'ganho'].includes(action) ? 'income' : 'expense';
         amount = parseFloat(match[2].replace(',', '.'));
         title = match[3];
-      } else if (match[1] && match[2] && !match[3]) {
+      }
+      // Caso 3: apenas número + texto
+      else if (match[1] && match[2]) {
         amount = parseFloat(match[1].replace(',', '.'));
         title = match[2];
         type = 'expense';
-      } else if (match[1] && match[2] && match[3]) {
-        type = match[1] === '+' ? 'income' : 'expense';
-        amount = parseFloat(match[2].replace(',', '.'));
-        title = match[3];
-      } else {
+      }
+      else {
         continue;
       }
 
@@ -399,12 +405,11 @@ function parseTransactionFromText(text: string): Partial<Transaction> | null {
         return null;
       }
 
-      // Sanitize title - remove dangerous characters
+      // NOVA sanitização: preservar espaços e acentos
       const sanitizedTitle = title
         .trim()
         .substring(0, 100)
-        .replace(/[<>"']/g, '')
-        .replace(/[\W\s\-.,áàâãéèêíïóôõöúçñÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇÑ]/g, '');
+        .replace(/[<>"']/g, '');  // Remove apenas caracteres perigosos
 
       if (!sanitizedTitle || sanitizedTitle.length === 0) {
         console.error('❌ SECURITY: Title sanitization resulted in empty string');

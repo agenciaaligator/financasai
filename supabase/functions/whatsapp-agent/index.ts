@@ -928,7 +928,30 @@ class CategoryMatcher {
         return { category_id: bestMatch.id, category_name: bestMatch.name, suggested: true };
       }
 
-      // 3. 🤖 NOVO: Usar IA para sugestão inteligente baseada no contexto
+      // 3. Heurística específica para "água"
+      const normalizedTitle = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (normalizedTitle.includes('agua') || normalizedTitle.includes('água')) {
+        if (normalizedTitle.includes('conta') || normalizedTitle.includes('servico') || normalizedTitle.includes('serviço')) {
+          // "conta de água" vai para Moradia
+          const moradiaMatch = categories.find(cat => 
+            cat.name.toLowerCase() === 'moradia'
+          );
+          if (moradiaMatch) {
+            console.log(`💧 "conta de água" -> Moradia`);
+            return { category_id: moradiaMatch.id, category_name: moradiaMatch.name, suggested: false };
+          }
+        }
+        // "água" simples vai para Outros
+        const outrosMatch = categories.find(cat => 
+          cat.name.toLowerCase() === 'outros'
+        );
+        if (outrosMatch) {
+          console.log(`💧 "água" simples -> Outros`);
+          return { category_id: outrosMatch.id, category_name: 'Outros', suggested: false };
+        }
+      }
+
+      // 4. 🤖 NOVO: Usar IA para sugestão inteligente baseada no contexto
       console.log('🤖 No exact/similar match, trying AI categorization...');
       const aiResult = await AICategorizer.suggestCategoryWithAI(userId, title, type);
       
@@ -937,7 +960,7 @@ class CategoryMatcher {
         return { category_id: aiResult.category_id, category_name: aiResult.category_name, suggested: true };
       }
 
-      // 4. Buscar categoria "Outros"
+      // 5. Buscar categoria "Outros"
       const outrosMatch = categories.find(cat => 
         cat.name.toLowerCase() === 'outros'
       );
@@ -2158,6 +2181,7 @@ class WhatsAppAgent {
       const structuredResponse = `✅ *Transação registrada com sucesso!*\n\n` +
         `📝 *Título:* ${transaction.title}\n` +
         `${emoji} *Valor:* R$ ${transaction.amount!.toFixed(2)}\n` +
+        `🏷️ *Tipo:* ${typeText}\n` +
         `${categoryEmoji} *Categoria:* ${categoryInfo.category_name}\n` +
         `📅 *Data:* ${new Date(transaction.date!).toLocaleDateString('pt-BR')}\n\n` +
         `💰 *Saldo atual:* R$ ${currentBalance.toFixed(2)}\n\n` +
@@ -2635,6 +2659,8 @@ serve(async (req) => {
     const responseBody = {
       success: true,
       response: result.response,
+      transactionId: result.transactionId,
+      sendButtons: result.sendButtons,
       stop: true, // CRÍTICO: Instrui GPT Maker a usar APENAS esta resposta
       force_response: true, // Força GPT Maker a usar esta resposta
       bypass_ai: true // Não processar com IA
