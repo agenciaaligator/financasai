@@ -807,12 +807,13 @@ Retorne APENAS um JSON válido no formato:
 
 // 🎭 Classe para Respostas Personalizadas
 class PersonalizedResponses {
-  private static categoryEmojis: Record<string, string> = {
+  static categoryEmojis: Record<string, string> = {
     'Alimentação': '🍽️',
     'Transporte': '🚗',
     'Moradia': '🏠',
     'Saúde': '💊',
     'Entretenimento': '🎬',
+    'Lazer e Entretenimento': '🎉',
     'Educação': '📚',
     'Vestuário': '👔',
     'Salário': '💼',
@@ -980,6 +981,8 @@ class WhatsAppAgent {
     console.log('📨 === DEBUG: MENSAGEM RECEBIDA ===');
     console.log('De:', message.from);
     console.log('Tipo:', message.type);
+    console.log('Tem imagem?:', !!message.image, message.image);
+    console.log('Tem áudio?:', !!message.audio, message.audio);
     console.log('Texto original:', message.body);
     console.log('Texto normalizado:', normalizedText);
     console.log('Estado da sessão:', sessionData.conversation_state || 'idle');
@@ -987,8 +990,8 @@ class WhatsAppAgent {
     console.log('=====================================');
     
     // 📸 PRIORIDADE 0: Processar imagens (OCR de notas fiscais)
-    if (message.type === 'image' && message.image) {
-      console.log('📸 Imagem recebida, iniciando OCR...');
+    if (message.image) {
+      console.log('📸 IMAGEM DETECTADA! Processando OCR...', message.image);
       return await this.handleImageMessage(session, message);
     }
 
@@ -1927,7 +1930,7 @@ class WhatsAppAgent {
       };
 
       return {
-        response: `✅ ${fieldNameMap[field]} atualizado com sucesso!`,
+        response: `✅ ${fieldNameMap[field]} atualizado com sucesso!\n\n📊 Para visualizar mais detalhes, acesse a plataforma em https://app.meuassessor.com`,
         sessionData: { ...sessionData, conversation_state: 'idle', pending_edit: undefined }
       };
 
@@ -2145,7 +2148,7 @@ class WhatsAppAgent {
       const expense = allTransactions?.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0) || 0;
 
       // 🎭 Gerar resposta personalizada
-      const response = await PersonalizedResponses.generateSaveResponse(
+      const personalized = await PersonalizedResponses.generateSaveResponse(
         profile?.full_name,
         {
           type: transaction.type!,
@@ -2160,9 +2163,23 @@ class WhatsAppAgent {
         }
       );
       
-      console.log('🔵 saveTransaction: Returning personalized response');
+      console.log('🔵 saveTransaction: Formatting structured response');
       
-      return response;
+      // Formatar resposta estruturada como "Meu Assessor"
+      const emoji = transaction.type === 'expense' ? '💸' : '💰';
+      const categoryEmoji = PersonalizedResponses.categoryEmojis[categoryInfo.category_name] || '📦';
+      const currentBalance = income - expense;
+      
+      const structuredResponse = `${personalized}\n\n` +
+        `📋 *Resumo da Transação de ${transaction.type === 'expense' ? 'Despesa' : 'Receita'}:*\n\n` +
+        `📝 *Descrição:* ${transaction.title}\n` +
+        `💵 *Valor:* R$ ${transaction.amount!.toFixed(2)}\n` +
+        `${categoryEmoji} *Categoria:* ${categoryInfo.category_name}\n` +
+        `📅 *Data:* ${new Date(transaction.date!).toLocaleDateString('pt-BR')}\n` +
+        `✅ *Status:* pago\n\n` +
+        `📊 Para visualizar mais detalhes e relatórios, acesse a plataforma em app.meuassessor.com. Se precisar de algo a mais é só me chamar! 😊🚀`;
+      
+      return structuredResponse;
     } catch (error) {
       console.error('Error saving transaction:', error);
       return `❌ *Erro ao salvar transação.*\n\n` +
@@ -2601,7 +2618,9 @@ serve(async (req) => {
       from: cleanPhone,
       body: messageText,
       type: message?.type || 'text',
-      id: message?.id
+      id: message?.id,
+      image: message?.image,
+      audio: message?.audio
     };
     
     console.log('📨 Processing message:', { 
