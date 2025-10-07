@@ -13,9 +13,12 @@ import { BalanceAlert } from "./BalanceAlert";
 import { SummaryCards } from "./SummaryCards";
 import { FilteredSummaryCards } from "./FilteredSummaryCards";
 import { AddTransactionButton } from "./AddTransactionButton";
+import { LimitWarning } from "./LimitWarning";
 import { Transaction } from "@/hooks/useTransactions";
 import { TransactionList } from "../TransactionList";
 import { TransactionFilters, TransactionFiltersState } from "../TransactionFilters";
+import { useSubscription } from "@/hooks/useSubscription";
+import { useFeatureLimits } from "@/hooks/useFeatureLimits";
 import { 
   startOfDay, 
   endOfDay, 
@@ -63,6 +66,9 @@ export function DashboardContent({
   showTransactionForm,
   onToggleTransactionForm
 }: DashboardContentProps) {
+  const { planName, planLimits } = useSubscription();
+  const { getTransactionProgress, getCategoryProgress } = useFeatureLimits();
+  
   const [filters, setFilters] = useState<TransactionFiltersState>({
     period: 'all',
     customDateRange: { start: null, end: null },
@@ -213,12 +219,33 @@ export function DashboardContent({
                             filters.source !== 'all' || 
                             filters.searchText.trim() !== '';
 
+    const transactionProgress = getTransactionProgress();
+    const categoryProgress = getCategoryProgress();
+
     return (
       <div className="space-y-4">
         <AddTransactionButton 
           showForm={showTransactionForm}
           onToggle={onToggleTransactionForm}
         />
+        
+        {/* Limit Warnings */}
+        {planLimits && (
+          <>
+            <LimitWarning 
+              type="transaction" 
+              current={transactionProgress.current}
+              limit={transactionProgress.limit}
+              planName={planName}
+            />
+            <LimitWarning 
+              type="category" 
+              current={categoryProgress.current}
+              limit={categoryProgress.limit}
+              planName={planName}
+            />
+          </>
+        )}
         
         <TransactionFilters 
           filters={filters}
