@@ -16,8 +16,11 @@ import {
   User,
   Tags,
   BarChart,
-  Bot
+  Bot,
+  Shield
 } from "lucide-react";
+import { AdminPanel } from "../admin/AdminPanel";
+import { useUserRole } from "@/hooks/useUserRole";
 import { 
   startOfDay, 
   endOfDay, 
@@ -50,6 +53,7 @@ export function DashboardTabs({
   onEdit, 
   onRefresh 
 }: DashboardTabsProps) {
+  const { isAdmin } = useUserRole();
   const [filters, setFilters] = useState<TransactionFiltersState>({
     period: 'all',
     customDateRange: { start: null, end: null },
@@ -144,7 +148,7 @@ export function DashboardTabs({
 
   return (
     <Tabs defaultValue="dashboard" className="w-full">
-      <TabsList className="grid w-full grid-cols-7 bg-muted/30">
+      <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-8' : 'grid-cols-7'} bg-muted/30`}>
         <TabsTrigger value="dashboard" className="flex items-center space-x-2">
           <DollarSign className="h-4 w-4" />
           <span>Dashboard</span>
@@ -173,6 +177,12 @@ export function DashboardTabs({
           <User className="h-4 w-4" />
           <span>Perfil</span>
         </TabsTrigger>
+        {isAdmin && (
+          <TabsTrigger value="admin" className="flex items-center space-x-2 bg-primary/10">
+            <Shield className="h-4 w-4" />
+            <span>Admin</span>
+          </TabsTrigger>
+        )}
       </TabsList>
 
       <TabsContent value="dashboard" className="space-y-6">
@@ -250,6 +260,12 @@ export function DashboardTabs({
       <TabsContent value="profile">
         <ProfileSettings />
       </TabsContent>
+
+      {isAdmin && (
+        <TabsContent value="admin">
+          <AdminPanel />
+        </TabsContent>
+      )}
     </Tabs>
   );
 }

@@ -20,7 +20,13 @@ export const useSubscriptionStatus = () => {
     
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('check-subscription');
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      const { data, error } = await supabase.functions.invoke('check-subscription', {
+        headers: {
+          Authorization: `Bearer ${sessionData.session?.access_token}`
+        }
+      });
 
       if (error) throw error;
 
