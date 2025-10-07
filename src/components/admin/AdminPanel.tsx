@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { UsersManagement } from "./UsersManagement";
@@ -9,6 +9,30 @@ import { Shield, Users, CreditCard, BarChart3 } from "lucide-react";
 export function AdminPanel() {
   const [activeTab, setActiveTab] = useState("stats");
 
+  useEffect(() => {
+    // SEO: title, description e canonical
+    document.title = "Painel Administrativo | Finanças AI";
+
+    const setMeta = (name: string, content: string) => {
+      let tag = document.querySelector(`meta[name="${name}"]`);
+      if (!tag) {
+        tag = document.createElement("meta");
+        tag.setAttribute("name", name);
+        document.head.appendChild(tag);
+      }
+      tag.setAttribute("content", content);
+    };
+
+    setMeta("description", "Administração do Finanças AI: gerencie usuários, assinaturas e estatísticas.");
+
+    let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+    if (!canonical) {
+      canonical = document.createElement("link");
+      canonical.setAttribute("rel", "canonical");
+      document.head.appendChild(canonical);
+    }
+    canonical.setAttribute("href", `${window.location.origin}/admin`);
+  }, []);
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3 mb-6">
