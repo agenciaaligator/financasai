@@ -41,6 +41,56 @@ export type Database = {
         }
         Relationships: []
       }
+      commitments: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          description: string | null
+          google_event_id: string | null
+          id: string
+          linked_transaction_id: string | null
+          reminder_sent: boolean | null
+          scheduled_at: string
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          google_event_id?: string | null
+          id?: string
+          linked_transaction_id?: string | null
+          reminder_sent?: boolean | null
+          scheduled_at: string
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          google_event_id?: string | null
+          id?: string
+          linked_transaction_id?: string | null
+          reminder_sent?: boolean | null
+          scheduled_at?: string
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commitments_linked_transaction_id_fkey"
+            columns: ["linked_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feature_suggestions: {
         Row: {
           created_at: string | null
