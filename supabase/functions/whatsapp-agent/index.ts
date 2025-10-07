@@ -929,7 +929,6 @@ class CategoryMatcher {
       }
 
       // 3. Heurística específica para "água"
-      const normalizedTitle = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       if (normalizedTitle.includes('agua') || normalizedTitle.includes('água')) {
         if (normalizedTitle.includes('conta') || normalizedTitle.includes('servico') || normalizedTitle.includes('serviço')) {
           // "conta de água" vai para Moradia
