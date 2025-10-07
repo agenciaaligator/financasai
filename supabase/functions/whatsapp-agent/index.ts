@@ -2103,7 +2103,6 @@ class WhatsAppAgent {
       }
       
       console.log('✅ saveTransaction: Database insert SUCCESSFUL');
-      const typeText = transaction.type === 'income' ? 'Receita' : 'Despesa';
       
       console.log('✅✅✅ TRANSACTION CREATED SUCCESSFULLY ✅✅✅');
       console.log('Transaction details:', {
