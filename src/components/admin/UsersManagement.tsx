@@ -31,6 +31,7 @@ interface User {
   planName: string;
   subscriptionStatus: string;
   trialExpiresAt: string | null;
+  isMaster: boolean;
 }
 
 export function UsersManagement() {
@@ -47,12 +48,20 @@ export function UsersManagement() {
     try {
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('user_id, full_name, created_at')
+        .select('user_id, full_name, email, created_at')
         .order('created_at', { ascending: false });
 
       if (profilesError) throw profilesError;
 
       const userIds = profiles?.map(p => p.user_id) || [];
+
+      // Buscar master users
+      const { data: masterUsers } = await supabase
+        .from('master_users')
+        .select('user_id')
+        .in('user_id', userIds);
+
+      const masterUserIds = new Set(masterUsers?.map(m => m.user_id) || []);
       
       // Buscar role via RPC (highest priority role)
       const rolesPromises = userIds.map(async (userId) => {
@@ -87,13 +96,14 @@ export function UsersManagement() {
         
         return {
           id: profile.user_id,
-          email: 'user@email.com', // Precisaria de uma edge function para buscar do auth
+          email: profile.email || 'Sem email',
           full_name: profile.full_name || 'Sem nome',
           created_at: profile.created_at,
           role: validRole,
           planName: (subscription?.subscription_plans as any)?.name || 'Gratuito',
           subscriptionStatus: subscription?.status || 'inactive',
           trialExpiresAt: trialRole?.expires_at || null,
+          isMaster: masterUserIds.has(profile.user_id),
         };
       }) || [];
 
@@ -106,41 +116,49 @@ export function UsersManagement() {
     }
   };
 
-  const handleRoleChange = async (userId: string, newRole: 'free' | 'premium' | 'admin') => {
-    // Proteção: não permite que admin remova próprio acesso admin
-    if (userId === currentUser?.id && newRole !== 'admin') {
-      const confirmRemoval = window.confirm(
-        'ATENÇÃO: Você está removendo seu próprio acesso de admin. Tem certeza?'
-      );
-      if (!confirmRemoval) return;
-    }
+  const handleRoleChange = async (userId: string, newRole: 'free' | 'premium' | 'admin', userEmail: string) => {
+    console.log('[UsersManagement] Alterando role:', { userId, newRole, userEmail });
 
     try {
-      if (newRole === 'admin') {
-        // Para admin: upsert (adiciona sem remover outras roles)
-        const { error } = await supabase
-          .from('user_roles')
-          .upsert({ user_id: userId, role: newRole, expires_at: null }, { onConflict: 'user_id,role' });
-        
-        if (error) throw error;
-        toast.success('Acesso admin concedido!');
-      } else {
-        // Para free/premium: remove admin e trial, define nova role
-        await supabase.from('user_roles').delete().eq('user_id', userId).eq('role', 'admin');
-        await supabase.from('user_roles').delete().eq('user_id', userId).eq('role', 'trial');
-        
-        const { error } = await supabase
-          .from('user_roles')
-          .upsert({ user_id: userId, role: newRole, expires_at: null }, { onConflict: 'user_id,role' });
-        
-        if (error) throw error;
-        toast.success('Role atualizada com sucesso!');
+      // Verificar se é master user
+      const { data: isMaster } = await supabase.rpc('is_master_user', { _user_id: userId });
+      
+      if (isMaster && newRole !== 'admin') {
+        toast.error('❌ Não é possível alterar a role do usuário master. O master deve sempre ser admin.');
+        return;
       }
 
+      // Deletar TODAS as roles antigas do usuário
+      const { error: deleteError } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId);
+
+      if (deleteError) {
+        console.error('[UsersManagement] Erro ao deletar roles antigas:', deleteError);
+        throw new Error(`Erro ao deletar roles: ${deleteError.message}`);
+      }
+
+      // Inserir nova role
+      const { error: insertError } = await supabase
+        .from('user_roles')
+        .insert({ 
+          user_id: userId, 
+          role: newRole,
+          expires_at: newRole === 'admin' ? null : undefined
+        });
+
+      if (insertError) {
+        console.error('[UsersManagement] Erro ao inserir nova role:', insertError);
+        throw new Error(`Erro ao inserir role: ${insertError.message}`);
+      }
+
+      console.log('[UsersManagement] ✅ Role alterada com sucesso para:', newRole);
+      toast.success(`✅ Role alterada para ${newRole} com sucesso!`);
       fetchUsers();
-    } catch (error) {
-      console.error('Erro ao atualizar role:', error);
-      toast.error('Erro ao atualizar role');
+    } catch (error: any) {
+      console.error('[UsersManagement] ❌ Erro ao atualizar permissão:', error);
+      toast.error(`❌ ${error.message || 'Falha ao atualizar permissão'}`);
     }
   };
 
@@ -218,7 +236,14 @@ export function UsersManagement() {
           <TableBody>
             {users.map((user) => (
               <TableRow key={user.id}>
-                <TableCell className="font-medium">{user.full_name}</TableCell>
+                <TableCell className="font-medium">
+                  {user.full_name}
+                  {user.isMaster && (
+                    <Badge variant="secondary" className="ml-2 bg-purple-500 text-white">
+                      Master
+                    </Badge>
+                  )}
+                </TableCell>
                 <TableCell className="text-muted-foreground">{user.email}</TableCell>
                 <TableCell>
                   <div className="flex flex-col gap-1">
@@ -245,7 +270,8 @@ export function UsersManagement() {
                   <div className="flex gap-2">
                     <Select
                       value={user.role === 'trial' ? 'free' : user.role}
-                      onValueChange={(value) => handleRoleChange(user.id, value as 'free' | 'premium' | 'admin')}
+                      onValueChange={(value) => handleRoleChange(user.id, value as 'free' | 'premium' | 'admin', user.email)}
+                      disabled={user.isMaster}
                     >
                       <SelectTrigger className="w-32">
                         <SelectValue />

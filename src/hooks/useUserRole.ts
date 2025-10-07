@@ -36,22 +36,34 @@ export function useUserRole() {
     if (!user) return;
 
     setLoading(true);
+    console.log('[useUserRole] Buscando role para usuário:', user.id, user.email);
+    
     try {
       // Buscar role via RPC para priorizar corretamente e evitar RLS inconsistências
       const { data: rpcRole, error } = await supabase.rpc('get_user_role', { _user_id: user.id });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[useUserRole] Erro ao buscar role via RPC:', error);
+        throw error;
+      }
 
       const userRole = (rpcRole as AppRole) || 'free';
 
-      console.info('Role final selecionada (RPC):', userRole);
+      console.log('[useUserRole] ✅ Role determinada:', {
+        userId: user.id,
+        email: user.email,
+        role: userRole,
+        isAdmin: userRole === 'admin',
+        isPremium: userRole === 'premium' || userRole === 'admin',
+        isTrial: userRole === 'trial'
+      });
 
       setRole(userRole);
       setIsAdmin(userRole === 'admin');
       setIsPremium(userRole === 'premium' || userRole === 'admin');
       setIsTrial(userRole === 'trial');
     } catch (error) {
-      console.error('Error fetching user role:', error);
+      console.error('[useUserRole] ❌ Erro ao buscar role, definindo como free:', error);
       setRole('free');
       setIsAdmin(false);
       setIsPremium(false);

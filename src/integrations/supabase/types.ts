@@ -184,6 +184,24 @@ export type Database = {
         }
         Relationships: []
       }
+      master_users: {
+        Row: {
+          created_at: string
+          email: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -634,6 +652,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_master_user: {
+        Args: { _user_id: string }
         Returns: boolean
       }
       is_whatsapp_authenticated: {

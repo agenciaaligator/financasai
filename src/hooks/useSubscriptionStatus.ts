@@ -43,10 +43,9 @@ export const useSubscriptionStatus = () => {
       // Check immediately on mount
       checkSubscription();
 
-      // Check every 60 seconds
-      const interval = setInterval(checkSubscription, 60000);
-
-      return () => clearInterval(interval);
+      // DESABILITADO: Polling a cada 60 segundos (economizar créditos Stripe)
+      // const interval = setInterval(checkSubscription, 60000);
+      // return () => clearInterval(interval);
     }
   }, [user]);
 

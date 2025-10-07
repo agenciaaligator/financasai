@@ -42,21 +42,27 @@ export function SubscriptionsManagement() {
           billing_cycle,
           current_period_end,
           created_at,
-          subscription_plans(display_name),
+          subscription_plans(display_name, name),
           user_id
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
+      // Filtrar assinaturas "free" (não devem aparecer)
+      const filteredData = data?.filter(sub => {
+        const planName = (sub as any).subscription_plans?.name;
+        return planName !== 'free';
+      }) || [];
+
       // Buscar nomes dos usuários
-      const userIds = data?.map(s => (s as any).user_id) || [];
+      const userIds = filteredData.map(s => (s as any).user_id);
       const { data: profiles } = await supabase
         .from('profiles')
         .select('user_id, full_name')
         .in('user_id', userIds);
 
-      const subsData = data?.map(sub => {
+      const subsData = filteredData.map(sub => {
         const profile = profiles?.find(p => p.user_id === (sub as any).user_id);
         return {
           id: sub.id,
@@ -67,7 +73,7 @@ export function SubscriptionsManagement() {
           current_period_end: sub.current_period_end || '',
           created_at: sub.created_at,
         };
-      }) || [];
+      });
 
       setSubscriptions(subsData);
     } catch (error) {
@@ -138,14 +144,23 @@ export function SubscriptionsManagement() {
                 <TableCell className="font-medium">{sub.user_name}</TableCell>
                 <TableCell>{sub.plan_name}</TableCell>
                 <TableCell>{getStatusBadge(sub.status)}</TableCell>
-                <TableCell className="capitalize">{sub.billing_cycle === 'monthly' ? 'Mensal' : 'Anual'}</TableCell>
+                <TableCell className="capitalize">
+                  {sub.status === 'active' 
+                    ? (sub.billing_cycle === 'monthly' ? 'Mensal' : 'Anual')
+                    : '—'
+                  }
+                </TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    {sub.current_period_end 
-                      ? new Date(sub.current_period_end).toLocaleDateString('pt-BR')
-                      : 'N/A'}
-                  </div>
+                  {sub.status === 'active' ? (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      {sub.current_period_end 
+                        ? new Date(sub.current_period_end).toLocaleDateString('pt-BR')
+                        : '—'}
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
                 </TableCell>
                 <TableCell>
                   {sub.status === 'active' && (

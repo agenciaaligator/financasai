@@ -77,9 +77,16 @@ export function useSubscription() {
   const getPlanDisplayName = async () => {
     if (!user) return 'Gratuito';
 
+    console.log('[useSubscription] Determinando nome do plano para:', user.email);
+
     // Verificar se é admin
     const { data: roleData } = await supabase.rpc('get_user_role', { _user_id: user.id });
-    if (roleData === 'admin') return 'Admin (Acesso Total)';
+    console.log('[useSubscription] Role retornada:', roleData);
+    
+    if (roleData === 'admin') {
+      console.log('[useSubscription] ✅ Usuário é admin');
+      return 'Admin (Acesso Total)';
+    }
 
     // Verificar se tem cupom FULLACCESS
     const { data: couponData } = await supabase
@@ -92,25 +99,36 @@ export function useSubscription() {
       const coupon = couponData.discount_coupons;
       const isActive = coupon.is_active && (!coupon.expires_at || new Date(coupon.expires_at) > new Date());
       if (coupon.type === 'full_access' && isActive) {
+        console.log('[useSubscription] ✅ Usuário tem cupom FULLACCESS');
         return 'Acesso Total (Cupom)';
       }
     }
 
-    return subscription?.subscription_plans?.display_name || 'Gratuito';
+    const planName = subscription?.subscription_plans?.display_name || 'Gratuito';
+    console.log('[useSubscription] ✅ Plano final:', planName);
+    return planName;
   };
 
-  const [planDisplayName, setPlanDisplayName] = useState<string>('Gratuito');
+  const [planDisplayName, setPlanDisplayName] = useState<string>('Carregando...');
+  const [loadingPlanName, setLoadingPlanName] = useState(true);
 
   useEffect(() => {
     if (user) {
-      getPlanDisplayName().then(setPlanDisplayName);
+      setLoadingPlanName(true);
+      getPlanDisplayName().then(name => {
+        setPlanDisplayName(name);
+        setLoadingPlanName(false);
+      });
+    } else {
+      setPlanDisplayName('Gratuito');
+      setLoadingPlanName(false);
     }
   }, [user, subscription]);
 
   return { 
     subscription, 
     planLimits, 
-    loading, 
+    loading: loading || loadingPlanName, 
     refetch: fetchSubscription,
     isFreePlan: !subscription || subscription.subscription_plans?.name === 'free',
     isPremium: subscription?.subscription_plans?.name === 'premium',
