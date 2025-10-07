@@ -1490,6 +1490,11 @@ class WhatsAppAgent {
       
       // Salvar a transação
       const saveResult = await this.saveTransaction(session.user_id!, transaction);
+
+      // Derive a string response and optional metadata
+      const saveResponse = typeof saveResult === 'string' ? saveResult : saveResult.response;
+      const transactionId = typeof saveResult === 'object' ? saveResult.transactionId : undefined;
+      const sendButtons = typeof saveResult === 'object' ? saveResult.sendButtons : false;
       
       // 🔧 LIMPAR ESTADO após salvar
       await SessionManager.updateSession(session.id, {
@@ -1501,7 +1506,9 @@ class WhatsAppAgent {
       });
       
       return {
-        response: saveResult,
+        response: saveResponse,
+        transactionId,
+        sendButtons,
         sessionData: { ...sessionData, conversation_state: 'idle', pending_transaction: undefined }
       };
     }
@@ -1528,7 +1535,12 @@ class WhatsAppAgent {
         const startTime = Date.now();
         const saveResult = await this.saveTransaction(session.user_id!, tx);
         console.log(`✅ saveTransaction completed in ${Date.now() - startTime}ms`);
-        console.log('📤 Response to send:', typeof saveResult === 'string' ? saveResult.substring(0, 100) + '...' : 'object');
+
+        // Coerce response to string and extract metadata if present
+        const saveResponse = typeof saveResult === 'string' ? saveResult : saveResult.response;
+        const transactionId = typeof saveResult === 'object' ? saveResult.transactionId : undefined;
+        const sendButtons = typeof saveResult === 'object' ? saveResult.sendButtons : false;
+        console.log('📤 Response to send:', typeof saveResponse === 'string' ? saveResponse.substring(0, 100) + '...' : 'object');
         
         // 🔧 LIMPAR ESTADO após salvar
         await SessionManager.updateSession(session.id, {
@@ -1542,7 +1554,9 @@ class WhatsAppAgent {
         console.log('✅ Session cleared, returning response to webhook');
         
         return {
-          response: saveResult,
+          response: saveResponse,
+          transactionId,
+          sendButtons,
           sessionData: { ...sessionData, conversation_state: 'idle', pending_transaction: undefined }
         };
       } else if (negative.includes(messageText)) {

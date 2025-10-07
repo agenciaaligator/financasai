@@ -962,6 +962,14 @@ const handler = async (req: Request): Promise<Response> => {
 
               console.log('Sending response to WhatsApp Business API...');
               
+              // Ensure response text is a string for WhatsApp payload
+              const responseText = typeof agentResult.response === 'string'
+                ? agentResult.response
+                : (agentResult.response?.response ?? JSON.stringify(agentResult.response));
+              if (typeof agentResult.response !== 'string') {
+                console.warn('Agent response was not a string; coerced to string for WhatsApp payload');
+              }
+
               // Check if the response should include interactive buttons
               const shouldSendButtons = agentResult.sendButtons && agentResult.transactionId;
               
@@ -977,7 +985,7 @@ const handler = async (req: Request): Promise<Response> => {
                   interactive: {
                     type: 'button',
                     body: {
-                      text: agentResult.response
+                      text: responseText
                     },
                     action: {
                       buttons: [
@@ -1005,7 +1013,7 @@ const handler = async (req: Request): Promise<Response> => {
                   messaging_product: 'whatsapp',
                   to: phoneForApi,
                   type: 'text',
-                  text: { body: agentResult.response }
+                  text: { body: responseText }
                 };
               }
               
