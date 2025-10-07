@@ -549,6 +549,122 @@ class TransactionParser {
   }
 }
 
+// 🤖 Classe para Processamento de Linguagem Natural
+class NaturalLanguageProcessor {
+  /**
+   * Processa mensagens em linguagem natural e extrai intenção + entidades
+   */
+  static async processNaturalLanguage(
+    messageText: string,
+    userId: string
+  ): Promise<{
+    intent: 'add_transaction' | 'query_balance' | 'query_expenses' | 'list_transactions' | 'other';
+    entities: {
+      amount?: number;
+      title?: string;
+      type?: 'income' | 'expense';
+      category?: string;
+      date?: string;
+      period?: 'day' | 'week' | 'month' | 'year';
+    };
+    confidence: number;
+  } | null> {
+    try {
+      const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+      if (!LOVABLE_API_KEY) {
+        console.error('LOVABLE_API_KEY not configured');
+        return null;
+      }
+
+      console.log('🤖 Processing natural language:', messageText);
+
+      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [{
+            role: 'system',
+            content: `Você é um assistente financeiro que analisa mensagens em linguagem natural e extrai informações estruturadas.
+
+INTENÇÕES POSSÍVEIS:
+- "add_transaction": usuário quer registrar uma receita ou despesa
+- "query_balance": usuário quer saber o saldo
+- "query_expenses": usuário quer saber gastos/receitas de uma categoria ou período
+- "list_transactions": usuário quer ver lista de transações
+- "other": qualquer outra coisa
+
+ENTIDADES PARA EXTRAIR:
+- amount: valor numérico (ex: 150, 50.5)
+- title: descrição da transação (ex: "mercado", "uber", "salário")
+- type: "income" (receita) ou "expense" (despesa)
+- category: categoria mencionada (ex: "alimentação", "transporte")
+- date: data mencionada em formato YYYY-MM-DD
+- period: "day", "week", "month" ou "year"
+
+EXEMPLOS:
+"gastei 150 no mercado ontem" → intent: add_transaction, amount: 150, title: mercado, type: expense, date: ontem
+"quanto gastei esse mês com comida?" → intent: query_expenses, category: alimentação, period: month
+"qual meu saldo?" → intent: query_balance
+"recebi 5000 de salário" → intent: add_transaction, amount: 5000, title: salário, type: income
+
+IMPORTANTE:
+- Números em português (ex: "mil", "cento e cinquenta") devem ser convertidos
+- Valores com vírgula como decimal (ex: "50,5") devem virar 50.5
+- Datas relativas (hoje, ontem, semana passada) devem ser convertidas
+- Se não tiver certeza de algo, coloque null
+- confidence deve ser 0-1
+
+Retorne APENAS um JSON válido no formato:
+{"intent": "add_transaction", "entities": {"amount": 150, "title": "mercado", "type": "expense"}, "confidence": 0.95}`
+          }, {
+            role: 'user',
+            content: messageText
+          }],
+          temperature: 0.3,
+          max_tokens: 300
+        })
+      });
+
+      if (!response.ok) {
+        console.error('AI API error:', response.status, await response.text());
+        return null;
+      }
+
+      const result = await response.json();
+      const content = result.choices[0]?.message?.content;
+      
+      console.log('🤖 NLP Response:', content);
+
+      // Parse JSON
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.error('Failed to parse NLP response');
+        return null;
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      
+      // Converter datas relativas
+      if (parsed.entities?.date) {
+        const parsedDate = DateParser.parseDate(parsed.entities.date);
+        if (parsedDate) {
+          parsed.entities.date = parsedDate;
+        }
+      }
+
+      return parsed;
+
+    } catch (error) {
+      console.error('NLP processing error:', error);
+      return null;
+    }
+  }
+}
+
 class AICategorizer {
   /**
    * Usa IA para determinar a melhor categoria baseada no contexto da mensagem
@@ -840,21 +956,36 @@ class PersonalizedResponses {
     const typeEmoji = transaction.type === 'income' ? '💰' : '💸';
     const typeText = transaction.type === 'income' ? 'Receita' : 'Despesa';
 
-    // Templates variados para soar natural
+    // Templates SUPER CONVERSACIONAIS (inspirado no MeuAssessor)
     const templates = [
-      `${typeEmoji} Registrado, ${greeting}! ${typeText} de R$ ${transaction.amount.toFixed(2)} em ${transaction.category_name || 'Outros'} ${emoji}\n\n💰 Saldo: R$ ${balance.total.toFixed(2)}`,
-      `Aí sim! ${typeEmoji} ${typeText} de R$ ${transaction.amount.toFixed(2)} salva com sucesso ${emoji}\n\n📊 Receitas: R$ ${balance.income.toFixed(2)}\n💸 Despesas: R$ ${balance.expense.toFixed(2)}\n💰 Saldo: R$ ${balance.total.toFixed(2)}`,
-      `Pronto, ${greeting}! ✅ ${typeText} de R$ ${transaction.amount.toFixed(2)} cadastrada em ${transaction.category_name || 'Outros'} ${emoji}\n\nSeu saldo atual: R$ ${balance.total.toFixed(2)}`
+      `${typeEmoji} Anotado! Gastou R$ ${transaction.amount.toFixed(2)} com ${transaction.title.toLowerCase()} ${emoji}\n\n💰 Seu saldo agora: R$ ${balance.total.toFixed(2)}`,
+      
+      `Pronto, ${greeting}! ${typeEmoji} Registrei R$ ${transaction.amount.toFixed(2)} em ${transaction.category_name || transaction.title} ${emoji}\n\n📊 Resumo do mês:\n💚 Receitas: R$ ${balance.income.toFixed(2)}\n💸 Despesas: R$ ${balance.expense.toFixed(2)}\n💰 Saldo: R$ ${balance.total.toFixed(2)}`,
+      
+      `Feito! ${typeEmoji} ${typeText} de R$ ${transaction.amount.toFixed(2)} → ${transaction.category_name || transaction.title} ${emoji}\n\nSaldo atual: R$ ${balance.total.toFixed(2)}`,
+      
+      `✅ Salvei! R$ ${transaction.amount.toFixed(2)} em ${transaction.title.toLowerCase()} já está no sistema ${emoji}\n\n💰 Saldo: R$ ${balance.total.toFixed(2)}`
     ];
 
     // Template especial para despesas altas
     if (transaction.type === 'expense' && transaction.amount > 200) {
-      templates.push(`Eita! ${typeEmoji} Despesa de R$ ${transaction.amount.toFixed(2)} registrada em ${transaction.category_name || 'Outros'} ${emoji}\n\nFique de olho no orçamento! Saldo: R$ ${balance.total.toFixed(2)}`);
+      templates.push(
+        `Opa! ${typeEmoji} Despesa grande aqui: R$ ${transaction.amount.toFixed(2)} em ${transaction.title.toLowerCase()} ${emoji}\n\n📊 Esse mês:\n💸 Despesas: R$ ${balance.expense.toFixed(2)}\n💰 Saldo: R$ ${balance.total.toFixed(2)}\n\n💡 Quer ver onde mais você gastou? Pergunte "quanto gastei com ${transaction.category_name?.toLowerCase() || 'outros'}?"`
+      );
     }
 
     // Template especial para receitas
     if (transaction.type === 'income') {
-      templates.push(`Aê! 🎉 Receita de R$ ${transaction.amount.toFixed(2)} cadastrada! ${emoji}\n\nBom ver o dinheiro entrando! 💚\nSaldo: R$ ${balance.total.toFixed(2)}`);
+      templates.push(
+        `Uhul! 🎉 Receita de R$ ${transaction.amount.toFixed(2)} registrada! ${emoji}\n\n💚 Total de receitas: R$ ${balance.income.toFixed(2)}\n💰 Saldo atual: R$ ${balance.total.toFixed(2)}\n\nBom ver o dinheiro entrando! 💪`
+      );
+    }
+
+    // Template especial para pequenos gastos (< R$ 30)
+    if (transaction.type === 'expense' && transaction.amount < 30) {
+      templates.push(
+        `${typeEmoji} Beleza! Anotei R$ ${transaction.amount.toFixed(2)} em ${transaction.title.toLowerCase()} ${emoji}\n\nOs pequenos gastos também contam! 😉\nSaldo: R$ ${balance.total.toFixed(2)}`
+      );
     }
 
     // Escolher template aleatório
@@ -1306,7 +1437,65 @@ class WhatsAppAgent {
       };
     }
 
-    // PRIORIDADE 3: Tentar processar como transação
+    // 🤖 PRIORIDADE 2.8: Processar com IA para linguagem natural
+    console.log('🤖 Attempting NLP processing for message:', messageText);
+    const nlpResult = await NaturalLanguageProcessor.processNaturalLanguage(messageText, session.user_id!);
+    
+    if (nlpResult && nlpResult.confidence > 0.7) {
+      console.log('🤖 NLP Success:', nlpResult);
+      
+      // Processar baseado na intenção
+      switch (nlpResult.intent) {
+        case 'add_transaction':
+          if (nlpResult.entities.amount && nlpResult.entities.type) {
+            console.log('🤖 Adding transaction via NLP');
+            const transaction: Partial<Transaction> = {
+              amount: nlpResult.entities.amount,
+              title: nlpResult.entities.title || (nlpResult.entities.category || 'Sem título'),
+              type: nlpResult.entities.type,
+              date: nlpResult.entities.date || new Date().toISOString().split('T')[0],
+              source: 'whatsapp'
+            };
+            
+            const saveResult = await this.saveTransaction(session.user_id!, transaction);
+            return {
+              response: saveResult,
+              sessionData: { ...sessionData, conversation_state: 'idle' }
+            };
+          }
+          break;
+          
+        case 'query_balance':
+          console.log('🤖 Querying balance via NLP');
+          try {
+            const balanceResponse = await this.getBalance(session.user_id!);
+            return { response: balanceResponse, sessionData };
+          } catch (error) {
+            console.error('Balance query error:', error);
+            return {
+              response: '❌ Erro ao consultar saldo. Tente novamente.',
+              sessionData
+            };
+          }
+          
+        case 'query_expenses':
+          console.log('🤖 Querying expenses/income via NLP');
+          const period = nlpResult.entities.period || 'month';
+          return {
+            response: await this.generateAIReport(session.user_id!, period),
+            sessionData
+          };
+          
+        case 'list_transactions':
+          console.log('🤖 Listing transactions via NLP');
+          return {
+            response: await this.generateAIReport(session.user_id!, 'month'),
+            sessionData
+          };
+      }
+    }
+
+    // PRIORIDADE 3: Tentar processar como transação (fallback tradicional)
     console.log('🔵 Attempting to parse transaction from message:', messageText);
     const parseResult = TransactionParser.parseTransactionFromText(messageText);
     console.log('🔵 Parse result:', parseResult ? 'SUCCESS' : 'FAILED', parseResult);
@@ -1582,36 +1771,48 @@ class WhatsAppAgent {
 
   static getHelpMenu(): string {
     return `🤖 *Assistente Financeiro WhatsApp*\n\n` +
-           `*📝 Como Adicionar Transações:*\n` +
+           `*✨ FALE NATURALMENTE! Eu entendo você:*\n` +
+           `• "gastei 150 no mercado ontem"\n` +
+           `• "quanto gastei esse mês com comida?"\n` +
+           `• "recebi 5000 de salário"\n` +
+           `• "paguei 80 de uber hoje"\n` +
+           `• "qual meu saldo?"\n\n` +
+           
+           `*📝 Outras formas de adicionar:*\n` +
            `• gasto 50 mercado\n` +
            `• receita 1000 salario\n` +
            `• +100 freelance\n` +
-           `• -30 lanche hoje\n` +
-           `• gasto 150 alimentação ontem\n\n` +
+           `• -30 lanche hoje\n\n` +
+           
            `*📸 Enviar Nota Fiscal:*\n` +
            `• Tire uma foto da nota fiscal\n` +
            `• Envie a imagem aqui\n` +
-           `• Eu vou extrair os dados automaticamente!\n\n` +
-           `*💳 Ver Saldo:*\n` +
-           `• *saldo* ou *meu saldo*\n` +
-           `• *qual o saldo?*\n` +
-           `• *conta*\n\n` +
+           `• Eu extraio os dados automaticamente!\n\n` +
+           
+           `*💳 Consultas (fale como quiser):*\n` +
+           `• "qual meu saldo?"\n` +
+           `• "quanto gastei com alimentação?"\n` +
+           `• "quanto recebi esse mês?"\n` +
+           `• "me mostra o extrato"\n\n` +
+           
            `*📊 Relatórios:*\n` +
-           `• *hoje* ou *relatorio dia*\n` +
-           `• *semana* ou *relatorio semana*\n` +
-           `• *mes* ou *relatorio mes*\n` +
-           `• *extrato* ou *relatorio* (mensal)\n` +
-           `• *ano* ou *relatorio ano*\n\n` +
-           `*✏️ Editar/Excluir Transações:*\n` +
-           `• *editar última* - edita a última transação\n` +
-           `• *excluir última* - deleta a última transação\n\n` +
-           `*📁 Categorias Automáticas:*\n` +
-           `O sistema identifica automaticamente a categoria mais adequada!\n` +
-           `Exemplo: "lanche" → categoria "Alimentação"\n\n` +
-           `💡 *Dicas:*\n` +
-           `• Use valores com pontos ou vírgulas (ex: 50.30 ou 50,30)\n` +
-           `• Pode adicionar a data: "hoje", "ontem" ou "28/09"\n` +
-           `• Não se preocupe com acentos ou pontuação!`;
+           `• *hoje* - movimentações de hoje\n` +
+           `• *semana* - últimos 7 dias\n` +
+           `• *relatorio* ou *mes* - mensal\n` +
+           `• *ano* - relatório anual\n\n` +
+           
+           `*✏️ Editar/Excluir:*\n` +
+           `• *editar última*\n` +
+           `• *excluir última*\n\n` +
+           
+           `*🤖 Inteligência Artificial:*\n` +
+           `Uso IA para entender o que você escreve!\n` +
+           `Não precisa decorar comandos - só fale naturalmente! 😊\n\n` +
+           
+           `💡 *Exemplos práticos:*\n` +
+           `• "paguei 200 de conta de luz"\n` +
+           `• "recebi 300 de freelance"\n` +
+           `• "gastei 45 na farmácia ontem"`;
   }
 
   // 📸 Método para processar imagens (OCR)
