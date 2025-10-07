@@ -230,21 +230,21 @@ export function DashboardContent({
         />
         
         {/* Limit Warnings */}
-        {planLimits && (
-          <>
-            <LimitWarning 
-              type="transaction" 
-              current={transactionProgress.current}
-              limit={transactionProgress.limit}
-              planName={planName}
-            />
-            <LimitWarning 
-              type="category" 
-              current={categoryProgress.current}
-              limit={categoryProgress.limit}
-              planName={planName}
-            />
-          </>
+        {planLimits && transactionProgress && (
+          <LimitWarning 
+            type="transaction" 
+            current={transactionProgress.current}
+            limit={transactionProgress.limit}
+            planName={planName}
+          />
+        )}
+        {planLimits && categoryProgress && (
+          <LimitWarning 
+            type="category" 
+            current={categoryProgress.current}
+            limit={categoryProgress.limit}
+            planName={planName}
+          />
         )}
         
         <TransactionFilters 
