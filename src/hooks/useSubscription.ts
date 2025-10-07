@@ -74,6 +74,39 @@ export function useSubscription() {
     }
   };
 
+  const getPlanDisplayName = async () => {
+    if (!user) return 'Gratuito';
+
+    // Verificar se é admin
+    const { data: roleData } = await supabase.rpc('get_user_role', { _user_id: user.id });
+    if (roleData === 'admin') return 'Admin (Acesso Total)';
+
+    // Verificar se tem cupom FULLACCESS
+    const { data: couponData } = await supabase
+      .from('user_coupons')
+      .select('discount_coupons(type, is_active, expires_at)')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (couponData?.discount_coupons) {
+      const coupon = couponData.discount_coupons;
+      const isActive = coupon.is_active && (!coupon.expires_at || new Date(coupon.expires_at) > new Date());
+      if (coupon.type === 'full_access' && isActive) {
+        return 'Acesso Total (Cupom)';
+      }
+    }
+
+    return subscription?.subscription_plans?.display_name || 'Gratuito';
+  };
+
+  const [planDisplayName, setPlanDisplayName] = useState<string>('Gratuito');
+
+  useEffect(() => {
+    if (user) {
+      getPlanDisplayName().then(setPlanDisplayName);
+    }
+  }, [user, subscription]);
+
   return { 
     subscription, 
     planLimits, 
@@ -82,7 +115,7 @@ export function useSubscription() {
     isFreePlan: !subscription || subscription.subscription_plans?.name === 'free',
     isPremium: subscription?.subscription_plans?.name === 'premium',
     isTrial: subscription?.subscription_plans?.name === 'trial',
-    planName: subscription?.subscription_plans?.display_name || 'Gratuito',
+    planName: planDisplayName,
     billingCycle: subscription?.billing_cycle || 'monthly'
   };
 }

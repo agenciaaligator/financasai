@@ -91,6 +91,48 @@ export type Database = {
           },
         ]
       }
+      discount_coupons: {
+        Row: {
+          code: string
+          created_at: string | null
+          current_uses: number | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          max_uses: number | null
+          note: string | null
+          type: string
+          updated_at: string | null
+          value: number | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          current_uses?: number | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number | null
+          note?: string | null
+          type: string
+          updated_at?: string | null
+          value?: number | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          current_uses?: number | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number | null
+          note?: string | null
+          type?: string
+          updated_at?: string | null
+          value?: number | null
+        }
+        Relationships: []
+      }
       feature_suggestions: {
         Row: {
           created_at: string | null
@@ -353,6 +395,35 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_coupons: {
+        Row: {
+          applied_at: string | null
+          coupon_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          applied_at?: string | null
+          coupon_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          applied_at?: string | null
+          coupon_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_coupons_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "discount_coupons"
             referencedColumns: ["id"]
           },
         ]

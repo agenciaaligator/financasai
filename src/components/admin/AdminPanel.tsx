@@ -4,7 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { UsersManagement } from "./UsersManagement";
 import { SubscriptionsManagement } from "./SubscriptionsManagement";
 import { AdminStats } from "./AdminStats";
-import { Shield, Users, CreditCard, BarChart3 } from "lucide-react";
+import { CouponsManagement } from "./CouponsManagement";
+import { AccessManagement } from "./AccessManagement";
+import { Shield, Users, CreditCard, BarChart3, Tag, Key } from "lucide-react";
 
 export function AdminPanel() {
   const [activeTab, setActiveTab] = useState("stats");
@@ -46,7 +48,7 @@ export function AdminPanel() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 gap-4">
+        <TabsList className="grid w-full grid-cols-5 gap-4">
           <TabsTrigger value="stats" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             <span>Estatísticas</span>
@@ -58,6 +60,14 @@ export function AdminPanel() {
           <TabsTrigger value="subscriptions" className="flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
             <span>Assinaturas</span>
+          </TabsTrigger>
+          <TabsTrigger value="coupons" className="flex items-center gap-2">
+            <Tag className="h-4 w-4" />
+            <span>Cupons</span>
+          </TabsTrigger>
+          <TabsTrigger value="access" className="flex items-center gap-2">
+            <Key className="h-4 w-4" />
+            <span>Acessos</span>
           </TabsTrigger>
         </TabsList>
 
@@ -71,6 +81,14 @@ export function AdminPanel() {
 
         <TabsContent value="subscriptions" className="space-y-4">
           <SubscriptionsManagement />
+        </TabsContent>
+
+        <TabsContent value="coupons" className="space-y-4">
+          <CouponsManagement />
+        </TabsContent>
+
+        <TabsContent value="access" className="space-y-4">
+          <AccessManagement />
         </TabsContent>
       </Tabs>
     </div>
