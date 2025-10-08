@@ -1512,6 +1512,28 @@ class WhatsAppAgent {
             response: await this.generateAIReport(session.user_id!, 'month'),
             sessionData
           };
+          
+        case 'other':
+          console.log('🤖 Handling social/other message via NLP');
+          // Detectar mensagens de agradecimento
+          if (/obrigad[oa]?|valeu|thanks|muito bom|legal/i.test(messageText)) {
+            return {
+              response: '😊 Por nada! Estou aqui sempre que precisar. É só me chamar! 💙',
+              sessionData: { ...sessionData, conversation_state: 'idle' }
+            };
+          }
+          // Detectar saudações
+          if (/oi|ol[aá]|bom dia|boa tarde|boa noite|hey|e a[íi]/i.test(messageText)) {
+            return {
+              response: await PersonalizedResponses.getGreeting(session.user_id!),
+              sessionData: { ...sessionData, conversation_state: 'idle' }
+            };
+          }
+          // Outros casos sociais - resposta genérica amigável
+          return {
+            response: '😊 Entendi! Se precisar registrar uma transação ou consultar seu saldo, é só me avisar!',
+            sessionData: { ...sessionData, conversation_state: 'idle' }
+          };
       }
     }
 
