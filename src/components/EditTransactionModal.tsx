@@ -29,11 +29,14 @@ export function EditTransactionModal({
   const [date, setDate] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
+  const [originalTitle, setOriginalTitle] = useState("");
+  const [suggestedCategory, setSuggestedCategory] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     if (transaction) {
       setTitle(transaction.title);
+      setOriginalTitle(transaction.title);
       setAmount(transaction.amount.toString());
       setType(transaction.type as 'income' | 'expense');
       
@@ -53,6 +56,7 @@ export function EditTransactionModal({
         : transaction.date;
       setDate(dateValue);
       setDescription(transaction.description || "");
+      setSuggestedCategory(null);
       
       console.log('Editando transação:', {
         id: transaction.id,
@@ -63,6 +67,28 @@ export function EditTransactionModal({
       });
     }
   }, [transaction, categories]);
+
+  // Detectar mudança significativa no título e sugerir nova categoria
+  useEffect(() => {
+    if (title !== originalTitle && title.length >= 3) {
+      const normalizedTitle = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      
+      const matchedCategory = categories
+        .filter(cat => cat.type === type)
+        .find(cat => {
+          const catName = cat.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          return normalizedTitle.includes(catName) || catName.includes(normalizedTitle);
+        });
+      
+      if (matchedCategory && matchedCategory.id !== categoryId) {
+        setSuggestedCategory(matchedCategory.id);
+      } else {
+        setSuggestedCategory(null);
+      }
+    } else {
+      setSuggestedCategory(null);
+    }
+  }, [title, originalTitle, type, categories, categoryId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -165,7 +191,26 @@ export function EditTransactionModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="editCategory">Categoria</Label>
+              <Label htmlFor="editCategory">
+                Categoria
+                {suggestedCategory && (
+                  <span className="ml-2 text-xs text-amber-600 font-normal">
+                    💡 Sugestão: {categories.find(c => c.id === suggestedCategory)?.name}
+                    <Button 
+                      type="button" 
+                      variant="link" 
+                      size="sm"
+                      onClick={() => {
+                        setCategoryId(suggestedCategory);
+                        setSuggestedCategory(null);
+                      }}
+                      className="ml-1 h-auto p-0 text-xs underline"
+                    >
+                      Aplicar
+                    </Button>
+                  </span>
+                )}
+              </Label>
               <Select value={categoryId} onValueChange={setCategoryId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma categoria" />

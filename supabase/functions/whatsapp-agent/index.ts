@@ -2030,7 +2030,8 @@ class WhatsAppAgent {
       conversation_state: 'awaiting_edit_field' as const,
       pending_edit: {
         transaction_id: lastTransaction.id,
-        original_transaction: lastTransaction
+        original_transaction: lastTransaction,
+        transaction_type: lastTransaction.type
       }
     };
 
@@ -2181,7 +2182,21 @@ class WhatsAppAgent {
               sessionData
             };
           }
-          updateData.title = messageText.trim();
+          const newTitle = messageText.trim();
+          updateData.title = newTitle;
+          
+          // Re-categorizar automaticamente com o novo título
+          console.log('🔄 Re-categorizando transação após mudança de título...');
+          const recategorized = await CategoryMatcher.findBestCategory(
+            session.user_id!,
+            newTitle,
+            pendingEdit.transaction_type
+          );
+          
+          if (recategorized.category_id) {
+            updateData.category_id = recategorized.category_id;
+            console.log(`✨ Categoria atualizada automaticamente: ${recategorized.category_name}`);
+          }
           break;
 
         case 'date':
