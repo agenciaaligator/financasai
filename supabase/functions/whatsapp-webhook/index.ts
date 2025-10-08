@@ -565,6 +565,7 @@ const handler = async (req: Request): Promise<Response> => {
     let text: string | undefined;
     let messageId: string | undefined;
     let isGptAssistant: boolean = false;
+    let forceText: boolean = false;
 
     if (isGPTMakerFormat) {
       console.log('🔵 GPT Maker - role:', body.role, 'message:', body.message || body.text);
@@ -586,6 +587,7 @@ const handler = async (req: Request): Promise<Response> => {
         console.log(`🎙️ [${messageId?.substring(0,10)}] Audio detected, transcribing...`);
         try {
           text = await transcribeAudio(message.audio.id, message.from);
+          forceText = true;
           console.log(`✅ [${messageId?.substring(0,10)}] Transcription successful:`, {
             from: message.from.substring(0, 8) + '***',
             length: text.length,
@@ -882,9 +884,9 @@ const handler = async (req: Request): Promise<Response> => {
               from: from,
               body: text,
               id: body.messageId || 'unknown',
-              type: messageType,
+              type: forceText ? 'text' : messageType,
               image: imageData,
-              audio: audioData
+              audio: forceText ? undefined : audioData
             },
             action: 'process_message'
           })
@@ -1000,7 +1002,7 @@ const handler = async (req: Request): Promise<Response> => {
               }
 
               // Check if the response should include interactive buttons
-              const shouldSendButtons = agentResult.sendButtons && agentResult.transactionId;
+              const shouldSendButtons = Boolean(agentResult.transactionId);
               
               let messagePayload: any;
               
@@ -1049,7 +1051,8 @@ const handler = async (req: Request): Promise<Response> => {
               console.log('[WEBHOOK] Sending to Graph API v21.0:', {
                 type: messagePayload.type,
                 hasButtons: shouldSendButtons,
-                transactionId: agentResult.transactionId
+                transactionId: agentResult.transactionId,
+                sendButtonsOriginal: agentResult.sendButtons
               });
 
               const whatsappResponse = await fetch(
@@ -1078,6 +1081,32 @@ const handler = async (req: Request): Promise<Response> => {
                   status: whatsappResponse.status,
                   error: errorPayload
                 });
+
+                // Fallback: if interactive failed, send plain text message
+                if (shouldSendButtons) {
+                  try {
+                    const fallbackRes = await fetch(`https://graph.facebook.com/v21.0/${whatsappPhoneNumberId}/messages`, {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': `Bearer ${whatsappAccessToken}`,
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        messaging_product: 'whatsapp',
+                        to: phoneForApi,
+                        type: 'text',
+                        text: { body: responseText }
+                      })
+                    });
+                    if (fallbackRes.ok) {
+                      console.log('✅ Fallback text message sent after interactive failure');
+                    } else {
+                      console.error('❌ Fallback text message also failed', await fallbackRes.text());
+                    }
+                  } catch (fallbackError) {
+                    console.error('❌ Error sending fallback text message:', fallbackError);
+                  }
+                }
               }
             } catch (whatsappError) {
               console.error('Error calling WhatsApp Business API:', whatsappError);
