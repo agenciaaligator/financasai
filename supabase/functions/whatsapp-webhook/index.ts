@@ -595,29 +595,13 @@ const handler = async (req: Request): Promise<Response> => {
           });
         } catch (transcribeError) {
           console.error(`❌ [${messageId?.substring(0,10)}] Transcription failed:`, transcribeError.message);
-          // Enviar mensagem padrão de erro ao usuário
-          const errorMessage = 'Desculpe, não consegui transcrever seu áudio agora. Envie texto como: "despesa 50 mercado".';
           
-          // Enviar erro direto ao usuário (não ao agente)
-          try {
-            await fetch(`https://graph.facebook.com/v21.0/${whatsappPhoneNumberId}/messages`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${whatsappAccessToken}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                messaging_product: 'whatsapp',
-                to: message.from,
-                text: { body: errorMessage }
-              })
-            });
-            console.log(`📤 [${messageId?.substring(0,10)}] Erro de transcrição enviado ao usuário`);
-          } catch (sendError) {
-            console.error('❌ Erro ao enviar mensagem de erro:', sendError);
-          }
+          // ✅ CRITICAL FIX: Não enviar erro antecipado - enviar ao agente para fallback guiado
+          forceText = true;
+          text = '__AUDIO_TRANSCRIPTION_FAILED__';
+          console.log(`⚠️ [${messageId?.substring(0,10)}] Setting fallback marker for agent`);
           
-          // Retornar sem processar pelo agente
+          // NÃO RETORNAR - seguir para o agente processar
           return new Response(JSON.stringify({ 
             success: true, 
             skipped: true,
@@ -1007,6 +991,11 @@ const handler = async (req: Request): Promise<Response> => {
               let messagePayload: any;
               
               if (shouldSendButtons) {
+                // ✅ CRITICAL FIX: Truncar responseText para ~900-1000 caracteres no botão
+                const truncatedText = responseText.length > 900 
+                  ? responseText.substring(0, 900) + '...'
+                  : responseText;
+                
                 // Send interactive message with buttons
                 messagePayload = {
                   messaging_product: 'whatsapp',
@@ -1016,7 +1005,7 @@ const handler = async (req: Request): Promise<Response> => {
                   interactive: {
                     type: 'button',
                     body: {
-                      text: responseText
+                      text: truncatedText
                     },
                     action: {
                       buttons: [

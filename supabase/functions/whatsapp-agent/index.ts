@@ -1131,6 +1131,19 @@ class WhatsAppAgent {
     const normalizedText = this.normalizeCommand(messageText);
     const sessionData = session.session_data || {};
     
+    // 🎙️ FALLBACK ESPECIAL: Áudio não transcrito (sem usar IA)
+    if (messageText === '__audio_transcription_failed__') {
+      console.log('⚠️ Audio transcription failed - sending guided fallback');
+      return {
+        response: '🎙️ *Não consegui ouvir seu áudio*\n\n' +
+                 'Por favor, tente:\n' +
+                 '• Enviar texto: "gasto 50 mercado"\n' +
+                 '• Ou gravar o áudio novamente\n\n' +
+                 'Comandos disponíveis: digite "ajuda"',
+        sessionData
+      };
+    }
+    
     // 🔍 DEBUG: Log detalhado de TODA mensagem recebida
     console.log('📨 === DEBUG: MENSAGEM RECEBIDA ===');
     console.log('De:', message.from);
@@ -1458,8 +1471,16 @@ class WhatsAppAgent {
             };
             
             const saveResult = await this.saveTransaction(session.user_id!, transaction);
+            
+            // ✅ CRITICAL FIX: Expor transactionId e sendButtons no topo do retorno
+            const saveResponse = typeof saveResult === 'string' ? saveResult : saveResult.response;
+            const transactionId = typeof saveResult === 'object' ? saveResult.transactionId : undefined;
+            const sendButtons = typeof saveResult === 'object' ? saveResult.sendButtons : false;
+            
             return {
-              response: saveResult,
+              response: saveResponse,
+              transactionId,
+              sendButtons,
               sessionData: { ...sessionData, conversation_state: 'idle' }
             };
           }
