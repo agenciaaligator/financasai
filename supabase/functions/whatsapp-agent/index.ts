@@ -179,7 +179,6 @@ class SessionManager {
     if (error) throw error;
     return data;
   }
-}
 
   static async updateSession(sessionId: string, updates: Partial<Session>): Promise<void> {
     // Merge session_data to preserve existing keys
