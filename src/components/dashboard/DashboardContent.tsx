@@ -33,6 +33,7 @@ import {
   parseISO
 } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
+import { ErrorBoundary } from "../ErrorBoundary";
 
 const TIMEZONE = 'America/Sao_Paulo';
 const ITEMS_PER_PAGE = 10;
@@ -228,63 +229,65 @@ export function DashboardContent({
     const categoryProgress = getCategoryProgress();
 
     return (
-      <div className="space-y-4">
-        <AddTransactionButton 
-          showForm={showTransactionForm}
-          onToggle={onToggleTransactionForm}
-        />
-        
-        {/* Limit Warnings */}
-        {planLimits && transactionProgress && (
-          <LimitWarning 
-            type="transaction" 
-            current={transactionProgress.current}
-            limit={transactionProgress.limit}
-            planName={planName}
+      <ErrorBoundary>
+        <div className="space-y-4">
+          <AddTransactionButton 
+            showForm={showTransactionForm}
+            onToggle={onToggleTransactionForm}
           />
-        )}
-        {planLimits && categoryProgress && (
-          <LimitWarning 
-            type="category" 
-            current={categoryProgress.current}
-            limit={categoryProgress.limit}
-            planName={planName}
-          />
-        )}
-        
-        <TransactionFilters 
-          filters={filters}
-          onFiltersChange={setFilters}
-          categories={categories}
-        />
-        
-        {hasActiveFilters && (
-          <FilteredSummaryCards transactions={filteredTransactions} />
-        )}
-
-        <Card className="bg-gradient-card shadow-card border-0">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Todas as Transações</span>
-              <span className="text-sm font-normal text-muted-foreground">
-                {filteredTransactions.length} de {transactions.length} transações
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TransactionList 
-              transactions={paginatedTransactions} 
-              onDelete={onDelete}
-              onEdit={onEdit}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              itemsPerPage={ITEMS_PER_PAGE}
-              totalItems={filteredTransactions.length}
-              onPageChange={setCurrentPage}
+          
+          {/* Limit Warnings */}
+          {planLimits && transactionProgress && transactionProgress.current !== null && transactionProgress.limit !== null && (
+            <LimitWarning 
+              type="transaction" 
+              current={transactionProgress.current}
+              limit={transactionProgress.limit}
+              planName={planName}
             />
-          </CardContent>
-        </Card>
-      </div>
+          )}
+          {planLimits && categoryProgress && categoryProgress.current !== null && categoryProgress.limit !== null && (
+            <LimitWarning 
+              type="category" 
+              current={categoryProgress.current}
+              limit={categoryProgress.limit}
+              planName={planName}
+            />
+          )}
+          
+          <TransactionFilters 
+            filters={filters}
+            onFiltersChange={setFilters}
+            categories={categories}
+          />
+          
+          {hasActiveFilters && (
+            <FilteredSummaryCards transactions={filteredTransactions} />
+          )}
+
+          <Card className="bg-gradient-card shadow-card border-0">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Todas as Transações</span>
+                <span className="text-sm font-normal text-muted-foreground">
+                  {filteredTransactions.length} de {transactions.length} transações
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TransactionList 
+                transactions={paginatedTransactions} 
+                onDelete={onDelete}
+                onEdit={onEdit}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                itemsPerPage={ITEMS_PER_PAGE}
+                totalItems={filteredTransactions.length}
+                onPageChange={setCurrentPage}
+              />
+            </CardContent>
+          </Card>
+        </div>
+      </ErrorBoundary>
     );
   }
 

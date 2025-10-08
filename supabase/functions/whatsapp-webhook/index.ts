@@ -1046,8 +1046,14 @@ const handler = async (req: Request): Promise<Response> => {
                 };
               }
               
+              console.log('[WEBHOOK] Sending to Graph API v21.0:', {
+                type: messagePayload.type,
+                hasButtons: shouldSendButtons,
+                transactionId: agentResult.transactionId
+              });
+
               const whatsappResponse = await fetch(
-                `https://graph.facebook.com/v18.0/${whatsappPhoneNumberId}/messages`,
+                `https://graph.facebook.com/v21.0/${whatsappPhoneNumberId}/messages`,
                 {
                   method: 'POST',
                   headers: {

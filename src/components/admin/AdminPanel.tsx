@@ -6,7 +6,8 @@ import { SubscriptionsManagement } from "./SubscriptionsManagement";
 import { AdminStats } from "./AdminStats";
 import { CouponsManagement } from "./CouponsManagement";
 import { AccessManagement } from "./AccessManagement";
-import { Shield, Users, CreditCard, BarChart3, Tag, Key } from "lucide-react";
+import { AgendaManagement } from "./AgendaManagement";
+import { Shield, Users, CreditCard, BarChart3, Tag, Key, Calendar } from "lucide-react";
 
 export function AdminPanel() {
   const [activeTab, setActiveTab] = useState("stats");
@@ -48,7 +49,7 @@ export function AdminPanel() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5 gap-4">
+        <TabsList className="grid w-full grid-cols-6 gap-4">
           <TabsTrigger value="stats" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             <span>Estatísticas</span>
@@ -68,6 +69,10 @@ export function AdminPanel() {
           <TabsTrigger value="access" className="flex items-center gap-2">
             <Key className="h-4 w-4" />
             <span>Acessos</span>
+          </TabsTrigger>
+          <TabsTrigger value="agenda" className="flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            <span>Agenda</span>
           </TabsTrigger>
         </TabsList>
 
@@ -89,6 +94,10 @@ export function AdminPanel() {
 
         <TabsContent value="access" className="space-y-4">
           <AccessManagement />
+        </TabsContent>
+
+        <TabsContent value="agenda" className="space-y-4">
+          <AgendaManagement />
         </TabsContent>
       </Tabs>
     </div>

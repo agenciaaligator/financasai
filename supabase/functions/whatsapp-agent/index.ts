@@ -181,129 +181,6 @@ class SessionManager {
   }
 }
 
-// Função para transcrever áudio usando ElevenLabs ou OpenAI Whisper (fallback)
-async function transcribeAudio(audioId: string, phoneNumber: string): Promise<string> {
-  try {
-    console.log('🎙️ Processing audio:', { 
-      audioId: audioId.substring(0, 10) + '***', 
-      phone: phoneNumber.substring(0, 8) + '***' 
-    });
-    
-    const WHATSAPP_ACCESS_TOKEN = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
-    if (!WHATSAPP_ACCESS_TOKEN) {
-      throw new Error('WHATSAPP_ACCESS_TOKEN não configurado');
-    }
-    
-    // 1. Obter URL do áudio
-    console.log('📍 Step 1: Getting audio URL...');
-    const metadataUrl = `https://graph.facebook.com/v21.0/${audioId}`;
-    const metadataResponse = await fetch(metadataUrl, {
-      headers: { 'Authorization': `Bearer ${WHATSAPP_ACCESS_TOKEN}` }
-    });
-    
-    if (!metadataResponse.ok) {
-      const errorText = await metadataResponse.text();
-      console.error('❌ Failed to get audio metadata:', metadataResponse.status, errorText);
-      throw new Error('Não consegui acessar o áudio');
-    }
-    
-    const metadata = await metadataResponse.json();
-    const audioDownloadUrl = metadata.url;
-    
-    if (!audioDownloadUrl) {
-      console.error('❌ No audio URL in metadata');
-      throw new Error('URL do áudio não encontrada');
-    }
-    
-    console.log('✅ Audio URL obtained');
-    
-    // 2. Baixar o arquivo de áudio
-    console.log('📍 Step 2: Downloading audio file...');
-    const audioResponse = await fetch(audioDownloadUrl, {
-      headers: { 'Authorization': `Bearer ${WHATSAPP_ACCESS_TOKEN}` }
-    });
-    
-    if (!audioResponse.ok) {
-      console.error('❌ Failed to download audio:', audioResponse.status);
-      throw new Error('Erro ao baixar áudio');
-    }
-    
-    const audioBlob = await audioResponse.blob();
-    console.log('✅ Audio downloaded:', audioBlob.size, 'bytes, type:', audioBlob.type);
-    
-    // 3. Tentar ElevenLabs primeiro
-    const elevenlabsApiKey = Deno.env.get('ELEVENLABS_API_KEY');
-    if (elevenlabsApiKey) {
-      console.log('📍 Step 3: Trying ElevenLabs transcription...');
-      
-      try {
-        const formData = new FormData();
-        formData.append('file', audioBlob, 'audio.ogg');
-        formData.append('model_id', 'scribe');
-        formData.append('language', 'pt');
-        
-        const elevenlabsResponse = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
-          method: 'POST',
-          headers: { 'xi-api-key': elevenlabsApiKey },
-          body: formData
-        });
-        
-        if (elevenlabsResponse.ok) {
-          const transcription = await elevenlabsResponse.json();
-          const transcribedText = transcription.text?.trim() || '';
-          
-          if (transcribedText && transcribedText.length > 0) {
-            console.log('✅ ElevenLabs success:', transcribedText.substring(0, 100));
-            return transcribedText;
-          }
-        } else {
-          console.error('❌ ElevenLabs failed:', elevenlabsResponse.status);
-        }
-      } catch (error) {
-        console.error('❌ ElevenLabs exception:', error.message);
-      }
-    }
-    
-    // 4. Fallback para OpenAI Whisper
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiApiKey) {
-      throw new Error('Serviço de transcrição não disponível');
-    }
-    
-    console.log('📍 Step 4: Fallback to Whisper...');
-    
-    const whisperFormData = new FormData();
-    whisperFormData.append('file', audioBlob, 'audio.ogg');
-    whisperFormData.append('model', 'whisper-1');
-    whisperFormData.append('language', 'pt');
-    
-    const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${openaiApiKey}` },
-      body: whisperFormData
-    });
-    
-    if (!whisperResponse.ok) {
-      const error = await whisperResponse.text();
-      console.error('❌ Whisper failed:', whisperResponse.status, error);
-      throw new Error('Falha na transcrição');
-    }
-    
-    const whisperTranscription = await whisperResponse.json();
-    const transcribedText = whisperTranscription.text?.trim() || '';
-    
-    if (!transcribedText) {
-      throw new Error('Não consegui entender o áudio');
-    }
-    
-    console.log('✅ Whisper success:', transcribedText.substring(0, 100));
-    return transcribedText;
-    
-  } catch (error) {
-    console.error('❌ Transcription error:', error.message);
-    throw new Error('Desculpe, não consegui processar seu áudio. Tente enviar texto.');
-  }
-
   static async updateSession(sessionId: string, updates: Partial<Session>): Promise<void> {
     // Merge session_data to preserve existing keys
     let finalUpdates = { ...updates };
@@ -1272,30 +1149,14 @@ class WhatsAppAgent {
       return await this.handleImageMessage(session, message);
     }
 
-    // 🎤 PRIORIDADE 0.5: Processar áudios
+    // 🎤 ÁUDIO: Deve vir já transcrito do webhook
+    // Se message.type === 'audio' ainda, significa que o webhook não transcreveu
     if (message.type === 'audio' && message.audio) {
-      console.log('🎤 ÁUDIO DETECTADO! Transcrevendo...', message.audio);
-      try {
-        // Transcrever o áudio
-        const transcribedText = await transcribeAudio(message.audio.id, message.from);
-        console.log('✅ Áudio transcrito:', transcribedText);
-        
-        // Processar o texto transcrito como se fosse uma mensagem de texto normal
-        const textMessage: WhatsAppMessage = {
-          ...message,
-          body: transcribedText,
-          type: 'text'
-        };
-        
-        // Processar recursivamente a mensagem transcrita
-        return await this.processMessage(session, textMessage);
-      } catch (error) {
-        console.error('❌ Erro ao transcrever áudio:', error);
-        return {
-          response: `❌ *Erro ao processar áudio*\n\n${error.message}\n\nTente enviar uma mensagem de texto.`,
-          sessionData
-        };
-      }
+      console.error('❌ CRÍTICO: Áudio recebido sem transcrição do webhook');
+      return {
+        response: `❌ *Erro ao processar áudio*\n\nO áudio deve ser transcrito antes de chegar aqui.\n\nTente enviar novamente ou digite texto.`,
+        sessionData
+      };
     }
     
     console.log('📨 Processing message:', { 
