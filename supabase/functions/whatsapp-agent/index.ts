@@ -66,9 +66,11 @@ interface SessionData {
     suggestions?: string[];
   };
   pending_commitment_edit?: {
-    commitment_id: string;
+    commitment_id?: string;
     field?: 'title' | 'date' | 'time' | 'category';
     original_commitment?: any;
+    available_commitments?: any[];
+    available_commitments_page?: number;
   };
   last_question?: string;
   full_name?: string;
@@ -336,6 +338,84 @@ function parseBrazilianNumber(value: string): number {
   const result = parseFloat(normalized);
   console.log(`🔵 parseBrazilianNumber: "${value}" → ${result}`);
   return result;
+}
+
+// Utilitário para extrair filtros de comandos de compromisso
+interface CommandFilters {
+  dateFilter?: { startISO: string; endISO: string };
+  titleQuery?: string;
+  selectionIndex?: number;
+}
+
+function parseCommandFilters(text: string): CommandFilters {
+  const filters: CommandFilters = {};
+  
+  // Normalizar removendo acentos para análise
+  const normalized = text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  
+  console.log('[PARSE_FILTERS] Input:', text);
+  console.log('[PARSE_FILTERS] Normalized:', normalized);
+  
+  // 1. Extrair índice de seleção direta (ex: "editar compromisso 3")
+  const indexMatch = normalized.match(/\b(\d{1,2})$/);
+  if (indexMatch) {
+    const num = parseInt(indexMatch[1]);
+    if (num >= 1 && num <= 20) {
+      filters.selectionIndex = num;
+      console.log('[PARSE_FILTERS] Selection index:', num);
+    }
+  }
+  
+  // 2. Extrair filtro de data (DD/MM ou DD/MM/AAAA)
+  const dateMatch = text.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+  if (dateMatch) {
+    const day = parseInt(dateMatch[1]);
+    const month = parseInt(dateMatch[2]);
+    const localTime = getBrazilTime();
+    const year = dateMatch[3] ? parseInt(dateMatch[3]) : localTime.getUTCFullYear();
+    const fullYear = year < 100 ? 2000 + year : year;
+    
+    // Validar data
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      try {
+        // Criar janela do dia completo em horário de Brasília (UTC-3)
+        const startDate = new Date(Date.UTC(fullYear, month - 1, day, 3, 0, 0)); // 00:00 BRT = 03:00 UTC
+        const endDate = new Date(Date.UTC(fullYear, month - 1, day + 1, 2, 59, 59)); // 23:59 BRT = 02:59+1d UTC
+        
+        filters.dateFilter = {
+          startISO: startDate.toISOString(),
+          endISO: endDate.toISOString()
+        };
+        console.log('[PARSE_FILTERS] Date filter:', { 
+          date: `${day}/${month}/${fullYear}`,
+          start: filters.dateFilter.startISO,
+          end: filters.dateFilter.endISO
+        });
+      } catch (e) {
+        console.error('[PARSE_FILTERS] Invalid date:', e);
+      }
+    }
+  }
+  
+  // 3. Extrair query de título (palavras após "compromisso"/"evento"/"reuniao" que não sejam data/número)
+  const titleMatch = normalized.match(/(?:compromisso|evento|reuniao)\s+(?:dia\s+\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\s+)?(.+?)(?:\s+\d{1,2})?$/);
+  if (titleMatch && titleMatch[1]) {
+    let titleQuery = titleMatch[1]
+      .replace(/\d{1,2}\/\d{1,2}(?:\/\d{2,4})?/g, '') // Remove datas
+      .replace(/\b(dia|das|as|de|em|para|com|a|o)\b/g, '') // Remove preposições
+      .trim();
+    
+    if (titleQuery.length >= 3) {
+      filters.titleQuery = titleQuery;
+      console.log('[PARSE_FILTERS] Title query:', titleQuery);
+    }
+  }
+  
+  console.log('[PARSE_FILTERS] Final filters:', JSON.stringify(filters));
+  return filters;
 }
 
 class DateParser {
@@ -1214,15 +1294,49 @@ class WhatsAppAgent {
 
     if (sessionData.conversation_state === 'awaiting_commitment_edit_value' && sessionData.pending_commitment_edit) {
       const field = messageText.trim();
+      
+      // Opção 5: Cancelar o compromisso (não a edição)
       if (field === '5') {
-        // Cancelar edição
-        await SessionManager.updateSession(session.id, {
-          session_data: { ...sessionData, conversation_state: 'idle', pending_commitment_edit: undefined }
-        });
-        return {
-          response: '❌ Edição cancelada.',
-          sessionData: { ...sessionData, conversation_state: 'idle' }
-        };
+        const pendingEdit = sessionData.pending_commitment_edit;
+        
+        if (!pendingEdit?.commitment_id) {
+          return {
+            response: '❌ Erro ao processar cancelamento.',
+            sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment_edit: undefined }
+          };
+        }
+        
+        try {
+          const supabase = createClient(
+            Deno.env.get('SUPABASE_URL')!,
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+          );
+          
+          const { error: deleteError } = await supabase
+            .from('commitments')
+            .delete()
+            .eq('id', pendingEdit.commitment_id)
+            .eq('user_id', session.user_id);
+          
+          if (deleteError) throw deleteError;
+          
+          const title = pendingEdit.original_commitment?.title || 'Compromisso';
+          
+          await SessionManager.updateSession(session.id, {
+            session_data: { ...sessionData, conversation_state: 'idle', pending_commitment_edit: undefined }
+          });
+          
+          return {
+            response: `✅ *Compromisso cancelado com sucesso!*\n\n🗑️ "${title}" foi removido da sua agenda.`,
+            sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment_edit: undefined }
+          };
+        } catch (error) {
+          console.error('Error deleting commitment:', error);
+          return {
+            response: '❌ Erro ao cancelar compromisso. Tente novamente.',
+            sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment_edit: undefined }
+          };
+        }
       }
       
       const fieldMap: Record<string, string> = {
@@ -1319,19 +1433,25 @@ class WhatsAppAgent {
     }
     
     // PRIORIDADE 2A: Comandos específicos de EDIÇÃO/CANCELAMENTO (antes de agenda genérica)
-    if (/editar\s+compromisso/i.test(messageText)) {
-      console.log('📝 COMANDO: editar compromisso');
-      return await this.handleEditCommitmentCommand(session);
+    // Regex tolerante: aceita artigos opcionais e variações
+    const normalizedText = messageText
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+    
+    const editCommitmentRegex = /\b(editar|alterar|remarcar)\b\s*(?:o\s+|um\s+|uma\s+)?\b(compromisso|evento|reuniao)\b/;
+    const cancelCommitmentRegex = /\b(cancelar|excluir|apagar)\b\s*(?:o\s+|um\s+|uma\s+)?\b(compromisso|evento|reuniao)\b/;
+    
+    if (editCommitmentRegex.test(normalizedText)) {
+      console.log('📝 COMANDO: editar/remarcar compromisso');
+      const filters = parseCommandFilters(messageText);
+      return await this.handleEditCommitmentCommand(session, filters);
     }
 
-    if (/remarcar\s+compromisso/i.test(messageText)) {
-      console.log('📝 COMANDO: remarcar compromisso');
-      return await this.handleEditCommitmentCommand(session);
-    }
-
-    if (/cancelar\s+compromisso/i.test(messageText)) {
+    if (cancelCommitmentRegex.test(normalizedText)) {
       console.log('🗑️ COMANDO: cancelar compromisso');
-      return await this.handleCancelCommitmentCommand(session);
+      const filters = parseCommandFilters(messageText);
+      return await this.handleCancelCommitmentCommand(session, filters);
     }
     
     // PRIORIDADE 2: Comandos de AGENDA (ANTES de outros comandos genéricos)
@@ -1969,16 +2089,25 @@ class WhatsAppAgent {
            `• *relatorio* ou *mes* - mensal\n` +
            `• *ano* - relatório anual\n\n` +
            
-           `*📅 Agenda (NOVO!):*\n` +
+           `*📅 Agenda - Comandos Inteligentes:*\n` +
            `• "agendar dentista amanhã 14h"\n` +
            `• "compromisso reunião sexta 10h"\n` +
-           `• "meus compromissos"\n` +
-           `• "próximos eventos"\n` +
-           `• "editar compromisso"\n` +
-           `• "remarcar compromisso"\n` +
-           `• "cancelar compromisso"\n\n` +
+           `• "meus compromissos" - listar todos\n\n` +
            
-           `*✏️ Editar/Excluir:*\n` +
+           `*✏️ Editar Compromissos:*\n` +
+           `• "editar compromisso" - lista todos\n` +
+           `• "editar compromisso 3" - edita o nº 3\n` +
+           `• "editar compromisso dia 25/10"\n` +
+           `• "editar compromisso dentista"\n` +
+           `• "remarcar compromisso" (igual editar)\n\n` +
+           
+           `*🗑️ Cancelar Compromissos:*\n` +
+           `• "cancelar compromisso" - lista todos\n` +
+           `• "cancelar compromisso 2" - cancela o nº 2\n` +
+           `• "cancelar compromisso dia 15/10"\n` +
+           `• "apagar evento reunião"\n\n` +
+           
+           `*✏️ Editar/Excluir Transações:*\n` +
            `• *editar última*\n` +
            `• *excluir última*\n\n` +
            
@@ -1990,7 +2119,7 @@ class WhatsAppAgent {
            `• "paguei 200 de conta de luz"\n` +
            `• "recebi 300 de freelance"\n` +
            `• "gastei 45 na farmácia ontem"\n` +
-           `• "agendar consulta médica amanhã 15h"`;
+           `• "editar o compromisso dia 25/10"`;
   }
 
   // 📸 Método para processar imagens (OCR)
@@ -3352,7 +3481,7 @@ Se não especificar hora, use 09:00.`
     }
   }
 
-  static async handleEditCommitmentCommand(session: Session): Promise<{ response: string, sessionData: SessionData }> {
+  static async handleEditCommitmentCommand(session: Session, filters: CommandFilters = {}): Promise<{ response: string, sessionData: SessionData }> {
     const sessionData = session.session_data || {};
 
     if (!session.user_id) {
@@ -3363,33 +3492,89 @@ Se não especificar hora, use 09:00.`
     }
 
     try {
+      console.log('[EDIT CMD] Filters:', JSON.stringify(filters));
+      
       const supabase = createClient(
         Deno.env.get('SUPABASE_URL')!,
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
       );
 
-      // Buscar compromissos em janela ampla: últimos 30 dias + próximos 90 dias
-      const now = new Date();
-      const pastLimit = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const futureLimit = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString();
+      // Se tiver seleção direta e já houver lista, pular busca
+      if (filters.selectionIndex && sessionData.pending_commitment_edit?.available_commitments) {
+        const commitments = sessionData.pending_commitment_edit.available_commitments;
+        const selected = commitments[filters.selectionIndex - 1];
+        
+        if (selected) {
+          console.log('[EDIT PICK] Direct selection:', selected.id);
+          
+          const updatedSessionData = {
+            ...sessionData,
+            conversation_state: 'awaiting_commitment_edit_field' as const,
+            pending_commitment_edit: {
+              commitment_id: selected.id,
+              original_commitment: selected
+            }
+          };
+          
+          await SessionManager.updateSession(session.id, {
+            session_data: updatedSessionData
+          });
+          
+          return {
+            response: `📝 *Editando: ${selected.title}*\n\n` +
+                     `Selecione o que deseja alterar:\n\n` +
+                     `1️⃣ Título\n` +
+                     `2️⃣ Data\n` +
+                     `3️⃣ Hora\n` +
+                     `4️⃣ Categoria\n` +
+                     `5️⃣ Cancelar compromisso`,
+            sessionData: updatedSessionData
+          };
+        }
+      }
 
-      const { data: commitments, error } = await supabase
+      // Construir query com filtros
+      let query = supabase
         .from('commitments')
         .select('*')
-        .eq('user_id', session.user_id)
-        .gte('scheduled_at', pastLimit)
-        .lte('scheduled_at', futureLimit)
+        .eq('user_id', session.user_id);
+      
+      // Aplicar filtro de data se presente
+      if (filters.dateFilter) {
+        query = query
+          .gte('scheduled_at', filters.dateFilter.startISO)
+          .lte('scheduled_at', filters.dateFilter.endISO);
+        console.log('[EDIT CMD] Applied date filter:', filters.dateFilter);
+      } else {
+        // Janela padrão: últimos 30 dias + próximos 90 dias
+        const now = new Date();
+        const pastLimit = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        const futureLimit = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString();
+        query = query.gte('scheduled_at', pastLimit).lte('scheduled_at', futureLimit);
+      }
+      
+      // Aplicar filtro de título se presente
+      if (filters.titleQuery) {
+        query = query.ilike('title', `%${filters.titleQuery}%`);
+        console.log('[EDIT CMD] Applied title filter:', filters.titleQuery);
+      }
+      
+      const { data: commitments, error } = await query
         .order('scheduled_at', { ascending: true })
         .limit(20);
 
       if (error) throw error;
 
       if (!commitments || commitments.length === 0) {
-        return {
-          response: '📭 *Você não tem compromissos nos últimos 30 dias ou próximos 90 dias.*',
-          sessionData
-        };
+        let msg = '📭 *Nenhum compromisso encontrado';
+        if (filters.dateFilter) msg += ' nesta data';
+        if (filters.titleQuery) msg += ` com "${filters.titleQuery}"`;
+        msg += '.*';
+        
+        return { response: msg, sessionData };
       }
+      
+      console.log('[EDIT LIST] Found:', commitments.length, 'commitments');
 
       // Agrupar por período
       const today = new Date();
@@ -3487,7 +3672,7 @@ Se não especificar hora, use 09:00.`
     }
   }
 
-  static async handleCancelCommitmentCommand(session: Session): Promise<{ response: string, sessionData: SessionData }> {
+  static async handleCancelCommitmentCommand(session: Session, filters: CommandFilters = {}): Promise<{ response: string, sessionData: SessionData }> {
     const sessionData = session.session_data || {};
 
     if (!session.user_id) {
@@ -3498,33 +3683,87 @@ Se não especificar hora, use 09:00.`
     }
 
     try {
+      console.log('[CANCEL CMD] Filters:', JSON.stringify(filters));
+      
       const supabase = createClient(
         Deno.env.get('SUPABASE_URL')!,
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
       );
 
-      // Buscar compromissos em janela ampla: últimos 30 dias + próximos 90 dias
-      const now = new Date();
-      const pastLimit = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const futureLimit = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString();
+      // Se tiver seleção direta e já houver lista, executar cancelamento
+      if (filters.selectionIndex && sessionData.pending_commitment_edit?.available_commitments) {
+        const commitments = sessionData.pending_commitment_edit.available_commitments;
+        const selected = commitments[filters.selectionIndex - 1];
+        
+        if (selected) {
+          console.log('[CANCEL PICK] Direct selection:', selected.id);
+          
+          const { error: deleteError } = await supabase
+            .from('commitments')
+            .delete()
+            .eq('id', selected.id)
+            .eq('user_id', session.user_id);
+          
+          if (deleteError) throw deleteError;
+          
+          await SessionManager.updateSession(session.id, {
+            session_data: {
+              ...sessionData,
+              conversation_state: 'idle',
+              pending_commitment_edit: undefined
+            }
+          });
+          
+          return {
+            response: `✅ *Compromisso cancelado com sucesso!*\n\n` +
+                     `🗑️ "${selected.title}" foi removido da sua agenda.`,
+            sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment_edit: undefined }
+          };
+        }
+      }
 
-      const { data: commitments, error } = await supabase
+      // Construir query com filtros
+      let query = supabase
         .from('commitments')
         .select('*')
-        .eq('user_id', session.user_id)
-        .gte('scheduled_at', pastLimit)
-        .lte('scheduled_at', futureLimit)
+        .eq('user_id', session.user_id);
+      
+      // Aplicar filtro de data se presente
+      if (filters.dateFilter) {
+        query = query
+          .gte('scheduled_at', filters.dateFilter.startISO)
+          .lte('scheduled_at', filters.dateFilter.endISO);
+        console.log('[CANCEL CMD] Applied date filter:', filters.dateFilter);
+      } else {
+        // Janela padrão: últimos 30 dias + próximos 90 dias
+        const now = new Date();
+        const pastLimit = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        const futureLimit = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString();
+        query = query.gte('scheduled_at', pastLimit).lte('scheduled_at', futureLimit);
+      }
+      
+      // Aplicar filtro de título se presente
+      if (filters.titleQuery) {
+        query = query.ilike('title', `%${filters.titleQuery}%`);
+        console.log('[CANCEL CMD] Applied title filter:', filters.titleQuery);
+      }
+      
+      const { data: commitments, error } = await query
         .order('scheduled_at', { ascending: true })
         .limit(20);
 
       if (error) throw error;
 
       if (!commitments || commitments.length === 0) {
-        return {
-          response: '📭 *Você não tem compromissos nos últimos 30 dias ou próximos 90 dias.*',
-          sessionData
-        };
+        let msg = '📭 *Nenhum compromisso encontrado';
+        if (filters.dateFilter) msg += ' nesta data';
+        if (filters.titleQuery) msg += ` com "${filters.titleQuery}"`;
+        msg += '.*';
+        
+        return { response: msg, sessionData };
       }
+      
+      console.log('[CANCEL LIST] Found:', commitments.length, 'commitments');
 
       // Agrupar por período
       const today = new Date();
