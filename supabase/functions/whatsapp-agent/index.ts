@@ -2759,7 +2759,100 @@ class WhatsAppAgent {
       console.log('🗓️ Mensagem:', messageText);
       console.log('🗓️ Extraindo dados do compromisso...');
       
-      // Usar OpenAI para extrair título e data da mensagem
+      // 1) Tentativa rápida com parser local (pt-BR) antes de chamar IA
+      const normalized = messageText
+        .normalize('NFD').replace(/\p{Diacritic}/gu, '')
+        .toLowerCase();
+      console.log('🗓️ QuickParse - normalized:', normalized);
+
+      const dayNames: Record<string, number> = {
+        domingo: 0, segunda: 1, terca: 2, tercafeira: 2, 'terça': 2, 'terça-feira': 2,
+        quarta: 3, quintafeira: 4, quinta: 4, sexta: 5, sabado: 6, 'sábado': 6
+      } as any;
+
+      // Extrair hora
+      const timeMatch = normalized.match(/\b(\d{1,2})(?::(\d{2}))?\s*(?:h|horas?)?\b/);
+      let hour = 9, minute = 0;
+      if (timeMatch) {
+        hour = Math.min(23, parseInt(timeMatch[1]));
+        minute = Math.min(59, parseInt(timeMatch[2] || '0'));
+      }
+
+      // Extrair data
+      const nowBr = getBrazilTime();
+      let target = new Date(nowBr);
+
+      if (/\bamanha\b/.test(normalized)) {
+        target = new Date(nowBr.getTime() + 24 * 60 * 60 * 1000);
+      } else if (/\bhoje\b/.test(normalized)) {
+        target = new Date(nowBr);
+      } else {
+        // dd/mm(/aaaa)
+        const dm = normalized.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
+        if (dm) {
+          const d = parseInt(dm[1]);
+          const m = parseInt(dm[2]);
+          const y = dm[3] ? (dm[3].length === 2 ? 2000 + parseInt(dm[3]) : parseInt(dm[3])) : nowBr.getUTCFullYear();
+          target = new Date(Date.UTC(y, m - 1, d));
+        } else {
+          // Próximo dia da semana citado
+          for (const key of Object.keys(dayNames)) {
+            if (new RegExp(`\\b${key}\\b`).test(normalized)) {
+              const todayDow = nowBr.getUTCDay();
+              const desired = dayNames[key as keyof typeof dayNames];
+              let add = (desired - todayDow + 7) % 7;
+              if (add === 0) add = 7; // próximo
+              target = new Date(nowBr.getTime() + add * 24 * 60 * 60 * 1000);
+              break;
+            }
+          }
+        }
+      }
+
+      // Extrair título: após o verbo até palavra de data/hora
+      let title = normalized
+        .replace(/^(agendar|marcar|cadastrar|compromisso)\s+/, '')
+        .replace(/\s+(para|pra|em|no|na)\s+/, ' ')
+        .replace(/\b(amanha|hoje|domingo|segunda|terca|terça|quarta|quinta|sexta|sabado|sábado)\b.*/, '')
+        .replace(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?.*/, '')
+        .replace(/\b\d{1,2}(?::\d{2})?\s*(?:h|horas?)?.*/, '')
+        .trim();
+
+      if (title) {
+        // Montar ISO no UTC a partir do horário de Brasília (UTC-3)
+        const y = target.getUTCFullYear();
+        const m = target.getUTCMonth();
+        const d = target.getUTCDate();
+        const scheduledISO = new Date(Date.UTC(y, m, d, hour + 3, minute)).toISOString();
+        console.log('🗓️ QuickParse SUCCESS:', { title, hour, minute, scheduledISO });
+
+        // Salvar diretamente
+        const supabase = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        );
+        const { error: insertErr } = await supabase.from('commitments').insert({
+          user_id: userId,
+          title: title.charAt(0).toUpperCase() + title.slice(1),
+          description: null,
+          scheduled_at: scheduledISO,
+          category: 'other'
+        });
+        if (!insertErr) {
+          const formattedDate = new Date(scheduledISO).toLocaleDateString('pt-BR', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+            hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo'
+          });
+          return {
+            response: `✅ *Compromisso agendado!*\n\n📌 ${title}\n🗓️ ${formattedDate}`,
+            sessionData: {}
+          };
+        } else {
+          console.warn('⚠️ QuickParse insert error, continuará com IA:', insertErr.message);
+        }
+      }
+
+      // 2) Fallback: usar IA para extrair título e data da mensagem
       const openAIKey = Deno.env.get('OPENAI_API_KEY');
       if (!openAIKey) {
         return {
