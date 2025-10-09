@@ -1191,6 +1191,11 @@ class WhatsAppAgent {
       return await this.handleDeleteConfirmation(session, messageText);
     }
 
+    // PRIORIDADE 0.93: Resolução de conflito de agenda
+    if (sessionData.conversation_state === 'awaiting_commitment_resolution' && sessionData.pending_commitment) {
+      return await this.handleCommitmentResolution(session, messageText);
+    }
+
     // PRIORIDADE 0.95: Edição de transação
     if (sessionData.conversation_state === 'awaiting_edit_field' && sessionData.pending_edit) {
       return await this.handleEditFieldSelection(session, messageText);
@@ -2093,6 +2098,91 @@ class WhatsAppAgent {
     };
   }
 
+  static async handleCommitmentResolution(session: Session, messageText: string): Promise<{ response: string, sessionData: SessionData }> {
+    const sessionData = session.session_data || {};
+    const pending = sessionData.pending_commitment!;
+    const choice = messageText.trim();
+
+    console.log('🔧 Resolvendo conflito de compromisso:', { choice, pending });
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+
+    // Cancelar
+    const maxOption = 2 + (pending.suggestions?.length || 0);
+    if (choice === String(maxOption)) {
+      await SessionManager.updateSession(session.id, {
+        session_data: {
+          ...sessionData,
+          conversation_state: 'idle',
+          pending_commitment: undefined
+        }
+      });
+
+      return {
+        response: '❌ Agendamento cancelado.',
+        sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment: undefined }
+      };
+    }
+
+    let finalISO = pending.scheduledISO;
+    
+    // Opção 1: manter no horário original (duplo-agendamento)
+    if (choice === '1') {
+      finalISO = pending.scheduledISO;
+    } 
+    // Opção 2 ou 3: remarcar
+    else if (choice === '2' && pending.suggestions && pending.suggestions[0]) {
+      finalISO = pending.suggestions[0];
+    } 
+    else if (choice === '3' && pending.suggestions && pending.suggestions[1]) {
+      finalISO = pending.suggestions[1];
+    } 
+    else {
+      return {
+        response: `❌ Opção inválida.\n\nDigite 1, 2, ${pending.suggestions?.length === 2 ? '3,' : ''} ${maxOption}`,
+        sessionData
+      };
+    }
+
+    // Inserir o compromisso
+    const { error: insertErr } = await supabase.from('commitments').insert({
+      user_id: session.user_id,
+      title: pending.title,
+      description: null,
+      scheduled_at: finalISO,
+      category: pending.category
+    });
+
+    if (insertErr) {
+      console.error('❌ Erro ao inserir compromisso:', insertErr);
+      return {
+        response: '❌ Erro ao agendar. Tente novamente.',
+        sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment: undefined }
+      };
+    }
+
+    const formattedDate = new Date(finalISO).toLocaleDateString('pt-BR', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+      hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo'
+    });
+
+    await SessionManager.updateSession(session.id, {
+      session_data: {
+        ...sessionData,
+        conversation_state: 'idle',
+        pending_commitment: undefined
+      }
+    });
+
+    return {
+      response: `✅ *Compromisso agendado!*\n\n📌 ${pending.title}\n🗓️ ${formattedDate}`,
+      sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment: undefined }
+    };
+  }
+
   static async handleEditFieldSelection(session: Session, messageText: string): Promise<{ response: string, sessionData: SessionData }> {
     const sessionData = session.session_data || {};
     const pendingEdit = sessionData.pending_edit!;
@@ -2770,8 +2860,9 @@ class WhatsAppAgent {
         quarta: 3, quintafeira: 4, quinta: 4, sexta: 5, sabado: 6, 'sábado': 6
       } as any;
 
-      // Extrair hora (aceita "14h30", "14:30", "14h", "14 horas")
-      const timeMatch = normalized.match(/\b(\d{1,2})(?:[:h](\d{2}))?\s*(?:h|horas?)?/);
+      // Extrair hora - EXIGE sufixo válido para não capturar "11" de "11/10"
+      // Aceita: "14h30", "14:30", "às 14h", "14 horas"
+      const timeMatch = normalized.match(/\b(?:as|a)?\s*(\d{1,2})(?:(?::|h)(\d{2})\b|\s*(?:h|horas?))\b/);
       let hour = 9, minute = 0;
       if (timeMatch) {
         hour = Math.min(23, parseInt(timeMatch[1]));
@@ -2831,20 +2922,20 @@ class WhatsAppAgent {
       let category: 'payment' | 'meeting' | 'appointment' | 'other' = 'other';
       if (/dentista|ortopedista|pediatra|ginecologista|cardiologista|oftalmologista|dermato|medico|doutor|clinica|hospital|exame|consulta|veterinario/i.test(normalized)) {
         category = 'appointment';
-      } else if (/reuniao|meeting|encontro|call|videochamada|apresentacao|workshop|entrevista/i.test(normalized)) {
+      } else if (/(reuniao|reuni[aã]o|meeting|encontro|call|videochamada|apresentacao|workshop|entrevista)/i.test(normalized)) {
         category = 'meeting';
       } else if (/pagamento|pagar|conta|boleto|fatura|vencimento|mensalidade|prestacao/i.test(normalized)) {
         category = 'payment';
       }
 
-      // 2️⃣ DEPOIS: Extrair título limpo
+      // 2️⃣ DEPOIS: Extrair título limpo (não remover "11/10" acidentalmente)
       let title = normalized
         .replace(/^(agendar|marcar|cadastrar|compromisso)\s+/, '')
         .replace(/\s+(para|pra|em|no|na)\s+/, ' ')
         .replace(/\b(amanha|hoje|domingo|segunda|terca|terça|quarta|quinta|sexta|sabado|sábado)\b.*/, '')
         .replace(/\bdia\s+\d{1,2}\b.*/, '')
         .replace(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?.*/, '')
-        .replace(/\b\d{1,2}(?::\d{2})?\s*(?:h|horas?)?.*/, '')
+        .replace(/\b(\d{1,2})(?:(?::\d{2})|h\d{2}|\s*(?:h|horas?)).*/, '')
         .trim();
 
       if (title) {
@@ -2864,11 +2955,86 @@ class WhatsAppAgent {
           scheduledISO
         })
 
-        // Salvar diretamente
+        // ⚠️ VERIFICAR CONFLITOS antes de inserir
         const supabase = createClient(
           Deno.env.get('SUPABASE_URL')!,
           Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
         );
+        
+        // Query conflitos em janela de +/- 1 hora
+        const start = new Date(Date.parse(scheduledISO) - 60*60*1000).toISOString();
+        const end   = new Date(Date.parse(scheduledISO) + 60*60*1000).toISOString();
+        const { data: conflicts } = await supabase
+          .from('commitments')
+          .select('id,title,scheduled_at')
+          .eq('user_id', userId)
+          .gte('scheduled_at', start)
+          .lte('scheduled_at', end)
+          .order('scheduled_at');
+
+        if (conflicts && conflicts.length > 0) {
+          console.log('⚠️ CONFLITO DETECTADO:', conflicts);
+          
+          // Sugerir alternativas (+15min e +60min)
+          const suggestions: string[] = [];
+          const suggestionTimes: string[] = [];
+          
+          for (const offset of [15, 60]) {
+            const altTime = new Date(Date.parse(scheduledISO) + offset * 60 * 1000);
+            const altISO = altTime.toISOString();
+            
+            // Verificar se essa alternativa está livre
+            const { data: altConflicts } = await supabase
+              .from('commitments')
+              .select('id')
+              .eq('user_id', userId)
+              .gte('scheduled_at', new Date(Date.parse(altISO) - 60*60*1000).toISOString())
+              .lte('scheduled_at', new Date(Date.parse(altISO) + 60*60*1000).toISOString());
+            
+            if (!altConflicts || altConflicts.length === 0) {
+              const formatted = altTime.toLocaleTimeString('pt-BR', {
+                hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo'
+              });
+              suggestions.push(formatted);
+              suggestionTimes.push(altISO);
+            }
+          }
+          
+          // Montar lista de conflitos
+          const conflictList = conflicts.map(c => {
+            const time = new Date(c.scheduled_at).toLocaleTimeString('pt-BR', {
+              hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo'
+            });
+            return `• ${c.title} às ${time}`;
+          }).join('\n');
+          
+          // Montar opções
+          let optionsText = `⚠️ *Conflito de horário*\n\n📅 Já existe(m):\n${conflictList}\n\n*O que deseja fazer?*\n\n1️⃣ Manter este também (duplo-agendamento)`;
+          
+          if (suggestions.length > 0) {
+            suggestions.forEach((sug, idx) => {
+              optionsText += `\n${idx + 2}️⃣ Remarcar para ${sug}`;
+            });
+          }
+          
+          optionsText += `\n${suggestions.length + 2}️⃣ Cancelar`;
+          
+          // Guardar estado na sessão
+          return {
+            response: optionsText,
+            sessionData: {
+              conversation_state: 'awaiting_commitment_resolution',
+              pending_commitment: {
+                title: title.charAt(0).toUpperCase() + title.slice(1),
+                category,
+                scheduledISO,
+                suggestions: suggestionTimes
+              }
+            }
+          };
+        }
+        
+        // SEM CONFLITO: Inserir diretamente
         const { error: insertErr } = await supabase.from('commitments').insert({
           user_id: userId,
           title: title.charAt(0).toUpperCase() + title.slice(1),
@@ -2876,6 +3042,7 @@ class WhatsAppAgent {
           scheduled_at: scheduledISO,
           category: category
         });
+        
         if (!insertErr) {
           const formattedDate = new Date(scheduledISO).toLocaleDateString('pt-BR', {
             weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
