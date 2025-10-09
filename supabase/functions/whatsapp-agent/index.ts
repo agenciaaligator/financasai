@@ -2787,33 +2787,62 @@ class WhatsAppAgent {
       } else if (/\bhoje\b/.test(normalized)) {
         target = new Date(nowBr);
       } else {
-        // dd/mm(/aaaa)
-        const dm = normalized.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
-        if (dm) {
-          const d = parseInt(dm[1]);
-          const m = parseInt(dm[2]);
-          const y = dm[3] ? (dm[3].length === 2 ? 2000 + parseInt(dm[3]) : parseInt(dm[3])) : nowBr.getUTCFullYear();
-          target = new Date(Date.UTC(y, m - 1, d));
+        // Padrão "dia DD" (ex: "dia 15", "dia 3")
+        const dayOnly = normalized.match(/\bdia\s+(\d{1,2})\b/);
+        if (dayOnly) {
+          const d = parseInt(dayOnly[1]);
+          const currentMonth = nowBr.getUTCMonth();
+          const currentDay = nowBr.getUTCDate();
+          let targetMonth = currentMonth;
+          let targetYear = nowBr.getUTCFullYear();
+          
+          // Se o dia já passou no mês atual, usar mês seguinte
+          if (d < currentDay) {
+            targetMonth = (currentMonth + 1) % 12;
+            if (targetMonth === 0) targetYear++; // virou o ano
+          }
+          
+          target = new Date(Date.UTC(targetYear, targetMonth, d));
         } else {
-          // Próximo dia da semana citado
-          for (const key of Object.keys(dayNames)) {
-            if (new RegExp(`\\b${key}\\b`).test(normalized)) {
-              const todayDow = nowBr.getUTCDay();
-              const desired = dayNames[key as keyof typeof dayNames];
-              let add = (desired - todayDow + 7) % 7;
-              if (add === 0) add = 7; // próximo
-              target = new Date(nowBr.getTime() + add * 24 * 60 * 60 * 1000);
-              break;
+          // dd/mm(/aaaa)
+          const dm = normalized.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
+          if (dm) {
+            const d = parseInt(dm[1]);
+            const m = parseInt(dm[2]);
+            const y = dm[3] ? (dm[3].length === 2 ? 2000 + parseInt(dm[3]) : parseInt(dm[3])) : nowBr.getUTCFullYear();
+            target = new Date(Date.UTC(y, m - 1, d));
+          } else {
+            // Próximo dia da semana citado
+            for (const key of Object.keys(dayNames)) {
+              if (new RegExp(`\\b${key}\\b`).test(normalized)) {
+                const todayDow = nowBr.getUTCDay();
+                const desired = dayNames[key as keyof typeof dayNames];
+                let add = (desired - todayDow + 7) % 7;
+                if (add === 0) add = 7; // próximo
+                target = new Date(nowBr.getTime() + add * 24 * 60 * 60 * 1000);
+                break;
+              }
             }
           }
         }
       }
 
-      // Extrair título: após o verbo até palavra de data/hora
+      // 1️⃣ PRIMEIRO: Detectar categoria no texto normalizado completo
+      let category: 'payment' | 'meeting' | 'appointment' | 'other' = 'other';
+      if (/dentista|medico|doutor|clinica|hospital|exame|consulta/i.test(normalized)) {
+        category = 'appointment';
+      } else if (/reuniao|meeting|encontro|call|videochamada/i.test(normalized)) {
+        category = 'meeting';
+      } else if (/pagamento|pagar|conta|boleto|fatura|vencimento/i.test(normalized)) {
+        category = 'payment';
+      }
+
+      // 2️⃣ DEPOIS: Extrair título limpo
       let title = normalized
         .replace(/^(agendar|marcar|cadastrar|compromisso)\s+/, '')
         .replace(/\s+(para|pra|em|no|na)\s+/, ' ')
         .replace(/\b(amanha|hoje|domingo|segunda|terca|terça|quarta|quinta|sexta|sabado|sábado)\b.*/, '')
+        .replace(/\bdia\s+\d{1,2}\b.*/, '')
         .replace(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?.*/, '')
         .replace(/\b\d{1,2}(?::\d{2})?\s*(?:h|horas?)?.*/, '')
         .trim();
@@ -2824,17 +2853,16 @@ class WhatsAppAgent {
         const m = target.getUTCMonth();
         const d = target.getUTCDate();
         const scheduledISO = new Date(Date.UTC(y, m, d, hour + 3, minute)).toISOString();
-        console.log('🗓️ QuickParse SUCCESS:', { title, hour, minute, scheduledISO });
-
-        // Mapeamento inteligente de categorias por palavras-chave
-        let category: 'payment' | 'meeting' | 'appointment' | 'other' = 'other';
-        if (/dentista|medico|doutor|clinica|hospital|exame|consulta/i.test(normalized)) {
-          category = 'appointment';
-        } else if (/reuniao|meeting|encontro|call|videochamada/i.test(normalized)) {
-          category = 'meeting';
-        } else if (/pagamento|pagar|conta|boleto|fatura|vencimento/i.test(normalized)) {
-          category = 'payment';
-        }
+        console.log('🗓️ QuickParse SUCCESS:', {
+          originalMessage: messageText,
+          normalizedMessage: normalized,
+          title,
+          category,
+          targetDate: target.toISOString(),
+          hour,
+          minute,
+          scheduledISO
+        })
 
         // Salvar diretamente
         const supabase = createClient(
