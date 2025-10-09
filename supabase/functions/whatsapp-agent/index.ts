@@ -40,7 +40,7 @@ interface SessionData {
   authenticated?: boolean;
   last_command?: string | null;
   context?: any;
-  conversation_state?: 'idle' | 'waiting_date' | 'waiting_confirmation' | 'awaiting_category' | 'confirming_ocr' | 'awaiting_delete_confirmation' | 'awaiting_edit_field' | 'awaiting_edit_value';
+  conversation_state?: 'idle' | 'waiting_date' | 'waiting_confirmation' | 'awaiting_category' | 'confirming_ocr' | 'awaiting_delete_confirmation' | 'awaiting_edit_field' | 'awaiting_edit_value' | 'awaiting_commitment_resolution' | 'awaiting_commitment_edit_field' | 'awaiting_commitment_edit_value' | 'awaiting_commitment_cancel_selection';
   pending_transaction?: Partial<Transaction>;
   pending_ocr_data?: {
     amount: number;
@@ -58,6 +58,17 @@ interface SessionData {
     transaction_id: string;
     field?: 'amount' | 'category' | 'title' | 'date';
     original_transaction?: any;
+  };
+  pending_commitment?: {
+    title: string;
+    category: string;
+    scheduledISO: string;
+    suggestions?: string[];
+  };
+  pending_commitment_edit?: {
+    commitment_id: string;
+    field?: 'title' | 'date' | 'time' | 'category';
+    original_commitment?: any;
   };
   last_question?: string;
   full_name?: string;
@@ -1196,6 +1207,73 @@ class WhatsAppAgent {
       return await this.handleCommitmentResolution(session, messageText);
     }
 
+    // PRIORIDADE 0.94: Edição de compromisso
+    if (sessionData.conversation_state === 'awaiting_commitment_edit_field' && sessionData.pending_commitment_edit) {
+      return await this.handleCommitmentEditFieldSelection(session, messageText);
+    }
+
+    if (sessionData.conversation_state === 'awaiting_commitment_edit_value' && sessionData.pending_commitment_edit) {
+      const field = messageText.trim();
+      if (field === '5') {
+        // Cancelar edição
+        await SessionManager.updateSession(session.id, {
+          session_data: { ...sessionData, conversation_state: 'idle', pending_commitment_edit: undefined }
+        });
+        return {
+          response: '❌ Edição cancelada.',
+          sessionData: { ...sessionData, conversation_state: 'idle' }
+        };
+      }
+      
+      const fieldMap: Record<string, string> = {
+        '1': 'title',
+        '2': 'date',
+        '3': 'time',
+        '4': 'category'
+      };
+      
+      const selectedField = fieldMap[field];
+      if (!selectedField) {
+        return {
+          response: '❌ Opção inválida. Digite um número de 1 a 5.',
+          sessionData
+        };
+      }
+
+      const promptMap: Record<string, string> = {
+        'title': 'Digite o novo título:',
+        'date': 'Digite a nova data (DD/MM/AAAA ou "hoje", "amanhã"):',
+        'time': 'Digite o novo horário (HH:MM):',
+        'category': 'Digite a nova categoria (pagamento/reunião/consulta/outro):'
+      };
+
+      const updatedSessionData = {
+        ...sessionData,
+        pending_commitment_edit: {
+          ...sessionData.pending_commitment_edit,
+          field: selectedField
+        }
+      };
+
+      await SessionManager.updateSession(session.id, {
+        session_data: updatedSessionData
+      });
+
+      return {
+        response: promptMap[selectedField],
+        sessionData: updatedSessionData
+      };
+    }
+
+    if (sessionData.pending_commitment_edit?.field) {
+      return await this.handleCommitmentEditValueInput(session, messageText);
+    }
+
+    // PRIORIDADE 0.96: Cancelamento de compromisso
+    if (sessionData.conversation_state === 'awaiting_commitment_cancel_selection' && sessionData.pending_commitment_edit) {
+      return await this.handleCommitmentCancelSelection(session, messageText);
+    }
+
     // PRIORIDADE 0.95: Edição de transação
     if (sessionData.conversation_state === 'awaiting_edit_field' && sessionData.pending_edit) {
       return await this.handleEditFieldSelection(session, messageText);
@@ -1879,7 +1957,10 @@ class WhatsAppAgent {
            `• "agendar dentista amanhã 14h"\n` +
            `• "compromisso reunião sexta 10h"\n` +
            `• "meus compromissos"\n` +
-           `• "próximos eventos"\n\n` +
+           `• "próximos eventos"\n` +
+           `• "editar compromisso"\n` +
+           `• "remarcar compromisso"\n` +
+           `• "cancelar compromisso"\n\n` +
            
            `*✏️ Editar/Excluir:*\n` +
            `• *editar última*\n` +
@@ -3251,6 +3332,409 @@ Se não especificar hora, use 09:00.`
       return {
         response: '❌ Erro ao buscar compromissos. Tente novamente.',
         sessionData: {}
+      };
+    }
+  }
+
+  static async handleEditCommitmentCommand(session: Session): Promise<{ response: string, sessionData: SessionData }> {
+    const sessionData = session.session_data || {};
+
+    if (!session.user_id) {
+      return {
+        response: '❌ Você precisa estar autenticado.\n\nDigite "codigo" para autenticar.',
+        sessionData
+      };
+    }
+
+    try {
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      );
+
+      // Buscar próximos compromissos
+      const now = new Date().toISOString();
+      const { data: commitments, error } = await supabase
+        .from('commitments')
+        .select('*')
+        .eq('user_id', session.user_id)
+        .gte('scheduled_at', now)
+        .order('scheduled_at', { ascending: true })
+        .limit(5);
+
+      if (error) throw error;
+
+      if (!commitments || commitments.length === 0) {
+        return {
+          response: '📭 *Você não tem compromissos agendados para editar.*',
+          sessionData
+        };
+      }
+
+      const categoryIcons = {
+        payment: '💳',
+        meeting: '👥',
+        appointment: '🏥',
+        other: '📌'
+      };
+
+      let response = `📝 *Selecione o compromisso para editar:*\n\n`;
+      
+      commitments.forEach((c, i) => {
+        const date = new Date(c.scheduled_at);
+        const formattedDate = date.toLocaleDateString('pt-BR', { 
+          weekday: 'short', 
+          day: '2-digit', 
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'America/Sao_Paulo'
+        });
+        
+        const icon = categoryIcons[c.category as keyof typeof categoryIcons] || '📌';
+        response += `*${i + 1}.* ${icon} ${c.title}\n   🗓️ ${formattedDate}\n\n`;
+      });
+
+      response += `Digite o número do compromisso (1-${commitments.length}):`;
+
+      const updatedSessionData = {
+        ...sessionData,
+        conversation_state: 'awaiting_commitment_edit_field' as const,
+        pending_commitment_edit: {
+          available_commitments: commitments
+        }
+      };
+
+      await SessionManager.updateSession(session.id, {
+        session_data: updatedSessionData
+      });
+
+      return {
+        response,
+        sessionData: updatedSessionData
+      };
+    } catch (error) {
+      console.error('Error in handleEditCommitmentCommand:', error);
+      return {
+        response: '❌ Erro ao buscar compromissos.',
+        sessionData
+      };
+    }
+  }
+
+  static async handleCancelCommitmentCommand(session: Session): Promise<{ response: string, sessionData: SessionData }> {
+    const sessionData = session.session_data || {};
+
+    if (!session.user_id) {
+      return {
+        response: '❌ Você precisa estar autenticado.\n\nDigite "codigo" para autenticar.',
+        sessionData
+      };
+    }
+
+    try {
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      );
+
+      // Buscar próximos compromissos
+      const now = new Date().toISOString();
+      const { data: commitments, error } = await supabase
+        .from('commitments')
+        .select('*')
+        .eq('user_id', session.user_id)
+        .gte('scheduled_at', now)
+        .order('scheduled_at', { ascending: true })
+        .limit(5);
+
+      if (error) throw error;
+
+      if (!commitments || commitments.length === 0) {
+        return {
+          response: '📭 *Você não tem compromissos agendados para cancelar.*',
+          sessionData
+        };
+      }
+
+      const categoryIcons = {
+        payment: '💳',
+        meeting: '👥',
+        appointment: '🏥',
+        other: '📌'
+      };
+
+      let response = `🗑️ *Selecione o compromisso para cancelar:*\n\n`;
+      
+      commitments.forEach((c, i) => {
+        const date = new Date(c.scheduled_at);
+        const formattedDate = date.toLocaleDateString('pt-BR', { 
+          weekday: 'short', 
+          day: '2-digit', 
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'America/Sao_Paulo'
+        });
+        
+        const icon = categoryIcons[c.category as keyof typeof categoryIcons] || '📌';
+        response += `*${i + 1}.* ${icon} ${c.title}\n   🗓️ ${formattedDate}\n\n`;
+      });
+
+      response += `Digite o número do compromisso para cancelar (1-${commitments.length}):`;
+
+      const updatedSessionData = {
+        ...sessionData,
+        conversation_state: 'awaiting_commitment_cancel_selection' as const,
+        pending_commitment_edit: {
+          available_commitments: commitments
+        }
+      };
+
+      await SessionManager.updateSession(session.id, {
+        session_data: updatedSessionData
+      });
+
+      return {
+        response,
+        sessionData: updatedSessionData
+      };
+    } catch (error) {
+      console.error('Error in handleCancelCommitmentCommand:', error);
+      return {
+        response: '❌ Erro ao buscar compromissos.',
+        sessionData
+      };
+    }
+  }
+
+  static async handleCommitmentEditFieldSelection(session: Session, messageText: string): Promise<{ response: string, sessionData: SessionData }> {
+    const sessionData = session.session_data || {};
+    const pendingEdit = sessionData.pending_commitment_edit;
+
+    if (!pendingEdit?.available_commitments) {
+      return {
+        response: '❌ Erro ao processar seleção.',
+        sessionData: { ...sessionData, conversation_state: 'idle' }
+      };
+    }
+
+    const selection = parseInt(messageText.trim());
+    const commitments = pendingEdit.available_commitments;
+
+    if (isNaN(selection) || selection < 1 || selection > commitments.length) {
+      return {
+        response: `❌ Número inválido. Digite um número entre 1 e ${commitments.length}.`,
+        sessionData
+      };
+    }
+
+    const selectedCommitment = commitments[selection - 1];
+    const date = new Date(selectedCommitment.scheduled_at);
+    const formattedDate = date.toLocaleDateString('pt-BR', { 
+      weekday: 'long', 
+      day: '2-digit', 
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'America/Sao_Paulo'
+    });
+
+    const categoryIcons = {
+      payment: '💳',
+      meeting: '👥',
+      appointment: '🏥',
+      other: '📌'
+    };
+    const icon = categoryIcons[selectedCommitment.category as keyof typeof categoryIcons] || '📌';
+
+    const response = `✏️ *Editar Compromisso*\n\n` +
+                    `${icon} *${selectedCommitment.title}*\n` +
+                    `🗓️ ${formattedDate}\n\n` +
+                    `O que deseja editar?\n\n` +
+                    `1️⃣ Título\n` +
+                    `2️⃣ Data\n` +
+                    `3️⃣ Hora\n` +
+                    `4️⃣ Categoria\n` +
+                    `5️⃣ Cancelar\n\n` +
+                    `Digite o número:`;
+
+    const updatedSessionData = {
+      ...sessionData,
+      conversation_state: 'awaiting_commitment_edit_value' as const,
+      pending_commitment_edit: {
+        commitment_id: selectedCommitment.id,
+        original_commitment: selectedCommitment
+      }
+    };
+
+    await SessionManager.updateSession(session.id, {
+      session_data: updatedSessionData
+    });
+
+    return {
+      response,
+      sessionData: updatedSessionData
+    };
+  }
+
+  static async handleCommitmentEditValueInput(session: Session, messageText: string): Promise<{ response: string, sessionData: SessionData }> {
+    const sessionData = session.session_data || {};
+    const pendingEdit = sessionData.pending_commitment_edit;
+
+    if (!pendingEdit?.commitment_id || !pendingEdit.field) {
+      return {
+        response: '❌ Erro ao processar edição.',
+        sessionData: { ...sessionData, conversation_state: 'idle' }
+      };
+    }
+
+    try {
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      );
+
+      let updateData: any = {};
+      const field = pendingEdit.field;
+      const newValue = messageText.trim();
+
+      if (field === 'title') {
+        updateData.title = newValue;
+      } else if (field === 'date') {
+        const parsedDate = DateParser.parseDate(newValue);
+        if (!parsedDate) {
+          return {
+            response: '❌ Data inválida. Use formato DD/MM/AAAA ou "hoje", "amanhã".',
+            sessionData
+          };
+        }
+        // Manter a hora existente
+        const oldDate = new Date(pendingEdit.original_commitment.scheduled_at);
+        const [year, month, day] = parsedDate.split('-').map(Number);
+        const newScheduled = new Date(Date.UTC(
+          year,
+          month - 1,
+          day,
+          oldDate.getUTCHours(),
+          oldDate.getUTCMinutes()
+        ));
+        updateData.scheduled_at = newScheduled.toISOString();
+      } else if (field === 'time') {
+        const timeMatch = newValue.match(/(\d{1,2}):?(\d{2})?/);
+        if (!timeMatch) {
+          return {
+            response: '❌ Hora inválida. Use formato HH:MM ou HH.',
+            sessionData
+          };
+        }
+        const hour = parseInt(timeMatch[1]);
+        const minute = parseInt(timeMatch[2] || '0');
+        
+        // Manter a data existente
+        const oldDate = new Date(pendingEdit.original_commitment.scheduled_at);
+        const newScheduled = new Date(Date.UTC(
+          oldDate.getUTCFullYear(),
+          oldDate.getUTCMonth(),
+          oldDate.getUTCDate(),
+          hour + 3, // Converter de Brasília para UTC
+          minute
+        ));
+        updateData.scheduled_at = newScheduled.toISOString();
+      } else if (field === 'category') {
+        const validCategories = ['payment', 'meeting', 'appointment', 'other'];
+        const normalized = newValue.toLowerCase();
+        const categoryMap: Record<string, string> = {
+          'pagamento': 'payment',
+          'reuniao': 'meeting',
+          'reunião': 'meeting',
+          'consulta': 'appointment',
+          'outro': 'other'
+        };
+        updateData.category = categoryMap[normalized] || 'other';
+      }
+
+      const { error } = await supabase
+        .from('commitments')
+        .update(updateData)
+        .eq('id', pendingEdit.commitment_id);
+
+      if (error) throw error;
+
+      await SessionManager.updateSession(session.id, {
+        session_data: {
+          ...sessionData,
+          conversation_state: 'idle',
+          pending_commitment_edit: undefined
+        }
+      });
+
+      return {
+        response: `✅ *Compromisso atualizado com sucesso!*`,
+        sessionData: { ...sessionData, conversation_state: 'idle' }
+      };
+    } catch (error) {
+      console.error('Error updating commitment:', error);
+      return {
+        response: '❌ Erro ao atualizar compromisso.',
+        sessionData: { ...sessionData, conversation_state: 'idle' }
+      };
+    }
+  }
+
+  static async handleCommitmentCancelSelection(session: Session, messageText: string): Promise<{ response: string, sessionData: SessionData }> {
+    const sessionData = session.session_data || {};
+    const pendingEdit = sessionData.pending_commitment_edit;
+
+    if (!pendingEdit?.available_commitments) {
+      return {
+        response: '❌ Erro ao processar seleção.',
+        sessionData: { ...sessionData, conversation_state: 'idle' }
+      };
+    }
+
+    const selection = parseInt(messageText.trim());
+    const commitments = pendingEdit.available_commitments;
+
+    if (isNaN(selection) || selection < 1 || selection > commitments.length) {
+      return {
+        response: `❌ Número inválido. Digite um número entre 1 e ${commitments.length}.`,
+        sessionData
+      };
+    }
+
+    try {
+      const selectedCommitment = commitments[selection - 1];
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      );
+
+      const { error } = await supabase
+        .from('commitments')
+        .delete()
+        .eq('id', selectedCommitment.id);
+
+      if (error) throw error;
+
+      await SessionManager.updateSession(session.id, {
+        session_data: {
+          ...sessionData,
+          conversation_state: 'idle',
+          pending_commitment_edit: undefined
+        }
+      });
+
+      return {
+        response: `✅ *Compromisso "${selectedCommitment.title}" cancelado com sucesso!*`,
+        sessionData: { ...sessionData, conversation_state: 'idle' }
+      };
+    } catch (error) {
+      console.error('Error canceling commitment:', error);
+      return {
+        response: '❌ Erro ao cancelar compromisso.',
+        sessionData: { ...sessionData, conversation_state: 'idle' }
       };
     }
   }
