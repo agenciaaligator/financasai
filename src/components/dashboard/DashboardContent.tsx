@@ -34,6 +34,7 @@ import {
 } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import { ErrorBoundary } from "../ErrorBoundary";
+import { CommitmentsManager } from "../CommitmentsManager";
 
 const TIMEZONE = 'America/Sao_Paulo';
 const ITEMS_PER_PAGE = 10;
@@ -326,6 +327,18 @@ export function DashboardContent({
 
   if (currentTab === "profile") {
     return <ProfileSettings />;
+  }
+
+  if (currentTab === "agenda") {
+    return (
+      <ErrorBoundary fallback={
+        <div className="p-4 text-destructive">
+          Erro ao carregar agenda. Tente recarregar a página.
+        </div>
+      }>
+        <CommitmentsManager />
+      </ErrorBoundary>
+    );
   }
 
   if (currentTab === "admin") {

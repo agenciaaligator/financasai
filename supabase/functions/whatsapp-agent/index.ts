@@ -3096,11 +3096,14 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         success: true,
         response: `👋 *Bem-vindo ao Assistente Financeiro!*\n\n` +
-                 `*Passo 1:* Cadastre-se gratuitamente\n` +
+                 `Para usar este WhatsApp, você precisa:\n\n` +
+                 `*1.* Criar sua conta (se ainda não tem):\n` +
                  `🔗 https://financasai.lovable.app\n\n` +
-                 `*Passo 2:* No cadastro, use este número do WhatsApp: ${cleanPhone}\n\n` +
-                 `*Passo 3:* Depois de cadastrado, volte aqui e comece a usar!\n\n` +
-                 `É rápido e fácil! 🚀`
+                 `*2.* Vincular seu WhatsApp:\n` +
+                 `• Acesse *Perfil* na plataforma\n` +
+                 `• Preencha o campo *WhatsApp* com: ${cleanPhone}\n` +
+                 `• Salve as alterações\n\n` +
+                 `Depois é só voltar aqui e começar a usar! 🚀`
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
