@@ -2952,6 +2952,28 @@ Se não especificar hora, use 09:00.`
         };
       }
 
+      // Converter scheduled_at para UTC se necessário
+      let scheduledUTC: string;
+      const rawScheduled = commitmentData.scheduled_at;
+      
+      // Se tem offset/Z, já é timestamp completo
+      if (/[Z+-]\d{2}:?\d{2}$/.test(rawScheduled)) {
+        scheduledUTC = new Date(rawScheduled).toISOString();
+      } else {
+        // "Ingênuo" (sem Z/offset) - assumir America/Sao_Paulo
+        // Se não tem hora, adicionar 09:00
+        let brasiliaDateStr = rawScheduled;
+        if (!/\d{2}:\d{2}/.test(brasiliaDateStr)) {
+          brasiliaDateStr += 'T09:00:00';
+        } else if (!/T/.test(brasiliaDateStr)) {
+          brasiliaDateStr = brasiliaDateStr.replace(' ', 'T');
+        }
+        
+        // Converter de Brasília (-3h) para UTC
+        const brasiliaDate = new Date(brasiliaDateStr + '-03:00');
+        scheduledUTC = brasiliaDate.toISOString();
+      }
+
       // Salvar no banco
       const supabase = createClient(
         Deno.env.get('SUPABASE_URL')!,
@@ -2964,7 +2986,7 @@ Se não especificar hora, use 09:00.`
           user_id: userId,
           title: commitmentData.title,
           description: commitmentData.description || null,
-          scheduled_at: commitmentData.scheduled_at,
+          scheduled_at: scheduledUTC,
           category: commitmentData.category || 'other'
         });
 

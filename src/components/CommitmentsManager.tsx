@@ -5,12 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Plus, Edit, Trash2 } from "lucide-react";
+import { Calendar, Plus, Edit, Trash2, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toZonedTime, fromZonedTime, formatInTimeZone } from "date-fns-tz";
 
 interface Commitment {
   id: string;
@@ -71,9 +72,9 @@ export function CommitmentsManager() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Converter datetime-local → UTC para salvar no banco
-      const localDate = new Date(formData.scheduled_at);
-      const utcISO = new Date(localDate.getTime() + localDate.getTimezoneOffset() * 60000).toISOString();
+      // Converter datetime-local (interpretado como America/Sao_Paulo) → UTC
+      const brasiliaDate = fromZonedTime(formData.scheduled_at, "America/Sao_Paulo");
+      const utcISO = brasiliaDate.toISOString();
 
       const dataToSave = {
         ...formData,
@@ -128,10 +129,8 @@ export function CommitmentsManager() {
 
   const handleEdit = (commitment: Commitment) => {
     // Converter ISO UTC → datetime-local (America/Sao_Paulo)
-    const utcDate = new Date(commitment.scheduled_at);
-    const localISO = new Date(utcDate.getTime() - utcDate.getTimezoneOffset() * 60000)
-      .toISOString()
-      .slice(0, 16); // "2025-10-10T07:00"
+    const brasiliaDate = toZonedTime(commitment.scheduled_at, "America/Sao_Paulo");
+    const localISO = format(brasiliaDate, "yyyy-MM-dd'T'HH:mm");
     
     setFormData({
       title: commitment.title,
@@ -169,6 +168,55 @@ export function CommitmentsManager() {
     }
   };
 
+  const handleFixOldTimezones = async () => {
+    if (!confirm("Isto irá ajustar (+3h) todos os compromissos criados antes de 09/10/2025. Confirma?")) return;
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const cutoffDate = "2025-10-09T00:00:00Z";
+      
+      const { data: oldCommitments, error: fetchError } = await supabase
+        .from("commitments")
+        .select("*")
+        .eq("user_id", user.id)
+        .lt("created_at", cutoffDate);
+
+      if (fetchError) throw fetchError;
+      if (!oldCommitments || oldCommitments.length === 0) {
+        toast({
+          title: "Nenhum compromisso antigo encontrado",
+          description: "Não há compromissos antigos para ajustar.",
+        });
+        return;
+      }
+
+      for (const c of oldCommitments) {
+        const oldDate = new Date(c.scheduled_at);
+        const fixedDate = new Date(oldDate.getTime() + 3 * 60 * 60 * 1000); // +3h
+        
+        await supabase
+          .from("commitments")
+          .update({ scheduled_at: fixedDate.toISOString() })
+          .eq("id", c.id);
+      }
+
+      toast({
+        title: "Horários ajustados",
+        description: `${oldCommitments.length} compromisso(s) antigo(s) corrigido(s) (+3h).`,
+      });
+
+      fetchCommitments();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao corrigir horários",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const getCategoryBadge = (category: string) => {
     const variants = {
       payment: "bg-red-500",
@@ -195,15 +243,21 @@ export function CommitmentsManager() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center flex-wrap gap-2">
         <h2 className="text-2xl font-bold flex items-center gap-2">
           <Calendar className="h-6 w-6" />
           Agenda
         </h2>
-        <Button onClick={() => setShowForm(!showForm)}>
-          <Plus className="h-4 w-4 mr-2" />
-          {showForm ? "Cancelar" : "Novo Compromisso"}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleFixOldTimezones}>
+            <Clock className="h-4 w-4 mr-2" />
+            Corrigir Horários Antigos
+          </Button>
+          <Button onClick={() => setShowForm(!showForm)}>
+            <Plus className="h-4 w-4 mr-2" />
+            {showForm ? "Cancelar" : "Novo Compromisso"}
+          </Button>
+        </div>
       </div>
 
       {showForm && (
@@ -292,14 +346,7 @@ export function CommitmentsManager() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {new Date(commitment.scheduled_at).toLocaleString('pt-BR', {
-                        timeZone: 'America/Sao_Paulo',
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
+                      {formatInTimeZone(commitment.scheduled_at, "America/Sao_Paulo", "dd/MM/yyyy, HH:mm")}
                     </TableCell>
                     <TableCell>{getCategoryBadge(commitment.category)}</TableCell>
                     <TableCell>
