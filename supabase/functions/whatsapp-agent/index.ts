@@ -2770,8 +2770,8 @@ class WhatsAppAgent {
         quarta: 3, quintafeira: 4, quinta: 4, sexta: 5, sabado: 6, 'sábado': 6
       } as any;
 
-      // Extrair hora
-      const timeMatch = normalized.match(/\b(\d{1,2})(?::(\d{2}))?\s*(?:h|horas?)?\b/);
+      // Extrair hora (aceita "14h30", "14:30", "14h", "14 horas")
+      const timeMatch = normalized.match(/\b(\d{1,2})(?:[:h](\d{2}))?\s*(?:h|horas?)?/);
       let hour = 9, minute = 0;
       if (timeMatch) {
         hour = Math.min(23, parseInt(timeMatch[1]));
@@ -2829,11 +2829,11 @@ class WhatsAppAgent {
 
       // 1️⃣ PRIMEIRO: Detectar categoria no texto normalizado completo
       let category: 'payment' | 'meeting' | 'appointment' | 'other' = 'other';
-      if (/dentista|medico|doutor|clinica|hospital|exame|consulta/i.test(normalized)) {
+      if (/dentista|ortopedista|pediatra|ginecologista|cardiologista|oftalmologista|dermato|medico|doutor|clinica|hospital|exame|consulta|veterinario/i.test(normalized)) {
         category = 'appointment';
-      } else if (/reuniao|meeting|encontro|call|videochamada/i.test(normalized)) {
+      } else if (/reuniao|meeting|encontro|call|videochamada|apresentacao|workshop|entrevista/i.test(normalized)) {
         category = 'meeting';
-      } else if (/pagamento|pagar|conta|boleto|fatura|vencimento/i.test(normalized)) {
+      } else if (/pagamento|pagar|conta|boleto|fatura|vencimento|mensalidade|prestacao/i.test(normalized)) {
         category = 'payment';
       }
 
