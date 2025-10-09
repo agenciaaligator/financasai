@@ -8,6 +8,7 @@ import { ProfileSettings } from "../ProfileSettings";
 import { ReportsPage } from "../ReportsPage";
 import { AIReportsChat } from "../AIReportsChat";
 import { FutureFeatures } from "../FutureFeatures";
+import { CommitmentsManager } from "../CommitmentsManager";
 import { TransactionFilters, TransactionFiltersState } from "../TransactionFilters";
 import { Transaction } from "@/hooks/useTransactions";
 import { 
@@ -17,7 +18,8 @@ import {
   Tags,
   BarChart,
   Bot,
-  Shield
+  Shield,
+  Calendar
 } from "lucide-react";
 import { AdminPanel } from "../admin/AdminPanel";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -150,7 +152,7 @@ export function DashboardTabs({
 
   return (
     <Tabs defaultValue="dashboard" className="w-full">
-      <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-8' : 'grid-cols-7'} bg-muted/30`}>
+      <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-9' : 'grid-cols-8'} bg-muted/30`}>
         <TabsTrigger value="dashboard" className="flex items-center space-x-2">
           <DollarSign className="h-4 w-4" />
           <span>Dashboard</span>
@@ -170,6 +172,10 @@ export function DashboardTabs({
         <TabsTrigger value="ai-chat" className="flex items-center space-x-2">
           <Bot className="h-4 w-4" />
           <span>IA Reports</span>
+        </TabsTrigger>
+        <TabsTrigger value="agenda" className="flex items-center space-x-2">
+          <Calendar className="h-4 w-4" />
+          <span>Agenda</span>
         </TabsTrigger>
         <TabsTrigger value="future" className="flex items-center space-x-2">
           <User className="h-4 w-4" />
@@ -253,6 +259,10 @@ export function DashboardTabs({
 
       <TabsContent value="ai-chat">
         <AIReportsChat />
+      </TabsContent>
+
+      <TabsContent value="agenda">
+        <CommitmentsManager />
       </TabsContent>
 
       <TabsContent value="future">

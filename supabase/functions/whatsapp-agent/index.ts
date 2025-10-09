@@ -1245,6 +1245,19 @@ class WhatsAppAgent {
       };
     }
 
+    // PRIORIDADE 2.5: Comandos de AGENDA
+    if (/agend|compromisso|reuniao|consulta|evento/i.test(messageText)) {
+      // Se é para listar
+      if (/meus|proximos|listar|ver/i.test(messageText)) {
+        console.log('🗓️ Listando compromissos');
+        return await this.listCommitments(session.user_id!);
+      }
+      
+      // Se é para criar
+      console.log('🗓️ Criando compromisso');
+      return await this.addCommitment(session.user_id!, messageText);
+    }
+
     if (['cancelar', 'cancel', 'sair'].includes(normalizedText)) {
       return {
         response: '❌ Operação cancelada.',
@@ -1843,6 +1856,12 @@ class WhatsAppAgent {
            `• *relatorio* ou *mes* - mensal\n` +
            `• *ano* - relatório anual\n\n` +
            
+           `*📅 Agenda (NOVO!):*\n` +
+           `• "agendar dentista amanhã 14h"\n` +
+           `• "compromisso reunião sexta 10h"\n` +
+           `• "meus compromissos"\n` +
+           `• "próximos eventos"\n\n` +
+           
            `*✏️ Editar/Excluir:*\n` +
            `• *editar última*\n` +
            `• *excluir última*\n\n` +
@@ -1854,7 +1873,8 @@ class WhatsAppAgent {
            `💡 *Exemplos práticos:*\n` +
            `• "paguei 200 de conta de luz"\n` +
            `• "recebi 300 de freelance"\n` +
-           `• "gastei 45 na farmácia ontem"`;
+           `• "gastei 45 na farmácia ontem"\n` +
+           `• "agendar consulta médica amanhã 15h"`;
   }
 
   // 📸 Método para processar imagens (OCR)
@@ -2715,6 +2735,186 @@ class WhatsAppAgent {
     } catch (error) {
       console.error('Error generating simple report:', error);
       return `❌ *Erro ao gerar relatório.*\n\nTente novamente em alguns instantes.`;
+    }
+  }
+
+  static async addCommitment(userId: string, messageText: string): Promise<{ response: string, sessionData: SessionData }> {
+    try {
+      console.log('🗓️ Extraindo dados do compromisso:', messageText);
+      
+      // Usar OpenAI para extrair título e data da mensagem
+      const openAIKey = Deno.env.get('OPENAI_API_KEY');
+      if (!openAIKey) {
+        return {
+          response: '❌ Serviço de agenda temporariamente indisponível.',
+          sessionData: {}
+        };
+      }
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-5-mini-2025-08-07',
+          messages: [{
+            role: 'system',
+            content: `Extraia dados de compromisso desta mensagem e retorne APENAS JSON válido:
+{
+  "title": "título do compromisso",
+  "description": "descrição opcional",
+  "scheduled_at": "timestamp ISO 8601",
+  "category": "meeting|appointment|payment|other"
+}
+
+Hoje é ${new Date().toLocaleDateString('pt-BR')}. Converta datas relativas (hoje, amanhã, sexta) para timestamps reais no fuso horário America/Sao_Paulo.
+Se não especificar hora, use 09:00.`
+          }, {
+            role: 'user',
+            content: messageText
+          }],
+          max_completion_tokens: 200
+        })
+      });
+
+      if (!response.ok) {
+        console.error('OpenAI API error:', await response.text());
+        throw new Error('Erro na API de IA');
+      }
+
+      const result = await response.json();
+      const content = result.choices[0]?.message?.content;
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      
+      if (!jsonMatch) {
+        return {
+          response: '❌ Não consegui entender o compromisso. Use o formato:\n\n📅 "agendar [título] para [data/hora]"\n\nExemplo:\n• agendar dentista amanhã 14h\n• compromisso reunião sexta 10h',
+          sessionData: {}
+        };
+      }
+
+      const commitmentData = JSON.parse(jsonMatch[0]);
+      
+      if (!commitmentData.title || !commitmentData.scheduled_at) {
+        return {
+          response: '❌ Preciso de um título e data. Exemplo:\n"agendar dentista amanhã 14h"',
+          sessionData: {}
+        };
+      }
+
+      // Salvar no banco
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      );
+
+      const { error } = await supabase
+        .from('commitments')
+        .insert({
+          user_id: userId,
+          title: commitmentData.title,
+          description: commitmentData.description || null,
+          scheduled_at: commitmentData.scheduled_at,
+          category: commitmentData.category || 'other'
+        });
+
+      if (error) throw error;
+
+      const scheduledDate = new Date(commitmentData.scheduled_at);
+      const formattedDate = scheduledDate.toLocaleDateString('pt-BR', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'America/Sao_Paulo'
+      });
+
+      return {
+        response: `✅ *Compromisso agendado!*\n\n` +
+                 `📌 ${commitmentData.title}\n` +
+                 `🗓️ ${formattedDate}\n\n` +
+                 `Você receberá um lembrete antes do horário.`,
+        sessionData: {}
+      };
+    } catch (error) {
+      console.error('Error adding commitment:', error);
+      return {
+        response: '❌ Erro ao agendar compromisso. Tente novamente.',
+        sessionData: {}
+      };
+    }
+  }
+
+  static async listCommitments(userId: string): Promise<{ response: string, sessionData: SessionData }> {
+    try {
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      );
+
+      const now = new Date().toISOString();
+      const { data: commitments, error } = await supabase
+        .from('commitments')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('scheduled_at', now)
+        .order('scheduled_at', { ascending: true })
+        .limit(5);
+
+      if (error) throw error;
+
+      if (!commitments || commitments.length === 0) {
+        return {
+          response: '📭 *Você não tem compromissos agendados.*\n\n' +
+                   'Para agendar, digite:\n' +
+                   '• "agendar dentista amanhã 14h"\n' +
+                   '• "compromisso reunião sexta 10h"',
+          sessionData: {}
+        };
+      }
+
+      const categoryIcons = {
+        payment: '💳',
+        meeting: '👥',
+        appointment: '🏥',
+        other: '📌'
+      };
+
+      let response = `📅 *Seus próximos ${commitments.length} compromissos:*\n\n`;
+      
+      commitments.forEach((c, i) => {
+        const date = new Date(c.scheduled_at);
+        const formattedDate = date.toLocaleDateString('pt-BR', { 
+          weekday: 'short', 
+          day: '2-digit', 
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'America/Sao_Paulo'
+        });
+        
+        const icon = categoryIcons[c.category as keyof typeof categoryIcons] || '📌';
+        response += `${i + 1}. ${icon} *${c.title}*\n   🗓️ ${formattedDate}\n`;
+        if (c.description) {
+          response += `   📝 ${c.description}\n`;
+        }
+        response += `\n`;
+      });
+
+      return {
+        response,
+        sessionData: {}
+      };
+    } catch (error) {
+      console.error('Error listing commitments:', error);
+      return {
+        response: '❌ Erro ao buscar compromissos. Tente novamente.',
+        sessionData: {}
+      };
     }
   }
 }

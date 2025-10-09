@@ -9,7 +9,8 @@ import {
   User,
   Plus,
   Menu,
-  X
+  X,
+  Calendar
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -67,6 +68,12 @@ const sidebarItems = [
     title: "IA Reports", 
     icon: Bot,
     description: "Relatórios inteligentes"
+  },
+  { 
+    id: "agenda", 
+    title: "Agenda", 
+    icon: Calendar,
+    description: "Compromissos e eventos"
   },
   { 
     id: "future", 
