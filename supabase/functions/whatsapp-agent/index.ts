@@ -1318,6 +1318,22 @@ class WhatsAppAgent {
       };
     }
     
+    // PRIORIDADE 2A: Comandos específicos de EDIÇÃO/CANCELAMENTO (antes de agenda genérica)
+    if (/editar\s+compromisso/i.test(messageText)) {
+      console.log('📝 COMANDO: editar compromisso');
+      return await this.handleEditCommitmentCommand(session);
+    }
+
+    if (/remarcar\s+compromisso/i.test(messageText)) {
+      console.log('📝 COMANDO: remarcar compromisso');
+      return await this.handleEditCommitmentCommand(session);
+    }
+
+    if (/cancelar\s+compromisso/i.test(messageText)) {
+      console.log('🗑️ COMANDO: cancelar compromisso');
+      return await this.handleCancelCommitmentCommand(session);
+    }
+    
     // PRIORIDADE 2: Comandos de AGENDA (ANTES de outros comandos genéricos)
     if (/agend|compromisso|reuniao|consulta|evento|marc/i.test(messageText)) {
       console.log('🗓️ AGENDA COMMAND DETECTED:', messageText);
@@ -3352,24 +3368,61 @@ Se não especificar hora, use 09:00.`
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
       );
 
-      // Buscar próximos compromissos
-      const now = new Date().toISOString();
+      // Buscar compromissos em janela ampla: últimos 30 dias + próximos 90 dias
+      const now = new Date();
+      const pastLimit = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const futureLimit = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString();
+
       const { data: commitments, error } = await supabase
         .from('commitments')
         .select('*')
         .eq('user_id', session.user_id)
-        .gte('scheduled_at', now)
+        .gte('scheduled_at', pastLimit)
+        .lte('scheduled_at', futureLimit)
         .order('scheduled_at', { ascending: true })
-        .limit(5);
+        .limit(20);
 
       if (error) throw error;
 
       if (!commitments || commitments.length === 0) {
         return {
-          response: '📭 *Você não tem compromissos agendados para editar.*',
+          response: '📭 *Você não tem compromissos nos últimos 30 dias ou próximos 90 dias.*',
           sessionData
         };
       }
+
+      // Agrupar por período
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const next7days = new Date(today);
+      next7days.setDate(next7days.getDate() + 7);
+      const next30days = new Date(today);
+      next30days.setDate(next30days.getDate() + 30);
+
+      const grouped = {
+        past: [] as any[],
+        today: [] as any[],
+        next7: [] as any[],
+        next30: [] as any[],
+        future: [] as any[]
+      };
+
+      commitments.forEach(c => {
+        const date = new Date(c.scheduled_at);
+        if (date < today) {
+          grouped.past.push(c);
+        } else if (date >= today && date < tomorrow) {
+          grouped.today.push(c);
+        } else if (date >= tomorrow && date < next7days) {
+          grouped.next7.push(c);
+        } else if (date >= next7days && date < next30days) {
+          grouped.next30.push(c);
+        } else {
+          grouped.future.push(c);
+        }
+      });
 
       const categoryIcons = {
         payment: '💳',
@@ -3379,21 +3432,33 @@ Se não especificar hora, use 09:00.`
       };
 
       let response = `📝 *Selecione o compromisso para editar:*\n\n`;
-      
-      commitments.forEach((c, i) => {
-        const date = new Date(c.scheduled_at);
-        const formattedDate = date.toLocaleDateString('pt-BR', { 
-          weekday: 'short', 
-          day: '2-digit', 
-          month: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          timeZone: 'America/Sao_Paulo'
+      let index = 1;
+
+      // Renderizar cada grupo
+      const renderGroup = (title: string, items: any[]) => {
+        if (items.length === 0) return;
+        response += `*${title}*\n`;
+        items.forEach(c => {
+          const date = new Date(c.scheduled_at);
+          const formattedDate = date.toLocaleDateString('pt-BR', { 
+            weekday: 'short', 
+            day: '2-digit', 
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'America/Sao_Paulo'
+          });
+          const icon = categoryIcons[c.category as keyof typeof categoryIcons] || '📌';
+          response += `*${index}.* ${icon} ${c.title}\n   🗓️ ${formattedDate}\n\n`;
+          index++;
         });
-        
-        const icon = categoryIcons[c.category as keyof typeof categoryIcons] || '📌';
-        response += `*${i + 1}.* ${icon} ${c.title}\n   🗓️ ${formattedDate}\n\n`;
-      });
+      };
+
+      renderGroup('📌 Passados (últimos 30 dias)', grouped.past);
+      renderGroup('📅 Hoje', grouped.today);
+      renderGroup('🔜 Próximos 7 dias', grouped.next7);
+      renderGroup('📆 Próximos 30 dias', grouped.next30);
+      renderGroup('🔮 Futuro distante', grouped.future);
 
       response += `Digite o número do compromisso (1-${commitments.length}):`;
 
@@ -3438,24 +3503,61 @@ Se não especificar hora, use 09:00.`
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
       );
 
-      // Buscar próximos compromissos
-      const now = new Date().toISOString();
+      // Buscar compromissos em janela ampla: últimos 30 dias + próximos 90 dias
+      const now = new Date();
+      const pastLimit = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const futureLimit = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString();
+
       const { data: commitments, error } = await supabase
         .from('commitments')
         .select('*')
         .eq('user_id', session.user_id)
-        .gte('scheduled_at', now)
+        .gte('scheduled_at', pastLimit)
+        .lte('scheduled_at', futureLimit)
         .order('scheduled_at', { ascending: true })
-        .limit(5);
+        .limit(20);
 
       if (error) throw error;
 
       if (!commitments || commitments.length === 0) {
         return {
-          response: '📭 *Você não tem compromissos agendados para cancelar.*',
+          response: '📭 *Você não tem compromissos nos últimos 30 dias ou próximos 90 dias.*',
           sessionData
         };
       }
+
+      // Agrupar por período
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const next7days = new Date(today);
+      next7days.setDate(next7days.getDate() + 7);
+      const next30days = new Date(today);
+      next30days.setDate(next30days.getDate() + 30);
+
+      const grouped = {
+        past: [] as any[],
+        today: [] as any[],
+        next7: [] as any[],
+        next30: [] as any[],
+        future: [] as any[]
+      };
+
+      commitments.forEach(c => {
+        const date = new Date(c.scheduled_at);
+        if (date < today) {
+          grouped.past.push(c);
+        } else if (date >= today && date < tomorrow) {
+          grouped.today.push(c);
+        } else if (date >= tomorrow && date < next7days) {
+          grouped.next7.push(c);
+        } else if (date >= next7days && date < next30days) {
+          grouped.next30.push(c);
+        } else {
+          grouped.future.push(c);
+        }
+      });
 
       const categoryIcons = {
         payment: '💳',
@@ -3465,21 +3567,33 @@ Se não especificar hora, use 09:00.`
       };
 
       let response = `🗑️ *Selecione o compromisso para cancelar:*\n\n`;
-      
-      commitments.forEach((c, i) => {
-        const date = new Date(c.scheduled_at);
-        const formattedDate = date.toLocaleDateString('pt-BR', { 
-          weekday: 'short', 
-          day: '2-digit', 
-          month: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          timeZone: 'America/Sao_Paulo'
+      let index = 1;
+
+      // Renderizar cada grupo
+      const renderGroup = (title: string, items: any[]) => {
+        if (items.length === 0) return;
+        response += `*${title}*\n`;
+        items.forEach(c => {
+          const date = new Date(c.scheduled_at);
+          const formattedDate = date.toLocaleDateString('pt-BR', { 
+            weekday: 'short', 
+            day: '2-digit', 
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'America/Sao_Paulo'
+          });
+          const icon = categoryIcons[c.category as keyof typeof categoryIcons] || '📌';
+          response += `*${index}.* ${icon} ${c.title}\n   🗓️ ${formattedDate}\n\n`;
+          index++;
         });
-        
-        const icon = categoryIcons[c.category as keyof typeof categoryIcons] || '📌';
-        response += `*${i + 1}.* ${icon} ${c.title}\n   🗓️ ${formattedDate}\n\n`;
-      });
+      };
+
+      renderGroup('📌 Passados (últimos 30 dias)', grouped.past);
+      renderGroup('📅 Hoje', grouped.today);
+      renderGroup('🔜 Próximos 7 dias', grouped.next7);
+      renderGroup('📆 Próximos 30 dias', grouped.next30);
+      renderGroup('🔮 Futuro distante', grouped.future);
 
       response += `Digite o número do compromisso para cancelar (1-${commitments.length}):`;
 
