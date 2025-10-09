@@ -1235,7 +1235,34 @@ class WhatsAppAgent {
       };
     }
     
-    // PRIORIDADE 2: Comandos que sempre funcionam
+    // PRIORIDADE 2: Comandos de AGENDA (ANTES de outros comandos genéricos)
+    if (/agend|compromisso|reuniao|consulta|evento|marc/i.test(messageText)) {
+      console.log('🗓️ AGENDA COMMAND DETECTED:', messageText);
+      
+      // Listar compromissos
+      if (/meus|proximos|listar|ver|mostrar/i.test(messageText)) {
+        console.log('🗓️ Listando compromissos');
+        return await this.listCommitments(session.user_id!);
+      }
+      
+      // Criar novo compromisso (qualquer coisa com "agendar", "marcar", etc)
+      if (/agend|marc|cadastr/i.test(messageText)) {
+        console.log('🗓️ Criando compromisso:', messageText);
+        return await this.addCommitment(session.user_id!, messageText);
+      }
+      
+      // Fallback: se mencionou agenda mas não identificou ação
+      return {
+        response: '📅 *Comandos de Agenda:*\n\n' +
+                 '• "agendar [título] para [data/hora]"\n' +
+                 '  Exemplo: agendar dentista amanhã 14h\n\n' +
+                 '• "meus compromissos"\n' +
+                 '  Ver próximos eventos',
+        sessionData
+      };
+    }
+    
+    // PRIORIDADE 3: Comandos gerais (ajuda, cancelar, etc)
     console.log('🔵 Checking normalized command:', normalizedText);
     
     if (['ajuda', 'help', 'menu', 'comandos'].includes(normalizedText)) {
@@ -1243,19 +1270,6 @@ class WhatsAppAgent {
         response: this.getHelpMenu(),
         sessionData: { ...sessionData, conversation_state: 'idle', pending_transaction: undefined }
       };
-    }
-
-    // PRIORIDADE 2.5: Comandos de AGENDA
-    if (/agend|compromisso|reuniao|consulta|evento/i.test(messageText)) {
-      // Se é para listar
-      if (/meus|proximos|listar|ver/i.test(messageText)) {
-        console.log('🗓️ Listando compromissos');
-        return await this.listCommitments(session.user_id!);
-      }
-      
-      // Se é para criar
-      console.log('🗓️ Criando compromisso');
-      return await this.addCommitment(session.user_id!, messageText);
     }
 
     if (['cancelar', 'cancel', 'sair'].includes(normalizedText)) {
@@ -2740,7 +2754,10 @@ class WhatsAppAgent {
 
   static async addCommitment(userId: string, messageText: string): Promise<{ response: string, sessionData: SessionData }> {
     try {
-      console.log('🗓️ Extraindo dados do compromisso:', messageText);
+      console.log('🗓️ === INICIANDO ADDCOMMITMENT ===');
+      console.log('🗓️ User ID:', userId);
+      console.log('🗓️ Mensagem:', messageText);
+      console.log('🗓️ Extraindo dados do compromisso...');
       
       // Usar OpenAI para extrair título e data da mensagem
       const openAIKey = Deno.env.get('OPENAI_API_KEY');

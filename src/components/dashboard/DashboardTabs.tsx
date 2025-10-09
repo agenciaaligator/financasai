@@ -11,6 +11,7 @@ import { FutureFeatures } from "../FutureFeatures";
 import { CommitmentsManager } from "../CommitmentsManager";
 import { TransactionFilters, TransactionFiltersState } from "../TransactionFilters";
 import { Transaction } from "@/hooks/useTransactions";
+import { ErrorBoundary } from "../ErrorBoundary";
 import { 
   DollarSign, 
   TrendingUp, 
@@ -261,9 +262,11 @@ export function DashboardTabs({
         <AIReportsChat />
       </TabsContent>
 
-      <TabsContent value="agenda">
-        <CommitmentsManager />
-      </TabsContent>
+          <TabsContent value="agenda">
+            <ErrorBoundary fallback={<div className="p-4 text-destructive">Erro ao carregar agenda. Tente recarregar a página.</div>}>
+              <CommitmentsManager />
+            </ErrorBoundary>
+          </TabsContent>
 
       <TabsContent value="future">
         <FutureFeatures />

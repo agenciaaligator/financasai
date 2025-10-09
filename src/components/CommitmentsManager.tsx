@@ -23,6 +23,7 @@ interface Commitment {
 }
 
 export function CommitmentsManager() {
+  console.log('📅 CommitmentsManager rendering...');
   const [commitments, setCommitments] = useState<Commitment[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
