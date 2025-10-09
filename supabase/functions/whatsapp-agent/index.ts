@@ -2826,6 +2826,16 @@ class WhatsAppAgent {
         const scheduledISO = new Date(Date.UTC(y, m, d, hour + 3, minute)).toISOString();
         console.log('🗓️ QuickParse SUCCESS:', { title, hour, minute, scheduledISO });
 
+        // Mapeamento inteligente de categorias por palavras-chave
+        let category: 'payment' | 'meeting' | 'appointment' | 'other' = 'other';
+        if (/dentista|medico|doutor|clinica|hospital|exame|consulta/i.test(normalized)) {
+          category = 'appointment';
+        } else if (/reuniao|meeting|encontro|call|videochamada/i.test(normalized)) {
+          category = 'meeting';
+        } else if (/pagamento|pagar|conta|boleto|fatura|vencimento/i.test(normalized)) {
+          category = 'payment';
+        }
+
         // Salvar diretamente
         const supabase = createClient(
           Deno.env.get('SUPABASE_URL')!,
@@ -2836,7 +2846,7 @@ class WhatsAppAgent {
           title: title.charAt(0).toUpperCase() + title.slice(1),
           description: null,
           scheduled_at: scheduledISO,
-          category: 'other'
+          category: category
         });
         if (!insertErr) {
           const formattedDate = new Date(scheduledISO).toLocaleDateString('pt-BR', {

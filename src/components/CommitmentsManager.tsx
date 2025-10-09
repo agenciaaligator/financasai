@@ -71,10 +71,19 @@ export function CommitmentsManager() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Converter datetime-local → UTC para salvar no banco
+      const localDate = new Date(formData.scheduled_at);
+      const utcISO = new Date(localDate.getTime() + localDate.getTimezoneOffset() * 60000).toISOString();
+
+      const dataToSave = {
+        ...formData,
+        scheduled_at: utcISO
+      };
+
       if (editingId) {
         const { error } = await supabase
           .from("commitments")
-          .update(formData)
+          .update(dataToSave)
           .eq("id", editingId);
 
         if (error) throw error;
@@ -87,7 +96,7 @@ export function CommitmentsManager() {
         const { error } = await supabase
           .from("commitments")
           .insert({
-            ...formData,
+            ...dataToSave,
             user_id: user.id,
           });
 
@@ -118,10 +127,16 @@ export function CommitmentsManager() {
   };
 
   const handleEdit = (commitment: Commitment) => {
+    // Converter ISO UTC → datetime-local (America/Sao_Paulo)
+    const utcDate = new Date(commitment.scheduled_at);
+    const localISO = new Date(utcDate.getTime() - utcDate.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16); // "2025-10-10T07:00"
+    
     setFormData({
       title: commitment.title,
       description: commitment.description || "",
-      scheduled_at: commitment.scheduled_at,
+      scheduled_at: localISO,
       category: commitment.category,
     });
     setEditingId(commitment.id);
@@ -277,7 +292,14 @@ export function CommitmentsManager() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {format(new Date(commitment.scheduled_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                      {new Date(commitment.scheduled_at).toLocaleString('pt-BR', {
+                        timeZone: 'America/Sao_Paulo',
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
                     </TableCell>
                     <TableCell>{getCategoryBadge(commitment.category)}</TableCell>
                     <TableCell>
