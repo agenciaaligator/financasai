@@ -1524,6 +1524,12 @@ class WhatsAppAgent {
       return await this.handleCancelCommitmentCommand(session, filters);
     }
     
+    // PRIORIDADE 2A: Estado aguardando horário do compromisso
+    if (sessionData.conversation_state === 'awaiting_commitment_time') {
+      console.log('⏰ Estado: aguardando horário do compromisso');
+      return await this.handleCommitmentTimeInput(session, messageText);
+    }
+    
     // PRIORIDADE 2: Comandos de AGENDA (ANTES de outros comandos genéricos)
     if (/agend|compromisso|reuniao|consulta|evento|marc/i.test(messageText)) {
       console.log('🗓️ AGENDA COMMAND DETECTED:', messageText);
@@ -3159,7 +3165,8 @@ class WhatsAppAgent {
       // Extrair hora - EXIGE sufixo válido para não capturar "11" de "11/10"
       // Aceita: "14h30", "14:30", "às 14h", "14 horas"
       const timeMatch = normalized.match(/\b(?:as|a)?\s*(\d{1,2})(?:(?::|h)(\d{2})\b|\s*(?:h|horas?))\b/);
-      let hour = 9, minute = 0;
+      let hour: number | null = null;
+      let minute: number | null = null;
       if (timeMatch) {
         hour = Math.min(23, parseInt(timeMatch[1]));
         minute = Math.min(59, parseInt(timeMatch[2] || '0'));
@@ -3235,6 +3242,23 @@ class WhatsAppAgent {
         .trim();
 
       if (title) {
+        // SE HORÁRIO NÃO FOI ESPECIFICADO: perguntar ao usuário
+        if (hour === null) {
+          console.log('⏰ Horário não especificado, perguntando ao usuário');
+          
+          return {
+            response: `📅 *Agendando: ${title.charAt(0).toUpperCase() + title.slice(1)}*\n\n⏰ Qual horário você prefere?\n\nExemplos:\n• 14h\n• 14:30\n• 9h\n• 16h45`,
+            sessionData: {
+              conversation_state: 'awaiting_commitment_time',
+              pending_commitment: {
+                title: title.charAt(0).toUpperCase() + title.slice(1),
+                category,
+                targetDate: target.toISOString()
+              }
+            }
+          };
+        }
+        
         // Montar ISO no UTC a partir do horário de Brasília (UTC-3)
         const y = target.getUTCFullYear();
         const m = target.getUTCMonth();
@@ -3381,7 +3405,7 @@ class WhatsAppAgent {
 }
 
 Hoje é ${new Date().toLocaleDateString('pt-BR')}. Converta datas relativas (hoje, amanhã, sexta) para timestamps reais no fuso horário America/Sao_Paulo.
-Se não especificar hora, use 09:00.`
+Se não especificar hora, retorne scheduled_at: null.`
           }, {
             role: 'user',
             content: messageText
@@ -3933,6 +3957,155 @@ Se não especificar hora, use 09:00.`
       return {
         response: '❌ Erro ao buscar compromissos.',
         sessionData
+      };
+    }
+  }
+
+  static async handleCommitmentTimeInput(session: Session, messageText: string): Promise<{ response: string, sessionData: SessionData }> {
+    const sessionData = session.session_data || {};
+    const pending = sessionData.pending_commitment;
+    
+    if (!pending?.title || !pending?.targetDate) {
+      return {
+        response: '❌ Erro ao processar horário.',
+        sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment: undefined }
+      };
+    }
+    
+    console.log('⏰ Processando horário:', { messageText, pending });
+    
+    // Extrair horário da resposta
+    const normalized = messageText.toLowerCase().trim();
+    const timeMatch = normalized.match(/\b(\d{1,2})(?::(\d{2}))?\s*(?:h|horas?)?/);
+    
+    if (!timeMatch) {
+      return {
+        response: '❌ Não entendi o horário. Digite no formato:\n\n• 14h\n• 14:30\n• 9h',
+        sessionData
+      };
+    }
+    
+    const hour = parseInt(timeMatch[1]);
+    const minute = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+    
+    // Validar horário (0-23h)
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+      return {
+        response: '❌ Horário inválido. Use entre 00h e 23h59.',
+        sessionData
+      };
+    }
+    
+    // Montar ISO com a data guardada + horário informado
+    const target = new Date(pending.targetDate);
+    const y = target.getUTCFullYear();
+    const m = target.getUTCMonth();
+    const d = target.getUTCDate();
+    const scheduledISO = new Date(Date.UTC(y, m, d, hour + 3, minute)).toISOString();
+    
+    console.log('🗓️ Horário validado:', { hour, minute, scheduledISO });
+    
+    // AGORA SIM: Verificar conflitos e inserir
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+    
+    // Query conflitos em janela de +/- 1 hora
+    const start = new Date(Date.parse(scheduledISO) - 60*60*1000).toISOString();
+    const end   = new Date(Date.parse(scheduledISO) + 60*60*1000).toISOString();
+    const { data: conflicts } = await supabase
+      .from('commitments')
+      .select('id,title,scheduled_at')
+      .eq('user_id', session.user_id)
+      .gte('scheduled_at', start)
+      .lte('scheduled_at', end)
+      .order('scheduled_at');
+
+    if (conflicts && conflicts.length > 0) {
+      console.log('⚠️ CONFLITO DETECTADO:', conflicts);
+      
+      // Sugerir alternativas (+15min e +60min)
+      const suggestions: string[] = [];
+      const suggestionTimes: string[] = [];
+      
+      for (const offset of [15, 60]) {
+        const altTime = new Date(Date.parse(scheduledISO) + offset * 60 * 1000);
+        const altISO = altTime.toISOString();
+        
+        // Verificar se essa alternativa está livre
+        const { data: altConflicts } = await supabase
+          .from('commitments')
+          .select('id')
+          .eq('user_id', session.user_id)
+          .gte('scheduled_at', new Date(Date.parse(altISO) - 60*60*1000).toISOString())
+          .lte('scheduled_at', new Date(Date.parse(altISO) + 60*60*1000).toISOString());
+        
+        if (!altConflicts || altConflicts.length === 0) {
+          const formatted = altTime.toLocaleTimeString('pt-BR', {
+            hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo'
+          });
+          suggestions.push(formatted);
+          suggestionTimes.push(altISO);
+        }
+      }
+      
+      // Montar lista de conflitos
+      const conflictList = conflicts.map(c => {
+        const time = new Date(c.scheduled_at).toLocaleTimeString('pt-BR', {
+          hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo'
+        });
+        return `• ${c.title} às ${time}`;
+      }).join('\n');
+      
+      // Montar opções
+      let optionsText = `⚠️ *Conflito de horário*\n\n📅 Já existe(m):\n${conflictList}\n\n*O que deseja fazer?*\n\n1️⃣ Manter este também (duplo-agendamento)`;
+      
+      if (suggestions.length > 0) {
+        suggestions.forEach((sug, idx) => {
+          optionsText += `\n${idx + 2}️⃣ Remarcar para ${sug}`;
+        });
+      }
+      
+      optionsText += `\n${suggestions.length + 2}️⃣ Cancelar`;
+      
+      return {
+        response: optionsText,
+        sessionData: {
+          conversation_state: 'awaiting_commitment_resolution',
+          pending_commitment: {
+            title: pending.title,
+            category: pending.category,
+            scheduledISO,
+            suggestions: suggestionTimes
+          }
+        }
+      };
+    }
+    
+    // SEM CONFLITO: Inserir diretamente
+    const { error: insertErr } = await supabase.from('commitments').insert({
+      user_id: session.user_id,
+      title: pending.title,
+      description: null,
+      scheduled_at: scheduledISO,
+      category: pending.category
+    });
+    
+    if (!insertErr) {
+      const formattedDate = new Date(scheduledISO).toLocaleDateString('pt-BR', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo'
+      });
+      return {
+        response: `✅ *Compromisso agendado!*\n\n📌 ${pending.title}\n🗓️ ${formattedDate}`,
+        sessionData: { conversation_state: 'idle', pending_commitment: undefined }
+      };
+    } else {
+      console.error('⚠️ Error inserting commitment:', insertErr);
+      return {
+        response: '❌ Erro ao agendar. Tente novamente.',
+        sessionData: { conversation_state: 'idle', pending_commitment: undefined }
       };
     }
   }
