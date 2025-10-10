@@ -662,7 +662,30 @@ const handler = async (req: Request): Promise<Response> => {
       
       // Detectar tipo de mensagem e processar áudio se necessário
       if (message.type === 'audio' && message.audio?.id) {
-        console.log(`🎙️ [${messageId?.substring(0,10)}] Audio detected, transcribing...`);
+        console.log(`🎙️ [${messageId?.substring(0,10)}] Audio detected, checking session state...`);
+        
+        // BLOQUEIO: Verificar se está aguardando detalhes (texto obrigatório)
+        try {
+          const { data: session } = await supabase
+            .from('whatsapp_sessions')
+            .select('session_data')
+            .eq('phone_number', message.from)
+            .single();
+          
+          if (session?.session_data?.conversation_state === 'awaiting_commitment_details') {
+            console.log('🚫 Áudio bloqueado: aguardando texto para detalhes');
+            await sendWhatsAppMessage(message.from, 
+              '⚠️ Para endereços e nomes, preciso que você envie em *TEXTO*, não áudio.\n\nPor favor, digite a informação.'
+            );
+            return new Response(JSON.stringify({ success: true, blocked_audio: true }), { 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            });
+          }
+        } catch (sessionCheckError) {
+          console.warn('⚠️ Erro ao verificar sessão para bloqueio de áudio:', sessionCheckError.message);
+        }
+        
+        console.log(`🎙️ [${messageId?.substring(0,10)}] Proceeding with transcription...`);
         try {
           text = await transcribeAudio(message.audio.id, message.from);
           forceText = true;

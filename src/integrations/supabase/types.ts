@@ -46,9 +46,13 @@ export type Database = {
           category: string | null
           created_at: string | null
           description: string | null
+          duration_minutes: number | null
           google_event_id: string | null
           id: string
           linked_transaction_id: string | null
+          location: string | null
+          notes: string | null
+          participants: string | null
           reminder_sent: boolean | null
           scheduled_at: string
           title: string
@@ -59,9 +63,13 @@ export type Database = {
           category?: string | null
           created_at?: string | null
           description?: string | null
+          duration_minutes?: number | null
           google_event_id?: string | null
           id?: string
           linked_transaction_id?: string | null
+          location?: string | null
+          notes?: string | null
+          participants?: string | null
           reminder_sent?: boolean | null
           scheduled_at: string
           title: string
@@ -72,9 +80,13 @@ export type Database = {
           category?: string | null
           created_at?: string | null
           description?: string | null
+          duration_minutes?: number | null
           google_event_id?: string | null
           id?: string
           linked_transaction_id?: string | null
+          location?: string | null
+          notes?: string | null
+          participants?: string | null
           reminder_sent?: boolean | null
           scheduled_at?: string
           title?: string
@@ -637,6 +649,39 @@ export type Database = {
           phone_number?: string
           session_data?: Json | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      work_hours: {
+        Row: {
+          created_at: string | null
+          day_of_week: number
+          end_time: string
+          id: string
+          is_active: boolean | null
+          start_time: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          day_of_week: number
+          end_time: string
+          id?: string
+          is_active?: boolean | null
+          start_time: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          is_active?: boolean | null
+          start_time?: string
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }

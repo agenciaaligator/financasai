@@ -40,7 +40,7 @@ interface SessionData {
   authenticated?: boolean;
   last_command?: string | null;
   context?: any;
-  conversation_state?: 'idle' | 'waiting_date' | 'waiting_confirmation' | 'awaiting_category' | 'confirming_ocr' | 'awaiting_delete_confirmation' | 'awaiting_edit_field' | 'awaiting_edit_value' | 'awaiting_commitment_resolution' | 'awaiting_commitment_edit_field' | 'awaiting_commitment_edit_value' | 'awaiting_commitment_cancel_selection';
+  conversation_state?: 'idle' | 'waiting_date' | 'waiting_confirmation' | 'awaiting_category' | 'confirming_ocr' | 'awaiting_delete_confirmation' | 'awaiting_edit_field' | 'awaiting_edit_value' | 'awaiting_commitment_resolution' | 'awaiting_commitment_edit_field' | 'awaiting_commitment_edit_value' | 'awaiting_commitment_cancel_selection' | 'awaiting_commitment_time' | 'awaiting_commitment_details';
   pending_transaction?: Partial<Transaction>;
   pending_ocr_data?: {
     amount: number;
@@ -62,8 +62,12 @@ interface SessionData {
   pending_commitment?: {
     title: string;
     category: string;
-    scheduledISO: string;
+    scheduledISO?: string;
+    targetDate?: string;
     suggestions?: string[];
+    suggested_slots?: string[];
+    commitment_id?: string;
+    detail_type?: 'participants' | 'location';
   };
   pending_commitment_edit?: {
     commitment_id?: string;
@@ -1343,6 +1347,16 @@ class WhatsAppAgent {
     // PRIORIDADE 0.9: Confirmação de exclusão
     if (sessionData.conversation_state === 'awaiting_delete_confirmation' && sessionData.pending_delete) {
       return await this.handleDeleteConfirmation(session, messageText);
+    }
+
+    // PRIORIDADE 0.91: Input de horário para compromisso
+    if (sessionData.conversation_state === 'awaiting_commitment_time' && sessionData.pending_commitment) {
+      return await this.handleCommitmentTimeInput(session, messageText);
+    }
+
+    // PRIORIDADE 0.92: Input de detalhes adicionais (local, participantes)
+    if (sessionData.conversation_state === 'awaiting_commitment_details' && sessionData.pending_commitment) {
+      return await this.handleCommitmentDetailsInput(session, messageText);
     }
 
     // PRIORIDADE 0.93: Resolução de conflito de agenda
@@ -4097,6 +4111,36 @@ Se não especificar hora, retorne scheduled_at: null.`
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
         hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo'
       });
+      
+      // Verificar se deve pedir detalhes adicionais (local, participantes)
+      const categoryPrompts: Record<string, { detail_type: 'participants' | 'location', message: string }> = {
+        'meeting': { detail_type: 'participants', message: '👥 Com quem será a reunião? (ou digite "pular")' },
+        'appointment': { detail_type: 'location', message: '📍 Qual o endereço da consulta? (ou digite "pular")' },
+      };
+      
+      const { data: insertedData } = await supabase
+        .from('commitments')
+        .select('id')
+        .eq('user_id', session.user_id)
+        .eq('scheduled_at', scheduledISO)
+        .single();
+      
+      if (categoryPrompts[pending.category] && insertedData) {
+        const prompt = categoryPrompts[pending.category];
+        return {
+          response: `✅ *Compromisso agendado!*\n\n📌 ${pending.title}\n🗓️ ${formattedDate}\n\n${prompt.message}\n\n⚠️ Por favor, envie em TEXTO (não áudio).`,
+          sessionData: {
+            conversation_state: 'awaiting_commitment_details',
+            pending_commitment: {
+              commitment_id: insertedData.id,
+              detail_type: prompt.detail_type,
+              title: pending.title,
+              category: pending.category
+            }
+          }
+        };
+      }
+      
       return {
         response: `✅ *Compromisso agendado!*\n\n📌 ${pending.title}\n🗓️ ${formattedDate}`,
         sessionData: { conversation_state: 'idle', pending_commitment: undefined }
@@ -4108,6 +4152,143 @@ Se não especificar hora, retorne scheduled_at: null.`
         sessionData: { conversation_state: 'idle', pending_commitment: undefined }
       };
     }
+  }
+
+  static async handleCommitmentDetailsInput(
+    session: Session, 
+    messageText: string
+  ): Promise<{ response: string, sessionData: SessionData }> {
+    const sessionData = session.session_data || {};
+    const pending = sessionData.pending_commitment!;
+    
+    console.log('📝 Processando detalhes do compromisso:', { pending, messageText });
+    
+    // Se usuário pular
+    if (/^(pular|skip|não|nao)$/i.test(messageText.trim())) {
+      return {
+        response: '✅ Compromisso finalizado!',
+        sessionData: {
+          conversation_state: 'idle',
+          pending_commitment: undefined
+        }
+      };
+    }
+    
+    // Atualizar compromisso com o detalhe
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+    
+    const updateData = {
+      [pending.detail_type!]: messageText.trim()
+    };
+    
+    const { error } = await supabase
+      .from('commitments')
+      .update(updateData)
+      .eq('id', pending.commitment_id);
+    
+    if (error) {
+      console.error('❌ Erro ao atualizar detalhes:', error);
+      return {
+        response: '❌ Erro ao salvar. Tente editar o compromisso depois.',
+        sessionData: { conversation_state: 'idle', pending_commitment: undefined }
+      };
+    }
+    
+    // Verificar se há próximo campo (participantes → local)
+    if (pending.detail_type === 'participants') {
+      return {
+        response: '✅ Participantes salvos!\n\n📍 Qual o local da reunião? (ou digite "pular")\n\n⚠️ Envie em TEXTO.',
+        sessionData: {
+          conversation_state: 'awaiting_commitment_details',
+          pending_commitment: {
+            commitment_id: pending.commitment_id,
+            detail_type: 'location',
+            title: pending.title,
+            category: pending.category
+          }
+        }
+      };
+    }
+    
+    // Finalizado
+    return {
+      response: '✅ Compromisso completo!',
+      sessionData: {
+        conversation_state: 'idle',
+        pending_commitment: undefined
+      }
+    };
+  }
+
+  static async suggestAvailableSlots(
+    userId: string,
+    targetDate: Date
+  ): Promise<string[]> {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+    
+    const dayOfWeek = targetDate.getUTCDay();
+    
+    // Buscar horário de trabalho do dia
+    const { data: workHour } = await supabase
+      .from('work_hours')
+      .select('start_time, end_time')
+      .eq('user_id', userId)
+      .eq('day_of_week', dayOfWeek)
+      .eq('is_active', true)
+      .single();
+    
+    // Padrão: 8h-19h se não configurado
+    const startTime = workHour?.start_time || '08:00';
+    const endTime = workHour?.end_time || '19:00';
+    
+    // Buscar compromissos do dia
+    const startOfDay = new Date(targetDate);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    const endOfDay = new Date(targetDate);
+    endOfDay.setUTCHours(23, 59, 59, 999);
+    
+    const { data: commitments } = await supabase
+      .from('commitments')
+      .select('scheduled_at, duration_minutes')
+      .eq('user_id', userId)
+      .gte('scheduled_at', startOfDay.toISOString())
+      .lte('scheduled_at', endOfDay.toISOString())
+      .order('scheduled_at');
+    
+    // Calcular slots livres (intervalos de 1h)
+    const [startH, startM] = startTime.split(':').map(Number);
+    const [endH, endM] = endTime.split(':').map(Number);
+    
+    const slots: string[] = [];
+    let currentHour = startH;
+    
+    while (currentHour < endH) {
+      const slotStart = new Date(targetDate);
+      slotStart.setUTCHours(currentHour + 3, 0, 0, 0); // +3 BRT→UTC
+      const slotEnd = new Date(slotStart);
+      slotEnd.setHours(slotEnd.getHours() + 1);
+      
+      // Verificar conflito
+      const hasConflict = commitments?.some(c => {
+        const cStart = new Date(c.scheduled_at);
+        const cEnd = new Date(cStart.getTime() + (c.duration_minutes || 60) * 60000);
+        return (slotStart < cEnd && slotEnd > cStart);
+      });
+      
+      if (!hasConflict) {
+        slots.push(`${currentHour.toString().padStart(2, '0')}:00`);
+      }
+      
+      currentHour++;
+    }
+    
+    return slots.slice(0, 5); // Máximo 5 sugestões
   }
 
   static async handleCommitmentEditFieldSelection(session: Session, messageText: string): Promise<{ response: string, sessionData: SessionData }> {

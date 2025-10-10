@@ -21,6 +21,10 @@ interface Commitment {
   category: "payment" | "meeting" | "appointment" | "other";
   reminder_sent: boolean;
   created_at: string;
+  location?: string | null;
+  participants?: string | null;
+  duration_minutes?: number | null;
+  notes?: string | null;
 }
 
 export function CommitmentsManager() {
@@ -36,6 +40,10 @@ export function CommitmentsManager() {
     description: "",
     scheduled_at: "",
     category: "other" as "payment" | "meeting" | "appointment" | "other",
+    location: "",
+    participants: "",
+    duration_minutes: 60,
+    notes: "",
   });
 
   useEffect(() => {
@@ -114,6 +122,10 @@ export function CommitmentsManager() {
         description: "",
         scheduled_at: "",
         category: "other",
+        location: "",
+        participants: "",
+        duration_minutes: 60,
+        notes: "",
       });
       setEditingId(null);
       setShowForm(false);
@@ -137,6 +149,10 @@ export function CommitmentsManager() {
       description: commitment.description || "",
       scheduled_at: localISO,
       category: commitment.category,
+      location: commitment.location || "",
+      participants: commitment.participants || "",
+      duration_minutes: commitment.duration_minutes || 60,
+      notes: commitment.notes || "",
     });
     setEditingId(commitment.id);
     setShowForm(true);
@@ -308,6 +324,49 @@ export function CommitmentsManager() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {formData.category === 'meeting' && (
+                <div>
+                  <label className="text-sm font-medium">Participantes</label>
+                  <Input
+                    value={formData.participants}
+                    onChange={(e) => setFormData({ ...formData, participants: e.target.value })}
+                    placeholder="Ex: João Silva, Maria Santos"
+                  />
+                </div>
+              )}
+
+              {(formData.category === 'meeting' || formData.category === 'appointment') && (
+                <div>
+                  <label className="text-sm font-medium">Local</label>
+                  <Input
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    placeholder="Ex: Rua Exemplo, 123 - Sala 45"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="text-sm font-medium">Duração (minutos)</label>
+                <Input
+                  type="number"
+                  min="15"
+                  step="15"
+                  value={formData.duration_minutes}
+                  onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) })}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Observações</label>
+                <Textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Anotações adicionais..."
+                />
+              </div>
+
               <Button type="submit">
                 {editingId ? "Atualizar" : "Criar"} Compromisso
               </Button>
@@ -342,6 +401,15 @@ export function CommitmentsManager() {
                         <div className="font-medium">{commitment.title}</div>
                         {commitment.description && (
                           <div className="text-xs text-muted-foreground">{commitment.description}</div>
+                        )}
+                        {commitment.participants && (
+                          <div className="text-xs text-blue-600 mt-1">👥 {commitment.participants}</div>
+                        )}
+                        {commitment.location && (
+                          <div className="text-xs text-green-600 mt-1">📍 {commitment.location}</div>
+                        )}
+                        {commitment.duration_minutes && commitment.duration_minutes !== 60 && (
+                          <div className="text-xs text-purple-600 mt-1">⏱️ {commitment.duration_minutes}min</div>
                         )}
                       </div>
                     </TableCell>
