@@ -1434,11 +1434,6 @@ class WhatsAppAgent {
     
     // PRIORIDADE 2A: Comandos específicos de EDIÇÃO/CANCELAMENTO (antes de agenda genérica)
     // Regex tolerante: aceita artigos opcionais e variações
-    const normalizedText = messageText
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase();
-    
     const editCommitmentRegex = /\b(editar|alterar|remarcar)\b\s*(?:o\s+|um\s+|uma\s+)?\b(compromisso|evento|reuniao)\b/;
     const cancelCommitmentRegex = /\b(cancelar|excluir|apagar)\b\s*(?:o\s+|um\s+|uma\s+)?\b(compromisso|evento|reuniao)\b/;
     
