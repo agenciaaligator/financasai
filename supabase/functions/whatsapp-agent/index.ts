@@ -442,6 +442,15 @@ class DateParser {
       return `${year}-${month}-${day}`;
     }
     
+    // Amanhã
+    if (['amanha', 'amanhã', 'tomorrow'].includes(normalizedText)) {
+      const tomorrow = new Date(localTime.getTime() + (24 * 60 * 60 * 1000));
+      const year = tomorrow.getUTCFullYear();
+      const month = String(tomorrow.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(tomorrow.getUTCDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+    
     // Formatos DD/MM ou DD/MM/AAAA
     const dateMatch = normalizedText.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
     if (dateMatch) {
@@ -1292,8 +1301,15 @@ class WhatsAppAgent {
       return await this.handleCommitmentEditFieldSelection(session, messageText);
     }
 
+    // CRITICAL: Check if we're already in field input mode BEFORE checking for field selection
+    if (sessionData.conversation_state === 'awaiting_commitment_edit_value' && sessionData.pending_commitment_edit?.field) {
+      console.log('[EDIT VALUE INPUT] Processing value for field:', sessionData.pending_commitment_edit.field);
+      return await this.handleCommitmentEditValueInput(session, messageText);
+    }
+
     if (sessionData.conversation_state === 'awaiting_commitment_edit_value' && sessionData.pending_commitment_edit) {
       const field = messageText.trim();
+      console.log('[EDIT FIELD SELECT] Processing field selection:', field);
       
       // Opção 5: Cancelar o compromisso (não a edição)
       if (field === '5') {
@@ -1348,6 +1364,7 @@ class WhatsAppAgent {
       
       const selectedField = fieldMap[field];
       if (!selectedField) {
+        console.log('[EDIT FIELD SELECT] Invalid option:', field);
         return {
           response: '❌ Opção inválida. Digite um número de 1 a 5.',
           sessionData
@@ -1369,6 +1386,8 @@ class WhatsAppAgent {
         }
       };
 
+      console.log('[EDIT FIELD SELECT] Selected field:', selectedField, 'Prompt:', promptMap[selectedField]);
+
       await SessionManager.updateSession(session.id, {
         session_data: updatedSessionData
       });
@@ -1377,10 +1396,6 @@ class WhatsAppAgent {
         response: promptMap[selectedField],
         sessionData: updatedSessionData
       };
-    }
-
-    if (sessionData.pending_commitment_edit?.field) {
-      return await this.handleCommitmentEditValueInput(session, messageText);
     }
 
     // PRIORIDADE 0.96: Cancelamento de compromisso
@@ -3931,7 +3946,11 @@ Se não especificar hora, use 09:00.`
     const sessionData = session.session_data || {};
     const pendingEdit = sessionData.pending_commitment_edit;
 
+    console.log('[EDIT VALUE INPUT] Starting value processing for field:', pendingEdit?.field);
+    console.log('[EDIT VALUE INPUT] New value:', messageText.trim());
+
     if (!pendingEdit?.commitment_id || !pendingEdit.field) {
+      console.log('[EDIT VALUE INPUT] Missing commitment_id or field');
       return {
         response: '❌ Erro ao processar edição.',
         sessionData: { ...sessionData, conversation_state: 'idle' }
@@ -3949,9 +3968,13 @@ Se não especificar hora, use 09:00.`
       const newValue = messageText.trim();
 
       if (field === 'title') {
+        console.log('[EDIT VALUE] Updating title to:', newValue);
         updateData.title = newValue;
       } else if (field === 'date') {
+        console.log('[EDIT VALUE] Parsing date:', newValue);
         const parsedDate = DateParser.parseDate(newValue);
+        console.log('[EDIT VALUE] Parsed date result:', parsedDate);
+        
         if (!parsedDate) {
           return {
             response: '❌ Data inválida. Use formato DD/MM/AAAA ou "hoje", "amanhã".',
@@ -3969,8 +3992,11 @@ Se não especificar hora, use 09:00.`
           oldDate.getUTCMinutes()
         ));
         updateData.scheduled_at = newScheduled.toISOString();
+        console.log('[EDIT VALUE] New scheduled_at (date update):', updateData.scheduled_at);
       } else if (field === 'time') {
+        console.log('[EDIT VALUE] Parsing time:', newValue);
         const timeMatch = newValue.match(/(\d{1,2}):?(\d{2})?/);
+        
         if (!timeMatch) {
           return {
             response: '❌ Hora inválida. Use formato HH:MM ou HH.',
@@ -3979,6 +4005,14 @@ Se não especificar hora, use 09:00.`
         }
         const hour = parseInt(timeMatch[1]);
         const minute = parseInt(timeMatch[2] || '0');
+        console.log('[EDIT VALUE] Parsed time:', { hour, minute });
+        
+        if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+          return {
+            response: '❌ Hora inválida. Hora deve ser 0-23 e minutos 0-59.',
+            sessionData
+          };
+        }
         
         // Manter a data existente
         const oldDate = new Date(pendingEdit.original_commitment.scheduled_at);
@@ -3990,25 +4024,38 @@ Se não especificar hora, use 09:00.`
           minute
         ));
         updateData.scheduled_at = newScheduled.toISOString();
+        console.log('[EDIT VALUE] New scheduled_at (time update):', updateData.scheduled_at);
       } else if (field === 'category') {
-        const validCategories = ['payment', 'meeting', 'appointment', 'other'];
+        console.log('[EDIT VALUE] Parsing category:', newValue);
         const normalized = newValue.toLowerCase();
         const categoryMap: Record<string, string> = {
           'pagamento': 'payment',
           'reuniao': 'meeting',
           'reunião': 'meeting',
           'consulta': 'appointment',
-          'outro': 'other'
+          'outro': 'other',
+          'payment': 'payment',
+          'meeting': 'meeting',
+          'appointment': 'appointment',
+          'other': 'other'
         };
         updateData.category = categoryMap[normalized] || 'other';
+        console.log('[EDIT VALUE] Mapped category:', updateData.category);
       }
 
+      console.log('[EDIT VALUE] Updating commitment with data:', updateData);
       const { error } = await supabase
         .from('commitments')
         .update(updateData)
-        .eq('id', pendingEdit.commitment_id);
+        .eq('id', pendingEdit.commitment_id)
+        .eq('user_id', session.user_id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('[EDIT VALUE] Update error:', error);
+        throw error;
+      }
+
+      console.log('[EDIT VALUE] ✅ Commitment updated successfully');
 
       await SessionManager.updateSession(session.id, {
         session_data: {
@@ -4023,7 +4070,7 @@ Se não especificar hora, use 09:00.`
         sessionData: { ...sessionData, conversation_state: 'idle' }
       };
     } catch (error) {
-      console.error('Error updating commitment:', error);
+      console.error('[EDIT VALUE] Error updating commitment:', error);
       return {
         response: '❌ Erro ao atualizar compromisso.',
         sessionData: { ...sessionData, conversation_state: 'idle' }
