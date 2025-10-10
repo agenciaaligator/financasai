@@ -4057,11 +4057,35 @@ Se não especificar hora, use 09:00.`
       };
     }
 
-    // PHASE 2: Guard contra usuário enviar comando ao invés de valor
-    const normalizedInput = messageText.toLowerCase().trim();
-    const isCommandText = normalizedInput.includes('editar compromisso') || 
-                          normalizedInput.includes('editar evento') ||
-                          normalizedInput === 'editar';
+    // PHASE 2: Guard contra usuário enviar comando ao invés de valor + Override para reiniciar fluxos
+    const normalized = messageText
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+
+    // Regex tolerantes para comandos durante a edição
+    const editCommitmentRegex = /\b(editar|alterar|remarcar)\b\s*(?:o\s+|um\s+|uma\s+)?\b(compromisso|evento|reuniao)\b/;
+    const cancelCommitmentRegex = /\b(cancelar|excluir|apagar)\b\s*(?:o\s+|um\s+|uma\s+)?\b(compromisso|evento|reuniao)\b/;
+
+    // Overrides: se o usuário enviar um comando de editar/cancelar enquanto aguardamos o VALOR, reiniciamos o fluxo correto
+    if (pendingEdit.field) {
+      if (editCommitmentRegex.test(normalized)) {
+        console.log('[EDIT VALUE] Override: received edit command while in value input - restarting list');
+        const filters = parseCommandFilters(messageText);
+        return await this.handleEditCommitmentCommand(session, filters);
+      }
+      if (cancelCommitmentRegex.test(normalized)) {
+        console.log('[EDIT VALUE] Override: received cancel command while in value input - restarting cancel flow');
+        const filters = parseCommandFilters(messageText);
+        return await this.handleCancelCommitmentCommand(session, filters);
+      }
+    }
+
+    // Fallback de guard: comandos genéricos que não batem nos regex acima
+    const isCommandText = normalized.includes('editar compromisso') || 
+                          normalized.includes('editar evento') ||
+                          normalized === 'editar';
     
     if (isCommandText && pendingEdit.field) {
       console.log('[EDIT VALUE] User sent command instead of value, prompting for correct input');
