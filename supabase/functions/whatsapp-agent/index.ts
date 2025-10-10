@@ -3717,11 +3717,14 @@ Se não especificar hora, use 09:00.`
 
       response += `Digite o número do compromisso (1-${commitments.length}):`;
 
+      console.log('[EDIT CMD] Resetting edit state, listing commitments');
+
       const updatedSessionData = {
         ...sessionData,
         conversation_state: 'awaiting_commitment_edit_field' as const,
         pending_commitment_edit: {
           available_commitments: commitments
+          // Explicitamente SEM field, commitment_id ou original_commitment
         }
       };
 
@@ -3906,11 +3909,14 @@ Se não especificar hora, use 09:00.`
 
       response += `Digite o número do compromisso para cancelar (1-${commitments.length}):`;
 
+      console.log('[CANCEL CMD] Resetting state, listing commitments');
+
       const updatedSessionData = {
         ...sessionData,
         conversation_state: 'awaiting_commitment_cancel_selection' as const,
         pending_commitment_edit: {
           available_commitments: commitments
+          // Explicitamente SEM field ou commitment_id
         }
       };
 
