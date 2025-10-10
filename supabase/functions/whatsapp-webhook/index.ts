@@ -933,11 +933,15 @@ const handler = async (req: Request): Promise<Response> => {
       // PHASE 1: Validação de contexto para áudio em modo de edição
       if (messageType === 'audio' && text) {
         try {
-          // Buscar sessão do usuário para verificar estado
+          // Buscar sessão com variações do número de telefone
+          const phoneVariations = from.startsWith('+') 
+            ? [from, from.substring(1)] 
+            : [from, '+' + from];
+          
           const { data: sessionData } = await supabase
             .from('whatsapp_sessions')
             .select('session_data')
-            .eq('phone_number', from)
+            .or(`phone_number.in.(${phoneVariations.map(p => `"${p}"`).join(',')})`)
             .gt('expires_at', new Date().toISOString())
             .order('last_activity', { ascending: false })
             .limit(1)
@@ -945,6 +949,7 @@ const handler = async (req: Request): Promise<Response> => {
 
           if (sessionData?.session_data) {
             const state = sessionData.session_data.conversation_state;
+            const pendingEdit = sessionData.session_data.pending_commitment_edit;
             const normalizedText = text.toLowerCase().trim();
             
             // Se está em modo de edição e a transcrição é o comando inicial, marcar como inválida
@@ -954,12 +959,13 @@ const handler = async (req: Request): Promise<Response> => {
                  normalizedText === 'editar')) {
               console.log('[AUDIO CONTEXT] ⚠️ Transcrição suspeita em modo de edição:', {
                 state,
+                field: pendingEdit?.field,
                 transcription: normalizedText.substring(0, 50),
                 phoneNumber: from.substring(0, 8) + '***'
               });
               
               // Marcar como contexto inválido para o agente processar apropriadamente
-              text = '__INVALID_AUDIO_CONTEXT__';
+              text = '__invalid_audio_context__';
             }
           }
         } catch (error) {

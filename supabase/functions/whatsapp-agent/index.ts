@@ -4016,7 +4016,7 @@ Se não especificar hora, use 09:00.`
     });
 
     // PHASE 3: Detectar contexto inválido de áudio
-    if (messageText === '__INVALID_AUDIO_CONTEXT__') {
+    if (messageText === '__invalid_audio_context__') {
       const fieldNames: Record<string, string> = {
         'date': 'data',
         'time': 'hora',
@@ -4048,6 +4048,39 @@ Se não especificar hora, use 09:00.`
       return {
         response: '❌ Erro ao processar edição.',
         sessionData: { ...sessionData, conversation_state: 'idle' }
+      };
+    }
+
+    // PHASE 2: Guard contra usuário enviar comando ao invés de valor
+    const normalizedInput = messageText.toLowerCase().trim();
+    const isCommandText = normalizedInput.includes('editar compromisso') || 
+                          normalizedInput.includes('editar evento') ||
+                          normalizedInput === 'editar';
+    
+    if (isCommandText && pendingEdit.field) {
+      console.log('[EDIT VALUE] User sent command instead of value, prompting for correct input');
+      
+      const fieldPrompts: Record<string, string> = {
+        'date': 'a data',
+        'time': 'a hora',
+        'title': 'o título',
+        'category': 'a categoria'
+      };
+      const fieldName = fieldPrompts[pendingEdit.field] || 'o valor';
+      
+      const getFieldExample = (field: string): string => {
+        const examples: Record<string, string> = {
+          'date': 'Exemplos:\n• 13/10/2025\n• 13/10\n• hoje\n• amanhã\n• dia 15\n• próxima segunda\n• semana que vem',
+          'time': 'Exemplos:\n• 14:30\n• 9h\n• 15:00',
+          'title': 'Digite o novo título do compromisso',
+          'category': 'Opções:\n• consulta\n• pagamento\n• reunião\n• lembrete\n• outro'
+        };
+        return examples[field] || '';
+      };
+      
+      return {
+        response: `Você já escolheu editar ${fieldName}. Por favor, informe ${fieldName} que deseja:\n\n${getFieldExample(pendingEdit.field)}`,
+        sessionData
       };
     }
 
