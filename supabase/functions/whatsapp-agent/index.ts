@@ -451,6 +451,60 @@ class DateParser {
       return `${year}-${month}-${day}`;
     }
     
+    // PHASE 2: Aceitar apenas número como dia do mês atual
+    if (/^\d{1,2}$/.test(normalizedText)) {
+      const day = parseInt(normalizedText, 10);
+      if (day >= 1 && day <= 31) {
+        const year = localTime.getUTCFullYear();
+        const month = localTime.getUTCMonth();
+        const date = new Date(Date.UTC(year, month, day));
+        const resultDate = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+        console.log('[DateParser] Parsed day number:', { input: normalizedText, result: resultDate });
+        return resultDate;
+      }
+    }
+    
+    // PHASE 2: Aceitar "dia X", "no dia X", "para dia X", "para o dia X"
+    const dayMatch = normalizedText.match(/(?:no\s+dia|para\s+o?\s+dia|dia)\s+(\d{1,2})/i);
+    if (dayMatch) {
+      const day = parseInt(dayMatch[1], 10);
+      if (day >= 1 && day <= 31) {
+        const year = localTime.getUTCFullYear();
+        const month = localTime.getUTCMonth();
+        const date = new Date(Date.UTC(year, month, day));
+        const resultDate = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+        console.log('[DateParser] Parsed "dia X":', { input: normalizedText, result: resultDate });
+        return resultDate;
+      }
+    }
+    
+    // PHASE 2: "próxima segunda", "próxima terça", etc
+    const weekdayMatch = normalizedText.match(/pr[oó]xim[ao]\s+(segunda|ter[cç]a|quarta|quinta|sexta|s[aá]bado|domingo)/i);
+    if (weekdayMatch) {
+      const weekdays: Record<string, number> = {
+        'segunda': 1, 'terca': 2, 'terça': 2,
+        'quarta': 3, 'quinta': 4, 'sexta': 5,
+        'sabado': 6, 'sábado': 6, 'domingo': 0
+      };
+      const targetDay = weekdays[weekdayMatch[1].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')];
+      const currentDay = localTime.getUTCDay();
+      let daysToAdd = targetDay - currentDay;
+      if (daysToAdd <= 0) daysToAdd += 7; // Próxima semana
+      
+      const targetDate = new Date(localTime.getTime() + (daysToAdd * 24 * 60 * 60 * 1000));
+      const resultDate = `${targetDate.getUTCFullYear()}-${String(targetDate.getUTCMonth() + 1).padStart(2, '0')}-${String(targetDate.getUTCDate()).padStart(2, '0')}`;
+      console.log('[DateParser] Parsed "próxima X":', { input: normalizedText, result: resultDate });
+      return resultDate;
+    }
+    
+    // PHASE 2: "semana que vem" - adicionar 7 dias
+    if (normalizedText.match(/semana\s+que\s+vem/i)) {
+      const nextWeek = new Date(localTime.getTime() + (7 * 24 * 60 * 60 * 1000));
+      const resultDate = `${nextWeek.getUTCFullYear()}-${String(nextWeek.getUTCMonth() + 1).padStart(2, '0')}-${String(nextWeek.getUTCDate()).padStart(2, '0')}`;
+      console.log('[DateParser] Parsed "semana que vem":', { result: resultDate });
+      return resultDate;
+    }
+    
     // Formatos DD/MM ou DD/MM/AAAA
     const dateMatch = normalizedText.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
     if (dateMatch) {
@@ -1301,7 +1355,7 @@ class WhatsAppAgent {
       return await this.handleCommitmentEditFieldSelection(session, messageText);
     }
 
-    // CRITICAL: Check if we're already in field input mode BEFORE checking for field selection
+    // PHASE 1: CRITICAL - Check if we're already in field input mode BEFORE checking for field selection
     if (sessionData.conversation_state === 'awaiting_commitment_edit_value' && sessionData.pending_commitment_edit?.field) {
       console.log('[EDIT VALUE INPUT] Processing value for field:', sessionData.pending_commitment_edit.field);
       return await this.handleCommitmentEditValueInput(session, messageText);
@@ -1309,7 +1363,7 @@ class WhatsAppAgent {
 
     if (sessionData.conversation_state === 'awaiting_commitment_edit_value' && sessionData.pending_commitment_edit) {
       const field = messageText.trim();
-      console.log('[EDIT FIELD SELECT] Processing field selection:', field);
+      console.log('[EDIT FIELD SELECT] User selecting field to edit:', field);
       
       // Opção 5: Cancelar o compromisso (não a edição)
       if (field === '5') {
@@ -1371,12 +1425,18 @@ class WhatsAppAgent {
         };
       }
 
-      const promptMap: Record<string, string> = {
-        'title': 'Digite o novo título:',
-        'date': 'Digite a nova data (DD/MM/AAAA ou "hoje", "amanhã"):',
-        'time': 'Digite o novo horário (HH:MM):',
-        'category': 'Digite a nova categoria (pagamento/reunião/consulta/outro):'
+      // PHASE 1: Helper para exemplos de formatação
+      const getFieldExample = (field: string): string => {
+        const examples: Record<string, string> = {
+          'date': '📅 Informe a nova data:\n\nExemplos:\n• 13/10/2025\n• 13/10\n• hoje\n• amanhã\n• dia 15\n• próxima segunda\n• semana que vem',
+          'time': '🕐 Informe a nova hora:\n\nExemplos:\n• 14:30\n• 9\n• 15:00\n• 8h30',
+          'title': '✏️ Informe o novo título:',
+          'category': '🏷️ Informe a nova categoria:\n\nOpções:\n• consulta\n• pagamento\n• reunião\n• lembrete\n• outro'
+        };
+        return examples[field] || '';
       };
+
+      const prompt = getFieldExample(selectedField);
 
       const updatedSessionData = {
         ...sessionData,
@@ -1386,14 +1446,14 @@ class WhatsAppAgent {
         }
       };
 
-      console.log('[EDIT FIELD SELECT] Selected field:', selectedField, 'Prompt:', promptMap[selectedField]);
+      console.log('[EDIT FIELD SELECT] Selected field:', selectedField, 'Prompt preview:', prompt.substring(0, 50));
 
       await SessionManager.updateSession(session.id, {
         session_data: updatedSessionData
       });
 
       return {
-        response: promptMap[selectedField],
+        response: prompt,
         sessionData: updatedSessionData
       };
     }
@@ -3946,8 +4006,42 @@ Se não especificar hora, use 09:00.`
     const sessionData = session.session_data || {};
     const pendingEdit = sessionData.pending_commitment_edit;
 
-    console.log('[EDIT VALUE INPUT] Starting value processing for field:', pendingEdit?.field);
-    console.log('[EDIT VALUE INPUT] New value:', messageText.trim());
+    // PHASE 1: Logs detalhados de estado
+    console.log('[EDIT VALUE] Session state:', {
+      conversation_state: sessionData.conversation_state,
+      field: pendingEdit?.field,
+      commitment_id: pendingEdit?.commitment_id,
+      has_original: !!pendingEdit?.original_commitment,
+      messageText: messageText.substring(0, 50)
+    });
+
+    // PHASE 3: Detectar contexto inválido de áudio
+    if (messageText === '__INVALID_AUDIO_CONTEXT__') {
+      const fieldNames: Record<string, string> = {
+        'date': 'data',
+        'time': 'hora',
+        'title': 'título',
+        'category': 'categoria'
+      };
+      const fieldName = fieldNames[pendingEdit?.field as keyof typeof fieldNames] || 'valor';
+      
+      console.log('[EDIT VALUE] Invalid audio context detected, requesting retry');
+      
+      // Helper para exemplos de formatação
+      const getFieldExample = (field: string): string => {
+        const examples: Record<string, string> = {
+          'date': 'Exemplos: 13/10/2025, 13/10, hoje, amanhã, dia 15, próxima segunda',
+          'time': 'Exemplos: 14:30, 9, 15:00',
+          'category': 'Opções: consulta, pagamento, reunião, lembrete, outro'
+        };
+        return examples[field] || '';
+      };
+      
+      return {
+        response: `🎙️ Desculpe, não consegui entender o áudio. Por favor, envie novamente a ${fieldName} que deseja.\n\n${getFieldExample(pendingEdit?.field)}`,
+        sessionData
+      };
+    }
 
     if (!pendingEdit?.commitment_id || !pendingEdit.field) {
       console.log('[EDIT VALUE INPUT] Missing commitment_id or field');
@@ -3973,11 +4067,11 @@ Se não especificar hora, use 09:00.`
       } else if (field === 'date') {
         console.log('[EDIT VALUE] Parsing date:', newValue);
         const parsedDate = DateParser.parseDate(newValue);
-        console.log('[EDIT VALUE] Parsed date result:', parsedDate);
+        console.log('[EDIT VALUE] Date parsing result:', { input: newValue, output: parsedDate });
         
         if (!parsedDate) {
           return {
-            response: '❌ Data inválida. Use formato DD/MM/AAAA ou "hoje", "amanhã".',
+            response: '❌ Data inválida.\n\nExemplos:\n• 13/10/2025\n• 13/10\n• hoje\n• amanhã\n• dia 15\n• próxima segunda\n• semana que vem',
             sessionData
           };
         }
@@ -3999,17 +4093,17 @@ Se não especificar hora, use 09:00.`
         
         if (!timeMatch) {
           return {
-            response: '❌ Hora inválida. Use formato HH:MM ou HH.',
+            response: '❌ Hora inválida.\n\nExemplos:\n• 14:30\n• 9\n• 15:00\n• 8h30',
             sessionData
           };
         }
         const hour = parseInt(timeMatch[1]);
         const minute = parseInt(timeMatch[2] || '0');
-        console.log('[EDIT VALUE] Parsed time:', { hour, minute });
+        console.log('[EDIT VALUE] Time parsing result:', { input: newValue, hours: hour, minutes: minute });
         
         if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
           return {
-            response: '❌ Hora inválida. Hora deve ser 0-23 e minutos 0-59.',
+            response: '❌ Hora inválida (0-23h e 0-59min).\n\nExemplos:\n• 14:30\n• 9\n• 15:00',
             sessionData
           };
         }
@@ -4028,19 +4122,23 @@ Se não especificar hora, use 09:00.`
       } else if (field === 'category') {
         console.log('[EDIT VALUE] Parsing category:', newValue);
         const normalized = newValue.toLowerCase();
+        // PHASE 2: expandido com mapeamentos diretos inglês-inglês
         const categoryMap: Record<string, string> = {
           'pagamento': 'payment',
+          'payment': 'payment',
           'reuniao': 'meeting',
           'reunião': 'meeting',
-          'consulta': 'appointment',
-          'outro': 'other',
-          'payment': 'payment',
           'meeting': 'meeting',
+          'consulta': 'appointment',
           'appointment': 'appointment',
+          'lembrete': 'reminder',
+          'reminder': 'reminder',
+          'outro': 'other',
+          'outros': 'other',
           'other': 'other'
         };
         updateData.category = categoryMap[normalized] || 'other';
-        console.log('[EDIT VALUE] Mapped category:', updateData.category);
+        console.log('[EDIT VALUE] Category parsing result:', { input: newValue, output: updateData.category });
       }
 
       console.log('[EDIT VALUE] Updating commitment with data:', updateData);

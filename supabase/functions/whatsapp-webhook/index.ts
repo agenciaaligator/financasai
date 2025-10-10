@@ -930,6 +930,44 @@ const handler = async (req: Request): Promise<Response> => {
         hasAudio: !!audioData 
       });
 
+      // PHASE 1: Validação de contexto para áudio em modo de edição
+      if (messageType === 'audio' && text) {
+        try {
+          // Buscar sessão do usuário para verificar estado
+          const { data: sessionData } = await supabase
+            .from('whatsapp_sessions')
+            .select('session_data')
+            .eq('phone_number', from)
+            .gt('expires_at', new Date().toISOString())
+            .order('last_activity', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (sessionData?.session_data) {
+            const state = sessionData.session_data.conversation_state;
+            const normalizedText = text.toLowerCase().trim();
+            
+            // Se está em modo de edição e a transcrição é o comando inicial, marcar como inválida
+            if (state === 'awaiting_commitment_edit_value' && 
+                (normalizedText.includes('editar compromisso') || 
+                 normalizedText.includes('editar evento') ||
+                 normalizedText === 'editar')) {
+              console.log('[AUDIO CONTEXT] ⚠️ Transcrição suspeita em modo de edição:', {
+                state,
+                transcription: normalizedText.substring(0, 50),
+                phoneNumber: from.substring(0, 8) + '***'
+              });
+              
+              // Marcar como contexto inválido para o agente processar apropriadamente
+              text = '__INVALID_AUDIO_CONTEXT__';
+            }
+          }
+        } catch (error) {
+          console.error('[AUDIO CONTEXT] Erro ao validar contexto:', error.message);
+          // Continuar normalmente em caso de erro
+        }
+      }
+
       try {
         console.log('🔵 Chamando whatsapp-agent...');
         
