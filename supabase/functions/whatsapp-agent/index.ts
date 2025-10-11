@@ -2553,10 +2553,134 @@ class WhatsAppAgent {
       }
     }
 
-    // Opção inválida
+    // Antes de retornar "opção inválida", tentar extrair horário do texto
+    const normalized = messageText
+      .normalize('NFD').replace(/\p{Diacritic}/gu, '')
+      .toLowerCase();
+
+    // Usar MESMO regex do QuickParse
+    const timeMatch = normalized.match(/\b(?:as|a)?\s*(\d{1,2})(?:(?::|h)(\d{2})\b|\s*(?:h|horas?))\b/);
+
+    if (timeMatch) {
+      const hour = Math.min(23, parseInt(timeMatch[1]));
+      const minute = Math.min(59, parseInt(timeMatch[2] || '0'));
+      
+      console.log(`🔄 Usuário redigitou horário: ${hour}:${minute}`);
+      
+      // Reconstruir scheduledISO com novo horário mas mesma data
+      const originalDate = new Date(pending.targetDate);
+      const y = originalDate.getUTCFullYear();
+      const m = originalDate.getUTCMonth();
+      const d = originalDate.getUTCDate();
+      const newScheduledISO = new Date(Date.UTC(y, m, d, hour + 3, minute)).toISOString();
+      
+      // Verificar conflito novamente
+      const { data: newConflicts } = await supabase
+        .from('commitments')
+        .select('id, title, scheduled_at, duration_minutes')
+        .eq('user_id', session.user_id!)
+        .gte('scheduled_at', new Date(Date.UTC(y, m, d, 0, 0)).toISOString())
+        .lte('scheduled_at', new Date(Date.UTC(y, m, d, 23, 59)).toISOString())
+        .order('scheduled_at');
+      
+      const hasNewConflict = newConflicts?.some(c => {
+        const cStart = new Date(c.scheduled_at);
+        const cEnd = new Date(cStart.getTime() + ((c.duration_minutes || 60) * 60000));
+        const newStart = new Date(newScheduledISO);
+        const newEnd = new Date(newStart.getTime() + 60 * 60000);
+        return (newStart < cEnd && newEnd > cStart);
+      });
+      
+      if (!hasNewConflict) {
+        // SEM CONFLITO! Inserir diretamente
+        const { data: inserted, error: insertError } = await supabase
+          .from('commitments')
+          .insert({
+            user_id: session.user_id!,
+            title: pending.title,
+            category: pending.category,
+            scheduled_at: newScheduledISO
+          })
+          .select()
+          .single();
+        
+        if (insertError || !inserted) {
+          console.error('❌ Erro ao inserir reagendamento:', insertError);
+          return {
+            response: '❌ Erro ao salvar. Tente novamente.',
+            sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment: undefined }
+          };
+        }
+        
+        const formattedDate = new Date(newScheduledISO).toLocaleString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'America/Sao_Paulo'
+        });
+        
+        return {
+          response: `✅ *Compromisso reagendado!*\n\n📌 ${pending.title}\n🗓️ ${formattedDate}`,
+          sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment: undefined }
+        };
+      } else {
+        // AINDA TEM CONFLITO - Mostrar novamente
+        const conflictList = newConflicts!
+          .filter(c => {
+            const cStart = new Date(c.scheduled_at);
+            const cEnd = new Date(cStart.getTime() + ((c.duration_minutes || 60) * 60000));
+            const newStart = new Date(newScheduledISO);
+            const newEnd = new Date(newStart.getTime() + 60 * 60000);
+            return (newStart < cEnd && newEnd > cStart);
+          })
+          .map(c => {
+            const time = new Date(c.scheduled_at).toLocaleTimeString('pt-BR', {
+              hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo'
+            });
+            return `• ${c.title} às ${time}`;
+          })
+          .join('\n');
+        
+        // Sugerir slots novos
+        const targetDate = new Date(newScheduledISO);
+        const availableSlots = await WhatsAppAgent.suggestAvailableSlots(session.user_id!, targetDate);
+        
+        let response = `❌ *Ainda há conflito às ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}*\n\n📅 Você já tem:\n${conflictList}`;
+        
+        if (availableSlots.length > 0) {
+          response += `\n\n⏰ *Horários disponíveis próximos:*`;
+          availableSlots.slice(0, 3).forEach((slot, idx) => {
+            response += `\n${idx + 1}️⃣ ${slot}`;
+          });
+          response += `\n\n${availableSlots.length + 1}️⃣ Digitar outro horário`;
+          response += `\n${availableSlots.length + 2}️⃣ Cancelar`;
+        } else {
+          response += `\n\n1️⃣ Digitar outro horário`;
+          response += `\n2️⃣ Cancelar`;
+        }
+        
+        response += `\n\n_Responda "forçar" se realmente deseja agendar no mesmo horário._`;
+        
+        return {
+          response,
+          sessionData: {
+            ...sessionData,
+            conversation_state: 'awaiting_commitment_resolution',
+            pending_commitment: {
+              ...pending,
+              scheduledISO: newScheduledISO,
+              suggestions: availableSlots.slice(0, 3)
+            }
+          }
+        };
+      }
+    }
+    
+    // Se chegou aqui, não é número, não é "forçar", e não tem horário válido
     const maxOption = numSuggestions + 2;
     return {
-      response: `❌ Opção inválida.\n\nDigite um número de 1 a ${maxOption}, ou "forçar" para duplo-agendamento.`,
+      response: `❌ *Não entendi sua resposta.*\n\n*Você pode:*\n• Digitar um número (1 a ${maxOption})\n• Digitar "forçar" para duplo-agendamento\n• Digitar um horário (ex: 14h, 15:30)\n• Digitar "cancelar" para desistir`,
       sessionData
     };
   }
