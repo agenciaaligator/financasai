@@ -2563,12 +2563,12 @@ class WhatsAppAgent {
       });
 
       // Antes de retornar "opção inválida", tentar extrair horário do texto
-      const normalized = messageText
+      const normalizedNoAccents = messageText
       .normalize('NFD').replace(/\p{Diacritic}/gu, '')
       .toLowerCase();
 
     // Usar MESMO regex do QuickParse
-    const timeMatch = normalized.match(/\b(?:as|a)?\s*(\d{1,2})(?:(?::|h)(\d{2})\b|\s*(?:h|horas?))\b/);
+    const timeMatch = normalizedNoAccents.match(/\b(?:as|a)?\s*(\d{1,2})(?:(?::|h)(\d{2})\b|\s*(?:h|horas?))\b/);
 
     if (timeMatch) {
       const hour = Math.min(23, parseInt(timeMatch[1]));
