@@ -2551,10 +2551,19 @@ class WhatsAppAgent {
           sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment: undefined }
         };
       }
-    }
+      }
 
-    // Antes de retornar "opção inválida", tentar extrair horário do texto
-    const normalized = messageText
+      // 🔍 DEBUG: Inspecionar pending_commitment
+      console.log('🔍 handleCommitmentResolution DEBUG:', {
+        hasPending: !!pending,
+        hasTargetDate: !!pending?.targetDate,
+        hasScheduledISO: !!pending?.scheduledISO,
+        targetDate: pending?.targetDate,
+        scheduledISO: pending?.scheduledISO
+      });
+
+      // Antes de retornar "opção inválida", tentar extrair horário do texto
+      const normalized = messageText
       .normalize('NFD').replace(/\p{Diacritic}/gu, '')
       .toLowerCase();
 
@@ -2567,8 +2576,19 @@ class WhatsAppAgent {
       
       console.log(`🔄 Usuário redigitou horário: ${hour}:${minute}`);
       
+      // ✅ Validação: usar scheduledISO como fallback se targetDate estiver undefined
+      const targetDateISO = pending.targetDate || pending.scheduledISO;
+
+      if (!targetDateISO) {
+        console.error('❌ CRITICAL: Nenhuma data disponível em pending_commitment');
+        return {
+          response: '❌ Erro ao processar reagendamento. Digite "agendar [título] [data] [hora]" novamente.',
+          sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment: undefined }
+        };
+      }
+      
       // Reconstruir scheduledISO com novo horário mas mesma data
-      const originalDate = new Date(pending.targetDate);
+      const originalDate = new Date(targetDateISO);
       const y = originalDate.getUTCFullYear();
       const m = originalDate.getUTCMonth();
       const d = originalDate.getUTCDate();
@@ -3560,6 +3580,7 @@ class WhatsAppAgent {
                 title: title.charAt(0).toUpperCase() + title.slice(1),
                 category,
                 scheduledISO,
+                targetDate: scheduledISO, // ✅ ADICIONAR: salvar targetDate para reagendamentos
                 suggestions: suggestionTimes
               }
             }
