@@ -2417,18 +2417,40 @@ class WhatsAppAgent {
   static async handleCommitmentResolution(session: Session, messageText: string): Promise<{ response: string, sessionData: SessionData }> {
     const sessionData = session.session_data || {};
     const pending = sessionData.pending_commitment!;
-    const choice = messageText.trim();
+    const normalized = messageText.trim().toLowerCase();
 
-    console.log('🔧 Resolvendo conflito de compromisso:', { choice, pending });
+    console.log('🔧 Resolvendo conflito de compromisso:', { input: messageText, normalized, pending });
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Cancelar
-    const maxOption = 2 + (pending.suggestions?.length || 0);
-    if (choice === String(maxOption)) {
+    const numSuggestions = pending.suggestions?.length || 0;
+    
+    // SE digitar "forçar", permitir duplo-agendamento
+    if (/^(forçar|forcar|força|forca|sim)$/i.test(normalized)) {
+      const { error: insertErr } = await supabase.from('commitments').insert({
+        user_id: session.user_id,
+        title: pending.title,
+        description: null,
+        scheduled_at: pending.scheduledISO,
+        category: pending.category
+      });
+
+      if (insertErr) {
+        console.error('❌ Erro ao inserir compromisso:', insertErr);
+        return {
+          response: '❌ Erro ao agendar. Tente novamente.',
+          sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment: undefined }
+        };
+      }
+
+      const formattedDate = new Date(pending.scheduledISO).toLocaleDateString('pt-BR', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo'
+      });
+
       await SessionManager.updateSession(session.id, {
         session_data: {
           ...sessionData,
@@ -2438,64 +2460,104 @@ class WhatsAppAgent {
       });
 
       return {
-        response: '❌ Agendamento cancelado.',
+        response: `⚠️ *Agendado com sobreposição*\n\n📌 ${pending.title}\n🗓️ ${formattedDate}\n\n⚡ Você terá compromissos simultâneos neste horário!`,
         sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment: undefined }
       };
     }
 
-    let finalISO = pending.scheduledISO;
-    
-    // Opção 1: manter no horário original (duplo-agendamento)
-    if (choice === '1') {
-      finalISO = pending.scheduledISO;
-    } 
-    // Opção 2 ou 3: remarcar
-    else if (choice === '2' && pending.suggestions && pending.suggestions[0]) {
-      finalISO = pending.suggestions[0];
-    } 
-    else if (choice === '3' && pending.suggestions && pending.suggestions[1]) {
-      finalISO = pending.suggestions[1];
-    } 
-    else {
-      return {
-        response: `❌ Opção inválida.\n\nDigite 1, 2, ${pending.suggestions?.length === 2 ? '3,' : ''} ${maxOption}`,
-        sessionData
-      };
-    }
+    // SE escolher número
+    if (/^[1-9]$/.test(messageText.trim())) {
+      const choice = parseInt(messageText.trim());
+      
+      // Escolheu um slot sugerido (1, 2 ou 3)
+      if (choice >= 1 && choice <= numSuggestions) {
+        const newScheduledISO = pending.suggestions![choice - 1];
+        
+        const { error: insertErr } = await supabase.from('commitments').insert({
+          user_id: session.user_id,
+          title: pending.title,
+          description: null,
+          scheduled_at: newScheduledISO,
+          category: pending.category
+        });
 
-    // Inserir o compromisso
-    const { error: insertErr } = await supabase.from('commitments').insert({
-      user_id: session.user_id,
-      title: pending.title,
-      description: null,
-      scheduled_at: finalISO,
-      category: pending.category
-    });
+        if (insertErr) {
+          console.error('❌ Erro ao inserir compromisso:', insertErr);
+          return {
+            response: '❌ Erro ao agendar. Tente novamente.',
+            sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment: undefined }
+          };
+        }
 
-    if (insertErr) {
-      console.error('❌ Erro ao inserir compromisso:', insertErr);
-      return {
-        response: '❌ Erro ao agendar. Tente novamente.',
-        sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment: undefined }
-      };
-    }
+        const formattedDate = new Date(newScheduledISO).toLocaleDateString('pt-BR', {
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+          hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo'
+        });
 
-    const formattedDate = new Date(finalISO).toLocaleDateString('pt-BR', {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-      hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo'
-    });
+        await SessionManager.updateSession(session.id, {
+          session_data: {
+            ...sessionData,
+            conversation_state: 'idle',
+            pending_commitment: undefined
+          }
+        });
 
-    await SessionManager.updateSession(session.id, {
-      session_data: {
-        ...sessionData,
-        conversation_state: 'idle',
-        pending_commitment: undefined
+        return {
+          response: `✅ *Compromisso agendado!*\n\n📌 ${pending.title}\n🗓️ ${formattedDate}`,
+          sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment: undefined }
+        };
       }
-    });
+      
+      // "Digitar outro horário"
+      else if (choice === numSuggestions + 1) {
+        await SessionManager.updateSession(session.id, {
+          session_data: {
+            ...sessionData,
+            conversation_state: 'awaiting_commitment_time',
+            pending_commitment: {
+              title: pending.title,
+              category: pending.category,
+              targetDate: pending.scheduledISO // Manter data original
+            }
+          }
+        });
+        
+        return {
+          response: '⏰ Digite o horário desejado (ex: 14h, 15:30):',
+          sessionData: {
+            ...sessionData,
+            conversation_state: 'awaiting_commitment_time',
+            pending_commitment: {
+              title: pending.title,
+              category: pending.category,
+              targetDate: pending.scheduledISO
+            }
+          }
+        };
+      }
+      
+      // "Cancelar"
+      else if (choice === numSuggestions + 2) {
+        await SessionManager.updateSession(session.id, {
+          session_data: {
+            ...sessionData,
+            conversation_state: 'idle',
+            pending_commitment: undefined
+          }
+        });
 
+        return {
+          response: '❌ Agendamento cancelado.',
+          sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment: undefined }
+        };
+      }
+    }
+
+    // Opção inválida
+    const maxOption = numSuggestions + 2;
     return {
-      response: `✅ *Compromisso agendado!*\n\n📌 ${pending.title}\n🗓️ ${formattedDate}`,
-      sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment: undefined }
+      response: `❌ Opção inválida.\n\nDigite um número de 1 a ${maxOption}, ou "forçar" para duplo-agendamento.`,
+      sessionData
     };
   }
 
@@ -3307,32 +3369,33 @@ class WhatsAppAgent {
           .order('scheduled_at');
 
         if (conflicts && conflicts.length > 0) {
-          console.log('⚠️ CONFLITO DETECTADO:', conflicts);
+          console.log('⚠️ CONFLITO DETECTADO:', {
+            requestedTitle: title,
+            requestedTime: scheduledISO,
+            existingConflicts: conflicts.map(c => ({ title: c.title, time: c.scheduled_at }))
+          });
           
-          // Sugerir alternativas (+15min e +60min)
+          // Usar suggestAvailableSlots para sugerir horários realmente livres
+          const targetDate = new Date(scheduledISO);
+          const availableSlots = await WhatsAppAgent.suggestAvailableSlots(userId, targetDate);
+          
           const suggestions: string[] = [];
           const suggestionTimes: string[] = [];
           
-          for (const offset of [15, 60]) {
-            const altTime = new Date(Date.parse(scheduledISO) + offset * 60 * 1000);
-            const altISO = altTime.toISOString();
+          // Pegar até 3 slots disponíveis próximos ao horário solicitado
+          for (const slot of availableSlots.slice(0, 3)) {
+            const [slotHour, slotMinute] = slot.split(':').map(Number);
+            const y = targetDate.getUTCFullYear();
+            const m = targetDate.getUTCMonth();
+            const d = targetDate.getUTCDate();
+            // Ajustar para UTC (São Paulo = UTC-3)
+            const slotISO = new Date(Date.UTC(y, m, d, slotHour + 3, slotMinute)).toISOString();
             
-            // Verificar se essa alternativa está livre
-            const { data: altConflicts } = await supabase
-              .from('commitments')
-              .select('id')
-              .eq('user_id', userId)
-              .gte('scheduled_at', new Date(Date.parse(altISO) - 60*60*1000).toISOString())
-              .lte('scheduled_at', new Date(Date.parse(altISO) + 60*60*1000).toISOString());
-            
-            if (!altConflicts || altConflicts.length === 0) {
-              const formatted = altTime.toLocaleTimeString('pt-BR', {
-                hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo'
-              });
-              suggestions.push(formatted);
-              suggestionTimes.push(altISO);
-            }
+            suggestions.push(slot);
+            suggestionTimes.push(slotISO);
           }
+          
+          console.log('💡 Sugestões de horários disponíveis:', suggestions);
           
           // Montar lista de conflitos
           const conflictList = conflicts.map(c => {
@@ -3342,16 +3405,27 @@ class WhatsAppAgent {
             return `• ${c.title} às ${time}`;
           }).join('\n');
           
-          // Montar opções
-          let optionsText = `⚠️ *Conflito de horário*\n\n📅 Já existe(m):\n${conflictList}\n\n*O que deseja fazer?*\n\n1️⃣ Manter este também (duplo-agendamento)`;
+          // Formatar horário solicitado
+          const requestedTime = new Date(scheduledISO).toLocaleTimeString('pt-BR', {
+            hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo'
+          });
+          
+          // Montar mensagem com foco em horários disponíveis
+          let optionsText = `❌ *Não posso agendar "${title}" às ${requestedTime}*\n\n📅 Você já tem:\n${conflictList}`;
           
           if (suggestions.length > 0) {
+            optionsText += `\n\n⏰ *Horários disponíveis próximos:*`;
             suggestions.forEach((sug, idx) => {
-              optionsText += `\n${idx + 2}️⃣ Remarcar para ${sug}`;
+              optionsText += `\n${idx + 1}️⃣ ${sug}`;
             });
+            optionsText += `\n\n${suggestions.length + 1}️⃣ Digitar outro horário`;
+            optionsText += `\n${suggestions.length + 2}️⃣ Cancelar`;
+            optionsText += `\n\n_Responda "forçar" se realmente deseja agendar no mesmo horário._`;
+          } else {
+            optionsText += `\n\n1️⃣ Digitar outro horário`;
+            optionsText += `\n2️⃣ Cancelar`;
+            optionsText += `\n\n_Responda "forçar" se realmente deseja agendar no mesmo horário._`;
           }
-          
-          optionsText += `\n${suggestions.length + 2}️⃣ Cancelar`;
           
           // Guardar estado na sessão
           return {
