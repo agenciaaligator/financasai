@@ -2425,6 +2425,29 @@ class WhatsAppAgent {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
+    
+    // 🚫 Se o usuário digitar "cancelar", encerrar fluxo
+    if (/^cancel(ar)?$/i.test(normalized)) {
+      await SessionManager.updateSession(session.id, {
+        session_data: {
+          ...sessionData,
+          conversation_state: 'idle',
+          pending_commitment: undefined
+        }
+      });
+      
+      return {
+        response: '❌ Agendamento cancelado.',
+        sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment: undefined }
+      };
+    }
+    
+    // 🔄 Detectar se o usuário está iniciando um NOVO agendamento
+    const startsNewScheduling = /\b(agend|marc|cadastr|compromisso|reuni[aã]o|consulta|evento)\b/i.test(normalized);
+    if (startsNewScheduling) {
+      console.log('🔄 Novo comando de agendamento detectado durante resolução de conflito. Reiniciando fluxo.');
+      return await this.addCommitment(session.user_id!, messageText);
+    }
 
     const numSuggestions = pending.suggestions?.length || 0;
     
@@ -4209,6 +4232,13 @@ Se não especificar hora, retorne scheduled_at: null.`
     
     // Extrair horário da resposta
     const normalized = messageText.toLowerCase().trim();
+    
+    // 🔄 Detectar se o usuário está iniciando um NOVO agendamento
+    const startsNewScheduling = /\b(agend|marc|cadastr|compromisso|reuni[aã]o|consulta|evento)\b/i.test(normalized);
+    if (startsNewScheduling) {
+      console.log('🔄 Novo comando de agendamento detectado durante entrada de horário. Reiniciando fluxo.');
+      return await this.addCommitment(session.user_id!, messageText);
+    }
     const timeMatch = normalized.match(/\b(\d{1,2})(?::(\d{2}))?\s*(?:h|horas?)?/);
     
     if (!timeMatch) {
