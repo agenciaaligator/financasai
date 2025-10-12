@@ -1174,6 +1174,100 @@ class PersonalizedResponses {
       return `Boa noite, ${name}! 🌙`;
     }
   }
+
+  /**
+   * Gera mensagem personalizada para compromisso agendado
+   */
+  static generateCommitmentSuccessMessage(
+    userName: string | undefined,
+    pending: {
+      title: string;
+      category: string;
+      scheduledISO: string;
+      location?: string;
+      specialty?: string;
+      company?: string;
+      contactName?: string;
+      contactPhone?: string;
+      participants?: string;
+    }
+  ): string {
+    const firstName = userName ? userName.split(' ')[0] : 'você';
+    
+    const scheduledDate = new Date(pending.scheduledISO);
+    const formattedDate = scheduledDate.toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      timeZone: 'America/Sao_Paulo'
+    });
+    const formattedTime = scheduledDate.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'America/Sao_Paulo'
+    });
+    
+    let templates: string[] = [];
+    
+    // Selecionar templates baseado na categoria
+    switch (pending.category) {
+      case 'appointment':
+        templates = [
+          `✅ Pronto, ${firstName}! Sua consulta no *${pending.title}* está agendada para ${formattedDate} às ${formattedTime}! 🩺\n\n${pending.specialty ? `📋 Especialidade: ${pending.specialty}\n` : ''}📍 Local: ${pending.location}\n\n💚 Cuidar da saúde é sempre importante! Vou te lembrar com antecedência. 😉`,
+          
+          `🩺 Agendado com sucesso, ${firstName}!\n\n📌 ${pending.title}\n🗓️ ${formattedDate} às ${formattedTime}\n${pending.specialty ? `🏥 ${pending.specialty}\n` : ''}📍 ${pending.location}\n\n💡 *Dica:* Chegue 10 minutos antes para evitar atrasos! ⏰`,
+          
+          `Feito! ✅ ${firstName}, seu *${pending.title}* está marcado!\n\n📅 ${formattedDate}\n⏰ ${formattedTime}\n📍 ${pending.location}\n\n💪 Saúde em primeiro lugar! Você vai receber um lembrete antes da consulta.`
+        ];
+        break;
+        
+      case 'meeting':
+        templates = [
+          `🤝 Reunião agendada, ${firstName}!\n\n📌 ${pending.title}\n${pending.company ? `🏢 ${pending.company}\n` : ''}🗓️ ${formattedDate} às ${formattedTime}\n📍 ${pending.location}\n${pending.contactName ? `👤 Contato: ${pending.contactName}${pending.contactPhone ? ` - ${pending.contactPhone}` : ''}\n` : ''}\n💼 Sucesso na reunião! Vai dar tudo certo! 🚀`,
+          
+          `✅ Pronto, ${firstName}! Reunião confirmada${pending.company ? ` com ${pending.company}` : ''}!\n\n📅 ${formattedDate}\n⏰ ${formattedTime}\n📍 ${pending.location}\n${pending.contactName ? `👤 ${pending.contactName}${pending.contactPhone ? ` - ${pending.contactPhone}` : ''}\n` : ''}\n💡 Chegue preparado e pontual! 😉`,
+          
+          `🎯 Tudo certo! Sua reunião está agendada, ${firstName}!\n\n${pending.company ? `🏢 ${pending.company}\n` : ''}🗓️ ${formattedDate} às ${formattedTime}\n📍 ${pending.location}\n\n🚀 Bora fechar esse negócio! Boa sorte! 💪`
+        ];
+        break;
+        
+      case 'payment':
+        templates = [
+          `💳 Lembrete de pagamento agendado, ${firstName}!\n\n📌 ${pending.title}\n🗓️ ${formattedDate} às ${formattedTime}\n\n⚠️ Não esquece de pagar em dia para evitar juros! 💰`,
+          
+          `✅ Ok! Vou te lembrar de pagar *${pending.title}* no dia ${formattedDate}! 💳\n\n📍 ${pending.location || 'Pagar online ou no local'}\n\n💡 Organize-se com antecedência! 😉`,
+          
+          `💰 Compromisso financeiro anotado, ${firstName}!\n\n📌 ${pending.title}\n🗓️ ${formattedDate}\n\n🔔 Você vai receber um lembrete antes do vencimento! Fique tranquilo. ✅`
+        ];
+        break;
+        
+      case 'other':
+      default:
+        // Detectar esportes/eventos pelo título
+        const isSport = /futeb|basquet|voley|nata[çc][aã]o|corrida|academia|treino|esporte/i.test(pending.title);
+        
+        if (isSport) {
+          templates = [
+            `⚽ Show! ${firstName}, ${pending.title} agendado!\n\n🗓️ ${formattedDate} às ${formattedTime}\n📍 ${pending.location}\n${pending.participants ? `👥 Com: ${pending.participants}\n` : ''}\n🔥 Vai ser massa! Até lá! 🎉`,
+            
+            `🎉 Beleza! ${pending.title} marcado, ${firstName}!\n\n📅 ${formattedDate}\n⏰ ${formattedTime}\n📍 ${pending.location}\n${pending.participants ? `👥 Galera confirmada: ${pending.participants}\n` : ''}\n💪 Aproveita! Diversão é importante também! 😎`,
+            
+            `✅ Tá marcado! ${firstName}, não esquece:\n\n📌 ${pending.title}\n🗓️ ${formattedDate} às ${formattedTime}\n📍 ${pending.location}\n${pending.participants ? `👥 ${pending.participants}\n` : ''}\n🚀 Vai ser dahora! Te vejo lá! 🤙`
+          ];
+        } else {
+          templates = [
+            `✅ Agendado, ${firstName}!\n\n📌 ${pending.title}\n🗓️ ${formattedDate} às ${formattedTime}\n📍 ${pending.location}\n\n🔔 Vou te lembrar antes! 😉`,
+            
+            `Pronto! ${firstName}, *${pending.title}* está no seu calendário! 🗓️\n\n📅 ${formattedDate}\n⏰ ${formattedTime}\n📍 ${pending.location}\n\n✅ Tudo certo!`
+          ];
+        }
+        break;
+    }
+    
+    // Escolher template aleatório
+    const randomIndex = Math.floor(Math.random() * templates.length);
+    return templates[randomIndex];
+  }
 }
 
 class CategoryMatcher {
@@ -2675,7 +2769,7 @@ class WhatsAppAgent {
         
         // Sugerir slots novos
         const targetDate = new Date(newScheduledISO);
-        const availableSlots = await WhatsAppAgent.suggestAvailableSlots(session.user_id!, targetDate);
+        const availableSlots = await WhatsAppAgent.suggestAvailableSlots(session.user_id!, targetDate, hour);
         
         let response = `❌ *Ainda há conflito às ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}*\n\n📅 Você já tem:\n${conflictList}`;
         
@@ -3532,7 +3626,8 @@ class WhatsAppAgent {
           
           // Usar suggestAvailableSlots para sugerir horários realmente livres
           const targetDate = new Date(scheduledISO);
-          const availableSlots = await WhatsAppAgent.suggestAvailableSlots(userId, targetDate);
+          const requestedHour = targetDate.getHours();
+          const availableSlots = await WhatsAppAgent.suggestAvailableSlots(userId, targetDate, requestedHour);
           
           const suggestions: string[] = [];
           const suggestionTimes: string[] = [];
@@ -4398,6 +4493,15 @@ Se não especificar hora, retorne scheduled_at: null.`
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
       );
       
+      // Buscar nome do usuário para personalização
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('user_id', session.user_id)
+        .single();
+
+      const userName = profile?.full_name || undefined;
+      
       // Montar description com todos os detalhes
       let description = '';
       if (pending.location) description += `Local: ${pending.location}\n`;
@@ -4435,21 +4539,11 @@ Se não especificar hora, retorne scheduled_at: null.`
       
       console.log('✅ Compromisso salvo:', commitment);
       
-      // Formatar resposta de sucesso
-      const scheduledDate = new Date(pending.scheduledISO);
-      const formattedDateTime = scheduledDate.toLocaleDateString('pt-BR', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZone: 'America/Sao_Paulo'
-      });
-      
-      let successMsg = `✅ *Compromisso agendado com sucesso!*\n\n`;
-      successMsg += `📌 ${pending.title}\n`;
-      successMsg += `🗓️ ${formattedDateTime}\n`;
-      if (pending.location) successMsg += `📍 ${pending.location}`;
+      // Gerar mensagem personalizada ✨
+      const successMsg = PersonalizedResponses.generateCommitmentSuccessMessage(
+        userName,
+        pending
+      );
       
       // Limpar estado
       await SessionManager.updateSession(session.id, {
@@ -4666,7 +4760,8 @@ Se não especificar hora, retorne scheduled_at: null.`
 
   static async suggestAvailableSlots(
     userId: string,
-    targetDate: Date
+    targetDate: Date,
+    requestedHour?: number
   ): Promise<string[]> {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -4729,7 +4824,18 @@ Se não especificar hora, retorne scheduled_at: null.`
       currentHour++;
     }
     
-    return slots.slice(0, 5); // Máximo 5 sugestões
+    // Ordenar por proximidade ao horário solicitado
+    if (requestedHour !== undefined) {
+      slots.sort((a, b) => {
+        const hourA = parseInt(a.split(':')[0]);
+        const hourB = parseInt(b.split(':')[0]);
+        const distA = Math.abs(hourA - requestedHour);
+        const distB = Math.abs(hourB - requestedHour);
+        return distA - distB;
+      });
+    }
+    
+    return slots.slice(0, 5); // Máximo 5 sugestões (os mais próximos)
   }
 
   static async handleCommitmentEditFieldSelection(session: Session, messageText: string): Promise<{ response: string, sessionData: SessionData }> {
