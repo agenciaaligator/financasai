@@ -2560,38 +2560,27 @@ class WhatsAppAgent {
     
     // SE digitar "forçar", permitir duplo-agendamento
     if (/^(forçar|forcar|força|forca|sim)$/i.test(normalized)) {
-      const { error: insertErr } = await supabase.from('commitments').insert({
-        user_id: session.user_id,
-        title: pending.title,
-        description: null,
-        scheduled_at: pending.scheduledISO,
-        category: pending.category
-      });
-
-      if (insertErr) {
-        console.error('❌ Erro ao inserir compromisso:', insertErr);
-        return {
-          response: '❌ Erro ao agendar. Tente novamente.',
-          sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment: undefined }
-        };
-      }
-
-      const formattedDate = new Date(pending.scheduledISO).toLocaleDateString('pt-BR', {
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-        hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo'
-      });
-
+      console.log('⚠️ Forçando agendamento com conflito. Iniciando coleta de detalhes...');
+      
+      // ✨ FASE 2: Em vez de inserir direto, iniciar coleta de detalhes
+      pending.detailsStep = 'location';
+      pending.forcedBooking = true; // Flag para indicar que foi forçado
+      
       await SessionManager.updateSession(session.id, {
         session_data: {
           ...sessionData,
-          conversation_state: 'idle',
-          pending_commitment: undefined
+          conversation_state: 'awaiting_commitment_details',
+          pending_commitment: pending
         }
       });
 
       return {
-        response: `⚠️ *Agendado com sobreposição*\n\n📌 ${pending.title}\n🗓️ ${formattedDate}\n\n⚡ Você terá compromissos simultâneos neste horário!`,
-        sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment: undefined }
+        response: '⚠️ Ok, vou agendar mesmo com conflito.\n\n📍 Qual o endereço ou local do compromisso?',
+        sessionData: {
+          ...sessionData,
+          conversation_state: 'awaiting_commitment_details',
+          pending_commitment: pending
+        }
       };
     }
 
