@@ -40,7 +40,7 @@ interface SessionData {
   authenticated?: boolean;
   last_command?: string | null;
   context?: any;
-  conversation_state?: 'idle' | 'waiting_date' | 'waiting_confirmation' | 'awaiting_category' | 'confirming_ocr' | 'awaiting_delete_confirmation' | 'awaiting_edit_field' | 'awaiting_edit_value' | 'awaiting_commitment_resolution' | 'awaiting_commitment_edit_field' | 'awaiting_commitment_edit_value' | 'awaiting_commitment_cancel_selection' | 'awaiting_commitment_time' | 'awaiting_commitment_details';
+  conversation_state?: 'idle' | 'waiting_date' | 'waiting_confirmation' | 'awaiting_category' | 'confirming_ocr' | 'awaiting_delete_confirmation' | 'awaiting_edit_field' | 'awaiting_edit_value' | 'awaiting_commitment_resolution' | 'awaiting_commitment_edit_field' | 'awaiting_commitment_edit_value' | 'awaiting_commitment_cancel_selection' | 'awaiting_commitment_time' | 'awaiting_commitment_details' | 'awaiting_commitment_confirmation';
   pending_transaction?: Partial<Transaction>;
   pending_ocr_data?: {
     amount: number;
@@ -68,6 +68,14 @@ interface SessionData {
     suggested_slots?: string[];
     commitment_id?: string;
     detail_type?: 'participants' | 'location';
+    // ✨ Novos campos para coleta de informações contextuais
+    location?: string;
+    specialty?: string;
+    company?: string;
+    contactName?: string;
+    contactPhone?: string;
+    participants?: string;
+    detailsStep?: 'location' | 'specialty' | 'company' | 'contact' | 'participants' | 'completed';
   };
   pending_commitment_edit?: {
     commitment_id?: string;
@@ -1354,9 +1362,14 @@ class WhatsAppAgent {
       return await this.handleCommitmentTimeInput(session, messageText);
     }
 
-    // PRIORIDADE 0.92: Input de detalhes adicionais (local, participantes)
+    // PRIORIDADE 0.92: Input de detalhes adicionais (FASE 2)
     if (sessionData.conversation_state === 'awaiting_commitment_details' && sessionData.pending_commitment) {
       return await this.handleCommitmentDetailsInput(session, messageText);
+    }
+
+    // PRIORIDADE 0.925: Confirmação final (FASE 3)
+    if (sessionData.conversation_state === 'awaiting_commitment_confirmation' && sessionData.pending_commitment) {
+      return await this.handleCommitmentConfirmation(session, messageText);
     }
 
     // PRIORIDADE 0.93: Resolução de conflito de agenda
@@ -2442,8 +2455,8 @@ class WhatsAppAgent {
       };
     }
     
-    // 🔄 Detectar se o usuário está iniciando um NOVO agendamento
-    const startsNewScheduling = /\b(agend|marc|cadastr|compromisso|reuni[aã]o|consulta|evento)\b/i.test(normalized);
+    // 🔄 FASE 1: Detectar se o usuário está iniciando um NOVO agendamento (regex CORRIGIDA)
+    const startsNewScheduling = /\b(agendar|marcar|cadastrar)\s+\w+/i.test(normalized);
     if (startsNewScheduling) {
       console.log('🔄 Novo comando de agendamento detectado durante resolução de conflito. Reiniciando fluxo.');
       return await this.addCommitment(session.user_id!, messageText);
@@ -2496,38 +2509,25 @@ class WhatsAppAgent {
       if (choice >= 1 && choice <= numSuggestions) {
         const newScheduledISO = pending.suggestions![choice - 1];
         
-        const { error: insertErr } = await supabase.from('commitments').insert({
-          user_id: session.user_id,
-          title: pending.title,
-          description: null,
-          scheduled_at: newScheduledISO,
-          category: pending.category
-        });
-
-        if (insertErr) {
-          console.error('❌ Erro ao inserir compromisso:', insertErr);
-          return {
-            response: '❌ Erro ao agendar. Tente novamente.',
-            sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment: undefined }
-          };
-        }
-
-        const formattedDate = new Date(newScheduledISO).toLocaleDateString('pt-BR', {
-          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-          hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo'
-        });
-
+        // ✨ FASE 2: Em vez de inserir direto, iniciar coleta de detalhes
+        pending.scheduledISO = newScheduledISO;
+        pending.detailsStep = 'location';
+        
         await SessionManager.updateSession(session.id, {
           session_data: {
             ...sessionData,
-            conversation_state: 'idle',
-            pending_commitment: undefined
+            conversation_state: 'awaiting_commitment_details',
+            pending_commitment: pending
           }
         });
 
         return {
-          response: `✅ *Compromisso agendado!*\n\n📌 ${pending.title}\n🗓️ ${formattedDate}`,
-          sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment: undefined }
+          response: '📍 Qual o endereço ou local do compromisso?',
+          sessionData: {
+            ...sessionData,
+            conversation_state: 'awaiting_commitment_details',
+            pending_commitment: pending
+          }
         };
       }
       
@@ -2635,37 +2635,25 @@ class WhatsAppAgent {
       });
       
       if (!hasNewConflict) {
-        // SEM CONFLITO! Inserir diretamente
-        const { data: inserted, error: insertError } = await supabase
-          .from('commitments')
-          .insert({
-            user_id: session.user_id!,
-            title: pending.title,
-            category: pending.category,
-            scheduled_at: newScheduledISO
-          })
-          .select()
-          .single();
+        // ✨ FASE 2: SEM CONFLITO! Em vez de inserir direto, iniciar coleta de detalhes
+        pending.scheduledISO = newScheduledISO;
+        pending.detailsStep = 'location';
         
-        if (insertError || !inserted) {
-          console.error('❌ Erro ao inserir reagendamento:', insertError);
-          return {
-            response: '❌ Erro ao salvar. Tente novamente.',
-            sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment: undefined }
-          };
-        }
-        
-        const formattedDate = new Date(newScheduledISO).toLocaleString('pt-BR', {
-          day: '2-digit',
-          month: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          timeZone: 'America/Sao_Paulo'
+        await SessionManager.updateSession(session.id, {
+          session_data: {
+            ...sessionData,
+            conversation_state: 'awaiting_commitment_details',
+            pending_commitment: pending
+          }
         });
         
         return {
-          response: `✅ *Compromisso reagendado!*\n\n📌 ${pending.title}\n🗓️ ${formattedDate}`,
-          sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment: undefined }
+          response: '📍 Qual o endereço ou local do compromisso?',
+          sessionData: {
+            ...sessionData,
+            conversation_state: 'awaiting_commitment_details',
+            pending_commitment: pending
+          }
         };
       } else {
         // AINDA TEM CONFLITO - Mostrar novamente
@@ -3610,27 +3598,22 @@ class WhatsAppAgent {
           };
         }
         
-        // SEM CONFLITO: Inserir diretamente
-        const { error: insertErr } = await supabase.from('commitments').insert({
-          user_id: userId,
+        // ✨ FASE 2: SEM CONFLITO! Em vez de inserir direto, iniciar coleta de detalhes
+        const pending = {
           title: title.charAt(0).toUpperCase() + title.slice(1),
-          description: null,
-          scheduled_at: scheduledISO,
-          category: category
-        });
+          category: category,
+          scheduledISO: scheduledISO,
+          targetDate: scheduledISO,
+          detailsStep: 'location' as const
+        };
         
-        if (!insertErr) {
-          const formattedDate = new Date(scheduledISO).toLocaleDateString('pt-BR', {
-            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-            hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo'
-          });
-          return {
-            response: `✅ *Compromisso agendado!*\n\n📌 ${title}\n🗓️ ${formattedDate}`,
-            sessionData: {}
-          };
-        } else {
-          console.warn('⚠️ QuickParse insert error, continuará com IA:', insertErr.message);
-        }
+        return {
+          response: '📍 Qual o endereço ou local do compromisso?',
+          sessionData: {
+            conversation_state: 'awaiting_commitment_details' as const,
+            pending_commitment: pending
+          }
+        };
       }
 
       // 2) Fallback: usar IA para extrair título e data da mensagem
@@ -4217,6 +4200,283 @@ Se não especificar hora, retorne scheduled_at: null.`
     }
   }
 
+  // ✨ FASE 2: Coletar informações contextuais (local, especialidade, empresa, contato, participantes)
+  static async handleCommitmentDetailsInput(
+    session: Session, 
+    messageText: string
+  ): Promise<{ response: string, sessionData: SessionData }> {
+    
+    const sessionData = session.session_data || {};
+    const pending = sessionData.pending_commitment!;
+    const currentStep = pending.detailsStep;
+    
+    console.log('📝 Coletando detalhe:', { step: currentStep, input: messageText });
+    
+    // Atualizar campo correspondente ao step atual
+    switch(currentStep) {
+      case 'location':
+        pending.location = messageText.trim();
+        
+        // Decidir próximo passo baseado na categoria
+        if (pending.category === 'appointment') {
+          pending.detailsStep = 'specialty';
+          await SessionManager.updateSession(session.id, {
+            session_data: { ...sessionData, pending_commitment: pending }
+          });
+          return {
+            response: '🩺 Qual a especialidade médica?\n(Ex: Dentista, Cardiologista, Oftalmologista)',
+            sessionData: { ...sessionData, pending_commitment: pending }
+          };
+        } else if (pending.category === 'meeting') {
+          pending.detailsStep = 'company';
+          await SessionManager.updateSession(session.id, {
+            session_data: { ...sessionData, pending_commitment: pending }
+          });
+          return {
+            response: '🏢 Qual o nome da empresa da reunião?',
+            sessionData: { ...sessionData, pending_commitment: pending }
+          };
+        } else if (pending.category === 'other' && /futeb|basquet|voley|esport|treino/i.test(pending.title)) {
+          pending.detailsStep = 'participants';
+          await SessionManager.updateSession(session.id, {
+            session_data: { ...sessionData, pending_commitment: pending }
+          });
+          return {
+            response: '👥 Quem vai participar?\n(Ex: João, Maria, Pedro)',
+            sessionData: { ...sessionData, pending_commitment: pending }
+          };
+        }
+        // Se não se encaixa em nenhum, ir direto para confirmação
+        pending.detailsStep = 'completed';
+        return await this.showCommitmentConfirmation(session, pending);
+        
+      case 'specialty':
+        pending.specialty = messageText.trim();
+        pending.detailsStep = 'completed';
+        return await this.showCommitmentConfirmation(session, pending);
+        
+      case 'company':
+        pending.company = messageText.trim();
+        pending.detailsStep = 'contact';
+        await SessionManager.updateSession(session.id, {
+          session_data: { ...sessionData, pending_commitment: pending }
+        });
+        return {
+          response: '👤 Qual o nome e telefone do contato?\n(Ex: João Silva - 11 98765-4321)',
+          sessionData: { ...sessionData, pending_commitment: pending }
+        };
+        
+      case 'contact':
+        // Parse "Nome - Telefone"
+        const contactMatch = messageText.match(/(.+?)\s*-\s*(.+)/);
+        if (contactMatch) {
+          pending.contactName = contactMatch[1].trim();
+          pending.contactPhone = contactMatch[2].trim();
+        } else {
+          pending.contactName = messageText.trim();
+        }
+        pending.detailsStep = 'completed';
+        return await this.showCommitmentConfirmation(session, pending);
+        
+      case 'participants':
+        pending.participants = messageText.trim();
+        pending.detailsStep = 'completed';
+        return await this.showCommitmentConfirmation(session, pending);
+    }
+    
+    // Fallback (não deveria chegar aqui)
+    return await this.showCommitmentConfirmation(session, pending);
+  }
+
+  // ✨ FASE 3: Mostrar confirmação antes de salvar
+  static async showCommitmentConfirmation(
+    session: Session,
+    pending: any
+  ): Promise<{ response: string, sessionData: SessionData }> {
+    
+    const sessionData = session.session_data || {};
+    
+    // Formatar data/hora em português
+    const scheduledDate = new Date(pending.scheduledISO);
+    const formattedDateTime = scheduledDate.toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'America/Sao_Paulo'
+    });
+    
+    // Montar mensagem de confirmação
+    let confirmMsg = `📋 *Confirme os dados do compromisso:*\n\n`;
+    confirmMsg += `📌 *Título:* ${pending.title}\n`;
+    confirmMsg += `📅 *Data/Hora:* ${formattedDateTime}\n`;
+    
+    if (pending.location) {
+      confirmMsg += `📍 *Local:* ${pending.location}\n`;
+    }
+    
+    if (pending.specialty) {
+      confirmMsg += `🩺 *Especialidade:* ${pending.specialty}\n`;
+    }
+    
+    if (pending.company) {
+      confirmMsg += `🏢 *Empresa:* ${pending.company}\n`;
+    }
+    
+    if (pending.contactName) {
+      confirmMsg += `👤 *Contato:* ${pending.contactName}`;
+      if (pending.contactPhone) {
+        confirmMsg += ` - ${pending.contactPhone}`;
+      }
+      confirmMsg += '\n';
+    }
+    
+    if (pending.participants) {
+      confirmMsg += `👥 *Participantes:* ${pending.participants}\n`;
+    }
+    
+    confirmMsg += `\n✅ Digite *confirmar* para agendar`;
+    confirmMsg += `\n❌ Digite *cancelar* para desistir`;
+    
+    // Atualizar estado para aguardar confirmação
+    await SessionManager.updateSession(session.id, {
+      session_data: {
+        ...sessionData,
+        conversation_state: 'awaiting_commitment_confirmation',
+        pending_commitment: pending
+      }
+    });
+    
+    return {
+      response: confirmMsg,
+      sessionData: {
+        ...sessionData,
+        conversation_state: 'awaiting_commitment_confirmation',
+        pending_commitment: pending
+      }
+    };
+  }
+
+  // ✨ FASE 3: Processar confirmação (confirmar ou cancelar)
+  static async handleCommitmentConfirmation(
+    session: Session,
+    messageText: string
+  ): Promise<{ response: string, sessionData: SessionData }> {
+    
+    const normalized = messageText.trim().toLowerCase();
+    const sessionData = session.session_data || {};
+    const pending = sessionData.pending_commitment!;
+    
+    console.log('✅ Processando confirmação:', { input: messageText, normalized });
+    
+    // Se cancelar, limpar estado
+    if (/^cancel(ar)?$/i.test(normalized)) {
+      await SessionManager.updateSession(session.id, {
+        session_data: {
+          ...sessionData,
+          conversation_state: 'idle',
+          pending_commitment: undefined
+        }
+      });
+      
+      return {
+        response: '❌ Agendamento cancelado.',
+        sessionData: {
+          ...sessionData,
+          conversation_state: 'idle',
+          pending_commitment: undefined
+        }
+      };
+    }
+    
+    // Se confirmar, salvar no banco
+    if (/^confirm(ar)?$/i.test(normalized)) {
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      );
+      
+      // Montar description com todos os detalhes
+      let description = '';
+      if (pending.location) description += `Local: ${pending.location}\n`;
+      if (pending.specialty) description += `Especialidade: ${pending.specialty}\n`;
+      if (pending.company) description += `Empresa: ${pending.company}\n`;
+      if (pending.contactName) description += `Contato: ${pending.contactName}\n`;
+      if (pending.contactPhone) description += `Telefone: ${pending.contactPhone}\n`;
+      if (pending.participants) description += `Participantes: ${pending.participants}\n`;
+      
+      // Inserir no banco
+      const { data: commitment, error: insertErr } = await supabase
+        .from('commitments')
+        .insert({
+          user_id: session.user_id,
+          title: pending.title,
+          description: description.trim() || null,
+          scheduled_at: pending.scheduledISO,
+          category: pending.category,
+          location: pending.location || null
+        })
+        .select()
+        .single();
+      
+      if (insertErr) {
+        console.error('❌ Erro ao inserir compromisso:', insertErr);
+        return {
+          response: '❌ Erro ao salvar compromisso. Tente novamente.',
+          sessionData: {
+            ...sessionData,
+            conversation_state: 'idle',
+            pending_commitment: undefined
+          }
+        };
+      }
+      
+      console.log('✅ Compromisso salvo:', commitment);
+      
+      // Formatar resposta de sucesso
+      const scheduledDate = new Date(pending.scheduledISO);
+      const formattedDateTime = scheduledDate.toLocaleDateString('pt-BR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'America/Sao_Paulo'
+      });
+      
+      let successMsg = `✅ *Compromisso agendado com sucesso!*\n\n`;
+      successMsg += `📌 ${pending.title}\n`;
+      successMsg += `🗓️ ${formattedDateTime}\n`;
+      if (pending.location) successMsg += `📍 ${pending.location}`;
+      
+      // Limpar estado
+      await SessionManager.updateSession(session.id, {
+        session_data: {
+          ...sessionData,
+          conversation_state: 'idle',
+          pending_commitment: undefined
+        }
+      });
+      
+      return {
+        response: successMsg,
+        sessionData: {
+          ...sessionData,
+          conversation_state: 'idle',
+          pending_commitment: undefined
+        }
+      };
+    }
+    
+    // Se não for nem confirmar nem cancelar, pedir novamente
+    return {
+      response: '❓ Não entendi. Digite *confirmar* para agendar ou *cancelar* para desistir.',
+      sessionData
+    };
+  }
+
   static async handleCommitmentTimeInput(session: Session, messageText: string): Promise<{ response: string, sessionData: SessionData }> {
     const sessionData = session.session_data || {};
     const pending = sessionData.pending_commitment;
@@ -4233,8 +4493,8 @@ Se não especificar hora, retorne scheduled_at: null.`
     // Extrair horário da resposta
     const normalized = messageText.toLowerCase().trim();
     
-    // 🔄 Detectar se o usuário está iniciando um NOVO agendamento
-    const startsNewScheduling = /\b(agend|marc|cadastr|compromisso|reuni[aã]o|consulta|evento)\b/i.test(normalized);
+    // 🔄 FASE 1: Detectar se o usuário está iniciando um NOVO agendamento (regex CORRIGIDA)
+    const startsNewScheduling = /\b(agendar|marcar|cadastrar)\s+\w+/i.test(normalized);
     if (startsNewScheduling) {
       console.log('🔄 Novo comando de agendamento detectado durante entrada de horário. Reiniciando fluxo.');
       return await this.addCommitment(session.user_id!, messageText);
