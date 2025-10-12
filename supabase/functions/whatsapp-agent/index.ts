@@ -4498,7 +4498,7 @@ Se não especificar hora, retorne scheduled_at: null.`
         .from('profiles')
         .select('full_name')
         .eq('user_id', session.user_id)
-        .single();
+        .maybeSingle();
 
       const userName = profile?.full_name || undefined;
       
