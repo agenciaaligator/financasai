@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toZonedTime, fromZonedTime, formatInTimeZone } from "date-fns-tz";
+import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
 
 interface Commitment {
   id: string;
@@ -25,6 +26,7 @@ interface Commitment {
   participants?: string | null;
   duration_minutes?: number | null;
   notes?: string | null;
+  google_event_id?: string | null;
 }
 
 export function CommitmentsManager() {
@@ -34,6 +36,7 @@ export function CommitmentsManager() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const { toast } = useToast();
+  const { isConnected, syncEvent } = useGoogleCalendar();
 
   const [formData, setFormData] = useState({
     title: "",
@@ -96,24 +99,78 @@ export function CommitmentsManager() {
           .eq("id", editingId);
 
         if (error) throw error;
+
+        // Sincronizar com Google Calendar se conectado
+        if (isConnected) {
+          const syncResult = await syncEvent('update', editingId);
+          if (!syncResult.success) {
+            toast({
+              title: "Compromisso atualizado",
+              description: "Salvo, mas não foi possível sincronizar com Google Calendar.",
+              variant: "destructive",
+            });
+            setFormData({
+              title: "",
+              description: "",
+              scheduled_at: "",
+              category: "other",
+              location: "",
+              participants: "",
+              duration_minutes: 60,
+              notes: "",
+            });
+            setEditingId(null);
+            setShowForm(false);
+            fetchCommitments();
+            return;
+          }
+        }
         
         toast({
           title: "Compromisso atualizado",
-          description: "Compromisso atualizado com sucesso!",
+          description: isConnected ? "Atualizado e sincronizado com Google Calendar!" : "Atualizado com sucesso!",
         });
       } else {
-        const { error } = await supabase
+        const { data: newCommitment, error } = await supabase
           .from("commitments")
           .insert({
             ...dataToSave,
             user_id: user.id,
-          });
+          })
+          .select()
+          .single();
 
         if (error) throw error;
+
+        // Sincronizar com Google Calendar se conectado
+        if (isConnected && newCommitment) {
+          const syncResult = await syncEvent('create', newCommitment.id);
+          if (!syncResult.success) {
+            toast({
+              title: "Compromisso criado",
+              description: "Salvo, mas não foi possível sincronizar com Google Calendar.",
+              variant: "destructive",
+            });
+            setFormData({
+              title: "",
+              description: "",
+              scheduled_at: "",
+              category: "other",
+              location: "",
+              participants: "",
+              duration_minutes: 60,
+              notes: "",
+            });
+            setEditingId(null);
+            setShowForm(false);
+            fetchCommitments();
+            return;
+          }
+        }
         
         toast({
           title: "Compromisso criado",
-          description: "Compromisso criado com sucesso!",
+          description: isConnected ? "Criado e sincronizado com Google Calendar!" : "Criado com sucesso!",
         });
       }
 
@@ -162,6 +219,11 @@ export function CommitmentsManager() {
     if (!confirm("Tem certeza que deseja excluir este compromisso?")) return;
 
     try {
+      // Sincronizar com Google Calendar ANTES de deletar
+      if (isConnected) {
+        await syncEvent('delete', id);
+      }
+
       const { error } = await supabase
         .from("commitments")
         .delete()
@@ -171,7 +233,7 @@ export function CommitmentsManager() {
 
       toast({
         title: "Compromisso excluído",
-        description: "Compromisso excluído com sucesso!",
+        description: isConnected ? "Excluído e removido do Google Calendar!" : "Excluído com sucesso!",
       });
 
       fetchCommitments();
@@ -397,8 +459,16 @@ export function CommitmentsManager() {
                 commitments.map((commitment) => (
                   <TableRow key={commitment.id}>
                     <TableCell>
-                      <div>
-                        <div className="font-medium">{commitment.title}</div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <div className="font-medium">{commitment.title}</div>
+                          {commitment.google_event_id && (
+                            <Badge variant="outline" className="gap-1">
+                              <Calendar className="h-3 w-3" />
+                              Google
+                            </Badge>
+                          )}
+                        </div>
                         {commitment.description && (
                           <div className="text-xs text-muted-foreground">{commitment.description}</div>
                         )}

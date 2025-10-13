@@ -13,6 +13,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useFeatureLimits } from "@/hooks/useFeatureLimits";
 import { UpgradeModal } from "./UpgradeModal";
 import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
+import { GoogleCalendarConnect } from "./dashboard/GoogleCalendarConnect";
 
 export function ProfileSettings() {
   const [fullName, setFullName] = useState("");
@@ -401,6 +402,20 @@ export function ProfileSettings() {
           </div>
         </CardContent>
       </Card>
+
+      {subscription?.subscription_plans?.has_google_calendar && (
+        <Card className="bg-gradient-card shadow-card border-0">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              <span>Google Calendar</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <GoogleCalendarConnect />
+          </CardContent>
+        </Card>
+      )}
 
       <UpgradeModal 
         open={showUpgradeModal} 
