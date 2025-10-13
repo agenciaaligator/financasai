@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      calendar_connections: {
+        Row: {
+          access_token: string
+          calendar_email: string | null
+          calendar_id: string | null
+          calendar_name: string | null
+          created_at: string | null
+          custom_name: string | null
+          expires_at: string
+          id: string
+          is_active: boolean | null
+          provider: string
+          refresh_token: string | null
+          sync_preferences: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          calendar_email?: string | null
+          calendar_id?: string | null
+          calendar_name?: string | null
+          created_at?: string | null
+          custom_name?: string | null
+          expires_at: string
+          id?: string
+          is_active?: boolean | null
+          provider: string
+          refresh_token?: string | null
+          sync_preferences?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          calendar_email?: string | null
+          calendar_id?: string | null
+          calendar_name?: string | null
+          created_at?: string | null
+          custom_name?: string | null
+          expires_at?: string
+          id?: string
+          is_active?: boolean | null
+          provider?: string
+          refresh_token?: string | null
+          sync_preferences?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           color: string | null
@@ -48,12 +99,15 @@ export type Database = {
           description: string | null
           duration_minutes: number | null
           google_event_id: string | null
+          has_insurance: boolean | null
           id: string
+          insurance_name: string | null
           linked_transaction_id: string | null
           location: string | null
           notes: string | null
           participants: string | null
           reminder_sent: boolean | null
+          reminders_sent: Json | null
           scheduled_at: string
           title: string
           updated_at: string | null
@@ -65,12 +119,15 @@ export type Database = {
           description?: string | null
           duration_minutes?: number | null
           google_event_id?: string | null
+          has_insurance?: boolean | null
           id?: string
+          insurance_name?: string | null
           linked_transaction_id?: string | null
           location?: string | null
           notes?: string | null
           participants?: string | null
           reminder_sent?: boolean | null
+          reminders_sent?: Json | null
           scheduled_at: string
           title: string
           updated_at?: string | null
@@ -82,12 +139,15 @@ export type Database = {
           description?: string | null
           duration_minutes?: number | null
           google_event_id?: string | null
+          has_insurance?: boolean | null
           id?: string
+          insurance_name?: string | null
           linked_transaction_id?: string | null
           location?: string | null
           notes?: string | null
           participants?: string | null
           reminder_sent?: boolean | null
+          reminders_sent?: Json | null
           scheduled_at?: string
           title?: string
           updated_at?: string | null
