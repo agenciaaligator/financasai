@@ -4142,11 +4142,14 @@ Se não especificar hora, retorne scheduled_at: null.`
         }
       }
 
-      // Construir query com filtros
+      // Construir query com filtros - APENAS FUTUROS
+      const now = new Date().toISOString();
+      
       let query = supabase
         .from('commitments')
         .select('*')
-        .eq('user_id', session.user_id);
+        .eq('user_id', session.user_id)
+        .gte('scheduled_at', now); // ✅ Apenas compromissos futuros ou de hoje
       
       // Aplicar filtro de data se presente
       if (filters.dateFilter) {
@@ -4154,12 +4157,6 @@ Se não especificar hora, retorne scheduled_at: null.`
           .gte('scheduled_at', filters.dateFilter.startISO)
           .lte('scheduled_at', filters.dateFilter.endISO);
         console.log('[CANCEL CMD] Applied date filter:', filters.dateFilter);
-      } else {
-        // Janela padrão: últimos 30 dias + próximos 90 dias
-        const now = new Date();
-        const pastLimit = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
-        const futureLimit = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString();
-        query = query.gte('scheduled_at', pastLimit).lte('scheduled_at', futureLimit);
       }
       
       // Aplicar filtro de título se presente
@@ -4170,7 +4167,7 @@ Se não especificar hora, retorne scheduled_at: null.`
       
       const { data: commitments, error } = await query
         .order('scheduled_at', { ascending: true })
-        .limit(20);
+        .limit(10); // ✅ Limitar a 10 compromissos mais próximos
 
       if (error) throw error;
 
@@ -4185,34 +4182,26 @@ Se não especificar hora, retorne scheduled_at: null.`
       
       console.log('[CANCEL LIST] Found:', commitments.length, 'commitments');
 
-      // Agrupar por período
+      // Agrupar por período (apenas futuros)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
       const next7days = new Date(today);
       next7days.setDate(next7days.getDate() + 7);
-      const next30days = new Date(today);
-      next30days.setDate(next30days.getDate() + 30);
 
       const grouped = {
-        past: [] as any[],
         today: [] as any[],
         next7: [] as any[],
-        next30: [] as any[],
         future: [] as any[]
       };
 
       commitments.forEach(c => {
         const date = new Date(c.scheduled_at);
-        if (date < today) {
-          grouped.past.push(c);
-        } else if (date >= today && date < tomorrow) {
+        if (date >= today && date < tomorrow) {
           grouped.today.push(c);
         } else if (date >= tomorrow && date < next7days) {
           grouped.next7.push(c);
-        } else if (date >= next7days && date < next30days) {
-          grouped.next30.push(c);
         } else {
           grouped.future.push(c);
         }
@@ -4225,7 +4214,7 @@ Se não especificar hora, retorne scheduled_at: null.`
         other: '📌'
       };
 
-      let response = `🗑️ *Selecione o compromisso para cancelar:*\n\n`;
+      let response = `🗑️ *Compromissos futuros:*\n\n`;
       let index = 1;
 
       // Renderizar cada grupo
@@ -4248,13 +4237,14 @@ Se não especificar hora, retorne scheduled_at: null.`
         });
       };
 
-      renderGroup('📌 Passados (últimos 30 dias)', grouped.past);
       renderGroup('📅 Hoje', grouped.today);
       renderGroup('🔜 Próximos 7 dias', grouped.next7);
-      renderGroup('📆 Próximos 30 dias', grouped.next30);
-      renderGroup('🔮 Futuro distante', grouped.future);
+      renderGroup('📆 Mais tarde', grouped.future);
 
-      response += `Digite o número do compromisso para cancelar (1-${commitments.length}):`;
+      response += `\n💡 *Para cancelar:*\n`;
+      response += `• Um compromisso: digite o número\n`;
+      response += `• Múltiplos: use vírgulas (ex: 1,3,5)\n`;
+      response += `• Intervalo: use hífen (ex: 2-4)`;
 
       console.log('[CANCEL CMD] Resetting state, listing commitments');
 
@@ -5140,27 +5130,73 @@ Se não especificar hora, retorne scheduled_at: null.`
       };
     }
 
-    const selection = parseInt(messageText.trim());
     const commitments = pendingEdit.available_commitments;
-
-    if (isNaN(selection) || selection < 1 || selection > commitments.length) {
+    const input = messageText.trim();
+    
+    // ✨ Parseamento de seleção múltipla
+    const parseSelection = (text: string): number[] => {
+      const indices: number[] = [];
+      
+      // Suporta: "1,3,5" ou "2-4" ou combinados "1,3-5,7"
+      const parts = text.split(',').map(p => p.trim());
+      
+      for (const part of parts) {
+        if (part.includes('-')) {
+          // Intervalo: "2-4" = [2,3,4]
+          const [start, end] = part.split('-').map(n => parseInt(n.trim()));
+          if (!isNaN(start) && !isNaN(end) && start <= end) {
+            for (let i = start; i <= end; i++) {
+              if (!indices.includes(i)) indices.push(i);
+            }
+          }
+        } else {
+          // Número único: "3"
+          const num = parseInt(part);
+          if (!isNaN(num) && !indices.includes(num)) {
+            indices.push(num);
+          }
+        }
+      }
+      
+      return indices.sort((a, b) => a - b);
+    };
+    
+    const selectedIndices = parseSelection(input);
+    
+    if (selectedIndices.length === 0) {
       return {
-        response: `❌ Número inválido. Digite um número entre 1 e ${commitments.length}.`,
+        response: `❌ Seleção inválida.\n\n💡 Exemplos válidos:\n• 1\n• 1,3,5\n• 2-4\n• 1,3-5,7`,
+        sessionData
+      };
+    }
+    
+    // Validar que todos os índices são válidos
+    const invalid = selectedIndices.filter(i => i < 1 || i > commitments.length);
+    if (invalid.length > 0) {
+      return {
+        response: `❌ Números inválidos: ${invalid.join(', ')}\n\nDigite entre 1 e ${commitments.length}.`,
         sessionData
       };
     }
 
     try {
-      const selectedCommitment = commitments[selection - 1];
       const supabase = createClient(
         Deno.env.get('SUPABASE_URL')!,
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
       );
-
+      
+      // Selecionar compromissos
+      const selectedCommitments = selectedIndices.map(i => commitments[i - 1]);
+      const ids = selectedCommitments.map(c => c.id);
+      
+      console.log(`🗑️ Cancelando ${ids.length} compromisso(s):`, selectedCommitments.map(c => c.title));
+      
+      // Deletar todos de uma vez
       const { error } = await supabase
         .from('commitments')
         .delete()
-        .eq('id', selectedCommitment.id);
+        .in('id', ids)
+        .eq('user_id', session.user_id);
 
       if (error) throw error;
 
@@ -5172,14 +5208,18 @@ Se não especificar hora, retorne scheduled_at: null.`
         }
       });
 
+      // Mensagem de sucesso
+      const titles = selectedCommitments.map(c => `• ${c.title}`).join('\n');
+      const count = selectedCommitments.length;
+      
       return {
-        response: `✅ *Compromisso "${selectedCommitment.title}" cancelado com sucesso!*`,
+        response: `✅ *${count} compromisso${count > 1 ? 's' : ''} cancelado${count > 1 ? 's' : ''} com sucesso!*\n\n${titles}`,
         sessionData: { ...sessionData, conversation_state: 'idle' }
       };
     } catch (error) {
-      console.error('Error canceling commitment:', error);
+      console.error('Error canceling commitments:', error);
       return {
-        response: '❌ Erro ao cancelar compromisso.',
+        response: '❌ Erro ao cancelar compromisso(s).',
         sessionData: { ...sessionData, conversation_state: 'idle' }
       };
     }
