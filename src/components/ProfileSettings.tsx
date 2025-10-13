@@ -411,7 +411,10 @@ export function ProfileSettings() {
               <span>Google Calendar</span>
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              💡 Conecte sua conta Google para sincronizar automaticamente compromissos criados pelo WhatsApp com seu calendário.
+            </p>
             <GoogleCalendarConnect />
           </CardContent>
         </Card>

@@ -2533,8 +2533,20 @@ class WhatsAppAgent {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
     
-    // 🚫 Se o usuário digitar "cancelar", encerrar fluxo
+    // 🚫 Se o usuário digitar "cancelar", encerrar fluxo E deletar compromisso se já foi criado
     if (/^cancel(ar)?$/i.test(normalized)) {
+      console.log('[COMMITMENT-FLOW] User cancelled resolution, checking for orphan commitment');
+      
+      // ✅ SE JÁ CRIOU COMPROMISSO NO BANCO, DELETAR
+      if (pending.commitment_id) {
+        console.log('[COMMITMENT-FLOW] Deleting orphan commitment:', pending.commitment_id);
+        await supabase
+          .from('commitments')
+          .delete()
+          .eq('id', pending.commitment_id)
+          .eq('user_id', session.user_id!);
+      }
+      
       await SessionManager.updateSession(session.id, {
         session_data: {
           ...sessionData,
@@ -2644,6 +2656,18 @@ class WhatsAppAgent {
       
       // "Cancelar"
       else if (choice === numSuggestions + 2) {
+        console.log('[COMMITMENT-FLOW] User cancelled via option, checking for orphan commitment');
+        
+        // ✅ SE JÁ CRIOU COMPROMISSO NO BANCO, DELETAR
+        if (pending.commitment_id) {
+          console.log('[COMMITMENT-FLOW] Deleting orphan commitment:', pending.commitment_id);
+          await supabase
+            .from('commitments')
+            .delete()
+            .eq('id', pending.commitment_id)
+            .eq('user_id', session.user_id!);
+        }
+        
         await SessionManager.updateSession(session.id, {
           session_data: {
             ...sessionData,
@@ -4445,8 +4469,20 @@ Se não especificar hora, retorne scheduled_at: null.`
     
     console.log('✅ Processando confirmação:', { input: messageText, normalized });
     
-    // Se cancelar, limpar estado
+    // Se cancelar, limpar estado E deletar compromisso órfão se existir
     if (/^cancel(ar)?$/i.test(normalized)) {
+      console.log('[COMMITMENT-FLOW] User cancelled confirmation, checking for orphan');
+      
+      // ✅ SE JÁ CRIOU COMPROMISSO NO BANCO, DELETAR
+      if (pending.commitment_id) {
+        console.log('[COMMITMENT-FLOW] Deleting orphan commitment:', pending.commitment_id);
+        await supabase
+          .from('commitments')
+          .delete()
+          .eq('id', pending.commitment_id)
+          .eq('user_id', session.user_id!);
+      }
+      
       await SessionManager.updateSession(session.id, {
         session_data: {
           ...sessionData,
@@ -4499,7 +4535,9 @@ Se não especificar hora, retorne scheduled_at: null.`
           description: description.trim() || null,
           scheduled_at: pending.scheduledISO,
           category: pending.category,
-          location: pending.location || null
+          location: pending.location || null,
+          participants: pending.participants || null,
+          notes: pending.specialty || pending.company ? `${pending.specialty || ''}${pending.company || ''}`.trim() : null
         })
         .select()
         .single();
@@ -4561,7 +4599,7 @@ Se não especificar hora, retorne scheduled_at: null.`
       };
     }
     
-    console.log('⏰ Processando horário:', { messageText, pending });
+    console.log('[COMMITMENT-FLOW] Step: awaiting_commitment_time, input:', messageText);
     
     // Extrair horário da resposta
     const normalized = messageText.toLowerCase().trim();
@@ -4569,10 +4607,20 @@ Se não especificar hora, retorne scheduled_at: null.`
     // 🔄 FASE 1: Detectar se o usuário está iniciando um NOVO agendamento (regex CORRIGIDA)
     const startsNewScheduling = /\b(agendar|marcar|cadastrar)\s+\w+/i.test(normalized);
     if (startsNewScheduling) {
-      console.log('🔄 Novo comando de agendamento detectado durante entrada de horário. Reiniciando fluxo.');
+      console.log('[COMMITMENT-FLOW] Novo comando de agendamento detectado. Reiniciando fluxo.');
       return await this.addCommitment(session.user_id!, messageText);
     }
+    
+    // ✅ VALIDAÇÃO: Se não for um horário válido, retornar erro claro
     const timeMatch = normalized.match(/\b(\d{1,2})(?::(\d{2}))?\s*(?:h|horas?)?/);
+    
+    if (!timeMatch) {
+      console.log('[COMMITMENT-FLOW] Invalid time format, rejecting input');
+      return {
+        response: '⏰ Por favor, digite apenas o horário.\n\nExemplos:\n• 11h\n• 14:30\n• 9h',
+        sessionData
+      };
+    }
     
     if (!timeMatch) {
       return {

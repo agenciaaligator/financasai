@@ -20,14 +20,14 @@ serve(async (req) => {
     );
 
     // Buscar compromissos que:
-    // 1. Estão entre 24h e 23h antes do horário agendado
+    // 1. Estão entre 24h e 1h antes do horário agendado
     // 2. Ainda não tiveram lembrete enviado (reminder_sent = false)
     const now = new Date();
     const in24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    const in23Hours = new Date(now.getTime() + 23 * 60 * 60 * 1000);
+    const in1Hour = new Date(now.getTime() + 1 * 60 * 60 * 1000);
 
     console.log('🔍 Searching commitments between:', {
-      start: in23Hours.toISOString(),
+      start: in1Hour.toISOString(),
       end: in24Hours.toISOString()
     });
 
@@ -38,7 +38,7 @@ serve(async (req) => {
         profiles!inner(phone_number, full_name)
       `)
       .eq('reminder_sent', false)
-      .gte('scheduled_at', in23Hours.toISOString())
+      .gte('scheduled_at', in1Hour.toISOString())
       .lte('scheduled_at', in24Hours.toISOString());
 
     if (error) {
