@@ -6,7 +6,9 @@ import { SubscriptionsManagement } from "./SubscriptionsManagement";
 import { AdminStats } from "./AdminStats";
 import { CouponsManagement } from "./CouponsManagement";
 import { AccessManagement } from "./AccessManagement";
-import { Shield, Users, CreditCard, BarChart3, Tag, Key, Clock } from "lucide-react";
+import { PlansManagement } from "./PlansManagement";
+import { TeamManagement } from "./TeamManagement";
+import { Shield, Users, CreditCard, BarChart3, Tag, Key, Clock, Package, UserPlus } from "lucide-react";
 import { WorkHoursSettings } from "../WorkHoursSettings";
 
 export function AdminPanel() {
@@ -49,30 +51,38 @@ export function AdminPanel() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-6 gap-4">
+        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 gap-2">
           <TabsTrigger value="stats" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
-            <span>Estatísticas</span>
+            <span className="hidden sm:inline">Estatísticas</span>
           </TabsTrigger>
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
-            <span>Usuários</span>
+            <span className="hidden sm:inline">Usuários</span>
           </TabsTrigger>
           <TabsTrigger value="subscriptions" className="flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
-            <span>Assinaturas</span>
+            <span className="hidden sm:inline">Assinaturas</span>
+          </TabsTrigger>
+          <TabsTrigger value="plans" className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            <span className="hidden sm:inline">Planos</span>
           </TabsTrigger>
           <TabsTrigger value="coupons" className="flex items-center gap-2">
             <Tag className="h-4 w-4" />
-            <span>Cupons</span>
+            <span className="hidden sm:inline">Cupons</span>
+          </TabsTrigger>
+          <TabsTrigger value="team" className="flex items-center gap-2">
+            <UserPlus className="h-4 w-4" />
+            <span className="hidden sm:inline">Equipe</span>
           </TabsTrigger>
           <TabsTrigger value="access" className="flex items-center gap-2">
             <Key className="h-4 w-4" />
-            <span>Acessos</span>
+            <span className="hidden sm:inline">Acessos</span>
           </TabsTrigger>
           <TabsTrigger value="work-hours" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
-            <span>Horário</span>
+            <span className="hidden sm:inline">Horário</span>
           </TabsTrigger>
         </TabsList>
 
@@ -88,8 +98,16 @@ export function AdminPanel() {
           <SubscriptionsManagement />
         </TabsContent>
 
+        <TabsContent value="plans" className="space-y-4">
+          <PlansManagement />
+        </TabsContent>
+
         <TabsContent value="coupons" className="space-y-4">
           <CouponsManagement />
+        </TabsContent>
+
+        <TabsContent value="team" className="space-y-4">
+          <TeamManagement />
         </TabsContent>
 
         <TabsContent value="access" className="space-y-4">

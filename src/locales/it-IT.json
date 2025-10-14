@@ -1,0 +1,57 @@
+{
+  "dashboard": {
+    "title": "Dashboard Finanziario",
+    "balance": "Saldo",
+    "income": "Entrate",
+    "expenses": "Spese",
+    "transactions": "Transazioni",
+    "categories": "Categorie",
+    "reports": "Rapporti",
+    "agenda": "Agenda",
+    "profile": "Profilo",
+    "admin": "Pannello Admin"
+  },
+  "transactions": {
+    "add": "Nuova Transazione",
+    "list": "Tutte le Transazioni",
+    "edit": "Modifica Transazione",
+    "delete": "Elimina Transazione",
+    "title": "Titolo",
+    "amount": "Importo",
+    "date": "Data",
+    "category": "Categoria",
+    "type": "Tipo",
+    "income": "Entrata",
+    "expense": "Spesa",
+    "description": "Descrizione"
+  },
+  "auth": {
+    "login": "Accedi",
+    "logout": "Esci",
+    "signup": "Registrati",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Password dimenticata",
+    "resetPassword": "Reimposta password"
+  },
+  "common": {
+    "save": "Salva",
+    "cancel": "Annulla",
+    "delete": "Elimina",
+    "edit": "Modifica",
+    "create": "Crea",
+    "search": "Cerca",
+    "loading": "Caricamento...",
+    "noData": "Nessun dato trovato",
+    "error": "Errore",
+    "success": "Successo"
+  },
+  "admin": {
+    "stats": "Statistiche",
+    "users": "Utenti",
+    "subscriptions": "Abbonamenti",
+    "coupons": "Coupon",
+    "plans": "Piani",
+    "team": "Team"
+  }
+}

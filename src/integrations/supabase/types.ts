@@ -71,6 +71,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          organization_id: string | null
           type: string
           user_id: string
         }
@@ -79,6 +80,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          organization_id?: string | null
           type: string
           user_id: string
         }
@@ -87,10 +89,19 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          organization_id?: string | null
           type?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "categories_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       commitments: {
         Row: {
@@ -105,6 +116,7 @@ export type Database = {
           linked_transaction_id: string | null
           location: string | null
           notes: string | null
+          organization_id: string | null
           participants: string | null
           reminder_sent: boolean | null
           reminders_sent: Json | null
@@ -125,6 +137,7 @@ export type Database = {
           linked_transaction_id?: string | null
           location?: string | null
           notes?: string | null
+          organization_id?: string | null
           participants?: string | null
           reminder_sent?: boolean | null
           reminders_sent?: Json | null
@@ -145,6 +158,7 @@ export type Database = {
           linked_transaction_id?: string | null
           location?: string | null
           notes?: string | null
+          organization_id?: string | null
           participants?: string | null
           reminder_sent?: boolean | null
           reminders_sent?: Json | null
@@ -159,6 +173,13 @@ export type Database = {
             columns: ["linked_transaction_id"]
             isOneToOne: false
             referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commitments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -211,6 +232,7 @@ export type Database = {
           description: string | null
           end_date: string
           id: string
+          organization_id: string | null
           start_date: string
           status: string
           title: string
@@ -222,6 +244,7 @@ export type Database = {
           description?: string | null
           end_date: string
           id?: string
+          organization_id?: string | null
           start_date: string
           status?: string
           title: string
@@ -233,13 +256,22 @@ export type Database = {
           description?: string | null
           end_date?: string
           id?: string
+          organization_id?: string | null
           start_date?: string
           status?: string
           title?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "eventos_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       feature_suggestions: {
         Row: {
@@ -307,6 +339,68 @@ export type Database = {
           created_at?: string
           email?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      organization_members: {
+        Row: {
+          created_at: string
+          id: string
+          organization_id: string
+          permissions: Json | null
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organization_id: string
+          permissions?: Json | null
+          role: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organization_id?: string
+          permissions?: Json | null
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -486,6 +580,7 @@ export type Database = {
           date: string
           description: string | null
           id: string
+          organization_id: string | null
           source: string | null
           title: string
           type: string
@@ -499,6 +594,7 @@ export type Database = {
           date?: string
           description?: string | null
           id?: string
+          organization_id?: string | null
           source?: string | null
           title: string
           type: string
@@ -512,6 +608,7 @@ export type Database = {
           date?: string
           description?: string | null
           id?: string
+          organization_id?: string | null
           source?: string | null
           title?: string
           type?: string
@@ -524,6 +621,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -788,6 +892,10 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      has_org_role: {
+        Args: { _org_id: string; _role: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -797,6 +905,10 @@ export type Database = {
       }
       is_master_user: {
         Args: { _user_id: string }
+        Returns: boolean
+      }
+      is_org_member: {
+        Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }
       is_whatsapp_authenticated: {

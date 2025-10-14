@@ -25,6 +25,9 @@ export function AdminStats() {
 
   useEffect(() => {
     fetchStats();
+    // Auto-refresh a cada 30 segundos
+    const interval = setInterval(fetchStats, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchStats = async () => {

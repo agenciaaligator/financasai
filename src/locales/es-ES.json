@@ -1,0 +1,57 @@
+{
+  "dashboard": {
+    "title": "Panel Financiero",
+    "balance": "Saldo",
+    "income": "Ingresos",
+    "expenses": "Gastos",
+    "transactions": "Transacciones",
+    "categories": "Categorías",
+    "reports": "Informes",
+    "agenda": "Agenda",
+    "profile": "Perfil",
+    "admin": "Panel de Administración"
+  },
+  "transactions": {
+    "add": "Nueva Transacción",
+    "list": "Todas las Transacciones",
+    "edit": "Editar Transacción",
+    "delete": "Eliminar Transacción",
+    "title": "Título",
+    "amount": "Monto",
+    "date": "Fecha",
+    "category": "Categoría",
+    "type": "Tipo",
+    "income": "Ingreso",
+    "expense": "Gasto",
+    "description": "Descripción"
+  },
+  "auth": {
+    "login": "Iniciar Sesión",
+    "logout": "Cerrar Sesión",
+    "signup": "Registrarse",
+    "email": "Correo",
+    "password": "Contraseña",
+    "forgotPassword": "Olvidé mi contraseña",
+    "resetPassword": "Restablecer contraseña"
+  },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "search": "Buscar",
+    "loading": "Cargando...",
+    "noData": "No se encontraron datos",
+    "error": "Error",
+    "success": "Éxito"
+  },
+  "admin": {
+    "stats": "Estadísticas",
+    "users": "Usuarios",
+    "subscriptions": "Suscripciones",
+    "coupons": "Cupones",
+    "plans": "Planes",
+    "team": "Equipo"
+  }
+}

@@ -30,6 +30,9 @@ export function SubscriptionsManagement() {
 
   useEffect(() => {
     fetchSubscriptions();
+    // Auto-refresh a cada 30 segundos
+    const interval = setInterval(fetchSubscriptions, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchSubscriptions = async () => {

@@ -1,0 +1,57 @@
+{
+  "dashboard": {
+    "title": "Financial Dashboard",
+    "balance": "Balance",
+    "income": "Income",
+    "expenses": "Expenses",
+    "transactions": "Transactions",
+    "categories": "Categories",
+    "reports": "Reports",
+    "agenda": "Agenda",
+    "profile": "Profile",
+    "admin": "Admin Panel"
+  },
+  "transactions": {
+    "add": "New Transaction",
+    "list": "All Transactions",
+    "edit": "Edit Transaction",
+    "delete": "Delete Transaction",
+    "title": "Title",
+    "amount": "Amount",
+    "date": "Date",
+    "category": "Category",
+    "type": "Type",
+    "income": "Income",
+    "expense": "Expense",
+    "description": "Description"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "signup": "Sign Up",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot Password",
+    "resetPassword": "Reset Password"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "loading": "Loading...",
+    "noData": "No data found",
+    "error": "Error",
+    "success": "Success"
+  },
+  "admin": {
+    "stats": "Statistics",
+    "users": "Users",
+    "subscriptions": "Subscriptions",
+    "coupons": "Coupons",
+    "plans": "Plans",
+    "team": "Team"
+  }
+}

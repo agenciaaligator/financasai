@@ -36,6 +36,9 @@ export function CouponsManagement() {
 
   useEffect(() => {
     fetchCoupons();
+    // Auto-refresh a cada 30 segundos
+    const interval = setInterval(fetchCoupons, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchCoupons = async () => {

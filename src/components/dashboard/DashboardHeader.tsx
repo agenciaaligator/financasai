@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { LogOut, User } from "lucide-react";
+import { LanguageSelector } from "@/components/LanguageSelector";
 
 interface DashboardHeaderProps {
   userEmail?: string;
@@ -11,6 +12,7 @@ export function DashboardHeader({ userEmail, onSignOut, minimal = false }: Dashb
   if (minimal) {
     return (
       <div className="flex items-center gap-3">
+        <LanguageSelector />
         <Button 
           onClick={onSignOut}
           variant="outline"
@@ -42,6 +44,8 @@ export function DashboardHeader({ userEmail, onSignOut, minimal = false }: Dashb
             {userEmail}
           </span>
         </div>
+        
+        <LanguageSelector />
         
         <Button 
           onClick={onSignOut}
