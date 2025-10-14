@@ -18,6 +18,13 @@ serve(async (req) => {
       throw new Error('Missing Google OAuth configuration');
     }
 
+    // Validar formato do clientId
+    const clientIdLooksValid = clientId.includes('.apps.googleusercontent.com');
+    console.log('[GOOGLE-CALENDAR-AUTH] Client ID validation:', { 
+      clientIdLooksValid, 
+      clientIdPrefix: clientId.substring(0, 30) + '...' 
+    });
+
     // Tentar obter user_id do Authorization header (se disponível)
     let userId = null;
     const authHeader = req.headers.get('authorization');

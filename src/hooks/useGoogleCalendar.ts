@@ -61,8 +61,9 @@ export const useGoogleCalendar = () => {
       const authUrl = data.authUrl;
       console.log('[useGoogleCalendar] URL de autenticação gerada');
 
-      // Construir URL da ponte de redirecionamento
-      const bridgeUrl = `https://financasai.lovable.app/gc-bridge.html?u=${encodeURIComponent(authUrl)}`;
+      // Construir URLs da ponte de redirecionamento
+      const bridgeUrlPreview = `https://financasai.lovable.app/gc-bridge?u=${encodeURIComponent(authUrl)}`;
+      const bridgeUrlSameApp = `/gc-bridge?u=${encodeURIComponent(authUrl)}`;
       console.log('[useGoogleCalendar] URL da ponte criada');
 
       // Detectar se está em iframe (Lovable Preview)
@@ -71,8 +72,8 @@ export const useGoogleCalendar = () => {
       if (isInIframe) {
         console.log('[useGoogleCalendar] Detectado iframe, abrindo ponte em nova aba...');
         
-        // Tentar abrir a ponte em nova aba
-        const newWindow = window.open(bridgeUrl, '_blank', 'noopener,noreferrer');
+        // Tentar abrir a ponte em nova aba (usando domínio publicado)
+        const newWindow = window.open(bridgeUrlPreview, '_blank', 'noopener,noreferrer');
         
         if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
           // Pop-up foi bloqueado
@@ -88,9 +89,9 @@ export const useGoogleCalendar = () => {
           });
         }
       } else {
-        // Não está em iframe, redirecionar para a ponte (mesma aba)
+        // Não está em iframe, redirecionar para a ponte (mesma aba, dentro do app)
         console.log('[useGoogleCalendar] Redirecionando para ponte...');
-        window.location.assign(bridgeUrl);
+        window.location.assign(bridgeUrlSameApp);
       }
       
     } catch (error: any) {
