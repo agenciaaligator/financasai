@@ -101,8 +101,13 @@ export const useGoogleCalendar = () => {
       let title = 'Erro ao conectar';
       let description = 'Não foi possível iniciar a conexão com o Google Calendar.';
       
+      // Credenciais inválidas do Google (client/secret)
+      if (error.message?.toLowerCase?.().includes('invalid_client') || error.message?.toLowerCase?.().includes('unauthorized')) {
+        title = 'Configuração do Google inválida';
+        description = 'GOOGLE_CLIENT_SECRET e CLIENT_ID podem estar incorretos. Verifique as Secrets no Supabase e tente novamente.';
+      }
       // Erro de função não encontrada
-      if (error.message?.includes('FunctionsRelayError') || error.message?.includes('not found')) {
+      else if (error.message?.includes('FunctionsRelayError') || error.message?.includes('not found')) {
         description = 'Função de autenticação não encontrada. Por favor, aguarde o deploy das edge functions ou contate o suporte.';
       }
       // Erro de configuração do backend
@@ -194,6 +199,17 @@ export const useGoogleCalendar = () => {
         description: 'Seus compromissos serão sincronizados automaticamente.',
       });
       checkConnection();
+
+      // Notificar outras abas/janelas sobre a conexão concluída
+      try {
+        localStorage.setItem('gc_connected', Date.now().toString());
+        const bc = new BroadcastChannel('gc-auth');
+        bc.postMessage('connected');
+        bc.close();
+      } catch (e) {
+        console.warn('[useGoogleCalendar] BroadcastChannel indisponível', e);
+      }
+
       // Limpar parâmetro da URL
       window.history.replaceState({}, '', window.location.pathname);
     } else if (googleStatus === 'error') {
@@ -202,9 +218,51 @@ export const useGoogleCalendar = () => {
         description: 'Não foi possível conectar ao Google Calendar.',
         variant: 'destructive',
       });
+
+      // Notificar erro para outras abas/janelas
+      try {
+        localStorage.setItem('gc_disconnected', Date.now().toString());
+        const bc = new BroadcastChannel('gc-auth');
+        bc.postMessage('disconnected');
+        bc.close();
+      } catch (e) {
+        console.warn('[useGoogleCalendar] BroadcastChannel indisponível', e);
+      }
+
       // Limpar parâmetro da URL
       window.history.replaceState({}, '', window.location.pathname);
     }
+  }, []);
+
+  // Listeners para atualizar conexão em foco/abas
+  useEffect(() => {
+    const onFocus = () => { checkConnection(); };
+    window.addEventListener('focus', onFocus);
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'gc_connected' || e.key === 'gc_disconnected') {
+        checkConnection();
+      }
+    };
+    window.addEventListener('storage', onStorage);
+
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel('gc-auth');
+      bc.onmessage = (ev) => {
+        if (ev?.data === 'connected' || ev?.data === 'disconnected') {
+          checkConnection();
+        }
+      };
+    } catch (e) {
+      console.warn('[useGoogleCalendar] BroadcastChannel indisponível', e);
+    }
+
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('storage', onStorage);
+      if (bc) bc.close();
+    };
   }, []);
 
   return {

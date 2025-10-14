@@ -66,6 +66,9 @@ export function CommitmentsManager() {
     const hasSeenOnboarding = localStorage.getItem('googleCalendarOnboardingSeen');
     if (!hasSeenOnboarding && !isConnected) {
       setShowOnboarding(true);
+    } else if (isConnected) {
+      // Fechar onboarding automaticamente quando conectar
+      setShowOnboarding(false);
     }
   }, [isConnected]);
 
