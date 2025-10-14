@@ -66,13 +66,18 @@ serve(async (req) => {
     authUrl.searchParams.set('response_type', 'code');
     authUrl.searchParams.set('scope', scopes.join(' '));
     authUrl.searchParams.set('access_type', 'offline');
-    authUrl.searchParams.set('prompt', 'consent');
+    authUrl.searchParams.set('prompt', 'consent select_account');
+    authUrl.searchParams.set('include_granted_scopes', 'true');
     authUrl.searchParams.set('state', stateBase64);
 
     console.log('[GOOGLE-CALENDAR-AUTH] Authorization URL generated successfully');
-    console.log('[GOOGLE-CALENDAR-AUTH] Redirect URI used:', redirectUri);
+    console.log('[GOOGLE-CALENDAR-AUTH] Redirect URI:', redirectUri);
     console.log('[GOOGLE-CALENDAR-AUTH] Client ID:', clientId.substring(0, 20) + '...');
+    console.log('[GOOGLE-CALENDAR-AUTH] Scopes:', scopes.join(', '));
+    console.log('[GOOGLE-CALENDAR-AUTH] Prompt:', 'consent select_account');
+    console.log('[GOOGLE-CALENDAR-AUTH] Include granted scopes:', 'true');
     console.log('[GOOGLE-CALENDAR-AUTH] State payload:', { hasUserId: !!userId, timestamp: statePayload.ts });
+    console.log('[GOOGLE-CALENDAR-AUTH] Auth URL prefix:', authUrl.toString().substring(0, 80) + '...');
 
     return new Response(
       JSON.stringify({ authUrl: authUrl.toString() }),

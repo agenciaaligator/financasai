@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conectando ao Google Calendar...</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      color: white;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+    }
+    .spinner {
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top: 4px solid white;
+      width: 48px;
+      height: 48px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1.5rem;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 0.5rem;
+      font-weight: 600;
+    }
+    p {
+      font-size: 1rem;
+      opacity: 0.9;
+      margin: 0;
+    }
+    .error {
+      background: #ef4444;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="spinner"></div>
+    <h1>Conectando ao Google Calendar</h1>
+    <p>Você será redirecionado em instantes...</p>
+    <div id="error" class="error" style="display: none;"></div>
+  </div>
+
+  <script>
+    (function() {
+      try {
+        console.log('[GC-BRIDGE] Iniciando ponte de redirecionamento...');
+        
+        // Obter o parâmetro 'u' da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetUrl = urlParams.get('u');
+        
+        if (!targetUrl) {
+          throw new Error('URL de destino não fornecida (parâmetro "u" ausente)');
+        }
+        
+        console.log('[GC-BRIDGE] URL de destino recebida:', targetUrl.substring(0, 50) + '...');
+        
+        // Decodificar a URL (já vem codificada do frontend)
+        const decodedUrl = decodeURIComponent(targetUrl);
+        console.log('[GC-BRIDGE] Redirecionando para Google OAuth...');
+        
+        // Redirecionar para o Google (substituir a página atual)
+        window.location.replace(decodedUrl);
+        
+      } catch (error) {
+        console.error('[GC-BRIDGE] Erro:', error);
+        
+        const errorDiv = document.getElementById('error');
+        if (errorDiv) {
+          errorDiv.style.display = 'block';
+          errorDiv.innerHTML = `
+            <strong>Erro ao conectar</strong><br>
+            ${error.message}<br>
+            <small>Por favor, tente novamente ou entre em contato com o suporte.</small>
+          `;
+        }
+        
+        // Redirecionar de volta para o app após 5 segundos
+        setTimeout(() => {
+          window.location.href = 'https://financasai.lovable.app/?google=error&reason=bridge_error';
+        }, 5000);
+      }
+    })();
+  </script>
+</body>
+</html>

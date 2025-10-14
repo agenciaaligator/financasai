@@ -61,32 +61,36 @@ export const useGoogleCalendar = () => {
       const authUrl = data.authUrl;
       console.log('[useGoogleCalendar] URL de autenticação gerada');
 
+      // Construir URL da ponte de redirecionamento
+      const bridgeUrl = `https://financasai.lovable.app/gc-bridge.html?u=${encodeURIComponent(authUrl)}`;
+      console.log('[useGoogleCalendar] URL da ponte criada');
+
       // Detectar se está em iframe (Lovable Preview)
       const isInIframe = window.self !== window.top;
       
       if (isInIframe) {
-        console.log('[useGoogleCalendar] Detectado iframe, abrindo em nova aba...');
+        console.log('[useGoogleCalendar] Detectado iframe, abrindo ponte em nova aba...');
         
-        // Tentar abrir em nova aba
-        const newWindow = window.open(authUrl, '_blank', 'noopener,noreferrer');
+        // Tentar abrir a ponte em nova aba
+        const newWindow = window.open(bridgeUrl, '_blank', 'noopener,noreferrer');
         
         if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
           // Pop-up foi bloqueado
           toast({
             title: 'Pop-up bloqueado',
-            description: 'Por favor, permita pop-ups para este site e tente novamente. Clique no botão Conectar novamente após permitir.',
+            description: 'Por favor, permita pop-ups para este site e tente novamente. Verifique o ícone de bloqueio na barra de endereço.',
             variant: 'destructive',
           });
         } else {
           toast({
             title: 'Autenticação em andamento',
-            description: 'Complete o login no Google na nova aba.',
+            description: 'Complete o login no Google na nova aba que foi aberta.',
           });
         }
       } else {
-        // Não está em iframe, redirecionar normalmente
-        console.log('[useGoogleCalendar] Redirecionando para Google...');
-        window.location.assign(authUrl);
+        // Não está em iframe, redirecionar para a ponte (mesma aba)
+        console.log('[useGoogleCalendar] Redirecionando para ponte...');
+        window.location.assign(bridgeUrl);
       }
       
     } catch (error: any) {
@@ -108,7 +112,7 @@ export const useGoogleCalendar = () => {
       // Erro 400 do Google (redirect_uri ou domínios)
       else if (error.message?.includes('400') || error.message?.includes('redirect_uri_mismatch')) {
         title = 'Erro de configuração do Google';
-        description = 'O Google recusou a conexão. Verifique se os domínios autorizados e redirect URI estão corretos no Google Cloud Console.';
+        description = 'O Google recusou a conexão. Pode levar alguns minutos após alterações no Google Cloud Console. Verifique se os domínios e redirect URI estão corretos.';
       }
       // Erro 403 - acesso negado
       else if (error.message?.includes('403') || error.message?.includes('access_denied')) {
@@ -120,10 +124,10 @@ export const useGoogleCalendar = () => {
         title = 'Erro de conexão';
         description = 'Verifique sua conexão com a internet e tente novamente.';
       }
-      // Erro de navegação (iframe blocked)
-      else if (error.message?.includes('Location') || error.message?.includes('href')) {
+      // Erro de navegação (iframe/extensão blocked)
+      else if (error.message?.includes('Location') || error.message?.includes('href') || error.message?.includes('blocked')) {
         title = 'Navegação bloqueada';
-        description = 'O navegador bloqueou a navegação. Tente permitir pop-ups ou abrir o app em uma nova aba.';
+        description = 'Uma extensão do navegador ou configuração de segurança bloqueou a conexão. Tente em janela anônima ou desative extensões temporariamente.';
       }
       // Outros erros
       else if (error.message) {
