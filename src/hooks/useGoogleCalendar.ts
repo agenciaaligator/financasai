@@ -66,17 +66,35 @@ export const useGoogleCalendar = () => {
     } catch (error: any) {
       console.error('Error connecting to Google Calendar:', error);
       
-      // Mensagens de erro mais específicas
-      let description = 'Não foi possível iniciar a conexão com o Google Calendar.';
+      // Log completo do erro para debug
+      console.error('Full error object:', JSON.stringify(error, null, 2));
       
-      if (error.message?.includes('403') || error.message?.includes('access_denied')) {
-        description = 'Acesso negado. Verifique se seu email está cadastrado como Usuário de Teste no Google Cloud Console.';
-      } else if (error.message?.includes('redirect_uri')) {
-        description = 'Erro de configuração. Verifique o Redirect URI no Google Cloud Console.';
+      let description = 'Não foi possível iniciar a conexão com o Google Calendar.';
+      let title = 'Erro ao conectar';
+      
+      // Verificar se é erro de função não encontrada
+      if (error.message?.includes('FunctionsRelayError') || error.message?.includes('not found')) {
+        description = 'Função de autenticação não encontrada. Aguarde o deploy das edge functions.';
+      }
+      // Verificar se é erro de configuração do backend
+      else if (error.message?.includes('Missing Google OAuth configuration')) {
+        description = 'Configuração incompleta no backend. Verifique as variáveis de ambiente GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET e GOOGLE_CALENDAR_REDIRECT_URI.';
+      }
+      // Erro de permissão do Google (403 - será mostrado na tela do Google, não aqui)
+      else if (error.message?.includes('403') || error.message?.includes('access_denied')) {
+        description = 'Acesso negado pelo Google. Verifique se seu email está cadastrado como Usuário de Teste no Google Cloud Console.';
+      }
+      // Erro de rede
+      else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        description = 'Erro de conexão. Verifique sua internet e tente novamente.';
+      }
+      // Outros erros: mostrar mensagem original
+      else if (error.message) {
+        description = `Erro: ${error.message}`;
       }
       
       toast({
-        title: 'Erro ao conectar',
+        title,
         description,
         variant: 'destructive',
       });

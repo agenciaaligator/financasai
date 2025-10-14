@@ -51,6 +51,37 @@ const gptMakerChannelId = Deno.env.get('GPT_MAKER_CHANNEL_ID');
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+// Função helper para enviar mensagens via WhatsApp
+async function sendWhatsAppMessage(to: string, message: string): Promise<void> {
+  if (!whatsappAccessToken || !whatsappPhoneNumberId) {
+    console.error('WhatsApp credentials not configured');
+    return;
+  }
+
+  try {
+    const response = await fetch(`https://graph.facebook.com/v21.0/${whatsappPhoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${whatsappAccessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: to,
+        type: 'text',
+        text: { body: message }
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('Error sending WhatsApp message:', error);
+    }
+  } catch (error) {
+    console.error('Error sending WhatsApp message:', error);
+  }
+}
+
 // Função para sintetizar áudio usando OpenAI TTS-1 (com fallback para ElevenLabs)
 async function synthesizeSpeechOpenAI(text: string): Promise<Uint8Array> {
   const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
@@ -717,6 +748,61 @@ const handler = async (req: Request): Promise<Response> => {
       } else if (message.type === 'image' && message.image?.id) {
         console.log('📸 Image message detected - will process via agent');
         text = '[IMAGE]'; // Placeholder para o agente detectar
+      } else if (message.type === 'video' && message.video?.id) {
+        // Processar vídeos/Live Photos como imagem
+        console.log('📹 Vídeo/Live Photo recebido, tentando processar como imagem...');
+        
+        try {
+          // Baixar o vídeo
+          const mediaUrl = `https://graph.facebook.com/v17.0/${message.video.id}`;
+          const mediaResponse = await fetch(mediaUrl, {
+            headers: {
+              'Authorization': `Bearer ${whatsappAccessToken}`,
+            },
+          });
+          
+          const mediaData = await mediaResponse.json();
+          const videoUrl = mediaData.url;
+          
+          // Baixar o arquivo de vídeo
+          const videoResponse = await fetch(videoUrl, {
+            headers: {
+              'Authorization': `Bearer ${whatsappAccessToken}`,
+            },
+          });
+          
+          const videoBlob = await videoResponse.arrayBuffer();
+          const base64Video = btoa(String.fromCharCode(...new Uint8Array(videoBlob)));
+          
+          console.log('✅ Vídeo baixado, enviando para agente processar (size:', videoBlob.byteLength, 'bytes)');
+          
+          // Marcar como imagem para o agente processar
+          text = '[VIDEO_AS_IMAGE]';
+          
+          // Adicionar dados do vídeo para o agente processar
+          if (whatsappMessage) {
+            whatsappMessage.video.base64 = base64Video;
+          }
+          
+        } catch (error) {
+          console.error('❌ Erro ao processar vídeo/Live Photo:', error);
+          
+          await sendWhatsAppMessage(
+            message.from,
+            '❌ Não consegui processar este vídeo. Por favor, envie como *foto* (não Live Photo).\n\n' +
+            '💡 *Dica iPhone:* Desative o Live Photo antes de tirar a foto, ou selecione uma foto da galeria.\n' +
+            '💡 *Dica Android:* Envie como foto, não como vídeo.'
+          );
+          
+          return new Response(JSON.stringify({ 
+            success: true, 
+            skipped: true,
+            reason: 'video_processing_failed'
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
       } else if (message.type === 'interactive') {
         // Handle button clicks
         console.log('🔘 Interactive button message detected');
@@ -735,8 +821,26 @@ const handler = async (req: Request): Promise<Response> => {
           }
         }
       } else {
-        console.log(`⚠️ Unsupported message type: ${message.type}`);
-        text = 'Desculpe, esse tipo de mensagem não é suportado no momento. Por favor, envie texto ou áudio.';
+        // Tipo de mensagem não suportado
+        console.log(`⚠️ Tipo de mensagem não suportado: ${message.type}`);
+        
+        await sendWhatsAppMessage(
+          message.from,
+          `⚠️ Tipo de mensagem não suportado: *${message.type}*\n\n` +
+          `Envie:\n` +
+          `• 💬 *Texto* para comandos\n` +
+          `• 📸 *Foto* para registrar despesas\n` +
+          `• 🎤 *Áudio* para mensagens de voz`
+        );
+        
+        return new Response(JSON.stringify({ 
+          success: true, 
+          skipped: true,
+          reason: 'unsupported_message_type'
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
       }
       
       // Adicionar timestamp logging e validação de delay
