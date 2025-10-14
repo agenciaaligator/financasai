@@ -44,51 +44,88 @@ export const useGoogleCalendar = () => {
 
   const connect = async () => {
     try {
-      const session = await supabase.auth.getSession();
+      setLoading(true);
+      console.log('[useGoogleCalendar] Iniciando conexão com Google Calendar...');
+      
       const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
         headers: {
-          Authorization: `Bearer ${session.data.session?.access_token}`
-        }
+          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        },
       });
-      
+
       if (error) throw error;
+      if (!data?.authUrl) {
+        throw new Error('URL de autenticação não foi gerada');
+      }
+
+      const authUrl = data.authUrl;
+      console.log('[useGoogleCalendar] URL de autenticação gerada');
+
+      // Detectar se está em iframe (Lovable Preview)
+      const isInIframe = window.self !== window.top;
       
-      if (data?.authUrl) {
-        const url = data.authUrl;
+      if (isInIframe) {
+        console.log('[useGoogleCalendar] Detectado iframe, abrindo em nova aba...');
         
-        // Detectar se está em iframe e forçar navegação no top-level
-        if (window.top && window.top !== window.self) {
-          window.top.location.href = url;
+        // Tentar abrir em nova aba
+        const newWindow = window.open(authUrl, '_blank', 'noopener,noreferrer');
+        
+        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+          // Pop-up foi bloqueado
+          toast({
+            title: 'Pop-up bloqueado',
+            description: 'Por favor, permita pop-ups para este site e tente novamente. Clique no botão Conectar novamente após permitir.',
+            variant: 'destructive',
+          });
         } else {
-          window.location.href = url;
+          toast({
+            title: 'Autenticação em andamento',
+            description: 'Complete o login no Google na nova aba.',
+          });
         }
+      } else {
+        // Não está em iframe, redirecionar normalmente
+        console.log('[useGoogleCalendar] Redirecionando para Google...');
+        window.location.assign(authUrl);
       }
+      
     } catch (error: any) {
-      console.error('Error connecting to Google Calendar:', error);
+      console.error('[useGoogleCalendar] Erro ao conectar:', error);
+      console.error('[useGoogleCalendar] Detalhes completos:', JSON.stringify(error, null, 2));
       
-      // Log completo do erro para debug
-      console.error('Full error object:', JSON.stringify(error, null, 2));
-      
-      let description = 'Não foi possível iniciar a conexão com o Google Calendar.';
       let title = 'Erro ao conectar';
+      let description = 'Não foi possível iniciar a conexão com o Google Calendar.';
       
-      // Verificar se é erro de função não encontrada
+      // Erro de função não encontrada
       if (error.message?.includes('FunctionsRelayError') || error.message?.includes('not found')) {
-        description = 'Função de autenticação não encontrada. Aguarde o deploy das edge functions.';
+        description = 'Função de autenticação não encontrada. Por favor, aguarde o deploy das edge functions ou contate o suporte.';
       }
-      // Verificar se é erro de configuração do backend
+      // Erro de configuração do backend
       else if (error.message?.includes('Missing Google OAuth configuration')) {
-        description = 'Configuração incompleta no backend. Verifique as variáveis de ambiente GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET e GOOGLE_CALENDAR_REDIRECT_URI.';
+        title = 'Configuração incompleta';
+        description = 'As credenciais do Google não estão configuradas no backend. Por favor, contate o suporte.';
       }
-      // Erro de permissão do Google (403 - será mostrado na tela do Google, não aqui)
+      // Erro 400 do Google (redirect_uri ou domínios)
+      else if (error.message?.includes('400') || error.message?.includes('redirect_uri_mismatch')) {
+        title = 'Erro de configuração do Google';
+        description = 'O Google recusou a conexão. Verifique se os domínios autorizados e redirect URI estão corretos no Google Cloud Console.';
+      }
+      // Erro 403 - acesso negado
       else if (error.message?.includes('403') || error.message?.includes('access_denied')) {
-        description = 'Acesso negado pelo Google. Verifique se seu email está cadastrado como Usuário de Teste no Google Cloud Console.';
+        title = 'Acesso negado';
+        description = 'Verifique se seu email está cadastrado como Usuário de Teste no Google Cloud Console (modo Testing).';
       }
       // Erro de rede
       else if (error.message?.includes('network') || error.message?.includes('fetch')) {
-        description = 'Erro de conexão. Verifique sua internet e tente novamente.';
+        title = 'Erro de conexão';
+        description = 'Verifique sua conexão com a internet e tente novamente.';
       }
-      // Outros erros: mostrar mensagem original
+      // Erro de navegação (iframe blocked)
+      else if (error.message?.includes('Location') || error.message?.includes('href')) {
+        title = 'Navegação bloqueada';
+        description = 'O navegador bloqueou a navegação. Tente permitir pop-ups ou abrir o app em uma nova aba.';
+      }
+      // Outros erros
       else if (error.message) {
         description = `Erro: ${error.message}`;
       }
@@ -98,6 +135,8 @@ export const useGoogleCalendar = () => {
         description,
         variant: 'destructive',
       });
+    } finally {
+      setLoading(false);
     }
   };
 

@@ -69,7 +69,10 @@ serve(async (req) => {
     authUrl.searchParams.set('prompt', 'consent');
     authUrl.searchParams.set('state', stateBase64);
 
-    console.log('[GOOGLE-CALENDAR-AUTH] Authorization URL generated with user_id in state');
+    console.log('[GOOGLE-CALENDAR-AUTH] Authorization URL generated successfully');
+    console.log('[GOOGLE-CALENDAR-AUTH] Redirect URI used:', redirectUri);
+    console.log('[GOOGLE-CALENDAR-AUTH] Client ID:', clientId.substring(0, 20) + '...');
+    console.log('[GOOGLE-CALENDAR-AUTH] State payload:', { hasUserId: !!userId, timestamp: statePayload.ts });
 
     return new Response(
       JSON.stringify({ authUrl: authUrl.toString() }),

@@ -17,9 +17,20 @@ serve(async (req) => {
     const state = url.searchParams.get('state');
     const error = url.searchParams.get('error');
 
+    console.log('[GOOGLE-CALENDAR-CALLBACK] Callback received');
+    console.log('[GOOGLE-CALENDAR-CALLBACK] Has code:', !!code);
+    console.log('[GOOGLE-CALENDAR-CALLBACK] Has state:', !!state);
+    console.log('[GOOGLE-CALENDAR-CALLBACK] Has error:', !!error);
+
     if (error) {
-      console.error('[GOOGLE-CALENDAR-CALLBACK] OAuth error:', error);
-      return Response.redirect('https://financasai.lovable.app/?google=error', 302);
+      console.error('[GOOGLE-CALENDAR-CALLBACK] OAuth error from Google:', error);
+      const description = url.searchParams.get('error_description');
+      console.error('[GOOGLE-CALENDAR-CALLBACK] Error description:', description);
+      
+      return Response.redirect(
+        'https://financasai.lovable.app/?google=error&reason=' + encodeURIComponent(error),
+        302
+      );
     }
 
     if (!code) {
