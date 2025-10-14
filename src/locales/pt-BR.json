@@ -53,5 +53,33 @@
     "coupons": "Cupons",
     "plans": "Planos",
     "team": "Equipe"
+  },
+  "agenda": {
+    "googleCalendarSync": "Sincronização Google Calendar",
+    "googleCalendarDescription": "Seus compromissos serão automaticamente sincronizados com o Google Calendar",
+    "connectGoogleCalendar": "Conectar Google Calendar",
+    "synced": "Sincronizado",
+    "commitmentCreated": "Compromisso criado!",
+    "commitmentUpdated": "Compromisso atualizado",
+    "commitmentDeleted": "Compromisso excluído",
+    "syncedWithGoogle": "Sincronizado com Google Calendar automaticamente!",
+    "tipConnectGoogle": "💡 Dica: Conecte o Google Calendar para sincronização automática.",
+    "updatedAndSynced": "Atualizado e sincronizado com Google Calendar!",
+    "updatedSuccess": "Atualizado com sucesso!",
+    "deletedFromGoogle": "Excluído e removido do Google Calendar!",
+    "deletedSuccess": "Excluído com sucesso!",
+    "onboarding": {
+      "title": "Sincronize com Google Calendar",
+      "description": "Mantenha seus compromissos sempre atualizados e acessíveis em todos os seus dispositivos.",
+      "benefit1Title": "Acesse de qualquer lugar",
+      "benefit1Desc": "Veja seus compromissos no celular, tablet ou computador",
+      "benefit2Title": "Lembretes automáticos",
+      "benefit2Desc": "Receba notificações antes dos seus compromissos",
+      "benefit3Title": "Sincronização em tempo real",
+      "benefit3Desc": "Alterações aparecem instantaneamente em todos os dispositivos",
+      "securityTitle": "Seguro e Privado",
+      "securityDesc": "Suas informações são criptografadas e você pode desconectar a qualquer momento.",
+      "dontShowAgain": "Não mostrar novamente"
+    }
   }
 }

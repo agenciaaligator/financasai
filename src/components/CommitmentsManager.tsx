@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Plus, Edit, Trash2, Clock } from "lucide-react";
+import { Calendar, Plus, Edit, Trash2, Clock, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -13,6 +13,9 @@ import { ptBR } from "date-fns/locale";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toZonedTime, fromZonedTime, formatInTimeZone } from "date-fns-tz";
 import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
+import { GoogleCalendarConnect } from "./dashboard/GoogleCalendarConnect";
+import { GoogleCalendarOnboarding } from "./GoogleCalendarOnboarding";
+import { useTranslation } from "react-i18next";
 
 interface Commitment {
   id: string;
@@ -35,8 +38,10 @@ export function CommitmentsManager() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const { toast } = useToast();
   const { isConnected, syncEvent } = useGoogleCalendar();
+  const { t } = useTranslation();
 
   const [formData, setFormData] = useState({
     title: "",
@@ -51,7 +56,13 @@ export function CommitmentsManager() {
 
   useEffect(() => {
     fetchCommitments();
-  }, []);
+    
+    // Check if user should see onboarding
+    const hasSeenOnboarding = localStorage.getItem('googleCalendarOnboardingSeen');
+    if (!hasSeenOnboarding && !isConnected) {
+      setShowOnboarding(true);
+    }
+  }, [isConnected]);
 
   const fetchCommitments = async () => {
     try {
@@ -127,8 +138,10 @@ export function CommitmentsManager() {
         }
         
         toast({
-          title: "Compromisso atualizado",
-          description: isConnected ? "Atualizado e sincronizado com Google Calendar!" : "Atualizado com sucesso!",
+          title: t('agenda.commitmentUpdated') || "Compromisso atualizado",
+          description: isConnected 
+            ? t('agenda.updatedAndSynced') || "Atualizado e sincronizado com Google Calendar!" 
+            : t('agenda.updatedSuccess') || "Atualizado com sucesso!",
         });
       } else {
         const { data: newCommitment, error } = await supabase
@@ -169,8 +182,10 @@ export function CommitmentsManager() {
         }
         
         toast({
-          title: "Compromisso criado",
-          description: isConnected ? "Criado e sincronizado com Google Calendar!" : "Criado com sucesso!",
+          title: t('agenda.commitmentCreated') || "Compromisso criado!",
+          description: isConnected 
+            ? t('agenda.syncedWithGoogle') || "Sincronizado com Google Calendar automaticamente!" 
+            : t('agenda.tipConnectGoogle') || "💡 Dica: Conecte o Google Calendar para sincronização automática.",
         });
       }
 
@@ -232,8 +247,10 @@ export function CommitmentsManager() {
       if (error) throw error;
 
       toast({
-        title: "Compromisso excluído",
-        description: isConnected ? "Excluído e removido do Google Calendar!" : "Excluído com sucesso!",
+        title: t('agenda.commitmentDeleted') || "Compromisso excluído",
+        description: isConnected 
+          ? t('agenda.deletedFromGoogle') || "Excluído e removido do Google Calendar!" 
+          : t('agenda.deletedSuccess') || "Excluído com sucesso!",
       });
 
       fetchCommitments();
@@ -321,10 +338,15 @@ export function CommitmentsManager() {
 
   return (
     <div className="space-y-4">
+      <GoogleCalendarOnboarding 
+        open={showOnboarding} 
+        onOpenChange={setShowOnboarding}
+      />
+      
       <div className="flex justify-between items-center flex-wrap gap-2">
         <h2 className="text-2xl font-bold flex items-center gap-2">
           <Calendar className="h-6 w-6" />
-          Agenda
+          {t('dashboard.agenda') || 'Agenda'}
         </h2>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleFixOldTimezones}>
@@ -337,6 +359,22 @@ export function CommitmentsManager() {
           </Button>
         </div>
       </div>
+
+      {/* Google Calendar Integration Card */}
+      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border-2 border-blue-200 dark:border-blue-800">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            {t('agenda.googleCalendarSync') || 'Sincronização Google Calendar'}
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            {t('agenda.googleCalendarDescription') || 'Seus compromissos serão automaticamente sincronizados com o Google Calendar'}
+          </p>
+        </CardHeader>
+        <CardContent>
+          <GoogleCalendarConnect />
+        </CardContent>
+      </Card>
 
       {showForm && (
         <Card>
@@ -463,9 +501,9 @@ export function CommitmentsManager() {
                         <div className="flex items-center gap-2">
                           <div className="font-medium">{commitment.title}</div>
                           {commitment.google_event_id && (
-                            <Badge variant="outline" className="gap-1">
-                              <Calendar className="h-3 w-3" />
-                              Google
+                            <Badge variant="outline" className="gap-1 bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700">
+                              <Check className="h-3 w-3" />
+                              {t('agenda.synced') || 'Sincronizado'}
                             </Badge>
                           )}
                         </div>
