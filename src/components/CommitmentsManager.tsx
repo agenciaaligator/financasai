@@ -43,7 +43,7 @@ export function CommitmentsManager() {
   const { toast } = useToast();
   const { isConnected, syncEvent } = useGoogleCalendar();
   const { t } = useTranslation();
-  const { isAdmin, isPremium } = useUserRole();
+  const { isAdmin, isPremium, loading: roleLoading } = useUserRole();
   
   // Verificar se tem acesso ao Google Calendar (Premium ou Admin)
   const hasGoogleCalendarAccess = isAdmin || isPremium;
@@ -268,54 +268,6 @@ export function CommitmentsManager() {
     }
   };
 
-  const handleFixOldTimezones = async () => {
-    if (!confirm("Isto irá ajustar (+3h) todos os compromissos criados antes de 09/10/2025. Confirma?")) return;
-    
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const cutoffDate = "2025-10-09T00:00:00Z";
-      
-      const { data: oldCommitments, error: fetchError } = await supabase
-        .from("commitments")
-        .select("*")
-        .eq("user_id", user.id)
-        .lt("created_at", cutoffDate);
-
-      if (fetchError) throw fetchError;
-      if (!oldCommitments || oldCommitments.length === 0) {
-        toast({
-          title: "Nenhum compromisso antigo encontrado",
-          description: "Não há compromissos antigos para ajustar.",
-        });
-        return;
-      }
-
-      for (const c of oldCommitments) {
-        const oldDate = new Date(c.scheduled_at);
-        const fixedDate = new Date(oldDate.getTime() + 3 * 60 * 60 * 1000); // +3h
-        
-        await supabase
-          .from("commitments")
-          .update({ scheduled_at: fixedDate.toISOString() })
-          .eq("id", c.id);
-      }
-
-      toast({
-        title: "Horários ajustados",
-        description: `${oldCommitments.length} compromisso(s) antigo(s) corrigido(s) (+3h).`,
-      });
-
-      fetchCommitments();
-    } catch (error: any) {
-      toast({
-        title: "Erro ao corrigir horários",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
 
   const getCategoryBadge = (category: string) => {
     const variants = {
@@ -353,20 +305,28 @@ export function CommitmentsManager() {
           <Calendar className="h-6 w-6" />
           {t('dashboard.agenda') || 'Agenda'}
         </h2>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleFixOldTimezones}>
-            <Clock className="h-4 w-4 mr-2" />
-            Corrigir Horários Antigos
-          </Button>
-          <Button onClick={() => setShowForm(!showForm)}>
-            <Plus className="h-4 w-4 mr-2" />
-            {showForm ? "Cancelar" : "Novo Compromisso"}
-          </Button>
-        </div>
+        <Button onClick={() => setShowForm(!showForm)}>
+          <Plus className="h-4 w-4 mr-2" />
+          {showForm ? "Cancelar" : "Novo Compromisso"}
+        </Button>
       </div>
 
       {/* Google Calendar Integration Card */}
-      {hasGoogleCalendarAccess ? (
+      {roleLoading ? (
+        <Card className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Calendar className="h-5 w-5 animate-pulse" />
+              Carregando...
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-16 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : hasGoogleCalendarAccess ? (
         <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border-2 border-blue-200 dark:border-blue-800">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">

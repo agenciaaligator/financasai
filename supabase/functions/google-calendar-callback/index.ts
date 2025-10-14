@@ -19,7 +19,7 @@ serve(async (req) => {
 
     if (error) {
       console.error('[GOOGLE-CALENDAR-CALLBACK] OAuth error:', error);
-      return Response.redirect('https://financasai.lovable.app/settings?google=error', 302);
+      return Response.redirect('https://financasai.lovable.app/?google=error', 302);
     }
 
     if (!code) {
@@ -138,9 +138,9 @@ serve(async (req) => {
 
     console.log('[GOOGLE-CALENDAR-CALLBACK] Connection saved successfully for user:', userId);
 
-    return Response.redirect('https://financasai.lovable.app/settings?google=success', 302);
+    return Response.redirect('https://financasai.lovable.app/?google=success', 302);
   } catch (error) {
     console.error('[GOOGLE-CALENDAR-CALLBACK] Error:', error);
-    return Response.redirect('https://financasai.lovable.app/settings?google=error', 302);
+    return Response.redirect('https://financasai.lovable.app/?google=error', 302);
   }
 });

@@ -44,14 +44,19 @@ export const useGoogleCalendar = () => {
 
   const connect = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('google-calendar-auth');
+      const session = await supabase.auth.getSession();
+      const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
+        headers: {
+          Authorization: `Bearer ${session.data.session?.access_token}`
+        }
+      });
       
       if (error) throw error;
       
       if (data?.authUrl) {
         const url = data.authUrl;
         
-        // Detectar se está em iframe e redirecionar o top window
+        // Detectar se está em iframe e forçar navegação no top-level
         if (window.top && window.top !== window.self) {
           window.top.location.href = url;
         } else {

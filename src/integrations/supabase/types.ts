@@ -121,6 +121,7 @@ export type Database = {
           reminder_sent: boolean | null
           reminders_sent: Json | null
           scheduled_at: string
+          scheduled_reminders: Json | null
           title: string
           updated_at: string | null
           user_id: string
@@ -142,6 +143,7 @@ export type Database = {
           reminder_sent?: boolean | null
           reminders_sent?: Json | null
           scheduled_at: string
+          scheduled_reminders?: Json | null
           title: string
           updated_at?: string | null
           user_id: string
@@ -163,6 +165,7 @@ export type Database = {
           reminder_sent?: boolean | null
           reminders_sent?: Json | null
           scheduled_at?: string
+          scheduled_reminders?: Json | null
           title?: string
           updated_at?: string | null
           user_id?: string
@@ -458,6 +461,36 @@ export type Database = {
           identifier?: string
           ip_address?: string | null
           user_agent?: string | null
+        }
+        Relationships: []
+      }
+      reminder_settings: {
+        Row: {
+          created_at: string | null
+          default_reminders: Json | null
+          id: string
+          send_via_email: boolean | null
+          send_via_whatsapp: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          default_reminders?: Json | null
+          id?: string
+          send_via_email?: boolean | null
+          send_via_whatsapp?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          default_reminders?: Json | null
+          id?: string
+          send_via_email?: boolean | null
+          send_via_whatsapp?: boolean | null
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
