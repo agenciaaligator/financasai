@@ -49,13 +49,30 @@ export const useGoogleCalendar = () => {
       if (error) throw error;
       
       if (data?.authUrl) {
-        window.location.href = data.authUrl;
+        const url = data.authUrl;
+        
+        // Detectar se está em iframe e redirecionar o top window
+        if (window.top && window.top !== window.self) {
+          window.top.location.href = url;
+        } else {
+          window.location.href = url;
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error connecting to Google Calendar:', error);
+      
+      // Mensagens de erro mais específicas
+      let description = 'Não foi possível iniciar a conexão com o Google Calendar.';
+      
+      if (error.message?.includes('403') || error.message?.includes('access_denied')) {
+        description = 'Acesso negado. Verifique se seu email está cadastrado como Usuário de Teste no Google Cloud Console.';
+      } else if (error.message?.includes('redirect_uri')) {
+        description = 'Erro de configuração. Verifique o Redirect URI no Google Cloud Console.';
+      }
+      
       toast({
         title: 'Erro ao conectar',
-        description: 'Não foi possível iniciar a conexão com o Google Calendar.',
+        description,
         variant: 'destructive',
       });
     }

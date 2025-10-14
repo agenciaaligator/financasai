@@ -16,6 +16,7 @@ import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
 import { GoogleCalendarConnect } from "./dashboard/GoogleCalendarConnect";
 import { GoogleCalendarOnboarding } from "./GoogleCalendarOnboarding";
 import { useTranslation } from "react-i18next";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface Commitment {
   id: string;
@@ -42,6 +43,10 @@ export function CommitmentsManager() {
   const { toast } = useToast();
   const { isConnected, syncEvent } = useGoogleCalendar();
   const { t } = useTranslation();
+  const { isAdmin, isPremium } = useUserRole();
+  
+  // Verificar se tem acesso ao Google Calendar (Premium ou Admin)
+  const hasGoogleCalendarAccess = isAdmin || isPremium;
 
   const [formData, setFormData] = useState({
     title: "",
@@ -361,20 +366,40 @@ export function CommitmentsManager() {
       </div>
 
       {/* Google Calendar Integration Card */}
-      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border-2 border-blue-200 dark:border-blue-800">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            {t('agenda.googleCalendarSync') || 'Sincronização Google Calendar'}
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            {t('agenda.googleCalendarDescription') || 'Seus compromissos serão automaticamente sincronizados com o Google Calendar'}
-          </p>
-        </CardHeader>
-        <CardContent>
-          <GoogleCalendarConnect />
-        </CardContent>
-      </Card>
+      {hasGoogleCalendarAccess ? (
+        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border-2 border-blue-200 dark:border-blue-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              {t('agenda.googleCalendarSync') || 'Sincronização Google Calendar'}
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {t('agenda.googleCalendarDescription') || 'Seus compromissos serão automaticamente sincronizados com o Google Calendar'}
+            </p>
+          </CardHeader>
+          <CardContent>
+            <GoogleCalendarConnect />
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950 dark:to-orange-950 border-2 border-amber-200 dark:border-amber-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Calendar className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              Google Calendar - Premium
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Sincronize automaticamente seus compromissos com o Google Calendar. 
+              Disponível nos planos Premium e Enterprise.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <Button variant="default" onClick={() => window.location.href = '/settings'}>
+              Ver Planos
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {showForm && (
         <Card>

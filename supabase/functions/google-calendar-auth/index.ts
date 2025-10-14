@@ -18,14 +18,46 @@ serve(async (req) => {
       throw new Error('Missing Google OAuth configuration');
     }
 
+    // Tentar obter user_id do Authorization header (se disponível)
+    let userId = null;
+    const authHeader = req.headers.get('authorization');
+    
+    if (authHeader) {
+      try {
+        const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.39.3');
+        const supabaseClient = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+          { global: { headers: { Authorization: authHeader } } }
+        );
+        
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        userId = user?.id || null;
+        console.log('[GOOGLE-CALENDAR-AUTH] User ID from auth:', userId);
+      } catch (e) {
+        console.log('[GOOGLE-CALENDAR-AUTH] Could not extract user from auth header:', e.message);
+      }
+    }
+
     // Scopes necessários para acessar o Google Calendar
     const scopes = [
       'https://www.googleapis.com/auth/calendar.events',
       'https://www.googleapis.com/auth/calendar.readonly',
     ];
 
-    // Gerar state para proteção CSRF
-    const state = crypto.randomUUID();
+    // Criar payload do state com nonce, user_id e timestamp
+    const statePayload = {
+      n: crypto.randomUUID(),
+      uid: userId,
+      ts: Date.now()
+    };
+    
+    // Codificar state em base64url
+    const stateJson = JSON.stringify(statePayload);
+    const stateBase64 = btoa(stateJson)
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
 
     // Construir URL de autorização do Google
     const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
@@ -35,12 +67,12 @@ serve(async (req) => {
     authUrl.searchParams.set('scope', scopes.join(' '));
     authUrl.searchParams.set('access_type', 'offline');
     authUrl.searchParams.set('prompt', 'consent');
-    authUrl.searchParams.set('state', state);
+    authUrl.searchParams.set('state', stateBase64);
 
-    console.log('[GOOGLE-CALENDAR-AUTH] Authorization URL generated');
+    console.log('[GOOGLE-CALENDAR-AUTH] Authorization URL generated with user_id in state');
 
     return new Response(
-      JSON.stringify({ authUrl: authUrl.toString(), state }),
+      JSON.stringify({ authUrl: authUrl.toString() }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200 

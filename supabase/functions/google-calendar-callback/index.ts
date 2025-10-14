@@ -26,6 +26,22 @@ serve(async (req) => {
       throw new Error('Authorization code not provided');
     }
 
+    // Decodificar state para extrair user_id
+    let userId = null;
+    if (state) {
+      try {
+        const stateBase64 = state
+          .replace(/-/g, '+')
+          .replace(/_/g, '/');
+        const stateJson = atob(stateBase64);
+        const statePayload = JSON.parse(stateJson);
+        userId = statePayload.uid;
+        console.log('[GOOGLE-CALENDAR-CALLBACK] User ID from state:', userId);
+      } catch (e) {
+        console.error('[GOOGLE-CALENDAR-CALLBACK] Failed to decode state:', e);
+      }
+    }
+
     const clientId = Deno.env.get('GOOGLE_CLIENT_ID');
     const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET');
     const redirectUri = Deno.env.get('GOOGLE_CALENDAR_REDIRECT_URI');
@@ -44,6 +60,8 @@ serve(async (req) => {
     });
 
     if (!tokenResponse.ok) {
+      const errorData = await tokenResponse.text();
+      console.error('[GOOGLE-CALENDAR-CALLBACK] Token exchange failed:', errorData);
       throw new Error('Failed to exchange code for tokens');
     }
 
@@ -58,21 +76,39 @@ serve(async (req) => {
       }
     );
 
+    if (!calendarResponse.ok) {
+      throw new Error('Failed to fetch calendar info');
+    }
+
     const calendarInfo = await calendarResponse.json();
 
-    // Extrair user_id do state (podemos passar no state em versão futura)
-    // Por ora, vamos usar o header de autorização se disponível
-    const authHeader = req.headers.get('authorization');
+    // Usar SERVICE_ROLE_KEY para salvar independente de autenticação
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader! } } }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { data: { user } } = await supabaseClient.auth.getUser();
+    // Se não temos userId do state, tentar do header de autorização como fallback
+    if (!userId) {
+      const authHeader = req.headers.get('authorization');
+      if (authHeader) {
+        try {
+          const authClient = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            { global: { headers: { Authorization: authHeader } } }
+          );
+          const { data: { user } } = await authClient.auth.getUser();
+          userId = user?.id;
+          console.log('[GOOGLE-CALENDAR-CALLBACK] User ID from auth header:', userId);
+        } catch (e) {
+          console.error('[GOOGLE-CALENDAR-CALLBACK] Failed to get user from auth:', e);
+        }
+      }
+    }
     
-    if (!user) {
-      throw new Error('User not authenticated');
+    if (!userId) {
+      throw new Error('User ID not found in state or auth header');
     }
 
     // Calcular data de expiração
@@ -82,7 +118,7 @@ serve(async (req) => {
     const { error: dbError } = await supabaseClient
       .from('calendar_connections')
       .upsert({
-        user_id: user.id,
+        user_id: userId,
         access_token,
         refresh_token,
         expires_at: expiresAt.toISOString(),
@@ -100,7 +136,7 @@ serve(async (req) => {
       throw dbError;
     }
 
-    console.log('[GOOGLE-CALENDAR-CALLBACK] Connection saved successfully for user:', user.id);
+    console.log('[GOOGLE-CALENDAR-CALLBACK] Connection saved successfully for user:', userId);
 
     return Response.redirect('https://financasai.lovable.app/settings?google=success', 302);
   } catch (error) {
