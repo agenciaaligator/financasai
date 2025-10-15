@@ -3641,7 +3641,7 @@ class WhatsAppAgent {
         const m = target.getUTCMonth();
         const d = target.getUTCDate();
         const scheduledISO = new Date(Date.UTC(y, m, d, hour + 3, minute)).toISOString();
-        console.log('🗓️ QuickParse SUCCESS:', {
+        console.log('🗓️ [COMMITMENT-FLOW] QuickParse SUCCESS:', {
           originalMessage: messageText,
           normalizedMessage: normalized,
           title,
@@ -3650,7 +3650,36 @@ class WhatsAppAgent {
           hour,
           minute,
           scheduledISO
-        })
+        });
+        
+        // ✅ VALIDAR HORÁRIO PASSADO (BRT)
+        const nowBRT = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+        const scheduledBRT = new Date(new Date(scheduledISO).toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+        
+        if (scheduledBRT <= nowBRT) {
+          console.log('⏰ [COMMITMENT-FLOW] Rejected past time:', { scheduledBRT, nowBRT });
+          
+          // Buscar horários disponíveis
+          const supabase = createClient(
+            Deno.env.get('SUPABASE_URL')!,
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+          );
+          const suggestions = await this.suggestAvailableSlots(userId, target, hour);
+          
+          return {
+            response: `⏰ *Esse horário já passou!*\n\n` +
+                     `Por favor, informe um horário futuro.\n\n` +
+                     `💡 *Sugestões para hoje:*\n${suggestions.join('\n')}`,
+            sessionData: {
+              conversation_state: 'awaiting_commitment_time',
+              pending_commitment: {
+                title: title.charAt(0).toUpperCase() + title.slice(1),
+                category,
+                targetDate: target.toISOString()
+              }
+            }
+          };
+        }
 
         // ⚠️ VERIFICAR CONFLITOS antes de inserir
         const supabase = createClient(
@@ -4387,6 +4416,13 @@ Se não especificar hora, retorne scheduled_at: null.`
     // Atualizar campo correspondente ao step atual
     switch(currentStep) {
       case 'location':
+        // ✅ Permitir pular qualquer etapa
+        if (normalized === 'pular') {
+          console.log('[COMMITMENT-FLOW] User skipped location step');
+          pending.detailsStep = 'completed';
+          return await this.showCommitmentConfirmation(session, pending);
+        }
+        
         pending.location = messageText.trim();
         
         // Decidir próximo passo baseado na categoria
@@ -4396,7 +4432,7 @@ Se não especificar hora, retorne scheduled_at: null.`
             session_data: { ...sessionData, pending_commitment: pending }
           });
           return {
-            response: '🩺 Qual a especialidade médica?\n(Ex: Dentista, Cardiologista, Oftalmologista)',
+            response: '🩺 Qual a especialidade médica?\n_Digite "pular" para continuar._',
             sessionData: { ...sessionData, pending_commitment: pending }
           };
         } else if (pending.category === 'meeting') {
@@ -4405,7 +4441,7 @@ Se não especificar hora, retorne scheduled_at: null.`
             session_data: { ...sessionData, pending_commitment: pending }
           });
           return {
-            response: '🏢 Qual o nome da empresa da reunião?',
+            response: '🏢 Qual o nome da empresa da reunião?\n_Digite "pular" para continuar._',
             sessionData: { ...sessionData, pending_commitment: pending }
           };
         } else if (pending.category === 'other' && /futeb|basquet|voley|esport|treino/i.test(pending.title)) {
@@ -4414,7 +4450,7 @@ Se não especificar hora, retorne scheduled_at: null.`
             session_data: { ...sessionData, pending_commitment: pending }
           });
           return {
-            response: '👥 Quem vai participar?\n(Ex: João, Maria, Pedro)',
+            response: '👥 Quem vai participar?\n_Digite "pular" para continuar._',
             sessionData: { ...sessionData, pending_commitment: pending }
           };
         }
@@ -4423,11 +4459,19 @@ Se não especificar hora, retorne scheduled_at: null.`
         return await this.showCommitmentConfirmation(session, pending);
         
       case 'specialty':
+        if (normalized === 'pular') {
+          pending.detailsStep = 'completed';
+          return await this.showCommitmentConfirmation(session, pending);
+        }
         pending.specialty = messageText.trim();
         pending.detailsStep = 'completed';
         return await this.showCommitmentConfirmation(session, pending);
         
       case 'company':
+        if (normalized === 'pular') {
+          pending.detailsStep = 'completed';
+          return await this.showCommitmentConfirmation(session, pending);
+        }
         pending.company = messageText.trim();
         pending.detailsStep = 'contact';
         await SessionManager.updateSession(session.id, {
@@ -4611,7 +4655,8 @@ Se não especificar hora, retorne scheduled_at: null.`
       if (pending.contactPhone) description += `Telefone: ${pending.contactPhone}\n`;
       if (pending.participants) description += `Participantes: ${pending.participants}\n`;
       
-      // Inserir no banco
+      // ✅ Inserir no banco (ÚNICO PONTO DE INSERÇÃO)
+      console.log('[COMMITMENT-FLOW] Saving after user confirmation');
       const { data: commitment, error: insertErr } = await supabase
         .from('commitments')
         .insert({
@@ -4628,7 +4673,7 @@ Se não especificar hora, retorne scheduled_at: null.`
         .single();
       
       if (insertErr) {
-        console.error('❌ Erro ao inserir compromisso:', insertErr);
+        console.error('❌ [COMMITMENT-FLOW] Error inserting commitment:', insertErr);
         return {
           response: '❌ Erro ao salvar compromisso. Tente novamente.',
           sessionData: {
@@ -4639,7 +4684,11 @@ Se não especificar hora, retorne scheduled_at: null.`
         };
       }
       
-      console.log('✅ Compromisso salvo:', commitment);
+      console.log('✅ [COMMITMENT-FLOW] Commitment saved:', commitment.id);
+      
+      // ✅ Sincronizar com Google Calendar APÓS confirmação
+      console.log('[WHATSAPP-AGENT] Triggering Google Calendar sync: create');
+      await syncWithGoogleCalendar('create', commitment.id, session.user_id!);
       
       // Gerar mensagem personalizada ✨
       let successMsg = PersonalizedResponses.generateCommitmentSuccessMessage(
@@ -4823,70 +4872,31 @@ Se não especificar hora, retorne scheduled_at: null.`
       };
     }
     
-    // SEM CONFLITO: Inserir diretamente
-    const { error: insertErr } = await supabase.from('commitments').insert({
-      user_id: session.user_id,
-      title: pending.title,
-      description: null,
-      scheduled_at: scheduledISO,
-      category: pending.category
+    // ✅ SEM CONFLITO: Preparar para coleta de detalhes
+    console.log('✅ [COMMITMENT-FLOW] No conflicts, preparing detail collection');
+    
+    const formattedDate = new Date(scheduledISO).toLocaleDateString('pt-BR', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+      hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo'
     });
     
-    if (!insertErr) {
-      const formattedDate = new Date(scheduledISO).toLocaleDateString('pt-BR', {
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-        hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo'
-      });
-      
-      // Verificar se deve pedir detalhes adicionais (local, participantes)
-      const categoryPrompts: Record<string, { detail_type: 'participants' | 'location', message: string }> = {
-        'meeting': { detail_type: 'participants', message: '👥 Com quem será a reunião? (ou digite "pular")' },
-        'appointment': { detail_type: 'location', message: '📍 Qual o endereço da consulta? (ou digite "pular")' },
-      };
-      
-      const { data: insertedData } = await supabase
-        .from('commitments')
-        .select('id')
-        .eq('user_id', session.user_id)
-        .eq('scheduled_at', scheduledISO)
-        .single();
-      
-      if (categoryPrompts[pending.category] && insertedData) {
-        const prompt = categoryPrompts[pending.category];
-        
-        // 🆕 Sincronizar com Google Calendar ANTES de pedir detalhes
-        await syncWithGoogleCalendar('create', insertedData.id, session.user_id!);
-        
-        return {
-          response: `✅ *Compromisso agendado!*\n\n📌 ${pending.title}\n🗓️ ${formattedDate}\n\n${prompt.message}\n\n⚠️ Por favor, envie em TEXTO (não áudio).`,
-          sessionData: {
-            conversation_state: 'awaiting_commitment_details',
-            pending_commitment: {
-              commitment_id: insertedData.id,
-              detail_type: prompt.detail_type,
-              title: pending.title,
-              category: pending.category
-            }
-          }
-        };
+    return {
+      response: `✅ *Vou agendar:*\n\n` +
+               `📌 ${pending.title}\n` +
+               `🗓️ ${formattedDate}\n\n` +
+               `📍 Qual o endereço ou local do compromisso?\n` +
+               `_Digite "pular" para prosseguir sem detalhes._`,
+      sessionData: {
+        conversation_state: 'awaiting_commitment_details' as const,
+        pending_commitment: {
+          title: pending.title,
+          category: pending.category,
+          scheduledISO: scheduledISO,
+          targetDate: scheduledISO,
+          detailsStep: 'location' as const
+        }
       }
-      
-      // 🆕 Sincronizar também quando NÃO pede detalhes
-      if (insertedData) {
-        await syncWithGoogleCalendar('create', insertedData.id, session.user_id!);
-      }
-      
-      return {
-        response: `✅ *Compromisso agendado!*\n\n📌 ${pending.title}\n🗓️ ${formattedDate}`,
-        sessionData: { conversation_state: 'idle', pending_commitment: undefined }
-      };
-    } else {
-      console.error('⚠️ Error inserting commitment:', insertErr);
-      return {
-        response: '❌ Erro ao agendar. Tente novamente.',
-        sessionData: { conversation_state: 'idle', pending_commitment: undefined }
-      };
-    }
+    };
   }
 
 
