@@ -84,13 +84,21 @@ serve(async (req) => {
 
     const { action, commitmentId, userId } = await req.json();
 
-    // Determinar userId efetivo
+    // Determinar userId efetivo e cliente a usar
     let effectiveUserId: string;
+    let effectiveClient = supabaseClient; // Cliente padrão (JWT)
 
     // Se userId foi passado no body (chamada via service role do whatsapp-agent)
     if (userId) {
       console.log('[GOOGLE-CALENDAR-SYNC] Using userId from request body:', userId);
       effectiveUserId = userId;
+      
+      // Criar cliente com SERVICE_ROLE_KEY para bypass RLS
+      effectiveClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+      console.log('[GOOGLE-CALENDAR-SYNC] Using SERVICE_ROLE_KEY client');
     } else {
       // Autenticação JWT normal (chamada do frontend)
       const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
@@ -102,6 +110,7 @@ serve(async (req) => {
         throw new Error('User not authenticated');
       }
       effectiveUserId = user.id;
+      console.log('[GOOGLE-CALENDAR-SYNC] Using JWT client');
     }
 
     if (!effectiveUserId) {
@@ -112,18 +121,26 @@ serve(async (req) => {
       throw new Error('Missing action or commitmentId');
     }
 
-    // Buscar commitment
-    const { data: commitment, error: commitmentError } = await supabaseClient
+    // Buscar commitment usando effectiveClient
+    console.log('[GOOGLE-CALENDAR-SYNC] Fetching commitment:', commitmentId);
+    const { data: commitment, error: commitmentError } = await effectiveClient
       .from('commitments')
       .select('*')
       .eq('id', commitmentId)
       .single();
 
-    if (commitmentError || !commitment) {
+    if (commitmentError) {
+      console.error('[GOOGLE-CALENDAR-SYNC] Error fetching commitment:', commitmentError);
+      throw new Error(`Commitment not found: ${commitmentError.message}`);
+    }
+    
+    if (!commitment) {
       throw new Error('Commitment not found');
     }
+    
+    console.log('[GOOGLE-CALENDAR-SYNC] Commitment found:', commitment.title);
 
-    const accessToken = await getValidAccessToken(supabaseClient, effectiveUserId);
+    const accessToken = await getValidAccessToken(effectiveClient, effectiveUserId);
 
     if (action === 'create') {
       // Criar evento no Google Calendar
@@ -164,8 +181,8 @@ serve(async (req) => {
 
       const createdEvent = await response.json();
 
-      // Salvar google_event_id
-      await supabaseClient
+      // Salvar google_event_id usando effectiveClient
+      await effectiveClient
         .from('commitments')
         .update({ google_event_id: createdEvent.id })
         .eq('id', commitmentId);
@@ -220,8 +237,8 @@ serve(async (req) => {
 
         const createdEvent = await response.json();
 
-        // Salvar google_event_id
-        await supabaseClient
+        // Salvar google_event_id usando effectiveClient
+        await effectiveClient
           .from('commitments')
           .update({ google_event_id: createdEvent.id })
           .eq('id', commitmentId);
@@ -271,8 +288,8 @@ serve(async (req) => {
 
         const createdEvent = await createResponse.json();
 
-        // Atualizar google_event_id
-        await supabaseClient
+        // Atualizar google_event_id usando effectiveClient
+        await effectiveClient
           .from('commitments')
           .update({ google_event_id: createdEvent.id })
           .eq('id', commitmentId);
@@ -321,8 +338,8 @@ serve(async (req) => {
         throw new Error(`Failed to delete Google Calendar event: ${response.status}`);
       }
 
-      // Limpar google_event_id do commitment
-      await supabaseClient
+      // Limpar google_event_id do commitment usando effectiveClient
+      await effectiveClient
         .from('commitments')
         .update({ google_event_id: null })
         .eq('id', commitmentId);

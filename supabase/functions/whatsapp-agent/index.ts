@@ -5300,10 +5300,15 @@ Se não especificar hora, retorne scheduled_at: null.`
 
       if (error) throw error;
 
+      console.log(`[WHATSAPP-AGENT] ✅ ${ids.length} compromisso(s) excluído(s) do banco`);
+
       // 🆕 Sincronizar exclusão com Google Calendar para cada compromisso
+      console.log(`[WHATSAPP-AGENT] 📅 Iniciando sync de exclusão com Google Calendar para ${ids.length} compromisso(s)`);
       for (const id of ids) {
+        console.log(`[WHATSAPP-AGENT] 📅 Syncing delete for commitment ID: ${id}`);
         await syncWithGoogleCalendar('delete', id, session.user_id!);
       }
+      console.log(`[WHATSAPP-AGENT] ✅ Sync de exclusão concluído`);
 
       await SessionManager.updateSession(session.id, {
         session_data: {
