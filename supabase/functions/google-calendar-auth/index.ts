@@ -12,7 +12,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { appOrigin } = body;
+    const { appOrigin, userId: bodyUserId } = body;
 
     const clientId = Deno.env.get('GOOGLE_CLIENT_ID');
     const redirectUri = Deno.env.get('GOOGLE_CALENDAR_REDIRECT_URI');
@@ -28,25 +28,30 @@ serve(async (req) => {
       clientIdPrefix: clientId.substring(0, 30) + '...' 
     });
 
-    // Tentar obter user_id do Authorization header (se disponível)
-    let userId = null;
-    const authHeader = req.headers.get('authorization');
+    // Priorizar userId do body, fallback para Authorization header
+    let userId = bodyUserId || null;
     
-    if (authHeader) {
-      try {
-        const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.39.3');
-        const supabaseClient = createClient(
-          Deno.env.get('SUPABASE_URL') ?? '',
-          Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-          { global: { headers: { Authorization: authHeader } } }
-        );
-        
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        userId = user?.id || null;
-        console.log('[GOOGLE-CALENDAR-AUTH] User ID from auth:', userId);
-      } catch (e) {
-        console.log('[GOOGLE-CALENDAR-AUTH] Could not extract user from auth header:', e.message);
+    if (!userId) {
+      const authHeader = req.headers.get('authorization');
+      
+      if (authHeader) {
+        try {
+          const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.39.3');
+          const supabaseClient = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            { global: { headers: { Authorization: authHeader } } }
+          );
+          
+          const { data: { user } } = await supabaseClient.auth.getUser();
+          userId = user?.id || null;
+          console.log('[GOOGLE-CALENDAR-AUTH] User ID from auth header:', userId);
+        } catch (e) {
+          console.log('[GOOGLE-CALENDAR-AUTH] Could not extract user from auth header:', e.message);
+        }
       }
+    } else {
+      console.log('[GOOGLE-CALENDAR-AUTH] User ID from body:', userId);
     }
 
     // Scopes necessários para acessar o Google Calendar

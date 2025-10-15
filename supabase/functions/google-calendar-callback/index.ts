@@ -174,8 +174,9 @@ serve(async (req) => {
     return Response.redirect(`${appOrigin}/gc-done.html?google=success`, 302);
   } catch (error) {
     console.error('[GOOGLE-CALENDAR-CALLBACK] Error:', error);
+    const fallbackOrigin = 'https://financasai.lovable.app';
     return Response.redirect(
-      `${appOrigin}/gc-done.html?google=error&reason=unknown`,
+      `${fallbackOrigin}/gc-done.html?google=error&reason=unknown`,
       302
     );
   }

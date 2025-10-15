@@ -47,11 +47,19 @@ export const useGoogleCalendar = () => {
       setLoading(true);
       console.log('[useGoogleCalendar] Iniciando conexão com Google Calendar...');
       
+      // Obter userId antes de invocar a função
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Calcular appOrigin apropriado
+      const origin = window.location.origin;
+      const isEditor = origin.includes('lovableproject.com') || origin.includes('lovable.dev');
+      const appOrigin = isEditor ? 'https://financasai.lovable.app' : origin;
+      
       const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
-        body: { appOrigin: window.location.origin },
-        headers: {
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-        },
+        body: { 
+          appOrigin,
+          userId: user?.id || null
+        }
       });
 
       if (error) throw error;
@@ -62,9 +70,8 @@ export const useGoogleCalendar = () => {
       const authUrl = data.authUrl;
       console.log('[useGoogleCalendar] URL de autenticação gerada');
 
-      // Construir URL da ponte de redirecionamento dinamicamente
-      const origin = window.location.origin;
-      const bridgeUrl = `${origin}/gc-bridge?u=${encodeURIComponent(authUrl)}`;
+      // Construir URL da ponte de redirecionamento usando o appOrigin já calculado
+      const bridgeUrl = `${appOrigin}/gc-bridge?u=${encodeURIComponent(authUrl)}`;
       console.log('[useGoogleCalendar] URL da ponte criada:', bridgeUrl);
 
       // Detectar se está em iframe (Lovable Preview)
