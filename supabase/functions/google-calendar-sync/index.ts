@@ -82,7 +82,7 @@ serve(async (req) => {
       { global: { headers: { Authorization: `Bearer ${token}` } } }
     );
 
-    const { action, commitmentId, userId } = await req.json();
+    const { action, commitmentId, userId, googleEventId } = await req.json();
 
     // Determinar userId efetivo e cliente a usar
     let effectiveUserId: string;
@@ -317,15 +317,28 @@ serve(async (req) => {
     }
 
     if (action === 'delete') {
-      if (!commitment.google_event_id) {
+      // Determinar qual google_event_id usar
+      let eventIdToDelete = commitment?.google_event_id || googleEventId;
+      
+      console.log('[GOOGLE-CALENDAR-SYNC] Delete action:', {
+        commitmentFound: !!commitment,
+        commitmentGoogleEventId: commitment?.google_event_id,
+        providedGoogleEventId: googleEventId,
+        eventIdToDelete
+      });
+
+      if (!eventIdToDelete) {
+        console.log('[GOOGLE-CALENDAR-SYNC] No Google event ID to delete (already deleted or never synced)');
         return new Response(
           JSON.stringify({ success: true, message: 'No Google event to delete' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
+      // Deletar do Google Calendar
+      console.log('[GOOGLE-CALENDAR-SYNC] Deleting from Google Calendar:', eventIdToDelete);
       const response = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/primary/events/${commitment.google_event_id}`,
+        `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventIdToDelete}`,
         {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${accessToken}` },
@@ -338,11 +351,18 @@ serve(async (req) => {
         throw new Error(`Failed to delete Google Calendar event: ${response.status}`);
       }
 
-      // Limpar google_event_id do commitment usando effectiveClient
-      await effectiveClient
-        .from('commitments')
-        .update({ google_event_id: null })
-        .eq('id', commitmentId);
+      console.log('[GOOGLE-CALENDAR-SYNC] Event deleted from Google Calendar:', eventIdToDelete);
+
+      // Limpar google_event_id do commitment (se ainda existir no banco)
+      if (commitment) {
+        console.log('[GOOGLE-CALENDAR-SYNC] Clearing google_event_id from commitment');
+        await effectiveClient
+          .from('commitments')
+          .update({ google_event_id: null })
+          .eq('id', commitmentId);
+      } else {
+        console.log('[GOOGLE-CALENDAR-SYNC] Commitment already deleted from DB, skipping update');
+      }
 
       console.log('[GOOGLE-CALENDAR-SYNC] Event deleted:', commitment.google_event_id);
 

@@ -11,10 +11,11 @@ const corsHeaders = {
 async function syncWithGoogleCalendar(
   action: 'create' | 'update' | 'delete',
   commitmentId: string,
-  userId: string
+  userId: string,
+  googleEventId?: string
 ): Promise<void> {
   try {
-    console.log(`📅 [WHATSAPP-AGENT] Triggering Google Calendar sync: ${action} for ${commitmentId}`);
+    console.log(`📅 [WHATSAPP-AGENT] Triggering Google Calendar sync: ${action} for ${commitmentId}${googleEventId ? ` (event: ${googleEventId})` : ''}`);
     
     const syncResponse = await fetch(
       `${Deno.env.get('SUPABASE_URL')}/functions/v1/google-calendar-sync`,
@@ -28,6 +29,7 @@ async function syncWithGoogleCalendar(
           action,
           commitmentId,
           userId,
+          googleEventId,
         }),
       }
     );
@@ -5287,11 +5289,18 @@ Se não especificar hora, retorne scheduled_at: null.`
       
       // Selecionar compromissos
       const selectedCommitments = selectedIndices.map(i => commitments[i - 1]);
+      console.log(`🗑️ Cancelando ${selectedCommitments.length} compromisso(s):`, selectedCommitments.map(c => c.title));
+      
+      // 🆕 CORREÇÃO CRÍTICA: Sincronizar exclusão ANTES de deletar do banco
+      console.log(`[WHATSAPP-AGENT] 📅 Iniciando sync de exclusão com Google Calendar`);
+      for (const commitment of selectedCommitments) {
+        console.log(`[WHATSAPP-AGENT] 📅 Syncing delete for: ${commitment.title} (ID: ${commitment.id}, google_event_id: ${commitment.google_event_id || 'none'})`);
+        await syncWithGoogleCalendar('delete', commitment.id, session.user_id!, commitment.google_event_id || undefined);
+      }
+      console.log(`[WHATSAPP-AGENT] ✅ Sync de exclusão concluído`);
+      
+      // Agora deletar do banco
       const ids = selectedCommitments.map(c => c.id);
-      
-      console.log(`🗑️ Cancelando ${ids.length} compromisso(s):`, selectedCommitments.map(c => c.title));
-      
-      // Deletar todos de uma vez
       const { error } = await supabase
         .from('commitments')
         .delete()
@@ -5301,14 +5310,6 @@ Se não especificar hora, retorne scheduled_at: null.`
       if (error) throw error;
 
       console.log(`[WHATSAPP-AGENT] ✅ ${ids.length} compromisso(s) excluído(s) do banco`);
-
-      // 🆕 Sincronizar exclusão com Google Calendar para cada compromisso
-      console.log(`[WHATSAPP-AGENT] 📅 Iniciando sync de exclusão com Google Calendar para ${ids.length} compromisso(s)`);
-      for (const id of ids) {
-        console.log(`[WHATSAPP-AGENT] 📅 Syncing delete for commitment ID: ${id}`);
-        await syncWithGoogleCalendar('delete', id, session.user_id!);
-      }
-      console.log(`[WHATSAPP-AGENT] ✅ Sync de exclusão concluído`);
 
       await SessionManager.updateSession(session.id, {
         session_data: {
