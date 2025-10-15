@@ -80,6 +80,28 @@ serve(async (req) => {
         } catch (e) {
           console.log('[GOOGLE-CALENDAR-AUTH] Could not extract user from auth header:', e.message);
         }
+
+        // Fallback manual: decodificar JWT se ainda não há userId
+        if (!userId) {
+          try {
+            const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+            const parts = token.split('.');
+            if (parts.length >= 2) {
+              const payloadB64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+              const padded = payloadB64 + '='.repeat((4 - (payloadB64.length % 4)) % 4);
+              const payloadJson = atob(padded);
+              const payload = JSON.parse(payloadJson);
+              const jwtUserId = payload.sub || payload.user_id || null;
+              if (jwtUserId) {
+                userId = jwtUserId;
+                userSource = 'fromJwtPayload';
+                console.log('[GOOGLE-CALENDAR-AUTH] User ID from JWT payload:', userId);
+              }
+            }
+          } catch (e) {
+            console.log('[GOOGLE-CALENDAR-AUTH] Manual JWT decode failed:', e?.message || e);
+          }
+        }
       }
     }
     

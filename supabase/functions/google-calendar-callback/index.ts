@@ -34,18 +34,18 @@ serve(async (req) => {
 
     // Decodificar state para extrair user_id e origin
     let userId = null;
-    let appOrigin = 'https://bc45aac3-c622-434f-ad58-afc37c18c6c2.lovableproject.com';
+    let appOrigin = 'https://financasai.lovable.app';
     
     if (state) {
       try {
-        const stateBase64 = state
-          .replace(/-/g, '+')
-          .replace(/_/g, '/');
-        const stateJson = atob(stateBase64);
+        const base64 = state.replace(/-/g, '+').replace(/_/g, '/');
+        const hadPadding = base64.length % 4 !== 0;
+        const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+        const stateJson = atob(padded);
         const statePayload = JSON.parse(stateJson);
-        userId = statePayload.uid;
+        userId = statePayload.uid || null;
         appOrigin = statePayload.o || appOrigin;
-        console.log('[GOOGLE-CALENDAR-CALLBACK] State decoded:', { userId, origin: appOrigin });
+        console.log('[GOOGLE-CALENDAR-CALLBACK] State decoded:', { userId, origin: appOrigin, hadPadding });
       } catch (e) {
         console.error('[GOOGLE-CALENDAR-CALLBACK] Failed to decode state:', e);
       }
@@ -135,16 +135,43 @@ serve(async (req) => {
             { global: { headers: { Authorization: authHeader } } }
           );
           const { data: { user } } = await authClient.auth.getUser();
-          userId = user?.id;
+          userId = user?.id || null;
           console.log('[GOOGLE-CALENDAR-CALLBACK] User ID from auth header:', userId);
         } catch (e) {
           console.error('[GOOGLE-CALENDAR-CALLBACK] Failed to get user from auth:', e);
         }
       }
     }
+
+    // Fallback adicional: tentar localizar usuário pelo e-mail do calendário
+    if (!userId) {
+      try {
+        const calendarEmail = calendarInfo?.id || calendarInfo?.primaryEmail || calendarInfo?.summaryOverride || null;
+        console.log('[GOOGLE-CALENDAR-CALLBACK] Trying profiles fallback with calendar email:', calendarEmail);
+        if (calendarEmail) {
+          const { data: profile, error: profileError } = await supabaseClient
+            .from('profiles')
+            .select('user_id')
+            .eq('email', calendarEmail)
+            .maybeSingle();
+          if (profile?.user_id) {
+            userId = profile.user_id;
+            console.log('[GOOGLE-CALENDAR-CALLBACK] User ID from profiles email:', userId);
+          } else {
+            if (profileError) {
+              console.warn('[GOOGLE-CALENDAR-CALLBACK] Profiles lookup error:', profileError.message || profileError);
+            } else {
+              console.warn('[GOOGLE-CALENDAR-CALLBACK] No profile found for email:', calendarEmail);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[GOOGLE-CALENDAR-CALLBACK] Profiles fallback failed:', e?.message || e);
+      }
+    }
     
     if (!userId) {
-      console.error('[GOOGLE-CALENDAR-CALLBACK] No user ID available');
+      console.error('[GOOGLE-CALENDAR-CALLBACK] No user ID available after all fallbacks');
       return Response.redirect(
          `${appOrigin}/?google=error&reason=no_user`,
          302
