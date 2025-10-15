@@ -57,14 +57,14 @@ serve(async (req) => {
       console.error('[GOOGLE-CALENDAR-CALLBACK] Error description:', description);
       
       return Response.redirect(
-        `${appOrigin}/gc-done?google=error&reason=${encodeURIComponent(error)}`,
+        `${appOrigin}/?google=error&reason=${encodeURIComponent(error)}`,
         302
       );
     }
 
     if (!code) {
       return Response.redirect(
-        `${appOrigin}/gc-done?google=error&reason=no_code`,
+        `${appOrigin}/?google=error&reason=no_code`,
         302
       );
     }
@@ -96,7 +96,7 @@ serve(async (req) => {
       }
       
       return Response.redirect(
-        `${appOrigin}/gc-done?google=error&reason=${reason}`,
+        `${appOrigin}/?google=error&reason=${reason}`,
         302
       );
     }
@@ -146,9 +146,9 @@ serve(async (req) => {
     if (!userId) {
       console.error('[GOOGLE-CALENDAR-CALLBACK] No user ID available');
       return Response.redirect(
-        `${appOrigin}/gc-done?google=error&reason=no_user`,
-        302
-      );
+         `${appOrigin}/?google=error&reason=no_user`,
+         302
+       );
     }
 
     // Calcular data de expiração
@@ -174,19 +174,19 @@ serve(async (req) => {
     if (dbError) {
       console.error('[GOOGLE-CALENDAR-CALLBACK] Database error:', dbError);
       return Response.redirect(
-        `${appOrigin}/gc-done?google=error&reason=db_error`,
+        `${appOrigin}/?google=error&reason=db_error`,
         302
       );
     }
 
     console.log('[GOOGLE-CALENDAR-CALLBACK] Connection saved successfully for user:', userId);
 
-    return Response.redirect(`${appOrigin}/gc-done?google=success`, 302);
+    return Response.redirect(`${appOrigin}/?google=success`, 302);
   } catch (error) {
     console.error('[GOOGLE-CALENDAR-CALLBACK] Error:', error);
     const fallbackOrigin = 'https://financasai.lovable.app';
     return Response.redirect(
-      `${fallbackOrigin}/gc-done?google=error&reason=unknown`,
+      `${fallbackOrigin}/?google=error&reason=unknown`,
       302
     );
   }

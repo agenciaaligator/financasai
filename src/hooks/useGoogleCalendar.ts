@@ -99,48 +99,39 @@ export const useGoogleCalendar = () => {
         appOrigin: payload.appOrigin
       });
       
-      const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
-        body: payload,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`
-        }
-      });
-
-      let authUrl = data?.authUrl;
-
-      // Fallback: se POST falhar ou não retornar authUrl, tentar GET
-      if (error || !authUrl) {
-        console.warn('[useGoogleCalendar] POST falhou, tentando fallback GET...', error);
-        
+      // 1) Tentar via GET (primário)
+      let authUrl: string | undefined;
+      try {
         const functionUrl = `https://fsamlnlabdjoqpiuhgex.supabase.co/functions/v1/google-calendar-auth?uid=${encodeURIComponent(user.id)}&o=${encodeURIComponent(appOrigin)}`;
-        console.log('[useGoogleCalendar] Fallback GET URL:', functionUrl);
-        
-        try {
-          const response = await fetch(functionUrl, {
-            method: 'GET',
-            headers: {
-              Authorization: `Bearer ${accessToken}`
-            }
-          });
-          
-          if (!response.ok) {
-            throw new Error(`GET request failed: ${response.status}`);
+        console.log('[useGoogleCalendar] GET primário URL:', functionUrl);
+        const response = await fetch(functionUrl, {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        if (!response.ok) throw new Error(`GET request failed: ${response.status}`);
+        const getData = await response.json();
+        authUrl = getData?.authUrl;
+        console.log('[useGoogleCalendar] GET primário bem-sucedido');
+      } catch (getErr) {
+        console.warn('[useGoogleCalendar] GET primário falhou, tentando POST...', getErr);
+        // 2) Fallback via POST (secundário)
+        const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
+          body: payload,
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`
           }
-          
-          const fallbackData = await response.json();
-          authUrl = fallbackData?.authUrl;
-          
-          console.log('[useGoogleCalendar] Fallback GET successful, authUrl obtained');
-        } catch (fallbackError) {
-          console.error('[useGoogleCalendar] Fallback GET também falhou:', fallbackError);
+        });
+        if (error) {
+          console.error('[useGoogleCalendar] POST também falhou:', error);
           toast({
-            title: "Erro",
-            description: "Erro ao conectar com Google Calendar (POST e GET falharam)",
-            variant: "destructive"
+            title: 'Erro',
+            description: 'Erro ao conectar com Google Calendar (GET e POST falharam)',
+            variant: 'destructive'
           });
-          throw fallbackError;
+          throw error;
         }
+        authUrl = data?.authUrl;
       }
 
       if (!authUrl) {
