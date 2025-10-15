@@ -142,7 +142,9 @@ serve(async (req) => {
       );
 
       if (!response.ok) {
-        throw new Error('Failed to create Google Calendar event');
+        const errorBody = await response.text();
+        console.error('[GOOGLE-CALENDAR-SYNC] Failed to create event:', response.status, errorBody);
+        throw new Error(`Failed to create Google Calendar event: ${response.status}`);
       }
 
       const createdEvent = await response.json();
@@ -162,10 +164,6 @@ serve(async (req) => {
     }
 
     if (action === 'update') {
-      if (!commitment.google_event_id) {
-        throw new Error('No Google event ID found for this commitment');
-      }
-
       const event = {
         summary: commitment.title,
         description: commitment.description || '',
@@ -183,6 +181,45 @@ serve(async (req) => {
         },
       };
 
+      // Se não tiver google_event_id, criar evento novo
+      if (!commitment.google_event_id) {
+        console.log('[GOOGLE-CALENDAR-SYNC] No event ID found, creating new event');
+        
+        const response = await fetch(
+          'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(event),
+          }
+        );
+
+        if (!response.ok) {
+          const errorBody = await response.text();
+          console.error('[GOOGLE-CALENDAR-SYNC] Failed to create event:', response.status, errorBody);
+          throw new Error(`Failed to create Google Calendar event: ${response.status}`);
+        }
+
+        const createdEvent = await response.json();
+
+        // Salvar google_event_id
+        await supabaseClient
+          .from('commitments')
+          .update({ google_event_id: createdEvent.id })
+          .eq('id', commitmentId);
+
+        console.log('[GOOGLE-CALENDAR-SYNC] Event created (from update):', createdEvent.id);
+        
+        return new Response(
+          JSON.stringify({ success: true, eventId: createdEvent.id }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Tentar atualizar evento existente
       const response = await fetch(
         `https://www.googleapis.com/calendar/v3/calendars/primary/events/${commitment.google_event_id}`,
         {
@@ -195,8 +232,48 @@ serve(async (req) => {
         }
       );
 
+      // Se evento não existe mais no Google (404), criar novo
+      if (response.status === 404) {
+        console.log('[GOOGLE-CALENDAR-SYNC] Event not found in Google, creating new one');
+        
+        const createResponse = await fetch(
+          'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(event),
+          }
+        );
+
+        if (!createResponse.ok) {
+          const errorBody = await createResponse.text();
+          console.error('[GOOGLE-CALENDAR-SYNC] Failed to create event:', createResponse.status, errorBody);
+          throw new Error(`Failed to create Google Calendar event: ${createResponse.status}`);
+        }
+
+        const createdEvent = await createResponse.json();
+
+        // Atualizar google_event_id
+        await supabaseClient
+          .from('commitments')
+          .update({ google_event_id: createdEvent.id })
+          .eq('id', commitmentId);
+
+        console.log('[GOOGLE-CALENDAR-SYNC] Event recreated:', createdEvent.id);
+        
+        return new Response(
+          JSON.stringify({ success: true, eventId: createdEvent.id }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       if (!response.ok) {
-        throw new Error('Failed to update Google Calendar event');
+        const errorBody = await response.text();
+        console.error('[GOOGLE-CALENDAR-SYNC] Failed to update event:', response.status, errorBody);
+        throw new Error(`Failed to update Google Calendar event: ${response.status}`);
       }
 
       console.log('[GOOGLE-CALENDAR-SYNC] Event updated:', commitment.google_event_id);
@@ -224,8 +301,16 @@ serve(async (req) => {
       );
 
       if (!response.ok && response.status !== 404) {
-        throw new Error('Failed to delete Google Calendar event');
+        const errorBody = await response.text();
+        console.error('[GOOGLE-CALENDAR-SYNC] Failed to delete event:', response.status, errorBody);
+        throw new Error(`Failed to delete Google Calendar event: ${response.status}`);
       }
+
+      // Limpar google_event_id do commitment
+      await supabaseClient
+        .from('commitments')
+        .update({ google_event_id: null })
+        .eq('id', commitmentId);
 
       console.log('[GOOGLE-CALENDAR-SYNC] Event deleted:', commitment.google_event_id);
 
