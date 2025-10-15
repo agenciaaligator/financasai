@@ -3745,32 +3745,10 @@ class WhatsAppAgent {
           };
         }
         
-        // ✨ FASE 2: SEM CONFLITO! Inserir no banco e retornar o ID
-        console.log('✅ [COMMITMENT] No conflicts, creating commitment:', { title, scheduledISO, category });
+        // ✨ FASE 2: SEM CONFLITO! Preparar para coleta de detalhes (NÃO inserir ainda)
+        console.log('✅ [COMMITMENT] No conflicts, preparing detail collection');
         
-        const { data: inserted, error: insertErr } = await supabase
-          .from('commitments')
-          .insert({
-            user_id: userId,
-            title: title.charAt(0).toUpperCase() + title.slice(1),
-            description: null,
-            scheduled_at: scheduledISO,
-            category: category
-          })
-          .select('id')
-          .single();
-        
-        if (insertErr) {
-          console.error('❌ [COMMITMENT] Insert error:', insertErr);
-          throw insertErr;
-        }
-        
-        console.log('📅 [COMMITMENT] Inserted with ID:', inserted.id);
-        
-        // Sincronizar com Google Calendar usando o ID retornado
-        await syncWithGoogleCalendar('create', inserted.id, userId);
-        
-        // Formatar resposta
+        // Formatar data para preview
         const scheduledDate = new Date(scheduledISO);
         const formattedDate = scheduledDate.toLocaleDateString('pt-BR', { 
           weekday: 'long', 
@@ -3782,22 +3760,21 @@ class WhatsAppAgent {
           timeZone: 'America/Sao_Paulo'
         });
         
-        // Iniciar coleta de detalhes APÓS criar o compromisso
+        // Preparar dados pendentes (SEM inserir no banco)
         const pending = {
           title: title.charAt(0).toUpperCase() + title.slice(1),
           category: category,
           scheduledISO: scheduledISO,
           targetDate: scheduledISO,
-          commitment_id: inserted.id,  // ✅ Salvar ID para atualizar depois
           detailsStep: 'location' as const
         };
         
         return {
-          response: `✅ *Compromisso agendado!*\n\n` +
+          response: `✅ *Vou agendar:*\n\n` +
                    `📌 ${title.charAt(0).toUpperCase() + title.slice(1)}\n` +
                    `🗓️ ${formattedDate}\n\n` +
                    `📍 Qual o endereço ou local do compromisso?\n` +
-                   `_Digite "pular" se não quiser adicionar detalhes._`,
+                   `_Digite "pular" para prosseguir sem detalhes._`,
           sessionData: {
             conversation_state: 'awaiting_commitment_details' as const,
             pending_commitment: pending
@@ -4398,6 +4375,15 @@ Se não especificar hora, retorne scheduled_at: null.`
     
     console.log('📝 Coletando detalhe:', { step: currentStep, input: messageText });
     
+    const normalized = messageText.trim().toLowerCase();
+    
+    // ✅ Permitir pular em qualquer etapa
+    if (normalized === 'pular') {
+      console.log('⏭️ Usuário pulou a etapa:', currentStep);
+      pending.detailsStep = 'completed';
+      return await this.showCommitmentConfirmation(session, pending);
+    }
+    
     // Atualizar campo correspondente ao step atual
     switch(currentStep) {
       case 'location':
@@ -4523,7 +4509,18 @@ Se não especificar hora, retorne scheduled_at: null.`
       confirmMsg += `👥 *Participantes:* ${pending.participants}\n`;
     }
     
-    confirmMsg += `\n✅ Digite *confirmar* para agendar`;
+    // Preview de lembretes
+    confirmMsg += `\n\n🔔 *Lembretes configurados:*`;
+    confirmMsg += `\n• 1 dia antes`;
+    confirmMsg += `\n• 2 horas antes`;
+    confirmMsg += `\n• 1 hora antes`;
+    confirmMsg += `\n• 30 minutos antes`;
+    
+    if (pending.category === 'meeting') {
+      confirmMsg += `\n\n📧 Link do Google Meet será criado automaticamente`;
+    }
+    
+    confirmMsg += `\n\n✅ Digite *confirmar* para agendar`;
     confirmMsg += `\n❌ Digite *cancelar* para desistir`;
     
     // Atualizar estado para aguardar confirmação
@@ -4645,10 +4642,21 @@ Se não especificar hora, retorne scheduled_at: null.`
       console.log('✅ Compromisso salvo:', commitment);
       
       // Gerar mensagem personalizada ✨
-      const successMsg = PersonalizedResponses.generateCommitmentSuccessMessage(
+      let successMsg = PersonalizedResponses.generateCommitmentSuccessMessage(
         userName,
         pending
       );
+      
+      // Adicionar link do Google Maps se houver localização
+      if (pending.location && pending.location !== 'pular') {
+        const encodedAddress = encodeURIComponent(pending.location);
+        successMsg += `\n\n📍 Ver no mapa: https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+      }
+      
+      // Se for reunião, mencionar que o Google Meet será criado
+      if (pending.category === 'meeting') {
+        successMsg += `\n\n🎥 Link do Google Meet será enviado pelo Google Calendar`;
+      }
       
       // Limpar estado
       await SessionManager.updateSession(session.id, {

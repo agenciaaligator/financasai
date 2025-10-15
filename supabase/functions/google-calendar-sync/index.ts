@@ -154,10 +154,18 @@ serve(async (req) => {
       
       console.log('[GOOGLE-CALENDAR-SYNC] Creating new event for commitment:', commitmentId);
       
+      // Limpar description removendo informações de local duplicadas
+      let cleanDescription = '';
+      if (commitment.description) {
+        cleanDescription = commitment.description
+          .replace(/Local:\s*[^\n]+\n?/gi, '')
+          .trim();
+      }
+      
       // Criar evento no Google Calendar
-      const event = {
+      const event: any = {
         summary: commitment.title,
-        description: commitment.description || '',
+        description: cleanDescription,
         location: commitment.location || '',
         start: {
           dateTime: new Date(commitment.scheduled_at).toISOString(),
@@ -170,10 +178,45 @@ serve(async (req) => {
           ).toISOString(),
           timeZone: 'America/Sao_Paulo',
         },
+        // ✅ Configurar lembretes nativos do Google Calendar
+        reminders: {
+          useDefault: false,
+          overrides: [
+            { method: 'popup', minutes: 1440 },  // 1 dia antes
+            { method: 'popup', minutes: 120 },   // 2 horas antes
+            { method: 'popup', minutes: 60 },    // 1 hora antes
+            { method: 'popup', minutes: 30 }     // 30 minutos antes
+          ]
+        }
       };
+      
+      // ✅ Adicionar Google Meet se for reunião
+      if (commitment.category === 'meeting') {
+        event.conferenceData = {
+          createRequest: {
+            requestId: `meet-${commitmentId}`,
+            conferenceSolutionKey: {
+              type: 'hangoutsMeet'
+            }
+          }
+        };
+      }
+      
+      // ✅ Extrair e adicionar participantes de emails na descrição
+      const attendees: Array<{ email: string }> = [];
+      if (commitment.category === 'meeting' && commitment.description) {
+        const emailMatches = commitment.description.match(/[\w.-]+@[\w.-]+\.\w+/g);
+        if (emailMatches) {
+          attendees.push(...emailMatches.map(email => ({ email })));
+          console.log('[GOOGLE-CALENDAR-SYNC] Adding attendees:', emailMatches);
+        }
+      }
+      if (attendees.length > 0) {
+        event.attendees = attendees;
+      }
 
       const response = await fetch(
-        'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+        'https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1',
         {
           method: 'POST',
           headers: {
