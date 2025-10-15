@@ -13,9 +13,19 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
+    
+    // Logs de diagnóstico do callback
+    console.log('[GOOGLE-CALENDAR-CALLBACK] Callback URL received:', url.origin + url.pathname);
+    
     const code = url.searchParams.get('code');
     const state = url.searchParams.get('state');
     const error = url.searchParams.get('error');
+    
+    console.log('[GOOGLE-CALENDAR-CALLBACK] Query params flags:', {
+      hasCode: !!code,
+      hasState: !!state,
+      hasError: !!error
+    });
 
     console.log('[GOOGLE-CALENDAR-CALLBACK] Callback received');
     console.log('[GOOGLE-CALENDAR-CALLBACK] Has code:', !!code);

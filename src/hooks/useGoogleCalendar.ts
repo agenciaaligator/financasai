@@ -47,22 +47,79 @@ export const useGoogleCalendar = () => {
       setLoading(true);
       console.log('[useGoogleCalendar] Iniciando conexão com Google Calendar...');
       
-      // Obter userId antes de invocar a função
+      // Obter userId e sessão antes de invocar a função
       const { data: { user } } = await supabase.auth.getUser();
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token || null;
+      
+      // Logs de diagnóstico do usuário
+      console.log('[useGoogleCalendar] User obtido:', {
+        id: user?.id,
+        email: user?.email,
+        exists: !!user
+      });
+      console.log('[useGoogleCalendar] Session token prefix:', accessToken ? accessToken.slice(0, 12) + '...' : null);
       
       // Calcular appOrigin apropriado
       const origin = window.location.origin;
       const isEditor = origin.includes('lovableproject.com') || origin.includes('lovable.dev');
+      const isInIframe = window.self !== window.top;
       const appOrigin = isEditor ? 'https://financasai.lovable.app' : origin;
       
+      // Logs de diagnóstico do ambiente
+      console.log('[useGoogleCalendar] Ambiente:', {
+        origin,
+        isEditor,
+        isInIframe,
+        appOrigin
+      });
+      
+      // Verificar se temos user e token
+      if (!user?.id || !accessToken) {
+        console.error('[useGoogleCalendar] Faltam dados críticos:', {
+          hasUserId: !!user?.id,
+          hasToken: !!accessToken
+        });
+        toast({
+          title: "Erro",
+          description: "Sessão inválida. Faça login novamente.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Preparar payload
+      const payload = {
+        appOrigin,
+        userId: user.id
+      };
+      
+      console.log('[useGoogleCalendar] Payload para auth:', {
+        hasUserId: !!payload.userId,
+        appOrigin: payload.appOrigin
+      });
+      
       const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
-        body: { 
-          appOrigin,
-          userId: user?.id || null
+        body: payload,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[useGoogleCalendar] Erro ao obter URL de autorização:', {
+          error,
+          hasUserId: !!payload?.userId,
+          appOrigin: payload?.appOrigin
+        });
+        toast({
+          title: "Erro",
+          description: "Erro ao conectar com Google Calendar",
+          variant: "destructive"
+        });
+        throw error;
+      }
       if (!data?.authUrl) {
         throw new Error('URL de autenticação não foi gerada');
       }
@@ -70,12 +127,11 @@ export const useGoogleCalendar = () => {
       const authUrl = data.authUrl;
       console.log('[useGoogleCalendar] URL de autenticação gerada');
 
-      // Construir URL da ponte de redirecionamento usando o appOrigin já calculado
-      const bridgeUrl = `${appOrigin}/gc-bridge?u=${encodeURIComponent(authUrl)}`;
-      console.log('[useGoogleCalendar] URL da ponte criada:', bridgeUrl);
+      // Construir URL da ponte usando HTML estático (para evitar 404)
+      const bridgeUrl = `${appOrigin}/gc-bridge.html?u=${encodeURIComponent(authUrl)}`;
+      console.log('[useGoogleCalendar] URL da ponte (HTML estático):', bridgeUrl);
 
-      // Detectar se está em iframe (Lovable Preview)
-      const isInIframe = window.self !== window.top;
+      // isInIframe já foi calculado acima
       
       if (isInIframe) {
         console.log('[useGoogleCalendar] Detectado iframe, abrindo ponte em nova aba...');
