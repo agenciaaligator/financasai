@@ -3745,17 +3745,59 @@ class WhatsAppAgent {
           };
         }
         
-        // ✨ FASE 2: SEM CONFLITO! Em vez de inserir direto, iniciar coleta de detalhes
+        // ✨ FASE 2: SEM CONFLITO! Inserir no banco e retornar o ID
+        console.log('✅ [COMMITMENT] No conflicts, creating commitment:', { title, scheduledISO, category });
+        
+        const { data: inserted, error: insertErr } = await supabase
+          .from('commitments')
+          .insert({
+            user_id: userId,
+            title: title.charAt(0).toUpperCase() + title.slice(1),
+            description: null,
+            scheduled_at: scheduledISO,
+            category: category
+          })
+          .select('id')
+          .single();
+        
+        if (insertErr) {
+          console.error('❌ [COMMITMENT] Insert error:', insertErr);
+          throw insertErr;
+        }
+        
+        console.log('📅 [COMMITMENT] Inserted with ID:', inserted.id);
+        
+        // Sincronizar com Google Calendar usando o ID retornado
+        await syncWithGoogleCalendar('create', inserted.id, userId);
+        
+        // Formatar resposta
+        const scheduledDate = new Date(scheduledISO);
+        const formattedDate = scheduledDate.toLocaleDateString('pt-BR', { 
+          weekday: 'long', 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'America/Sao_Paulo'
+        });
+        
+        // Iniciar coleta de detalhes APÓS criar o compromisso
         const pending = {
           title: title.charAt(0).toUpperCase() + title.slice(1),
           category: category,
           scheduledISO: scheduledISO,
           targetDate: scheduledISO,
+          commitment_id: inserted.id,  // ✅ Salvar ID para atualizar depois
           detailsStep: 'location' as const
         };
         
         return {
-          response: '📍 Qual o endereço ou local do compromisso?',
+          response: `✅ *Compromisso agendado!*\n\n` +
+                   `📌 ${title.charAt(0).toUpperCase() + title.slice(1)}\n` +
+                   `🗓️ ${formattedDate}\n\n` +
+                   `📍 Qual o endereço ou local do compromisso?\n` +
+                   `_Digite "pular" se não quiser adicionar detalhes._`,
           sessionData: {
             conversation_state: 'awaiting_commitment_details' as const,
             pending_commitment: pending
@@ -3847,13 +3889,13 @@ Se não especificar hora, retorne scheduled_at: null.`
         scheduledUTC = brasiliaDate.toISOString();
       }
 
-      // Salvar no banco
+      // Salvar no banco e retornar o ID
       const supabase = createClient(
         Deno.env.get('SUPABASE_URL')!,
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
       );
 
-      const { error } = await supabase
+      const { data: inserted, error } = await supabase
         .from('commitments')
         .insert({
           user_id: userId,
@@ -3861,9 +3903,16 @@ Se não especificar hora, retorne scheduled_at: null.`
           description: commitmentData.description || null,
           scheduled_at: scheduledUTC,
           category: commitmentData.category || 'other'
-        });
+        })
+        .select('id')
+        .single();
 
       if (error) throw error;
+      
+      console.log('📅 [COMMITMENT-AI] Created with ID:', inserted.id);
+      
+      // Sincronizar com Google Calendar
+      await syncWithGoogleCalendar('create', inserted.id, userId);
 
       const scheduledDate = new Date(commitmentData.scheduled_at);
       const formattedDate = scheduledDate.toLocaleDateString('pt-BR', { 

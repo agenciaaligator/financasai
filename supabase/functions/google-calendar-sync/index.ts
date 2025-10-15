@@ -143,6 +143,17 @@ serve(async (req) => {
     const accessToken = await getValidAccessToken(effectiveClient, effectiveUserId);
 
     if (action === 'create') {
+      // Verificar idempotência: se já tem google_event_id, não criar duplicado
+      if (commitment.google_event_id) {
+        console.log('[GOOGLE-CALENDAR-SYNC] Event already exists for this commitment, skipping create');
+        return new Response(
+          JSON.stringify({ success: true, eventId: commitment.google_event_id, skipped: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      console.log('[GOOGLE-CALENDAR-SYNC] Creating new event for commitment:', commitmentId);
+      
       // Criar evento no Google Calendar
       const event = {
         summary: commitment.title,
@@ -187,7 +198,7 @@ serve(async (req) => {
         .update({ google_event_id: createdEvent.id })
         .eq('id', commitmentId);
 
-      console.log('[GOOGLE-CALENDAR-SYNC] Event created:', createdEvent.id);
+      console.log('[GOOGLE-CALENDAR-SYNC] Event created successfully:', createdEvent.id);
       
       return new Response(
         JSON.stringify({ success: true, eventId: createdEvent.id }),
