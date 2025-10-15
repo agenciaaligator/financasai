@@ -71,14 +71,22 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('authorization');
+    const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Missing Authorization header');
+    }
+    const token = authHeader.replace(/^Bearer\s+/i, '').trim();
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader! } } }
+      { global: { headers: { Authorization: `Bearer ${token}` } } }
     );
 
-    const { data: { user } } = await supabaseClient.auth.getUser();
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    if (userError) {
+      console.error('[GOOGLE-CALENDAR-SYNC] getUser error:', userError);
+    }
+    const user = userData?.user;
     if (!user) {
       throw new Error('User not authenticated');
     }
