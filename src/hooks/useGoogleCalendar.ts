@@ -249,8 +249,20 @@ export const useGoogleCalendar = () => {
 
   const syncEvent = async (action: 'create' | 'update' | 'delete', commitmentId: string) => {
     try {
+      // Obter token da sessão
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      
+      if (!accessToken) {
+        console.error('[useGoogleCalendar] syncEvent: No access token available');
+        return { success: false, error: new Error('No access token') };
+      }
+      
       const { error } = await supabase.functions.invoke('google-calendar-sync', {
         body: { action, commitmentId },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
       
       if (error) throw error;

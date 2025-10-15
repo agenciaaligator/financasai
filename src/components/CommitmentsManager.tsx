@@ -39,9 +39,15 @@ export function CommitmentsManager() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const { toast } = useToast();
   const { isConnected, syncEvent } = useGoogleCalendar();
+  
+  // Inicializar showOnboarding com callback para verificar isConnected
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    const hasSeenOnboarding = localStorage.getItem('googleCalendarOnboardingSeen');
+    // Só mostra se: não viu onboarding E não está conectado
+    return !hasSeenOnboarding && !isConnected;
+  });
   const { t } = useTranslation();
   const { isAdmin, isPremium, loading: roleLoading } = useUserRole();
   
@@ -62,12 +68,8 @@ export function CommitmentsManager() {
   useEffect(() => {
     fetchCommitments();
     
-    // Check if user should see onboarding
-    const hasSeenOnboarding = localStorage.getItem('googleCalendarOnboardingSeen');
-    if (!hasSeenOnboarding && !isConnected) {
-      setShowOnboarding(true);
-    } else if (isConnected) {
-      // Fechar onboarding automaticamente quando conectar
+    // Se conectar, fechar onboarding
+    if (isConnected) {
       setShowOnboarding(false);
     }
   }, [isConnected]);
