@@ -4869,7 +4869,23 @@ Se não especificar hora, retorne scheduled_at: null.`
     
     console.log('🗓️ Horário validado:', { hour, minute, scheduledISO });
     
-    // AGORA SIM: Verificar conflitos e inserir
+    // ✅ Validar se horário já passou (BRT)
+    const nowBRT = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+    const scheduledBRT = new Date(new Date(scheduledISO).toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+    if (scheduledBRT <= nowBRT) {
+      console.log('⏰ [COMMITMENT-FLOW] Rejected past time at time input:', { scheduledBRT, nowBRT });
+      const suggestions = await this.suggestAvailableSlots(session.user_id!, new Date(pending.targetDate), hour);
+      return {
+        response: `⏰ *Esse horário já passou!*\n\nPor favor, informe um horário futuro.\n\n💡 *Sugestões para hoje:*\n${suggestions.join('\n')}`,
+        sessionData: {
+          ...sessionData,
+          conversation_state: 'awaiting_commitment_time',
+          pending_commitment: { title: pending.title, category: pending.category, targetDate: pending.targetDate }
+        }
+      };
+    }
+    
+    // AGORA SIM: Verificar conflitos
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
