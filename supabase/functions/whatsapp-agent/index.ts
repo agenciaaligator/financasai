@@ -4473,23 +4473,55 @@ Se não especificar hora, retorne scheduled_at: null.`
           return await this.showCommitmentConfirmation(session, pending);
         }
         pending.company = messageText.trim();
+        
+        // ✅ Se for reunião, coletar email para Google Meet
+        if (pending.category === 'meeting') {
+          pending.detailsStep = 'email';
+          await SessionManager.updateSession(session.id, {
+            session_data: { ...sessionData, pending_commitment: pending }
+          });
+          return {
+            response: '📧 Qual o email do participante?\n(Ex: joao@lavinia.com.br)\n\n_Digite "pular" se não souber._',
+            sessionData: { ...sessionData, pending_commitment: pending }
+          };
+        }
+        
+        // Se não for reunião, ir direto para contato
         pending.detailsStep = 'contact';
         await SessionManager.updateSession(session.id, {
           session_data: { ...sessionData, pending_commitment: pending }
         });
         return {
-          response: '👤 Qual o nome e telefone do contato?\n(Ex: João Silva - 11 98765-4321)',
+          response: '👤 Qual o nome e telefone do contato?\n(Ex: João Silva - 11 98765-4321)\n\n_Digite "pular" para finalizar._',
+          sessionData: { ...sessionData, pending_commitment: pending }
+        };
+        
+      case 'email':
+        if (normalized !== 'pular') {
+          const emailRegex = /[\w.-]+@[\w.-]+\.\w+/;
+          if (emailRegex.test(messageText.trim())) {
+            pending.email = messageText.trim();
+          }
+        }
+        pending.detailsStep = 'contact';
+        await SessionManager.updateSession(session.id, {
+          session_data: { ...sessionData, pending_commitment: pending }
+        });
+        return {
+          response: '👤 Qual o nome e telefone do contato?\n(Ex: João Silva - 11 98765-4321)\n\n_Digite "pular" para finalizar._',
           sessionData: { ...sessionData, pending_commitment: pending }
         };
         
       case 'contact':
-        // Parse "Nome - Telefone"
-        const contactMatch = messageText.match(/(.+?)\s*-\s*(.+)/);
-        if (contactMatch) {
-          pending.contactName = contactMatch[1].trim();
-          pending.contactPhone = contactMatch[2].trim();
-        } else {
-          pending.contactName = messageText.trim();
+        if (normalized !== 'pular') {
+          // Parse "Nome - Telefone"
+          const contactMatch = messageText.match(/(.+?)\s*-\s*(.+)/);
+          if (contactMatch) {
+            pending.contactName = contactMatch[1].trim();
+            pending.contactPhone = contactMatch[2].trim();
+          } else {
+            pending.contactName = messageText.trim();
+          }
         }
         pending.detailsStep = 'completed';
         return await this.showCommitmentConfirmation(session, pending);
@@ -4541,12 +4573,32 @@ Se não especificar hora, retorne scheduled_at: null.`
       confirmMsg += `🏢 *Empresa:* ${pending.company}\n`;
     }
     
+    if (pending.email) {
+      confirmMsg += `📧 *Email:* ${pending.email}\n`;
+    }
+    
     if (pending.contactName) {
       confirmMsg += `👤 *Contato:* ${pending.contactName}`;
       if (pending.contactPhone) {
         confirmMsg += ` - ${pending.contactPhone}`;
       }
       confirmMsg += '\n';
+    }
+    
+    // ✅ Informações sobre lembretes
+    confirmMsg += `\n🔔 *Você receberá lembretes:*`;
+    confirmMsg += `\n• WhatsApp: 1 dia, 2h e 1h antes`;
+    confirmMsg += `\n• Google Calendar: 1 dia, 2h, 1h e 30 min`;
+    
+    // ✅ Informações sobre Google Meet (se for reunião)
+    if (pending.category === 'meeting') {
+      confirmMsg += `\n\n📧 *Google Meet:*`;
+      confirmMsg += `\n• Link será criado automaticamente`;
+      if (pending.email) {
+        confirmMsg += `\n• Convite será enviado para ${pending.email}`;
+      } else {
+        confirmMsg += `\n• Link estará disponível no Google Calendar`;
+      }
     }
     
     if (pending.participants) {
@@ -4647,10 +4699,23 @@ Se não especificar hora, retorne scheduled_at: null.`
       const userName = profile?.full_name || undefined;
       
       // Montar description com todos os detalhes
+      // ✅ Montar título personalizado
+      let finalTitle = pending.title;
+      
+      if (pending.category === 'meeting' && pending.company) {
+        finalTitle = `Reunião - ${pending.company}`;
+      } else if (pending.category === 'appointment' && pending.specialty) {
+        finalTitle = `Consulta - ${pending.specialty}`;
+      } else if (pending.participants && /futeb|basquet|esport/i.test(pending.title)) {
+        finalTitle = `${pending.title} - ${pending.participants}`;
+      }
+      
+      // ✅ Montar description
       let description = '';
       if (pending.location) description += `Local: ${pending.location}\n`;
       if (pending.specialty) description += `Especialidade: ${pending.specialty}\n`;
       if (pending.company) description += `Empresa: ${pending.company}\n`;
+      if (pending.email) description += `Email: ${pending.email}\n`;
       if (pending.contactName) description += `Contato: ${pending.contactName}\n`;
       if (pending.contactPhone) description += `Telefone: ${pending.contactPhone}\n`;
       if (pending.participants) description += `Participantes: ${pending.participants}\n`;
@@ -4661,7 +4726,7 @@ Se não especificar hora, retorne scheduled_at: null.`
         .from('commitments')
         .insert({
           user_id: session.user_id,
-          title: pending.title,
+          title: finalTitle,
           description: description.trim() || null,
           scheduled_at: pending.scheduledISO,
           category: pending.category,
@@ -4702,10 +4767,20 @@ Se não especificar hora, retorne scheduled_at: null.`
         successMsg += `\n\n📍 Ver no mapa: https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
       }
       
-      // Se for reunião, mencionar que o Google Meet será criado
+      // ✅ Se for reunião, informar sobre Google Meet
       if (pending.category === 'meeting') {
-        successMsg += `\n\n🎥 Link do Google Meet será enviado pelo Google Calendar`;
+        successMsg += `\n\n🎥 *Google Meet criado!*`;
+        successMsg += `\n• Link disponível no Google Calendar`;
+        if (pending.email) {
+          successMsg += `\n• Convite enviado para ${pending.email}`;
+        }
+        successMsg += `\n• Você receberá notificação do Google`;
       }
+      
+      // ✅ Adicionar informações sobre lembretes
+      successMsg += `\n\n🔔 *Lembretes configurados:*`;
+      successMsg += `\n• WhatsApp: 24h, 2h e 1h antes`;
+      successMsg += `\n• Google: 24h, 2h, 1h e 30min antes`;
       
       // Limpar estado
       await SessionManager.updateSession(session.id, {
@@ -4959,7 +5034,11 @@ Se não especificar hora, retorne scheduled_at: null.`
         return (slotStart < cEnd && slotEnd > cStart);
       });
       
-      if (!hasConflict) {
+      // ✅ Filtrar horários passados
+      const nowBRT = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+      const slotBRT = new Date(slotStart.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+      
+      if (!hasConflict && slotBRT > nowBRT) {
         slots.push(`${currentHour.toString().padStart(2, '0')}:00`);
       }
       

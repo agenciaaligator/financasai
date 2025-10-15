@@ -162,6 +162,16 @@ serve(async (req) => {
           .trim();
       }
       
+      // ✅ Extrair email explícito da description
+      let attendees = [];
+      if (commitment.description) {
+        const emailMatch = commitment.description.match(/Email:\s*([\w.-]+@[\w.-]+\.\w+)/i);
+        if (emailMatch) {
+          attendees.push({ email: emailMatch[1] });
+          console.log('[GOOGLE-CALENDAR-SYNC] Attendee added:', emailMatch[1]);
+        }
+      }
+      
       // Criar evento no Google Calendar
       const event: any = {
         summary: commitment.title,
