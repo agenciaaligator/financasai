@@ -7,6 +7,43 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper para sincronizar com Google Calendar
+async function syncWithGoogleCalendar(
+  action: 'create' | 'update' | 'delete',
+  commitmentId: string,
+  userId: string
+): Promise<void> {
+  try {
+    console.log(`📅 [WHATSAPP-AGENT] Triggering Google Calendar sync: ${action} for ${commitmentId}`);
+    
+    const syncResponse = await fetch(
+      `${Deno.env.get('SUPABASE_URL')}/functions/v1/google-calendar-sync`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action,
+          commitmentId,
+          userId,
+        }),
+      }
+    );
+    
+    if (syncResponse.ok) {
+      console.log(`✅ [WHATSAPP-AGENT] Google Calendar sync successful: ${action}`);
+    } else {
+      const errorText = await syncResponse.text();
+      console.error(`⚠️ [WHATSAPP-AGENT] Sync failed (${action}):`, errorText);
+    }
+  } catch (syncError) {
+    console.error(`⚠️ [WHATSAPP-AGENT] Sync error (${action}):`, syncError);
+    // Não quebra - operação principal já foi completada
+  }
+}
+
 // Rate limiting for authentication
 const authRateLimit = new Map<string, { count: number; windowStart: number }>();
 const AUTH_RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour
@@ -4757,6 +4794,10 @@ Se não especificar hora, retorne scheduled_at: null.`
       
       if (categoryPrompts[pending.category] && insertedData) {
         const prompt = categoryPrompts[pending.category];
+        
+        // 🆕 Sincronizar com Google Calendar ANTES de pedir detalhes
+        await syncWithGoogleCalendar('create', insertedData.id, session.user_id!);
+        
         return {
           response: `✅ *Compromisso agendado!*\n\n📌 ${pending.title}\n🗓️ ${formattedDate}\n\n${prompt.message}\n\n⚠️ Por favor, envie em TEXTO (não áudio).`,
           sessionData: {
@@ -4769,6 +4810,11 @@ Se não especificar hora, retorne scheduled_at: null.`
             }
           }
         };
+      }
+      
+      // 🆕 Sincronizar também quando NÃO pede detalhes
+      if (insertedData) {
+        await syncWithGoogleCalendar('create', insertedData.id, session.user_id!);
       }
       
       return {
@@ -5146,6 +5192,12 @@ Se não especificar hora, retorne scheduled_at: null.`
 
       console.log('[EDIT VALUE] ✅ Commitment updated successfully');
 
+      // 🆕 Sincronizar com Google Calendar
+      const commitmentIdToSync = pendingEdit.commitment_id;
+      if (commitmentIdToSync) {
+        await syncWithGoogleCalendar('update', commitmentIdToSync, session.user_id!);
+      }
+
       await SessionManager.updateSession(session.id, {
         session_data: {
           ...sessionData,
@@ -5247,6 +5299,11 @@ Se não especificar hora, retorne scheduled_at: null.`
         .eq('user_id', session.user_id);
 
       if (error) throw error;
+
+      // 🆕 Sincronizar exclusão com Google Calendar para cada compromisso
+      for (const id of ids) {
+        await syncWithGoogleCalendar('delete', id, session.user_id!);
+      }
 
       await SessionManager.updateSession(session.id, {
         session_data: {

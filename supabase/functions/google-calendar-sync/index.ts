@@ -82,16 +82,31 @@ serve(async (req) => {
       { global: { headers: { Authorization: `Bearer ${token}` } } }
     );
 
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) {
-      console.error('[GOOGLE-CALENDAR-SYNC] getUser error:', userError);
-    }
-    const user = userData?.user;
-    if (!user) {
-      throw new Error('User not authenticated');
+    const { action, commitmentId, userId } = await req.json();
+
+    // Determinar userId efetivo
+    let effectiveUserId: string;
+
+    // Se userId foi passado no body (chamada via service role do whatsapp-agent)
+    if (userId) {
+      console.log('[GOOGLE-CALENDAR-SYNC] Using userId from request body:', userId);
+      effectiveUserId = userId;
+    } else {
+      // Autenticação JWT normal (chamada do frontend)
+      const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+      if (userError) {
+        console.error('[GOOGLE-CALENDAR-SYNC] getUser error:', userError);
+      }
+      const user = userData?.user;
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      effectiveUserId = user.id;
     }
 
-    const { action, commitmentId } = await req.json();
+    if (!effectiveUserId) {
+      throw new Error('User ID not found');
+    }
 
     if (!action || !commitmentId) {
       throw new Error('Missing action or commitmentId');
@@ -108,7 +123,7 @@ serve(async (req) => {
       throw new Error('Commitment not found');
     }
 
-    const accessToken = await getValidAccessToken(supabaseClient, user.id);
+    const accessToken = await getValidAccessToken(supabaseClient, effectiveUserId);
 
     if (action === 'create') {
       // Criar evento no Google Calendar
