@@ -20,12 +20,21 @@ serve(async (req) => {
       rawBodyPrefix: rawBody?.slice(0, 100) + '...'
     });
     
+    // Suporte a POST (JSON body) e GET (query params)
+    const url = new URL(req.url);
+    const uidFromQuery = url.searchParams.get('uid');
+    const originFromQuery = url.searchParams.get('o');
+    
     const body = await req.json().catch(() => ({}));
-    const { appOrigin, userId: bodyUserId } = body;
+    const { appOrigin: bodyOrigin, userId: bodyUserId } = body;
     
     console.log('[GOOGLE-CALENDAR-AUTH] Body flags:', {
-      hasAppOrigin: !!appOrigin,
+      hasAppOrigin: !!bodyOrigin,
       hasBodyUserId: !!bodyUserId
+    });
+    console.log('[GOOGLE-CALENDAR-AUTH] Query flags:', {
+      hasUid: !!uidFromQuery,
+      hasO: !!originFromQuery
     });
 
     const clientId = Deno.env.get('GOOGLE_CLIENT_ID');
@@ -42,10 +51,17 @@ serve(async (req) => {
       clientIdPrefix: clientId.substring(0, 30) + '...' 
     });
 
-    // Priorizar userId do body, fallback para Authorization header
-    let userId = bodyUserId || null;
+    // Priorizar userId do body, depois query, depois Authorization header
+    let userId = bodyUserId || uidFromQuery || null;
+    let userSource = 'none';
     
-    if (!userId) {
+    if (bodyUserId) {
+      userSource = 'fromBody';
+      console.log('[GOOGLE-CALENDAR-AUTH] User ID from body:', userId);
+    } else if (uidFromQuery) {
+      userSource = 'fromQuery';
+      console.log('[GOOGLE-CALENDAR-AUTH] User ID from query:', userId);
+    } else {
       const authHeader = req.headers.get('authorization');
       
       if (authHeader) {
@@ -59,14 +75,15 @@ serve(async (req) => {
           
           const { data: { user } } = await supabaseClient.auth.getUser();
           userId = user?.id || null;
+          userSource = 'fromAuthHeader';
           console.log('[GOOGLE-CALENDAR-AUTH] User ID from auth header:', userId);
         } catch (e) {
           console.log('[GOOGLE-CALENDAR-AUTH] Could not extract user from auth header:', e.message);
         }
       }
-    } else {
-      console.log('[GOOGLE-CALENDAR-AUTH] User ID from body:', userId);
     }
+    
+    console.log('[GOOGLE-CALENDAR-AUTH] User source:', userSource);
 
     // Scopes necessários para acessar o Google Calendar
     const scopes = [
@@ -74,8 +91,11 @@ serve(async (req) => {
       'https://www.googleapis.com/auth/calendar.readonly',
     ];
 
-    // Usar appOrigin com fallback se vier vazio
-    const effectiveOrigin = appOrigin || 'https://financasai.lovable.app';
+    // Priorizar appOrigin do body, depois query, depois fallback
+    let effectiveOrigin = bodyOrigin || originFromQuery || 'https://financasai.lovable.app';
+    let originSource = bodyOrigin ? 'fromBody' : (originFromQuery ? 'fromQuery' : 'fallback');
+    
+    console.log('[GOOGLE-CALENDAR-AUTH] Origin source:', originSource, '|', effectiveOrigin);
     
     // Criar payload do state com nonce, user_id, origin e timestamp
     const statePayload = {
@@ -111,7 +131,9 @@ serve(async (req) => {
     console.log('[GOOGLE-CALENDAR-AUTH] Include granted scopes:', 'true');
     console.log('[GOOGLE-CALENDAR-AUTH] State payload:', {
       hasUserId: !!userId,
+      userSource,
       hasOrigin: !!effectiveOrigin,
+      originSource,
       effectiveOrigin,
       timestamp: statePayload.ts
     });

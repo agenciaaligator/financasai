@@ -107,24 +107,45 @@ export const useGoogleCalendar = () => {
         }
       });
 
-      if (error) {
-        console.error('[useGoogleCalendar] Erro ao obter URL de autorização:', {
-          error,
-          hasUserId: !!payload?.userId,
-          appOrigin: payload?.appOrigin
-        });
-        toast({
-          title: "Erro",
-          description: "Erro ao conectar com Google Calendar",
-          variant: "destructive"
-        });
-        throw error;
-      }
-      if (!data?.authUrl) {
-        throw new Error('URL de autenticação não foi gerada');
+      let authUrl = data?.authUrl;
+
+      // Fallback: se POST falhar ou não retornar authUrl, tentar GET
+      if (error || !authUrl) {
+        console.warn('[useGoogleCalendar] POST falhou, tentando fallback GET...', error);
+        
+        const functionUrl = `https://fsamlnlabdjoqpiuhgex.supabase.co/functions/v1/google-calendar-auth?uid=${encodeURIComponent(user.id)}&o=${encodeURIComponent(appOrigin)}`;
+        console.log('[useGoogleCalendar] Fallback GET URL:', functionUrl);
+        
+        try {
+          const response = await fetch(functionUrl, {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${accessToken}`
+            }
+          });
+          
+          if (!response.ok) {
+            throw new Error(`GET request failed: ${response.status}`);
+          }
+          
+          const fallbackData = await response.json();
+          authUrl = fallbackData?.authUrl;
+          
+          console.log('[useGoogleCalendar] Fallback GET successful, authUrl obtained');
+        } catch (fallbackError) {
+          console.error('[useGoogleCalendar] Fallback GET também falhou:', fallbackError);
+          toast({
+            title: "Erro",
+            description: "Erro ao conectar com Google Calendar (POST e GET falharam)",
+            variant: "destructive"
+          });
+          throw fallbackError;
+        }
       }
 
-      const authUrl = data.authUrl;
+      if (!authUrl) {
+        throw new Error('URL de autenticação não foi gerada');
+      }
       console.log('[useGoogleCalendar] URL de autenticação gerada');
 
       // Construir URL da ponte usando HTML estático (para evitar 404)
