@@ -48,6 +48,7 @@ export const useGoogleCalendar = () => {
       console.log('[useGoogleCalendar] Iniciando conexão com Google Calendar...');
       
       const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
+        body: { appOrigin: window.location.origin },
         headers: {
           Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
         },

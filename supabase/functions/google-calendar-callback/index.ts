@@ -22,23 +22,10 @@ serve(async (req) => {
     console.log('[GOOGLE-CALENDAR-CALLBACK] Has state:', !!state);
     console.log('[GOOGLE-CALENDAR-CALLBACK] Has error:', !!error);
 
-    if (error) {
-      console.error('[GOOGLE-CALENDAR-CALLBACK] OAuth error from Google:', error);
-      const description = url.searchParams.get('error_description');
-      console.error('[GOOGLE-CALENDAR-CALLBACK] Error description:', description);
-      
-      return Response.redirect(
-        'https://financasai.lovable.app/?google=error&reason=' + encodeURIComponent(error),
-        302
-      );
-    }
-
-    if (!code) {
-      throw new Error('Authorization code not provided');
-    }
-
-    // Decodificar state para extrair user_id
+    // Decodificar state para extrair user_id e origin
     let userId = null;
+    let appOrigin = 'https://bc45aac3-c622-434f-ad58-afc37c18c6c2.lovableproject.com';
+    
     if (state) {
       try {
         const stateBase64 = state
@@ -47,10 +34,29 @@ serve(async (req) => {
         const stateJson = atob(stateBase64);
         const statePayload = JSON.parse(stateJson);
         userId = statePayload.uid;
-        console.log('[GOOGLE-CALENDAR-CALLBACK] User ID from state:', userId);
+        appOrigin = statePayload.o || appOrigin;
+        console.log('[GOOGLE-CALENDAR-CALLBACK] State decoded:', { userId, origin: appOrigin });
       } catch (e) {
         console.error('[GOOGLE-CALENDAR-CALLBACK] Failed to decode state:', e);
       }
+    }
+
+    if (error) {
+      console.error('[GOOGLE-CALENDAR-CALLBACK] OAuth error from Google:', error);
+      const description = url.searchParams.get('error_description');
+      console.error('[GOOGLE-CALENDAR-CALLBACK] Error description:', description);
+      
+      return Response.redirect(
+        `${appOrigin}/gc-done.html?google=error&reason=${encodeURIComponent(error)}`,
+        302
+      );
+    }
+
+    if (!code) {
+      return Response.redirect(
+        `${appOrigin}/gc-done.html?google=error&reason=no_code`,
+        302
+      );
     }
 
     const clientId = Deno.env.get('GOOGLE_CLIENT_ID');
@@ -73,7 +79,16 @@ serve(async (req) => {
     if (!tokenResponse.ok) {
       const errorData = await tokenResponse.text();
       console.error('[GOOGLE-CALENDAR-CALLBACK] Token exchange failed:', errorData);
-      throw new Error('Failed to exchange code for tokens');
+      
+      let reason = 'token_exchange';
+      if (errorData.includes('invalid_client') || errorData.includes('unauthorized')) {
+        reason = 'invalid_client';
+      }
+      
+      return Response.redirect(
+        `${appOrigin}/gc-done.html?google=error&reason=${reason}`,
+        302
+      );
     }
 
     const tokens = await tokenResponse.json();
@@ -119,7 +134,11 @@ serve(async (req) => {
     }
     
     if (!userId) {
-      throw new Error('User ID not found in state or auth header');
+      console.error('[GOOGLE-CALENDAR-CALLBACK] No user ID available');
+      return Response.redirect(
+        `${appOrigin}/gc-done.html?google=error&reason=no_user`,
+        302
+      );
     }
 
     // Calcular data de expiração
@@ -144,14 +163,20 @@ serve(async (req) => {
 
     if (dbError) {
       console.error('[GOOGLE-CALENDAR-CALLBACK] Database error:', dbError);
-      throw dbError;
+      return Response.redirect(
+        `${appOrigin}/gc-done.html?google=error&reason=db_error`,
+        302
+      );
     }
 
     console.log('[GOOGLE-CALENDAR-CALLBACK] Connection saved successfully for user:', userId);
 
-    return Response.redirect('https://financasai.lovable.app/?google=success', 302);
+    return Response.redirect(`${appOrigin}/gc-done.html?google=success`, 302);
   } catch (error) {
     console.error('[GOOGLE-CALENDAR-CALLBACK] Error:', error);
-    return Response.redirect('https://financasai.lovable.app/?google=error', 302);
+    return Response.redirect(
+      `${appOrigin}/gc-done.html?google=error&reason=unknown`,
+      302
+    );
   }
 });

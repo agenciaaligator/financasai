@@ -11,6 +11,9 @@ serve(async (req) => {
   }
 
   try {
+    const body = await req.json().catch(() => ({}));
+    const { appOrigin } = body;
+
     const clientId = Deno.env.get('GOOGLE_CLIENT_ID');
     const redirectUri = Deno.env.get('GOOGLE_CALENDAR_REDIRECT_URI');
 
@@ -52,11 +55,12 @@ serve(async (req) => {
       'https://www.googleapis.com/auth/calendar.readonly',
     ];
 
-    // Criar payload do state com nonce, user_id e timestamp
+    // Criar payload do state com nonce, user_id, origin e timestamp
     const statePayload = {
       n: crypto.randomUUID(),
       uid: userId,
-      ts: Date.now()
+      ts: Date.now(),
+      o: appOrigin || null
     };
     
     // Codificar state em base64url
@@ -83,7 +87,7 @@ serve(async (req) => {
     console.log('[GOOGLE-CALENDAR-AUTH] Scopes:', scopes.join(', '));
     console.log('[GOOGLE-CALENDAR-AUTH] Prompt:', 'consent select_account');
     console.log('[GOOGLE-CALENDAR-AUTH] Include granted scopes:', 'true');
-    console.log('[GOOGLE-CALENDAR-AUTH] State payload:', { hasUserId: !!userId, timestamp: statePayload.ts });
+    console.log('[GOOGLE-CALENDAR-AUTH] State payload:', { hasUserId: !!userId, hasOrigin: !!appOrigin, timestamp: statePayload.ts });
     console.log('[GOOGLE-CALENDAR-AUTH] Auth URL prefix:', authUrl.toString().substring(0, 80) + '...');
 
     return new Response(

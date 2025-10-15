@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google Calendar - Conexão Concluída</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 16px;
+      padding: 48px 32px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    
+    .icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      font-size: 32px;
+    }
+    
+    .icon.success {
+      background: #10b981;
+      color: white;
+    }
+    
+    .icon.error {
+      background: #ef4444;
+      color: white;
+    }
+    
+    h1 {
+      font-size: 24px;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 12px;
+    }
+    
+    p {
+      font-size: 16px;
+      color: #6b7280;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+    
+    .btn {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .btn:hover {
+      background: #5568d3;
+    }
+    
+    .spinner {
+      width: 40px;
+      height: 40px;
+      margin: 0 auto 16px;
+      border: 4px solid #f3f4f6;
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="loading" style="display: none;">
+      <div class="spinner"></div>
+      <h1>Processando...</h1>
+      <p>Aguarde enquanto concluímos a conexão.</p>
+    </div>
+    
+    <div id="success" style="display: none;">
+      <div class="icon success">✓</div>
+      <h1>Conexão realizada com sucesso!</h1>
+      <p>Seu Google Calendar foi conectado. Você pode fechar esta janela ou voltar ao aplicativo.</p>
+      <button class="btn" onclick="tryClose()">Fechar Janela</button>
+    </div>
+    
+    <div id="error" style="display: none;">
+      <div class="icon error">✕</div>
+      <h1>Erro na conexão</h1>
+      <p id="error-message">Não foi possível conectar ao Google Calendar. Por favor, tente novamente.</p>
+      <button class="btn" onclick="tryClose()">Fechar Janela</button>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const status = params.get('google');
+      const reason = params.get('reason');
+      
+      const loadingEl = document.getElementById('loading');
+      const successEl = document.getElementById('success');
+      const errorEl = document.getElementById('error');
+      const errorMsgEl = document.getElementById('error-message');
+      
+      if (status === 'success') {
+        loadingEl.style.display = 'none';
+        successEl.style.display = 'block';
+        errorEl.style.display = 'none';
+        
+        // Notificar outras abas/janelas
+        try {
+          localStorage.setItem('gc_connected', Date.now().toString());
+          const bc = new BroadcastChannel('gc-auth');
+          bc.postMessage('connected');
+          bc.close();
+        } catch (e) {
+          console.warn('BroadcastChannel não disponível', e);
+        }
+        
+        // Tentar fechar após 2s
+        setTimeout(() => {
+          tryClose();
+        }, 2000);
+        
+      } else if (status === 'error') {
+        loadingEl.style.display = 'none';
+        successEl.style.display = 'none';
+        errorEl.style.display = 'block';
+        
+        // Mensagem de erro específica
+        if (reason === 'invalid_client') {
+          errorMsgEl.textContent = 'Configuração do Google inválida. GOOGLE_CLIENT_SECRET e CLIENT_ID podem estar incorretos. Verifique as Secrets no Supabase.';
+        } else if (reason === 'no_user') {
+          errorMsgEl.textContent = 'Sessão de usuário não encontrada. Por favor, faça login novamente e tente conectar.';
+        } else if (reason === 'db_error') {
+          errorMsgEl.textContent = 'Erro ao salvar a conexão. Por favor, tente novamente em alguns instantes.';
+        }
+        
+        // Notificar erro
+        try {
+          localStorage.setItem('gc_disconnected', Date.now().toString());
+          const bc = new BroadcastChannel('gc-auth');
+          bc.postMessage('disconnected');
+          bc.close();
+        } catch (e) {
+          console.warn('BroadcastChannel não disponível', e);
+        }
+        
+      } else {
+        loadingEl.style.display = 'block';
+        successEl.style.display = 'none';
+        errorEl.style.display = 'none';
+      }
+    })();
+    
+    function tryClose() {
+      // Tentar fechar a janela (só funciona se foi aberta via window.open)
+      try {
+        window.close();
+      } catch (e) {
+        // Se não puder fechar, redirecionar para a página principal
+        window.location.href = '/';
+      }
+      
+      // Se ainda estiver aberta após 500ms, redirecionar
+      setTimeout(() => {
+        if (!window.closed) {
+          window.location.href = '/';
+        }
+      }, 500);
+    }
+  </script>
+</body>
+</html>
