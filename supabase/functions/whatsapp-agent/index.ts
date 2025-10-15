@@ -13,37 +13,64 @@ async function syncWithGoogleCalendar(
   commitmentId: string,
   userId: string,
   googleEventId?: string
-): Promise<void> {
-  try {
-    console.log(`📅 [WHATSAPP-AGENT] Triggering Google Calendar sync: ${action} for ${commitmentId}${googleEventId ? ` (event: ${googleEventId})` : ''}`);
-    
-    const syncResponse = await fetch(
-      `${Deno.env.get('SUPABASE_URL')}/functions/v1/google-calendar-sync`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action,
-          commitmentId,
-          userId,
-          googleEventId,
-        }),
+): Promise<{ success: boolean; error?: string }> {
+  const maxRetries = 3;
+  let lastError: string = '';
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`📅 [WHATSAPP-AGENT] Sync attempt ${attempt}/${maxRetries}: ${action} for ${commitmentId}`);
+      
+      const syncResponse = await fetch(
+        `${Deno.env.get('SUPABASE_URL')}/functions/v1/google-calendar-sync`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action,
+            commitmentId,
+            userId,
+            googleEventId,
+          }),
+          signal: AbortSignal.timeout(15000), // ✅ Timeout de 15s
+        }
+      );
+      
+      if (syncResponse.ok) {
+        const result = await syncResponse.json();
+        console.log(`✅ [WHATSAPP-AGENT] Sync successful on attempt ${attempt}:`, result);
+        return { success: true };
+      } else {
+        const errorText = await syncResponse.text();
+        lastError = `HTTP ${syncResponse.status}: ${errorText}`;
+        console.error(`⚠️ [WHATSAPP-AGENT] Sync failed attempt ${attempt}:`, lastError);
+        
+        // Não retry em erros 4xx (cliente)
+        if (syncResponse.status >= 400 && syncResponse.status < 500) {
+          break;
+        }
+        
+        // Aguardar antes de retry (exponential backoff)
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        }
       }
-    );
-    
-    if (syncResponse.ok) {
-      console.log(`✅ [WHATSAPP-AGENT] Google Calendar sync successful: ${action}`);
-    } else {
-      const errorText = await syncResponse.text();
-      console.error(`⚠️ [WHATSAPP-AGENT] Sync failed (${action}):`, errorText);
+    } catch (syncError) {
+      lastError = syncError.message || String(syncError);
+      console.error(`⚠️ [WHATSAPP-AGENT] Sync error attempt ${attempt}:`, lastError);
+      
+      // Aguardar antes de retry
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      }
     }
-  } catch (syncError) {
-    console.error(`⚠️ [WHATSAPP-AGENT] Sync error (${action}):`, syncError);
-    // Não quebra - operação principal já foi completada
   }
+  
+  console.error(`❌ [WHATSAPP-AGENT] All sync attempts failed for ${commitmentId}:`, lastError);
+  return { success: false, error: lastError };
 }
 
 // Rate limiting for authentication
@@ -4753,7 +4780,7 @@ Se não especificar hora, retorne scheduled_at: null.`
       
       // ✅ Sincronizar com Google Calendar APÓS confirmação
       console.log('[WHATSAPP-AGENT] Triggering Google Calendar sync: create');
-      await syncWithGoogleCalendar('create', commitment.id, session.user_id!);
+      const syncResult = await syncWithGoogleCalendar('create', commitment.id, session.user_id!);
       
       // Gerar mensagem personalizada ✨
       let successMsg = PersonalizedResponses.generateCommitmentSuccessMessage(
@@ -4778,9 +4805,14 @@ Se não especificar hora, retorne scheduled_at: null.`
       }
       
       // ✅ Adicionar informações sobre lembretes
-      successMsg += `\n\n🔔 *Lembretes configurados:*`;
-      successMsg += `\n• WhatsApp: 24h, 2h e 1h antes`;
-      successMsg += `\n• Google: 24h, 2h, 1h e 30min antes`;
+      successMsg += `\n\n⏰ *Lembretes configurados:*`;
+      successMsg += `\n• 📱 WhatsApp: 24h, 2h e 1h antes`;
+      successMsg += `\n• 📅 Google Calendar: 24h, 2h, 1h e 30min antes`;
+      
+      // ✅ Notificar se sincronização falhou
+      if (!syncResult.success) {
+        successMsg += `\n\n⚠️ *Atenção:* O compromisso foi salvo no sistema, mas a sincronização com o Google Calendar falhou. Tente reconectar sua conta do Google.`;
+      }
       
       // Limpar estado
       await SessionManager.updateSession(session.id, {

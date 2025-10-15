@@ -83,6 +83,9 @@ serve(async (req) => {
     );
 
     const { action, commitmentId, userId, googleEventId } = await req.json();
+    
+    // ✅ Log imediato de recebimento
+    console.log(`🎯 [GOOGLE-CALENDAR-SYNC] Received ${action} request for commitment ${commitmentId}`);
 
     // Determinar userId efetivo e cliente a usar
     let effectiveUserId: string;
