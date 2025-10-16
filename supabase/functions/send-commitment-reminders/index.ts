@@ -167,11 +167,14 @@ serve(async (req) => {
     console.log(`[REMINDER] Found ${commitments.length} future commitments`);
 
     let remindersSent = 0;
+    let commitmentsProcessed = 0;
 
     for (const commitment of commitments as Commitment[]) {
       const scheduledAt = new Date(commitment.scheduled_at);
       const now = new Date();
       const minutesUntil = (scheduledAt.getTime() - now.getTime()) / (1000 * 60);
+
+      console.log(`[REMINDER] Checking commitment ${commitment.id}: "${commitment.title}" in ${Math.floor(minutesUntil)} minutes`);
 
       // Buscar configurações de lembrete do usuário
       const { data: settings, error: settingsError } = await supabase
@@ -199,7 +202,14 @@ serve(async (req) => {
         continue;
       }
 
+      const phoneNumber = commitment.profiles?.phone_number;
+      if (!phoneNumber) {
+        console.log(`[REMINDER] No phone number for user ${commitment.user_id}, skipping`);
+        continue;
+      }
+
       const scheduledReminders = commitment.scheduled_reminders || [];
+      commitmentsProcessed++;
 
       // Verificar cada lembrete configurado
       for (const reminder of reminderSettings.default_reminders) {
@@ -209,15 +219,18 @@ serve(async (req) => {
           r => r.time_minutes === reminder.time && r.sent
         );
 
-        if (alreadySent) continue;
+        if (alreadySent) {
+          console.log(`[REMINDER] ${reminder.time}min reminder already sent for ${commitment.id}`);
+          continue;
+        }
 
-        // Verificar se está na janela de envio (±10min de tolerância)
+        // JANELA AMPLIADA: ±60min de tolerância para capturar lembretes mesmo sem sync perfeito
         const shouldSend = 
           minutesUntil <= reminder.time && 
-          minutesUntil >= (reminder.time - 10);
+          minutesUntil > (reminder.time - 60);
 
         if (shouldSend) {
-          console.log(`[REMINDER] Sending ${reminder.time}min reminder for commitment ${commitment.id}`);
+          console.log(`[REMINDER] ✅ Sending ${reminder.time}min reminder for commitment ${commitment.id} (${Math.floor(minutesUntil)}min until event)`);
 
           // Enviar lembrete via WhatsApp
           const sent = await sendWhatsAppReminder(commitment, minutesUntil);
@@ -242,20 +255,23 @@ serve(async (req) => {
               console.error('[REMINDER] Error updating scheduled_reminders:', updateError);
             } else {
               remindersSent++;
-              console.log(`[REMINDER] Reminder marked as sent for commitment ${commitment.id}`);
+              console.log(`[REMINDER] ✅ Reminder marked as sent for commitment ${commitment.id}`);
             }
           }
+        } else {
+          console.log(`[REMINDER] ⏭️ Skipping ${reminder.time}min reminder for ${commitment.id}: not in window (${Math.floor(minutesUntil)}min until event)`);
         }
       }
     }
 
-    console.log(`[REMINDER] Job completed. Sent ${remindersSent} reminders.`);
+    console.log(`[REMINDER] ✅ Job completed. Processed ${commitmentsProcessed} commitments, sent ${remindersSent} reminders.`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         remindersSent,
-        commitmentsProcessed: commitments.length
+        commitmentsProcessed,
+        totalCommitments: commitments.length
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

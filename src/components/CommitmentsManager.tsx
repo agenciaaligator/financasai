@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Plus, Edit, Trash2, Clock, Check } from "lucide-react";
+import { Calendar, Plus, Edit, Trash2, Clock, Check, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -39,6 +39,7 @@ export function CommitmentsManager() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [syncingFromGoogle, setSyncingFromGoogle] = useState(false);
   const { toast } = useToast();
   const { isConnected, syncEvent } = useGoogleCalendar();
   
@@ -273,6 +274,30 @@ export function CommitmentsManager() {
     }
   };
 
+  const handleImportFromGoogle = async () => {
+    setSyncingFromGoogle(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('google-calendar-import');
+      
+      if (error) throw error;
+
+      toast({
+        title: "Sincronização concluída!",
+        description: `${data.imported || 0} novos, ${data.updated || 0} atualizados, ${data.skipped || 0} ignorados`,
+      });
+
+      fetchCommitments();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao sincronizar",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSyncingFromGoogle(false);
+    }
+  };
+
 
   const getCategoryBadge = (category: string) => {
     const variants = {
@@ -343,7 +368,20 @@ export function CommitmentsManager() {
             </p>
           </CardHeader>
           <CardContent>
-            <GoogleCalendarConnect />
+            <div className="space-y-4">
+              <GoogleCalendarConnect />
+              {isConnected && (
+                <Button 
+                  onClick={handleImportFromGoogle} 
+                  disabled={syncingFromGoogle}
+                  variant="outline"
+                  className="w-full"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${syncingFromGoogle ? 'animate-spin' : ''}`} />
+                  {syncingFromGoogle ? "Sincronizando..." : "Sincronizar do Google agora"}
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
       ) : (
