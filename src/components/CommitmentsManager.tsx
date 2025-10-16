@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Plus, Edit, Trash2, Clock, Check, RefreshCw } from "lucide-react";
+import { Calendar, Plus, Edit, Trash2, Clock, Check, RefreshCw, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -109,15 +109,55 @@ export function CommitmentsManager() {
       const brasiliaDate = fromZonedTime(formData.scheduled_at, "America/Sao_Paulo");
       const utcISO = brasiliaDate.toISOString();
 
+      // Buscar reminder_settings do usuário ou usar padrão
+      const { data: reminderSettings } = await supabase
+        .from('reminder_settings')
+        .select('default_reminders')
+        .eq('user_id', user.id)
+        .single();
+
+      const defaultReminders = Array.isArray(reminderSettings?.default_reminders) 
+        ? reminderSettings.default_reminders 
+        : [
+            { time: 1440, enabled: true }, // 24h antes
+            { time: 60, enabled: true }    // 60min antes
+          ];
+
+      const scheduledReminders = defaultReminders
+        .filter((r: any) => r.enabled)
+        .map((r: any) => ({
+          minutes_before: r.time,
+          sent: false
+        }));
+
       const dataToSave = {
         ...formData,
-        scheduled_at: utcISO
+        scheduled_at: utcISO,
+        scheduled_reminders: scheduledReminders
       };
 
       if (editingId) {
+        // Buscar compromisso atual para verificar se mudou data/hora
+        const { data: currentCommitment } = await supabase
+          .from("commitments")
+          .select("scheduled_at, scheduled_reminders")
+          .eq("id", editingId)
+          .single();
+
+        // Se mudou a data/hora para o futuro, resetar lembretes não enviados
+        let updateData = { ...dataToSave };
+        if (currentCommitment && currentCommitment.scheduled_at !== utcISO) {
+          const newDate = new Date(utcISO);
+          const now = new Date();
+          if (newDate > now) {
+            // Resetar apenas os lembretes não enviados
+            updateData.scheduled_reminders = scheduledReminders;
+          }
+        }
+
         const { error } = await supabase
           .from("commitments")
-          .update(dataToSave)
+          .update(updateData)
           .eq("id", editingId);
 
         if (error) throw error;
@@ -495,9 +535,56 @@ export function CommitmentsManager() {
                 />
               </div>
 
-              <Button type="submit">
-                {editingId ? "Atualizar" : "Criar"} Compromisso
-              </Button>
+              <div className="flex gap-2">
+                {editingId && (
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={() => {
+                      setFormData({
+                        title: "",
+                        description: "",
+                        scheduled_at: "",
+                        category: "other",
+                        location: "",
+                        participants: "",
+                        duration_minutes: 60,
+                        notes: "",
+                      });
+                      setEditingId(null);
+                      setShowForm(false);
+                    }}
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Voltar
+                  </Button>
+                )}
+                <Button 
+                  type="button" 
+                  variant="outline"
+                  onClick={() => {
+                    if (confirm("Descartar alterações?")) {
+                      setFormData({
+                        title: "",
+                        description: "",
+                        scheduled_at: "",
+                        category: "other",
+                        location: "",
+                        participants: "",
+                        duration_minutes: 60,
+                        notes: "",
+                      });
+                      setEditingId(null);
+                      setShowForm(false);
+                    }
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit">
+                  {editingId ? "Atualizar" : "Criar"} Compromisso
+                </Button>
+              </div>
             </form>
           </CardContent>
         </Card>

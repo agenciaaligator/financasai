@@ -8,9 +8,10 @@ import { CouponsManagement } from "./CouponsManagement";
 import { AccessManagement } from "./AccessManagement";
 import { PlansManagement } from "./PlansManagement";
 import { TeamManagement } from "./TeamManagement";
-import { Shield, Users, CreditCard, BarChart3, Tag, Key, Clock, Package, UserPlus, Calendar } from "lucide-react";
+import { Shield, Users, CreditCard, BarChart3, Tag, Key, Clock, Package, UserPlus, Calendar, CalendarCheck } from "lucide-react";
 import { WorkHoursSettings } from "../WorkHoursSettings";
 import { AgendaMonitoring } from "./AgendaMonitoring";
+import { AgendaManagement } from "./AgendaManagement";
 
 export function AdminPanel() {
   const [activeTab, setActiveTab] = useState("stats");
@@ -52,7 +53,7 @@ export function AdminPanel() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-9 gap-2">
+        <TabsList className="grid w-full grid-cols-5 lg:grid-cols-10 gap-2">
           <TabsTrigger value="stats" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             <span className="hidden sm:inline">Estatísticas</span>
@@ -84,6 +85,10 @@ export function AdminPanel() {
           <TabsTrigger value="work-hours" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
             <span className="hidden sm:inline">Horário</span>
+          </TabsTrigger>
+          <TabsTrigger value="agenda" className="flex items-center gap-2">
+            <CalendarCheck className="h-4 w-4" />
+            <span className="hidden sm:inline">Agenda</span>
           </TabsTrigger>
           <TabsTrigger value="monitoring" className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
@@ -121,6 +126,10 @@ export function AdminPanel() {
 
         <TabsContent value="work-hours" className="space-y-4">
           <WorkHoursSettings />
+        </TabsContent>
+
+        <TabsContent value="agenda" className="space-y-4">
+          <AgendaManagement />
         </TabsContent>
 
         <TabsContent value="monitoring" className="space-y-4">

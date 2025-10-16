@@ -2,61 +2,114 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Plus, Edit, Trash2, RefreshCw } from "lucide-react";
+import { Calendar, Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { GoogleCalendarConnect } from "@/components/dashboard/GoogleCalendarConnect";
+import { formatInTimeZone } from "date-fns-tz";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
-interface Evento {
+interface Commitment {
   id: string;
   title: string;
-  description: string | null;
-  start_date: string;
-  end_date: string;
-  status: "pending" | "confirmed" | "cancelled" | "completed";
-  created_at: string;
+  scheduled_at: string;
+  category: string;
+  google_event_id: string | null;
+  user_id: string;
+  profiles?: {
+    full_name: string | null;
+    email: string | null;
+  };
 }
 
+const ITEMS_PER_PAGE = 10;
+
 export function AgendaManagement() {
-  const [eventos, setEventos] = useState<Evento[]>([]);
+  const [commitments, setCommitments] = useState<Commitment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [importingFromGoogle, setImportingFromGoogle] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const { toast } = useToast();
 
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    start_date: "",
-    end_date: "",
-    status: "pending" as "pending" | "confirmed" | "cancelled" | "completed",
-  });
+  // Filtros
+  const [titleFilter, setTitleFilter] = useState("");
+  const [dateFromFilter, setDateFromFilter] = useState("");
+  const [dateToFilter, setDateToFilter] = useState("");
+  const [responsibleFilter, setResponsibleFilter] = useState("");
 
   useEffect(() => {
-    fetchEventos();
-  }, []);
+    fetchCommitments();
+  }, [currentPage, titleFilter, dateFromFilter, dateToFilter, responsibleFilter]);
 
-  const fetchEventos = async () => {
+  const fetchCommitments = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      setLoading(true);
+      const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
-      const { data, error } = await supabase
-        .from("eventos")
-        .select("*")
-        .order("start_date", { ascending: true });
+      let query = supabase
+        .from("commitments")
+        .select(`
+          id,
+          title,
+          scheduled_at,
+          category,
+          google_event_id,
+          user_id
+        `, { count: 'exact' })
+        .order("scheduled_at", { ascending: false });
+
+      // Aplicar filtros
+      if (titleFilter) {
+        query = query.ilike("title", `%${titleFilter}%`);
+      }
+      if (dateFromFilter) {
+        query = query.gte("scheduled_at", new Date(dateFromFilter).toISOString());
+      }
+      if (dateToFilter) {
+        const dateTo = new Date(dateToFilter);
+        dateTo.setHours(23, 59, 59, 999);
+        query = query.lte("scheduled_at", dateTo.toISOString());
+      }
+      if (responsibleFilter) {
+        query = query.or(`profiles.full_name.ilike.%${responsibleFilter}%,profiles.email.ilike.%${responsibleFilter}%`);
+      }
+
+      query = query.range(offset, offset + ITEMS_PER_PAGE - 1);
+
+      const { data, error, count } = await query;
 
       if (error) throw error;
-      setEventos((data || []) as Evento[]);
+
+      // Buscar perfis dos usuários separadamente
+      const userIds = (data || []).map((c: any) => c.user_id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, email')
+        .in('user_id', userIds);
+
+      // Mapear perfis para commitments
+      const profilesMap = new Map(
+        (profiles || []).map((p: any) => [p.user_id, { full_name: p.full_name, email: p.email }])
+      );
+
+      const commitmentsWithProfiles = (data || []).map((c: any) => ({
+        ...c,
+        profiles: profilesMap.get(c.user_id)
+      }));
+
+      setCommitments(commitmentsWithProfiles as Commitment[]);
+      setTotalCount(count || 0);
     } catch (error: any) {
       toast({
-        title: "Erro ao carregar eventos",
+        title: "Erro ao carregar compromissos",
         description: error.message,
         variant: "destructive",
       });
@@ -65,288 +118,235 @@ export function AgendaManagement() {
     }
   };
 
-  const handleImportFromGoogle = async () => {
-    setImportingFromGoogle(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('google-calendar-import');
-
-      if (error) throw error;
-
-      toast({
-        title: "Importação concluída",
-        description: `${data.imported} eventos importados, ${data.updated} atualizados`,
-      });
-
-      // Recarregar eventos
-      await fetchEventos();
-    } catch (error: any) {
-      toast({
-        title: "Erro ao importar do Google",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setImportingFromGoogle(false);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      if (editingId) {
-        const { error } = await supabase
-          .from("eventos")
-          .update(formData)
-          .eq("id", editingId);
-
-        if (error) throw error;
-        
-        toast({
-          title: "Evento atualizado",
-          description: "Evento atualizado com sucesso!",
-        });
-      } else {
-        const { error } = await supabase
-          .from("eventos")
-          .insert({
-            ...formData,
-            user_id: user.id,
-          });
-
-        if (error) throw error;
-        
-        toast({
-          title: "Evento criado",
-          description: "Evento criado com sucesso!",
-        });
-      }
-
-      setFormData({
-        title: "",
-        description: "",
-        start_date: "",
-        end_date: "",
-        status: "pending",
-      });
-      setEditingId(null);
-      setShowForm(false);
-      fetchEventos();
-    } catch (error: any) {
-      toast({
-        title: "Erro ao salvar evento",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleEdit = (evento: Evento) => {
-    setFormData({
-      title: evento.title,
-      description: evento.description || "",
-      start_date: evento.start_date,
-      end_date: evento.end_date,
-      status: evento.status,
-    });
-    setEditingId(evento.id);
-    setShowForm(true);
-  };
-
   const handleDelete = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir este evento?")) return;
+    if (!confirm("Tem certeza que deseja excluir este compromisso?")) return;
 
     try {
       const { error } = await supabase
-        .from("eventos")
+        .from("commitments")
         .delete()
         .eq("id", id);
 
       if (error) throw error;
 
       toast({
-        title: "Evento excluído",
-        description: "Evento excluído com sucesso!",
+        title: "Compromisso excluído",
+        description: "Removido com sucesso!",
       });
 
-      fetchEventos();
+      fetchCommitments();
     } catch (error: any) {
       toast({
-        title: "Erro ao excluir evento",
+        title: "Erro ao excluir",
         description: error.message,
         variant: "destructive",
       });
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const variants = {
-      pending: "bg-yellow-500",
-      confirmed: "bg-blue-500",
-      cancelled: "bg-red-500",
-      completed: "bg-green-500",
-    };
-    const labels = {
-      pending: "Pendente",
-      confirmed: "Confirmado",
-      cancelled: "Cancelado",
-      completed: "Concluído",
-    };
-    return (
-      <Badge className={variants[status as keyof typeof variants]}>
-        {labels[status as keyof typeof labels]}
-      </Badge>
-    );
+  const clearFilters = () => {
+    setTitleFilter("");
+    setDateFromFilter("");
+    setDateToFilter("");
+    setResponsibleFilter("");
+    setCurrentPage(1);
   };
 
-  if (loading) {
-    return <div>Carregando...</div>;
-  }
+  const getCategoryLabel = (category: string) => {
+    const labels: Record<string, string> = {
+      payment: "Pagamento",
+      meeting: "Reunião",
+      appointment: "Consulta",
+      other: "Outro",
+    };
+    return labels[category] || category;
+  };
+
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold flex items-center gap-2">
-          <Calendar className="h-6 w-6" />
-          Agenda
+        <h2 className="text-3xl font-bold flex items-center gap-2">
+          <Calendar className="h-7 w-7" />
+          Gerenciamento de Agenda
         </h2>
-        <div className="flex gap-2">
-          <Button 
-            onClick={handleImportFromGoogle} 
-            disabled={importingFromGoogle}
-            variant="outline"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${importingFromGoogle ? 'animate-spin' : ''}`} />
-            Sincronizar do Google
-          </Button>
-          <Button onClick={() => setShowForm(!showForm)}>
-            <Plus className="h-4 w-4 mr-2" />
-            {showForm ? "Cancelar" : "Novo Evento"}
-          </Button>
-        </div>
       </div>
 
-      <GoogleCalendarConnect />
-
-      {showForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{editingId ? "Editar Evento" : "Novo Evento"}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Título</label>
-                <Input
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Descrição</label>
-                <Textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">Data Início</label>
-                  <Input
-                    type="datetime-local"
-                    value={formData.start_date}
-                    onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Data Fim</label>
-                  <Input
-                    type="datetime-local"
-                    value={formData.end_date}
-                    onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Status</label>
-                <select
-                  className="w-full border rounded p-2"
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                >
-                  <option value="pending">Pendente</option>
-                  <option value="confirmed">Confirmado</option>
-                  <option value="cancelled">Cancelado</option>
-                  <option value="completed">Concluído</option>
-                </select>
-              </div>
-              <Button type="submit">
-                {editingId ? "Atualizar" : "Criar"} Evento
+      {/* Filtros */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Search className="h-5 w-5" />
+            Filtros de Busca
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="text-sm font-medium mb-1 block">Título</label>
+              <Input
+                placeholder="Buscar por título..."
+                value={titleFilter}
+                onChange={(e) => {
+                  setTitleFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Data De</label>
+              <Input
+                type="date"
+                value={dateFromFilter}
+                onChange={(e) => {
+                  setDateFromFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Data Até</label>
+              <Input
+                type="date"
+                value={dateToFilter}
+                onChange={(e) => {
+                  setDateToFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Responsável</label>
+              <Input
+                placeholder="Nome ou e-mail..."
+                value={responsibleFilter}
+                onChange={(e) => {
+                  setResponsibleFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
+          </div>
+          {(titleFilter || dateFromFilter || dateToFilter || responsibleFilter) && (
+            <div className="mt-4">
+              <Button variant="outline" size="sm" onClick={clearFilters}>
+                <X className="h-4 w-4 mr-2" />
+                Limpar Filtros
               </Button>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
+      {/* Lista de Compromissos */}
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Título</TableHead>
-                <TableHead>Início</TableHead>
-                <TableHead>Fim</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {eventos.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
-                    Nenhum evento cadastrado
-                  </TableCell>
-                </TableRow>
-              ) : (
-                eventos.map((evento) => (
-                  <TableRow key={evento.id}>
-                    <TableCell className="font-medium">{evento.title}</TableCell>
-                    <TableCell>
-                      {format(new Date(evento.start_date), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                    </TableCell>
-                    <TableCell>
-                      {format(new Date(evento.end_date), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(evento.status)}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(evento)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(evento.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+          {loading ? (
+            <div className="p-8 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            </div>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Título</TableHead>
+                    <TableHead>Data/Hora</TableHead>
+                    <TableHead>Categoria</TableHead>
+                    <TableHead>Responsável</TableHead>
+                    <TableHead>Status Sync</TableHead>
+                    <TableHead>Ações</TableHead>
                   </TableRow>
-                ))
+                </TableHeader>
+                <TableBody>
+                  {commitments.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        Nenhum compromisso encontrado
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    commitments.map((commitment) => (
+                      <TableRow key={commitment.id}>
+                        <TableCell className="font-medium">{commitment.title}</TableCell>
+                        <TableCell>
+                          {formatInTimeZone(commitment.scheduled_at, "America/Sao_Paulo", "dd/MM/yyyy HH:mm")}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{getCategoryLabel(commitment.category)}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {commitment.profiles?.full_name || "Sem nome"}
+                            <div className="text-xs text-muted-foreground">
+                              {commitment.profiles?.email}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {commitment.google_event_id ? (
+                            <Badge variant="outline" className="bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700">
+                              Sincronizado
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-gray-50 dark:bg-gray-950">
+                              Não sincronizado
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDelete(commitment.id)}
+                          >
+                            Excluir
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+
+              {/* Paginação */}
+              {totalPages > 1 && (
+                <div className="p-4 border-t">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                          className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <PaginationItem key={page}>
+                          <PaginationLink
+                            onClick={() => setCurrentPage(page)}
+                            isActive={currentPage === page}
+                            className="cursor-pointer"
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ))}
+                      <PaginationItem>
+                        <PaginationNext
+                          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                  <div className="text-center text-sm text-muted-foreground mt-2">
+                    Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} de {totalCount} compromissos
+                  </div>
+                </div>
               )}
-            </TableBody>
-          </Table>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>
