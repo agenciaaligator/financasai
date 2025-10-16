@@ -68,28 +68,49 @@ Deno.serve(async (req) => {
   try {
     console.log('📥 [GOOGLE-CALENDAR-IMPORT] Starting import from Google Calendar');
     
-    // Criar cliente Supabase com autenticação
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('Missing authorization header');
+    // Verificar se é chamada interna (com userId no body) ou externa (com Authorization header)
+    let targetUserId: string;
+    let supabaseClient: any;
+    
+    const requestBody = await req.text();
+    const bodyData = requestBody ? JSON.parse(requestBody) : {};
+    
+    if (bodyData.userId) {
+      // Chamada interna (de sync-all-google-calendars)
+      console.log('📥 [GOOGLE-CALENDAR-IMPORT] Internal call for userId:', bodyData.userId);
+      targetUserId = bodyData.userId;
+      
+      // Usar service role client para chamadas internas
+      supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+    } else {
+      // Chamada externa (do frontend)
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader) {
+        throw new Error('Missing authorization header');
+      }
+
+      supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+        { global: { headers: { Authorization: authHeader } } }
+      );
+
+      // Obter usuário autenticado
+      const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+      
+      targetUserId = user.id;
     }
 
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    // Obter usuário autenticado
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !user) {
-      throw new Error('User not authenticated');
-    }
-
-    console.log('[GOOGLE-CALENDAR-IMPORT] Importing for user:', user.id);
+    console.log('[GOOGLE-CALENDAR-IMPORT] Importing for user:', targetUserId);
 
     // Obter token de acesso válido
-    const accessToken = await getValidAccessToken(supabaseClient, user.id);
+    const accessToken = await getValidAccessToken(supabaseClient, targetUserId);
 
     // Buscar eventos futuros do Google Calendar (próximos 90 dias)
     const timeMin = new Date().toISOString();
@@ -134,7 +155,7 @@ Deno.serve(async (req) => {
         const durationMinutes = Math.round((endTime.getTime() - startTime.getTime()) / 60000);
 
         const commitmentData = {
-          user_id: user.id,
+          user_id: targetUserId,
           title: googleEvent.summary || 'Sem título',
           description: googleEvent.description || null,
           scheduled_at: startTime.toISOString(),
