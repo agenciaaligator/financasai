@@ -34,27 +34,12 @@ export function AgendaMonitoring() {
       
       if (error) {
         console.error('RPC Error:', error);
-        // Cron ainda não configurado, usar dados mock
-        setCronStatus([
-          {
-            jobname: 'send-commitment-reminders-5min',
-            schedule: '*/5 * * * *',
-            active: false,
-            last_run: undefined
-          },
-          {
-            jobname: 'send-daily-agenda-8am',
-            schedule: '0 8 * * *',
-            active: false,
-            last_run: undefined
-          },
-          {
-            jobname: 'sync-all-google-calendars-10min',
-            schedule: '*/10 * * * *',
-            active: false,
-            last_run: undefined
-          }
-        ]);
+        toast({
+          title: "Aviso",
+          description: "Cron jobs ainda não configurados. Execute o script SQL fornecido.",
+          variant: "destructive",
+        });
+        setCronStatus([]);
       } else if (data) {
         setCronStatus(data);
       }
@@ -179,6 +164,11 @@ export function AgendaMonitoring() {
                       <p className="text-sm text-muted-foreground">
                         Agendamento: {cron.schedule}
                       </p>
+                      {cron.last_run && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Última execução: {new Date(cron.last_run).toLocaleString('pt-BR')}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-3">

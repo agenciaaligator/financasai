@@ -154,6 +154,27 @@ Deno.serve(async (req) => {
         const endTime = new Date(googleEvent.end.dateTime || googleEvent.end.date);
         const durationMinutes = Math.round((endTime.getTime() - startTime.getTime()) / 60000);
 
+        // Buscar reminder_settings do usuário ou usar padrão
+        const { data: reminderSettings } = await supabaseClient
+          .from('reminder_settings')
+          .select('default_reminders')
+          .eq('user_id', targetUserId)
+          .maybeSingle();
+
+        const defaultReminders = Array.isArray(reminderSettings?.default_reminders) 
+          ? reminderSettings.default_reminders 
+          : [
+              { time: 1440, enabled: true }, // 24h antes
+              { time: 60, enabled: true }    // 60min antes
+            ];
+
+        const scheduledReminders = defaultReminders
+          .filter((r: any) => r.enabled)
+          .map((r: any) => ({
+            minutes_before: r.time,
+            sent: false
+          }));
+
         const commitmentData = {
           user_id: targetUserId,
           title: googleEvent.summary || 'Sem título',
@@ -164,6 +185,7 @@ Deno.serve(async (req) => {
           google_event_id: googleEventId,
           category: googleEvent.conferenceData ? 'meeting' : 'other',
           reminder_sent: false,
+          scheduled_reminders: scheduledReminders,
         };
 
         if (existing) {

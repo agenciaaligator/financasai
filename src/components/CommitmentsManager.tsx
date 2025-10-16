@@ -447,7 +447,30 @@ export function CommitmentsManager() {
       {showForm && (
         <Card>
           <CardHeader>
-            <CardTitle>{editingId ? "Editar Compromisso" : "Novo Compromisso"}</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>{editingId ? "Editar Compromisso" : "Novo Compromisso"}</CardTitle>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowForm(false);
+                  setEditingId(null);
+                  setFormData({
+                    title: "",
+                    description: "",
+                    scheduled_at: "",
+                    category: "other",
+                    location: "",
+                    participants: "",
+                    duration_minutes: 60,
+                    notes: "",
+                  });
+                }}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Voltar
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -563,20 +586,18 @@ export function CommitmentsManager() {
                   type="button" 
                   variant="outline"
                   onClick={() => {
-                    if (confirm("Descartar alterações?")) {
-                      setFormData({
-                        title: "",
-                        description: "",
-                        scheduled_at: "",
-                        category: "other",
-                        location: "",
-                        participants: "",
-                        duration_minutes: 60,
-                        notes: "",
-                      });
-                      setEditingId(null);
-                      setShowForm(false);
-                    }
+                    setFormData({
+                      title: "",
+                      description: "",
+                      scheduled_at: "",
+                      category: "other",
+                      location: "",
+                      participants: "",
+                      duration_minutes: 60,
+                      notes: "",
+                    });
+                    setEditingId(null);
+                    setShowForm(false);
                   }}
                 >
                   Cancelar

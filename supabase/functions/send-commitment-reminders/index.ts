@@ -130,7 +130,8 @@ serve(async (req) => {
   }
 
   try {
-    console.log('[REMINDER] Starting commitment reminders job...');
+    const executionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    console.log(`🔔 [REMINDER] [${executionId}] Starting commitment reminders check at ${new Date().toISOString()}`);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -152,29 +153,30 @@ serve(async (req) => {
       .order('scheduled_at', { ascending: true });
 
     if (fetchError) {
-      console.error('[REMINDER] Error fetching commitments:', fetchError);
+      console.error(`[REMINDER] [${executionId}] Error fetching commitments:`, fetchError);
       throw fetchError;
     }
 
     if (!commitments || commitments.length === 0) {
-      console.log('[REMINDER] No future commitments found');
+      console.log(`[REMINDER] [${executionId}] No future commitments found`);
       return new Response(
         JSON.stringify({ success: true, remindersSent: 0, message: 'No commitments to process' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`[REMINDER] Found ${commitments.length} future commitments`);
+    console.log(`[REMINDER] [${executionId}] Found ${commitments.length} future commitments`);
 
     let remindersSent = 0;
-    let commitmentsProcessed = 0;
+    let errors = 0;
+    let skipped = 0;
 
     for (const commitment of commitments as Commitment[]) {
       const scheduledAt = new Date(commitment.scheduled_at);
       const now = new Date();
       const minutesUntil = (scheduledAt.getTime() - now.getTime()) / (1000 * 60);
 
-      console.log(`[REMINDER] Checking commitment ${commitment.id}: "${commitment.title}" in ${Math.floor(minutesUntil)} minutes`);
+      console.log(`[REMINDER] [${executionId}] Processing commitment ${commitment.id} for user ${commitment.user_id}: "${commitment.title}" in ${Math.floor(minutesUntil)} minutes`);
 
       // Buscar configurações de lembrete do usuário
       const { data: settings, error: settingsError } = await supabase
@@ -184,7 +186,8 @@ serve(async (req) => {
         .maybeSingle();
 
       if (settingsError) {
-        console.error('[REMINDER] Error fetching settings:', settingsError);
+        console.error(`[REMINDER] [${executionId}] Error fetching settings for user ${commitment.user_id}:`, settingsError);
+        skipped++;
         continue;
       }
 
@@ -198,18 +201,19 @@ serve(async (req) => {
       };
 
       if (!reminderSettings.send_via_whatsapp) {
-        console.log(`[REMINDER] WhatsApp disabled for user ${commitment.user_id}`);
+        console.log(`[REMINDER] [${executionId}] WhatsApp disabled for user ${commitment.user_id}`);
+        skipped++;
         continue;
       }
 
       const phoneNumber = commitment.profiles?.phone_number;
       if (!phoneNumber) {
-        console.log(`[REMINDER] No phone number for user ${commitment.user_id}, skipping`);
+        console.log(`[REMINDER] [${executionId}] No phone number for user ${commitment.user_id}, skipping`);
+        skipped++;
         continue;
       }
 
       const scheduledReminders = commitment.scheduled_reminders || [];
-      commitmentsProcessed++;
 
       // Verificar cada lembrete configurado
       for (const reminder of reminderSettings.default_reminders) {
@@ -220,7 +224,7 @@ serve(async (req) => {
         );
 
         if (alreadySent) {
-          console.log(`[REMINDER] ${reminder.time}min reminder already sent for ${commitment.id}`);
+          console.log(`[REMINDER] [${executionId}] ${reminder.time}min reminder already sent for ${commitment.id}`);
           continue;
         }
 
@@ -230,12 +234,15 @@ serve(async (req) => {
           minutesUntil > (reminder.time - 60);
 
         if (shouldSend) {
-          console.log(`[REMINDER] ✅ Sending ${reminder.time}min reminder for commitment ${commitment.id} (${Math.floor(minutesUntil)}min until event)`);
+          console.log(`[REMINDER] [${executionId}] Sending ${reminder.time}min reminder for ${commitment.title} to user ${commitment.user_id} (${Math.floor(minutesUntil)}min until event)`);
 
           // Enviar lembrete via WhatsApp
           const sent = await sendWhatsAppReminder(commitment, minutesUntil);
 
           if (sent) {
+            remindersSent++;
+            console.log(`[REMINDER] [${executionId}] ✅ Sent ${reminder.time}min reminder for ${commitment.title}`);
+            
             // Marcar como enviado
             const updatedReminders = [
               ...scheduledReminders.filter(r => r.time_minutes !== reminder.time),
@@ -252,26 +259,35 @@ serve(async (req) => {
               .eq('id', commitment.id);
 
             if (updateError) {
-              console.error('[REMINDER] Error updating scheduled_reminders:', updateError);
+              console.error(`[REMINDER] [${executionId}] Error updating scheduled_reminders:`, updateError);
             } else {
-              remindersSent++;
-              console.log(`[REMINDER] ✅ Reminder marked as sent for commitment ${commitment.id}`);
+              console.log(`[REMINDER] [${executionId}] Reminder marked as sent for commitment ${commitment.id}`);
             }
+          } else {
+            errors++;
+            console.error(`[REMINDER] [${executionId}] ❌ Failed to send ${reminder.time}min reminder for ${commitment.title}`);
           }
         } else {
-          console.log(`[REMINDER] ⏭️ Skipping ${reminder.time}min reminder for ${commitment.id}: not in window (${Math.floor(minutesUntil)}min until event)`);
+          console.log(`[REMINDER] [${executionId}] Skipping ${reminder.time}min reminder for ${commitment.id}: not in window (${Math.floor(minutesUntil)}min until event)`);
         }
       }
     }
 
-    console.log(`[REMINDER] ✅ Job completed. Processed ${commitmentsProcessed} commitments, sent ${remindersSent} reminders.`);
+    const summary = {
+      executionId,
+      totalCommitments: commitments.length,
+      remindersSent,
+      errors,
+      skipped,
+      timestamp: new Date().toISOString(),
+    };
+
+    console.log(`✅ [REMINDER] [${executionId}] Reminders check completed:`, summary);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        remindersSent,
-        commitmentsProcessed,
-        totalCommitments: commitments.length
+        ...summary
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
