@@ -5,11 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Plus, Edit, Trash2 } from "lucide-react";
+import { Calendar, Plus, Edit, Trash2, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { GoogleCalendarConnect } from "@/components/dashboard/GoogleCalendarConnect";
 
 interface Evento {
   id: string;
@@ -26,6 +27,7 @@ export function AgendaManagement() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [importingFromGoogle, setImportingFromGoogle] = useState(false);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -60,6 +62,31 @@ export function AgendaManagement() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleImportFromGoogle = async () => {
+    setImportingFromGoogle(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('google-calendar-import');
+
+      if (error) throw error;
+
+      toast({
+        title: "Importação concluída",
+        description: `${data.imported} eventos importados, ${data.updated} atualizados`,
+      });
+
+      // Recarregar eventos
+      await fetchEventos();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao importar do Google",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setImportingFromGoogle(false);
     }
   };
 
@@ -186,11 +213,23 @@ export function AgendaManagement() {
           <Calendar className="h-6 w-6" />
           Agenda
         </h2>
-        <Button onClick={() => setShowForm(!showForm)}>
-          <Plus className="h-4 w-4 mr-2" />
-          {showForm ? "Cancelar" : "Novo Evento"}
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={handleImportFromGoogle} 
+            disabled={importingFromGoogle}
+            variant="outline"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${importingFromGoogle ? 'animate-spin' : ''}`} />
+            Sincronizar do Google
+          </Button>
+          <Button onClick={() => setShowForm(!showForm)}>
+            <Plus className="h-4 w-4 mr-2" />
+            {showForm ? "Cancelar" : "Novo Evento"}
+          </Button>
+        </div>
       </div>
+
+      <GoogleCalendarConnect />
 
       {showForm && (
         <Card>

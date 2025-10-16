@@ -165,13 +165,13 @@ serve(async (req) => {
           .trim();
       }
       
-      // ✅ Extrair email explícito da description
-      let attendees = [];
+      // ✅ Extrair e adicionar participantes de emails na descrição (ÚNICA DECLARAÇÃO)
+      const attendees: Array<{ email: string }> = [];
       if (commitment.description) {
-        const emailMatch = commitment.description.match(/Email:\s*([\w.-]+@[\w.-]+\.\w+)/i);
-        if (emailMatch) {
-          attendees.push({ email: emailMatch[1] });
-          console.log('[GOOGLE-CALENDAR-SYNC] Attendee added:', emailMatch[1]);
+        const emailMatches = commitment.description.match(/[\w.-]+@[\w.-]+\.\w+/g);
+        if (emailMatches) {
+          attendees.push(...emailMatches.map(email => ({ email })));
+          console.log('[GOOGLE-CALENDAR-SYNC] Adding attendees:', emailMatches);
         }
       }
       
@@ -215,15 +215,7 @@ serve(async (req) => {
         };
       }
       
-      // ✅ Extrair e adicionar participantes de emails na descrição
-      const attendees: Array<{ email: string }> = [];
-      if (commitment.category === 'meeting' && commitment.description) {
-        const emailMatches = commitment.description.match(/[\w.-]+@[\w.-]+\.\w+/g);
-        if (emailMatches) {
-          attendees.push(...emailMatches.map(email => ({ email })));
-          console.log('[GOOGLE-CALENDAR-SYNC] Adding attendees:', emailMatches);
-        }
-      }
+      // Adicionar participantes ao evento
       if (attendees.length > 0) {
         event.attendees = attendees;
       }
