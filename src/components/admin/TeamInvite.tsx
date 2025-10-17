@@ -19,7 +19,8 @@ export function TeamInvite({ organizationId, onSuccess, onCancel }: TeamInvitePr
     email: "",
     phone: "",
     password: "",
-    role: "member"
+    role: "member",
+    canViewOthers: false
   });
   const [loading, setLoading] = useState(false);
 
@@ -92,12 +93,50 @@ export function TeamInvite({ organizationId, onSuccess, onCancel }: TeamInvitePr
           organization_id: organizationId,
           user_id: authData.user.id,
           role: formData.role,
-          permissions: 
-            formData.role === "admin"
-              ? { view: true, create: true, edit: true, delete: true }
-              : formData.role === "member"
-              ? { view: true, create: true, edit: false, delete: false }
-              : { view: true, create: false, edit: false, delete: false }
+          permissions: formData.role === "owner" || formData.role === "admin"
+            ? {
+                view: true,
+                create: true,
+                edit: true,
+                delete: true,
+                view_own: true,
+                view_others: true,
+                edit_own: true,
+                edit_others: true,
+                delete_own: true,
+                delete_others: true,
+                view_reports: true,
+                manage_members: true
+              }
+            : formData.role === "member"
+            ? {
+                view: true,
+                create: true,
+                edit: true,
+                delete: true,
+                view_own: true,
+                view_others: formData.canViewOthers,
+                edit_own: true,
+                edit_others: false,
+                delete_own: true,
+                delete_others: false,
+                view_reports: false,
+                manage_members: false
+              }
+            : {
+                view: true,
+                create: false,
+                edit: false,
+                delete: false,
+                view_own: true,
+                view_others: false,
+                edit_own: false,
+                edit_others: false,
+                delete_own: false,
+                delete_others: false,
+                view_reports: false,
+                manage_members: false
+              }
         });
 
       if (memberError) {
@@ -110,7 +149,7 @@ export function TeamInvite({ organizationId, onSuccess, onCancel }: TeamInvitePr
       });
 
       // Limpar formulário e fechar
-      setFormData({ fullName: "", email: "", phone: "", password: "", role: "member" });
+      setFormData({ fullName: "", email: "", phone: "", password: "", role: "member", canViewOthers: false });
       onSuccess();
 
     } catch (error: any) {
@@ -188,6 +227,21 @@ export function TeamInvite({ organizationId, onSuccess, onCancel }: TeamInvitePr
           </SelectContent>
         </Select>
       </div>
+
+      {formData.role === "member" && (
+        <div className="flex items-center space-x-2 bg-muted p-3 rounded-md">
+          <input
+            type="checkbox"
+            id="canViewOthers"
+            checked={formData.canViewOthers}
+            onChange={(e) => setFormData({ ...formData, canViewOthers: e.target.checked })}
+            className="h-4 w-4 rounded border-gray-300"
+          />
+          <Label htmlFor="canViewOthers" className="text-sm cursor-pointer">
+            Permitir visualizar dados de outros membros
+          </Label>
+        </div>
+      )}
 
       <div className="flex gap-2 pt-4">
         <Button type="submit" disabled={loading} className="flex-1">

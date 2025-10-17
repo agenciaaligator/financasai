@@ -36,6 +36,9 @@ import { toZonedTime } from "date-fns-tz";
 import { ErrorBoundary } from "../ErrorBoundary";
 import { CommitmentsManager } from "../CommitmentsManager";
 import { TeamManagement } from "../admin/TeamManagement";
+import { useOrganizationPermissions } from "@/hooks/useOrganizationPermissions";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 const TIMEZONE = 'America/Sao_Paulo';
 const ITEMS_PER_PAGE = 10;
@@ -71,6 +74,7 @@ export function DashboardContent({
 }: DashboardContentProps) {
   const { planName, planLimits } = useSubscription();
   const { getTransactionProgress, getCategoryProgress } = useFeatureLimits();
+  const { canViewOthers } = useOrganizationPermissions();
   
   const [filters, setFilters] = useState<TransactionFiltersState>({
     period: 'all',
@@ -83,6 +87,7 @@ export function DashboardContent({
 
   const [currentPage, setCurrentPage] = useState(1);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const [showOnlyMine, setShowOnlyMine] = useState(false);
 
   // Reset para página 1 quando filtros mudarem
   useEffect(() => {
@@ -91,8 +96,13 @@ export function DashboardContent({
 
   const filteredTransactions = useMemo(() => {
     const now = toZonedTime(new Date(), TIMEZONE);
+    const { user } = require('@/hooks/useAuth');
     
     return transactions.filter(transaction => {
+      // Filtro "Ver apenas minhas" se habilitado
+      if (showOnlyMine && canViewOthers && user?.id && transaction.user_id !== user.id) {
+        return false;
+      }
       // Filtro de período
       if (filters.period !== 'all') {
         try {
@@ -175,7 +185,7 @@ export function DashboardContent({
 
       return true;
     });
-  }, [transactions, filters]);
+  }, [transactions, filters, showOnlyMine, canViewOthers]);
   
   if (currentTab === "dashboard") {
     return (
@@ -233,10 +243,25 @@ export function DashboardContent({
     return (
       <ErrorBoundary>
         <div className="space-y-4">
-          <AddTransactionButton 
-            showForm={showTransactionForm}
-            onToggle={onToggleTransactionForm}
-          />
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <AddTransactionButton 
+              showForm={showTransactionForm}
+              onToggle={onToggleTransactionForm}
+            />
+            
+            {canViewOthers && (
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="show-only-mine"
+                  checked={showOnlyMine}
+                  onCheckedChange={setShowOnlyMine}
+                />
+                <Label htmlFor="show-only-mine" className="cursor-pointer">
+                  Ver apenas minhas transações
+                </Label>
+              </div>
+            )}
+          </div>
           
           {/* Limit Warnings */}
           {planLimits && transactionProgress && transactionProgress.current !== null && transactionProgress.limit !== null && (

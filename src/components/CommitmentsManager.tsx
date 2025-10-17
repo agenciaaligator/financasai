@@ -20,6 +20,7 @@ import { WorkHoursSettings } from "./WorkHoursSettings";
 import { useTranslation } from "react-i18next";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { useOrganizationPermissions } from "@/hooks/useOrganizationPermissions";
 
 interface Commitment {
   id: string;
@@ -63,6 +64,7 @@ export function CommitmentsManager() {
   });
   const { t } = useTranslation();
   const { isAdmin, isPremium, loading: roleLoading } = useUserRole();
+  const { organization_id, canViewOthers } = useOrganizationPermissions();
   
   // Verificar se tem acesso ao Google Calendar (Premium ou Admin)
   const hasGoogleCalendarAccess = isAdmin || isPremium;
@@ -99,6 +101,15 @@ export function CommitmentsManager() {
         .from("commitments")
         .select("*", { count: 'exact' })
         .order("scheduled_at", { ascending: true });
+
+      // Filtro de organização/privacidade
+      if (!canViewOthers) {
+        query = query.eq('user_id', user.id);
+      } else if (organization_id) {
+        query = query.eq('organization_id', organization_id);
+      } else {
+        query = query.eq('user_id', user.id);
+      }
 
       // Aplicar filtros
       if (titleFilter) {
@@ -148,6 +159,13 @@ export function CommitmentsManager() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      // Buscar organization_id para associar
+      const { data: orgData } = await supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .single();
 
       // Converter datetime-local (interpretado como America/Sao_Paulo) → UTC
       const brasiliaDate = fromZonedTime(formData.scheduled_at, "America/Sao_Paulo");
@@ -347,6 +365,7 @@ export function CommitmentsManager() {
           .insert({
             ...dataToSave,
             user_id: user.id,
+            organization_id: orgData?.organization_id || null,
           })
           .select()
           .single();

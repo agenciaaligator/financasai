@@ -102,6 +102,11 @@ export function TransactionList({
                       <Badge variant="secondary" className="text-xs">
                         {transaction.source === 'whatsapp' ? 'WhatsApp' : 'Manual'}
                       </Badge>
+                      {transaction.profiles && (
+                        <Badge variant="outline" className="text-xs bg-primary/10">
+                          {transaction.profiles.full_name || transaction.profiles.email}
+                        </Badge>
+                      )}
                     </div>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">

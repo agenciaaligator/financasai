@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
@@ -26,6 +27,7 @@ interface Member {
   role: string;
   email: string;
   full_name: string | null;
+  permissions: any;
 }
 
 export function TeamManagement() {
@@ -82,7 +84,8 @@ export function TeamManagement() {
           id,
           user_id,
           role,
-          profiles:user_id (email, full_name)
+          permissions,
+          profiles!organization_members_user_id_fkey (email, full_name)
         `)
         .eq("organization_id", selectedOrg);
 
@@ -92,6 +95,7 @@ export function TeamManagement() {
         id: m.id,
         user_id: m.user_id,
         role: m.role,
+        permissions: m.permissions,
         email: m.profiles?.email || "N/A",
         full_name: m.profiles?.full_name || null,
       })) || [];
@@ -169,10 +173,35 @@ export function TeamManagement() {
         .from("organization_members")
         .update({
           role: newRole,
-          permissions:
-            newRole === "owner" || newRole === "admin"
-              ? { view: true, create: true, edit: true, delete: true }
-              : { view: true, create: false, edit: false, delete: false },
+          permissions: newRole === "owner" || newRole === "admin"
+            ? {
+                view: true,
+                create: true,
+                edit: true,
+                delete: true,
+                view_own: true,
+                view_others: true,
+                edit_own: true,
+                edit_others: true,
+                delete_own: true,
+                delete_others: true,
+                view_reports: true,
+                manage_members: true
+              }
+            : {
+                view: true,
+                create: true,
+                edit: true,
+                delete: true,
+                view_own: true,
+                view_others: false,
+                edit_own: true,
+                edit_others: false,
+                delete_own: true,
+                delete_others: false,
+                view_reports: false,
+                manage_members: false
+              },
         })
         .eq("id", memberId);
 
@@ -182,6 +211,30 @@ export function TeamManagement() {
       fetchMembers();
     } catch (error: any) {
       toast.error("Erro ao atualizar permissão", { description: error.message });
+    }
+  };
+
+  const handleUpdatePermission = async (memberId: string, permissionKey: string, value: boolean) => {
+    try {
+      const member = members.find(m => m.id === memberId);
+      if (!member) return;
+
+      const updatedPermissions = {
+        ...member.permissions,
+        [permissionKey]: value
+      };
+
+      const { error } = await supabase
+        .from("organization_members")
+        .update({ permissions: updatedPermissions })
+        .eq("id", memberId);
+
+      if (error) throw error;
+
+      toast.success("Privacidade atualizada!");
+      fetchMembers();
+    } catch (error: any) {
+      toast.error("Erro ao atualizar privacidade", { description: error.message });
     }
   };
 
@@ -288,6 +341,7 @@ export function TeamManagement() {
                   <TableHead>Nome</TableHead>
                   <TableHead>E-mail</TableHead>
                   <TableHead>Permissão</TableHead>
+                  <TableHead>Privacidade</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -315,6 +369,25 @@ export function TeamManagement() {
                             <SelectItem value="viewer">Visualizador</SelectItem>
                           </SelectContent>
                         </Select>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {member.role === "member" ? (
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={member.permissions?.view_others ?? false}
+                            onCheckedChange={(checked) => 
+                              handleUpdatePermission(member.id, 'view_others', checked)
+                            }
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            {member.permissions?.view_others ? 'Vê todos' : 'Apenas próprio'}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">
+                          {member.role === "owner" || member.role === "admin" ? 'Acesso total' : 'Sem acesso'}
+                        </span>
                       )}
                     </TableCell>
                     <TableCell>
