@@ -35,6 +35,7 @@ import {
 import { toZonedTime } from "date-fns-tz";
 import { ErrorBoundary } from "../ErrorBoundary";
 import { CommitmentsManager } from "../CommitmentsManager";
+import { TeamManagement } from "../admin/TeamManagement";
 
 const TIMEZONE = 'America/Sao_Paulo';
 const ITEMS_PER_PAGE = 10;
@@ -339,6 +340,10 @@ export function DashboardContent({
         <CommitmentsManager />
       </ErrorBoundary>
     );
+  }
+
+  if (currentTab === "team") {
+    return <TeamManagement />;
   }
 
   if (currentTab === "admin") {

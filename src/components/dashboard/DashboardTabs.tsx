@@ -50,6 +50,8 @@ interface DashboardTabsProps {
   onDelete: (id: string) => void;
   onEdit: (transaction: Transaction) => void;
   onRefresh: () => void;
+  currentTab: string;
+  onTabChange: (tab: string) => void;
 }
 
 export function DashboardTabs({ 
@@ -57,7 +59,9 @@ export function DashboardTabs({
   categories, 
   onDelete, 
   onEdit, 
-  onRefresh 
+  onRefresh,
+  currentTab,
+  onTabChange
 }: DashboardTabsProps) {
   const { isAdmin, role, loading } = useUserRole();
   
@@ -155,7 +159,7 @@ export function DashboardTabs({
   }, [transactions, filters]);
 
   return (
-    <Tabs defaultValue="dashboard" className="w-full">
+    <Tabs value={currentTab} onValueChange={onTabChange} className="w-full">
       <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-9' : 'grid-cols-8'} bg-muted/30`}>
         <TabsTrigger value="dashboard" className="flex items-center space-x-2">
           <DollarSign className="h-4 w-4" />

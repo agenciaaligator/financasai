@@ -158,53 +158,103 @@ export function CommitmentsManager() {
       const dayOfWeek = scheduledDate.getDay();
       const timeScheduled = format(scheduledDate, 'HH:mm');
 
+      console.log('🔍 [Validação] Verificando horários:', {
+        scheduledDate: formData.scheduled_at,
+        dayOfWeek,
+        timeScheduled,
+        userId: user.id
+      });
+
       // Buscar work_hours do usuário para o dia agendado
-      const { data: workHours } = await supabase
+      const { data: workHours, error: workHoursError } = await supabase
         .from('work_hours')
         .select('*')
         .eq('user_id', user.id)
         .eq('day_of_week', dayOfWeek)
-        .single();
+        .maybeSingle(); // ✅ Usar maybeSingle() - retorna null se não encontrar
+
+      console.log('🔍 [Validação] Work hours encontrado:', {
+        workHours,
+        error: workHoursError
+      });
+
+      // Se houver erro na query, avisar no console mas continuar
+      if (workHoursError) {
+        console.error('❌ [Validação] Erro ao buscar work_hours:', workHoursError);
+        toast({
+          title: "⚠️ Erro ao validar horários",
+          description: "Não foi possível verificar seus horários de trabalho. Compromisso será criado.",
+          variant: "destructive",
+        });
+      }
+
+      // Se não encontrou work_hours, avisar que não está configurado
+      if (!workHours && !workHoursError) {
+        console.warn('⚠️ [Validação] Work hours não configurado para este dia');
+        toast({
+          title: "⚠️ Horários não configurados",
+          description: "Configure seus horários de trabalho na aba 'Horários de Trabalho' para validações automáticas.",
+          variant: "destructive",
+        });
+      }
 
       // Validação 1: Dia desabilitado
-      if (workHours && !workHours.is_active) {
+      if (workHours && workHours.is_active === false) {
         const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+        console.log('⚠️ [Validação] Dia desabilitado detectado:', dayNames[dayOfWeek]);
+        
         const shouldContinue = window.confirm(
-          `⚠️ Atenção!\n\n${dayNames[dayOfWeek]} está desabilitado nos seus horários de trabalho.\n\nDeseja criar o compromisso mesmo assim?`
+          `⚠️ ATENÇÃO!\n\n${dayNames[dayOfWeek]} está DESABILITADO nos seus horários de trabalho.\n\nDeseja criar o compromisso mesmo assim?`
         );
         
         if (!shouldContinue) {
+          console.log('❌ [Validação] Usuário cancelou criação - dia desabilitado');
           return; // Cancela a criação
         }
         
+        console.log('✅ [Validação] Usuário confirmou criação em dia desabilitado');
         toast({
-          title: "Compromisso criado em dia desabilitado",
-          description: `O dia ${dayNames[dayOfWeek]} está marcado como inativo na sua agenda.`,
+          title: "⚠️ Compromisso criado em dia desabilitado",
+          description: `${dayNames[dayOfWeek]} está marcado como inativo na sua agenda.`,
           variant: "destructive",
         });
       }
 
       // Validação 2: Fora do horário (apenas se dia estiver ativo)
-      if (workHours && workHours.is_active) {
+      if (workHours && workHours.is_active === true) {
         const startTime = workHours.start_time.substring(0, 5); // "09:00:00" -> "09:00"
         const endTime = workHours.end_time.substring(0, 5);
         
+        console.log('🔍 [Validação] Verificando horário:', {
+          timeScheduled,
+          startTime,
+          endTime,
+          isBeforeStart: timeScheduled < startTime,
+          isAfterEnd: timeScheduled > endTime
+        });
+        
         if (timeScheduled < startTime || timeScheduled > endTime) {
+          console.log('⚠️ [Validação] Horário fora do expediente detectado');
+          
           const shouldContinue = window.confirm(
-            `⏰ Atenção!\n\nO horário ${timeScheduled} está fora do seu expediente (${startTime} - ${endTime}).\n\nDeseja criar o compromisso mesmo assim?`
+            `⏰ ATENÇÃO!\n\nO horário ${timeScheduled} está FORA do seu expediente configurado (${startTime} - ${endTime}).\n\nDeseja criar o compromisso mesmo assim?`
           );
           
           if (!shouldContinue) {
+            console.log('❌ [Validação] Usuário cancelou criação - fora do horário');
             return; // Cancela a criação
           }
           
+          console.log('✅ [Validação] Usuário confirmou criação fora do horário');
           toast({
-            title: "Compromisso fora do horário de trabalho",
+            title: "⚠️ Compromisso fora do horário de trabalho",
             description: `Seu expediente é de ${startTime} às ${endTime}.`,
             variant: "destructive",
           });
         }
       }
+
+      console.log('✅ [Validação] Validações concluídas - prosseguindo com criação');
 
       // Buscar reminder_settings do usuário ou usar padrão
       const { data: reminderSettings } = await supabase

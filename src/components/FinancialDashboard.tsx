@@ -139,6 +139,13 @@ export function FinancialDashboard() {
                         Agenda
                       </Button>
                       <Button
+                        variant={currentTab === 'team' ? 'secondary' : 'ghost'}
+                        className="w-full justify-start"
+                        onClick={() => handleTabChange('team')}
+                      >
+                        Equipe
+                      </Button>
+                      <Button
                         variant={currentTab === 'profile' ? 'secondary' : 'ghost'}
                         className="w-full justify-start"
                         onClick={() => handleTabChange('profile')}
@@ -181,6 +188,7 @@ export function FinancialDashboard() {
                   {currentTab === "reports" && "Relatórios"}
                   {currentTab === "ai-chat" && "IA Reports"}
                   {currentTab === "agenda" && "Agenda"}
+                  {currentTab === "team" && "Equipe"}
                   {currentTab === "future" && "Novidades"}
                   {currentTab === "profile" && "Perfil"}
                 </h1>
@@ -259,6 +267,7 @@ export function FinancialDashboard() {
                     {currentTab === "reports" && "Relatórios"}
                     {currentTab === "ai-chat" && "IA Reports"}
                     {currentTab === "agenda" && "Agenda"}
+                    {currentTab === "team" && "Equipe"}
                     {currentTab === "future" && "Novidades"}
                     {currentTab === "profile" && "Perfil"}
                     {currentTab === "admin" && "Painel Administrativo"}
