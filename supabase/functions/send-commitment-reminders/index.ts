@@ -38,6 +38,14 @@ interface ReminderSettings {
   send_via_whatsapp: boolean;
 }
 
+// Map configured minutes to a semantic key used by the legacy reminders_sent column
+function timeToKey(minutes: number): 'week' | 'day' | 'hours' | 'confirmed' | 'unknown' {
+  if (minutes >= 10080) return 'week';
+  if (minutes >= 1440) return 'day';
+  if (minutes >= 60) return 'hours';
+  return 'unknown';
+}
+
 function getTimeMessage(minutes: number): string {
   if (minutes >= 10080) return `⏰ Falta 1 semana!`;
   if (minutes >= 1440) return `⏰ Falta 1 dia!`;
@@ -214,24 +222,37 @@ serve(async (req) => {
       }
 
       const scheduledReminders = commitment.scheduled_reminders || [];
+      const remindersSentMap: Record<string, any> = (commitment as any).reminders_sent || {};
 
       // Verificar cada lembrete configurado
       for (const reminder of reminderSettings.default_reminders) {
         if (!reminder.enabled) continue;
 
-        const alreadySent = scheduledReminders.find(
-          r => r.time_minutes === reminder.time && r.sent
+        const key = timeToKey(reminder.time);
+        const alreadySentInArray = scheduledReminders.find(
+          (r) => r.time_minutes === reminder.time && r.sent
         );
+        const alreadySentLegacy = remindersSentMap[key] === true;
 
-        if (alreadySent) {
+        if (alreadySentInArray || alreadySentLegacy) {
           console.log(`[REMINDER] [${executionId}] ${reminder.time}min reminder already sent for ${commitment.id}`);
           continue;
         }
 
-        // JANELA AMPLIADA: ±60min de tolerância para capturar lembretes mesmo sem sync perfeito
-        const shouldSend = 
-          minutesUntil <= reminder.time && 
-          minutesUntil > (reminder.time - 60);
+        // Anti-flood: se qualquer lembrete deste compromisso foi enviado nos últimos 9 minutos, pula
+        const nowTs = Date.now();
+        const sentRecently = scheduledReminders.some((r) => {
+          if (!r.sent_at) return false;
+          const diffMin = (nowTs - new Date(r.sent_at).getTime()) / (1000 * 60);
+          return r.time_minutes === reminder.time && diffMin < 9;
+        });
+        if (sentRecently) {
+          console.log(`[REMINDER] [${executionId}] Skipping ${reminder.time}min due to cooldown for commitment ${commitment.id}`);
+          continue;
+        }
+
+        // Janela de envio reduzida para 10 minutos para evitar reenvios a cada execução de cron
+        const shouldSend = minutesUntil <= reminder.time && minutesUntil > (reminder.time - 10);
 
         if (shouldSend) {
           console.log(`[REMINDER] [${executionId}] Sending ${reminder.time}min reminder for ${commitment.title} to user ${commitment.user_id} (${Math.floor(minutesUntil)}min until event)`);
@@ -242,24 +263,27 @@ serve(async (req) => {
           if (sent) {
             remindersSent++;
             console.log(`[REMINDER] [${executionId}] ✅ Sent ${reminder.time}min reminder for ${commitment.title}`);
-            
-            // Marcar como enviado
+
+            // Marcar como enviado nas duas colunas para idempotência
             const updatedReminders = [
-              ...scheduledReminders.filter(r => r.time_minutes !== reminder.time),
-              { 
-                time_minutes: reminder.time, 
-                sent: true, 
-                sent_at: new Date().toISOString() 
-              }
+              ...scheduledReminders.filter((r) => r.time_minutes !== reminder.time),
+              {
+                time_minutes: reminder.time,
+                sent: true,
+                sent_at: new Date().toISOString(),
+              },
             ];
+
+            const updatedLegacy = { ...remindersSentMap };
+            if (key !== 'unknown') updatedLegacy[key] = true;
 
             const { error: updateError } = await supabase
               .from('commitments')
-              .update({ scheduled_reminders: updatedReminders })
+              .update({ scheduled_reminders: updatedReminders, reminders_sent: updatedLegacy })
               .eq('id', commitment.id);
 
             if (updateError) {
-              console.error(`[REMINDER] [${executionId}] Error updating scheduled_reminders:`, updateError);
+              console.error(`[REMINDER] [${executionId}] Error updating reminders state:`, updateError);
             } else {
               console.log(`[REMINDER] [${executionId}] Reminder marked as sent for commitment ${commitment.id}`);
             }
