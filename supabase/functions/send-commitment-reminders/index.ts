@@ -47,11 +47,18 @@ function timeToKey(minutes: number): 'week' | 'day' | 'hours' | 'confirmed' | 'u
 }
 
 function getTimeMessage(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const mins = Math.floor(minutes % 60);
+  
   if (minutes >= 10080) return `⏰ Falta 1 semana!`;
-  if (minutes >= 1440) return `⏰ Falta 1 dia!`;
-  if (minutes >= 120) return `⏰ Faltam ${Math.floor(minutes/60)} horas!`;
-  if (minutes >= 60) return `⏰ Falta 1 hora!`;
-  return `⏰ Faltam ${minutes} minutos!`;
+  if (minutes >= 1440) {
+    const days = Math.floor(minutes / 1440);
+    return `⏰ ${days === 1 ? 'Falta 1 dia' : `Faltam ${days} dias`}!`;
+  }
+  if (minutes >= 60) {
+    return `⏰ ${hours === 1 ? 'Falta 1 hora' : `Faltam ${hours} horas`}!`;
+  }
+  return `⏰ Faltam ${mins} minutos!`;
 }
 
 async function sendWhatsAppReminder(commitment: Commitment, minutesUntil: number) {

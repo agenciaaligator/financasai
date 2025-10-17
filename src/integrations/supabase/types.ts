@@ -185,6 +185,13 @@ export type Database = {
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_commitments_user_id"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       discount_coupons: {
@@ -906,6 +913,15 @@ export type Database = {
       cleanup_rate_limit_events: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      get_cron_jobs_status: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          active: boolean
+          jobname: string
+          last_run: string
+          schedule: string
+        }[]
       }
       get_user_active_plan: {
         Args: { _user_id: string }
