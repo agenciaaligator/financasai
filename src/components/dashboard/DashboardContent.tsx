@@ -39,6 +39,7 @@ import { TeamManagement } from "../admin/TeamManagement";
 import { useOrganizationPermissions } from "@/hooks/useOrganizationPermissions";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/hooks/useAuth";
 
 const TIMEZONE = 'America/Sao_Paulo';
 const ITEMS_PER_PAGE = 10;
@@ -75,6 +76,7 @@ export function DashboardContent({
   const { planName, planLimits } = useSubscription();
   const { getTransactionProgress, getCategoryProgress } = useFeatureLimits();
   const { canViewOthers } = useOrganizationPermissions();
+  const { user } = useAuth();
   
   const [filters, setFilters] = useState<TransactionFiltersState>({
     period: 'all',
@@ -96,7 +98,6 @@ export function DashboardContent({
 
   const filteredTransactions = useMemo(() => {
     const now = toZonedTime(new Date(), TIMEZONE);
-    const { user } = require('@/hooks/useAuth');
     
     return transactions.filter(transaction => {
       // Filtro "Ver apenas minhas" se habilitado
@@ -185,7 +186,7 @@ export function DashboardContent({
 
       return true;
     });
-  }, [transactions, filters, showOnlyMine, canViewOthers]);
+  }, [transactions, filters, showOnlyMine, canViewOthers, user]);
   
   if (currentTab === "dashboard") {
     return (
