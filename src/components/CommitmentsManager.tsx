@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Plus, Edit, Trash2, Clock, Check, RefreshCw, ArrowLeft } from "lucide-react";
+import { Calendar, Plus, Edit, Trash2, Clock, Check, RefreshCw, ArrowLeft, Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -45,6 +45,12 @@ export function CommitmentsManager() {
   const [totalCount, setTotalCount] = useState(0);
   const itemsPerPage = 10;
   const { toast } = useToast();
+  
+  // Filtros
+  const [titleFilter, setTitleFilter] = useState("");
+  const [dateFromFilter, setDateFromFilter] = useState("");
+  const [dateToFilter, setDateToFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const { isConnected, syncEvent } = useGoogleCalendar();
   
   // Inicializar showOnboarding com callback para verificar isConnected
@@ -77,7 +83,7 @@ export function CommitmentsManager() {
     if (isConnected) {
       setShowOnboarding(false);
     }
-  }, [isConnected, currentPage]);
+  }, [isConnected, currentPage, titleFilter, dateFromFilter, dateToFilter, categoryFilter]);
 
   const fetchCommitments = async () => {
     try {
@@ -87,11 +93,30 @@ export function CommitmentsManager() {
       const from = (currentPage - 1) * itemsPerPage;
       const to = from + itemsPerPage - 1;
 
-      const { data, error, count } = await supabase
+      let query = supabase
         .from("commitments")
         .select("*", { count: 'exact' })
-        .order("scheduled_at", { ascending: true })
-        .range(from, to);
+        .order("scheduled_at", { ascending: true });
+
+      // Aplicar filtros
+      if (titleFilter) {
+        query = query.ilike("title", `%${titleFilter}%`);
+      }
+      if (dateFromFilter) {
+        query = query.gte("scheduled_at", new Date(dateFromFilter).toISOString());
+      }
+      if (dateToFilter) {
+        const dateTo = new Date(dateToFilter);
+        dateTo.setHours(23, 59, 59, 999);
+        query = query.lte("scheduled_at", dateTo.toISOString());
+      }
+      if (categoryFilter) {
+        query = query.eq("category", categoryFilter);
+      }
+
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
 
       if (error) throw error;
       setCommitments((data || []) as Commitment[]);
@@ -105,6 +130,14 @@ export function CommitmentsManager() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const clearFilters = () => {
+    setTitleFilter("");
+    setDateFromFilter("");
+    setDateToFilter("");
+    setCategoryFilter("");
+    setCurrentPage(1);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -394,6 +427,79 @@ export function CommitmentsManager() {
           {showForm ? "Cancelar" : "Novo Compromisso"}
         </Button>
       </div>
+
+      {/* Filtros */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Search className="h-5 w-5" />
+            Filtros de Busca
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="text-sm font-medium mb-1 block">Título</label>
+              <Input
+                placeholder="Buscar por título..."
+                value={titleFilter}
+                onChange={(e) => {
+                  setTitleFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Data De</label>
+              <Input
+                type="date"
+                value={dateFromFilter}
+                onChange={(e) => {
+                  setDateFromFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Data Até</label>
+              <Input
+                type="date"
+                value={dateToFilter}
+                onChange={(e) => {
+                  setDateToFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Categoria</label>
+              <Select value={categoryFilter} onValueChange={(value) => {
+                setCategoryFilter(value);
+                setCurrentPage(1);
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="payment">Pagamento</SelectItem>
+                  <SelectItem value="meeting">Reunião</SelectItem>
+                  <SelectItem value="appointment">Consulta</SelectItem>
+                  <SelectItem value="other">Outro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          {(titleFilter || dateFromFilter || dateToFilter || categoryFilter) && (
+            <div className="mt-4">
+              <Button variant="outline" size="sm" onClick={clearFilters}>
+                <X className="h-4 w-4 mr-2" />
+                Limpar Filtros
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Google Calendar Integration Card */}
       {roleLoading ? (
