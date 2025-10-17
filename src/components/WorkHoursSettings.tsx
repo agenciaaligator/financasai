@@ -26,6 +26,29 @@ export function WorkHoursSettings() {
     fetchWorkHours();
   }, []);
 
+  const initializeWorkHours = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const defaultHours = [
+      { day_of_week: 0, start_time: '09:00', end_time: '18:00', is_active: false }, // Domingo
+      { day_of_week: 1, start_time: '09:00', end_time: '18:00', is_active: true },  // Segunda
+      { day_of_week: 2, start_time: '09:00', end_time: '18:00', is_active: true },  // Terça
+      { day_of_week: 3, start_time: '09:00', end_time: '18:00', is_active: true },  // Quarta
+      { day_of_week: 4, start_time: '09:00', end_time: '18:00', is_active: true },  // Quinta
+      { day_of_week: 5, start_time: '09:00', end_time: '18:00', is_active: true },  // Sexta
+      { day_of_week: 6, start_time: '09:00', end_time: '13:00', is_active: false }, // Sábado
+    ];
+
+    const { error } = await supabase
+      .from('work_hours')
+      .insert(defaultHours.map(h => ({ ...h, user_id: user.id })));
+
+    if (error) {
+      console.error('Error initializing work hours:', error);
+    }
+  };
+
   const fetchWorkHours = async () => {
     const { data, error } = await supabase
       .from('work_hours')
@@ -33,7 +56,19 @@ export function WorkHoursSettings() {
       .order('day_of_week');
     
     if (!error && data) {
-      setWorkHours(data);
+      if (data.length === 0) {
+        await initializeWorkHours();
+        // Fetch again after initialization
+        const { data: newData } = await supabase
+          .from('work_hours')
+          .select('*')
+          .order('day_of_week');
+        if (newData) {
+          setWorkHours(newData);
+        }
+      } else {
+        setWorkHours(data);
+      }
     }
     setLoading(false);
   };

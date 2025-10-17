@@ -10,7 +10,8 @@ import {
   Plus,
   Menu,
   X,
-  Calendar
+  Calendar,
+  Users
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -74,6 +75,12 @@ const sidebarItems = [
     title: "Agenda", 
     icon: Calendar,
     description: "Compromissos e eventos"
+  },
+  { 
+    id: "team", 
+    title: "Equipe", 
+    icon: Users,
+    description: "Gerenciar membros da equipe"
   },
   { 
     id: "future", 
