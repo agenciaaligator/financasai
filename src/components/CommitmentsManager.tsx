@@ -482,15 +482,15 @@ export function CommitmentsManager() {
             </div>
             <div>
               <label className="text-sm font-medium mb-1 block">Categoria</label>
-              <Select value={categoryFilter} onValueChange={(value) => {
-                setCategoryFilter(value);
+              <Select value={categoryFilter || "all"} onValueChange={(value) => {
+                setCategoryFilter(value === "all" ? "" : value);
                 setCurrentPage(1);
               }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="all">Todas</SelectItem>
                   <SelectItem value="payment">Pagamento</SelectItem>
                   <SelectItem value="meeting">Reunião</SelectItem>
                   <SelectItem value="appointment">Consulta</SelectItem>
