@@ -705,7 +705,10 @@ export function CommitmentsManager() {
                 <PaginationContent>
                   <PaginationItem>
                     <PaginationPrevious 
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      onClick={() => {
+                        setCurrentPage(p => Math.max(1, p - 1));
+                        setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
+                      }}
                       className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
                     />
                   </PaginationItem>
@@ -713,7 +716,10 @@ export function CommitmentsManager() {
                   {Array.from({ length: Math.ceil(totalCount / itemsPerPage) }, (_, i) => i + 1).map((page) => (
                     <PaginationItem key={page}>
                       <PaginationLink
-                        onClick={() => setCurrentPage(page)}
+                        onClick={() => {
+                          setCurrentPage(page);
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
+                        }}
                         isActive={currentPage === page}
                         className="cursor-pointer"
                       >
@@ -724,7 +730,10 @@ export function CommitmentsManager() {
                   
                   <PaginationItem>
                     <PaginationNext 
-                      onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalCount / itemsPerPage), p + 1))}
+                      onClick={() => {
+                        setCurrentPage(p => Math.min(Math.ceil(totalCount / itemsPerPage), p + 1));
+                        setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
+                      }}
                       className={currentPage >= Math.ceil(totalCount / itemsPerPage) ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
                     />
                   </PaginationItem>
