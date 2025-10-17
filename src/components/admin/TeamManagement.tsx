@@ -6,11 +6,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Trash2, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { TeamInvite } from "./TeamInvite";
 
 interface Organization {
   id: string;
@@ -33,6 +35,7 @@ export function TeamManagement() {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [inviteMode, setInviteMode] = useState<'existing' | 'new'>('new');
   const [newMember, setNewMember] = useState({
     email: "",
     role: "member",
@@ -202,43 +205,69 @@ export function TeamManagement() {
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              Adicionar Membro
+              Adicionar à Equipe
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Convidar Novo Membro</DialogTitle>
+              <DialogTitle>Adicionar Membro à Equipe</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div>
-                <Label>E-mail do Membro</Label>
-                <Input
-                  type="email"
-                  placeholder="membro@exemplo.com"
-                  value={newMember.email}
-                  onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>Permissão</Label>
-                <Select
-                  value={newMember.role}
-                  onValueChange={(value) => setNewMember({ ...newMember, role: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Admin (Pode gerenciar tudo)</SelectItem>
-                    <SelectItem value="member">Membro (Pode criar/editar próprios dados)</SelectItem>
-                    <SelectItem value="viewer">Visualizador (Apenas visualizar)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button onClick={handleInviteMember} className="w-full">
-                Adicionar Membro
-              </Button>
-            </div>
+            
+            <Tabs value={inviteMode} onValueChange={(v) => setInviteMode(v as 'existing' | 'new')}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="new">Criar Novo Usuário</TabsTrigger>
+                <TabsTrigger value="existing">Adicionar Existente</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="new">
+                {selectedOrg && (
+                  <TeamInvite
+                    organizationId={selectedOrg}
+                    onSuccess={() => {
+                      setOpen(false);
+                      fetchMembers();
+                    }}
+                    onCancel={() => setOpen(false)}
+                  />
+                )}
+              </TabsContent>
+              
+              <TabsContent value="existing">
+                <div className="space-y-4 py-4">
+                  <div>
+                    <Label>E-mail do Membro</Label>
+                    <Input
+                      type="email"
+                      placeholder="membro@exemplo.com"
+                      value={newMember.email}
+                      onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      O membro deve ter uma conta criada no sistema
+                    </p>
+                  </div>
+                  <div>
+                    <Label>Permissão</Label>
+                    <Select
+                      value={newMember.role}
+                      onValueChange={(value) => setNewMember({ ...newMember, role: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Admin (Pode gerenciar tudo)</SelectItem>
+                        <SelectItem value="member">Membro (Pode criar/editar próprios dados)</SelectItem>
+                        <SelectItem value="viewer">Visualizador (Apenas visualizar)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button onClick={handleInviteMember} className="w-full">
+                    Adicionar Membro
+                  </Button>
+                </div>
+              </TabsContent>
+            </Tabs>
           </DialogContent>
         </Dialog>
       </div>

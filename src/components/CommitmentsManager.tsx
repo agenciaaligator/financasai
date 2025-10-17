@@ -153,6 +153,59 @@ export function CommitmentsManager() {
       const brasiliaDate = fromZonedTime(formData.scheduled_at, "America/Sao_Paulo");
       const utcISO = brasiliaDate.toISOString();
 
+      // VALIDAÇÃO DE HORÁRIOS DE TRABALHO
+      const scheduledDate = new Date(formData.scheduled_at);
+      const dayOfWeek = scheduledDate.getDay();
+      const timeScheduled = format(scheduledDate, 'HH:mm');
+
+      // Buscar work_hours do usuário para o dia agendado
+      const { data: workHours } = await supabase
+        .from('work_hours')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('day_of_week', dayOfWeek)
+        .single();
+
+      // Validação 1: Dia desabilitado
+      if (workHours && !workHours.is_active) {
+        const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+        const shouldContinue = window.confirm(
+          `⚠️ Atenção!\n\n${dayNames[dayOfWeek]} está desabilitado nos seus horários de trabalho.\n\nDeseja criar o compromisso mesmo assim?`
+        );
+        
+        if (!shouldContinue) {
+          return; // Cancela a criação
+        }
+        
+        toast({
+          title: "Compromisso criado em dia desabilitado",
+          description: `O dia ${dayNames[dayOfWeek]} está marcado como inativo na sua agenda.`,
+          variant: "destructive",
+        });
+      }
+
+      // Validação 2: Fora do horário (apenas se dia estiver ativo)
+      if (workHours && workHours.is_active) {
+        const startTime = workHours.start_time.substring(0, 5); // "09:00:00" -> "09:00"
+        const endTime = workHours.end_time.substring(0, 5);
+        
+        if (timeScheduled < startTime || timeScheduled > endTime) {
+          const shouldContinue = window.confirm(
+            `⏰ Atenção!\n\nO horário ${timeScheduled} está fora do seu expediente (${startTime} - ${endTime}).\n\nDeseja criar o compromisso mesmo assim?`
+          );
+          
+          if (!shouldContinue) {
+            return; // Cancela a criação
+          }
+          
+          toast({
+            title: "Compromisso fora do horário de trabalho",
+            description: `Seu expediente é de ${startTime} às ${endTime}.`,
+            variant: "destructive",
+          });
+        }
+      }
+
       // Buscar reminder_settings do usuário ou usar padrão
       const { data: reminderSettings } = await supabase
         .from('reminder_settings')
