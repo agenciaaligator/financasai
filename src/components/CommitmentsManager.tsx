@@ -17,6 +17,7 @@ import { GoogleCalendarConnect } from "./dashboard/GoogleCalendarConnect";
 import { GoogleCalendarOnboarding } from "./GoogleCalendarOnboarding";
 import { useTranslation } from "react-i18next";
 import { useUserRole } from "@/hooks/useUserRole";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 interface Commitment {
   id: string;
@@ -40,6 +41,9 @@ export function CommitmentsManager() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [syncingFromGoogle, setSyncingFromGoogle] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const itemsPerPage = 10;
   const { toast } = useToast();
   const { isConnected, syncEvent } = useGoogleCalendar();
   
@@ -73,20 +77,25 @@ export function CommitmentsManager() {
     if (isConnected) {
       setShowOnboarding(false);
     }
-  }, [isConnected]);
+  }, [isConnected, currentPage]);
 
   const fetchCommitments = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      const from = (currentPage - 1) * itemsPerPage;
+      const to = from + itemsPerPage - 1;
+
+      const { data, error, count } = await supabase
         .from("commitments")
-        .select("*")
-        .order("scheduled_at", { ascending: true });
+        .select("*", { count: 'exact' })
+        .order("scheduled_at", { ascending: true })
+        .range(from, to);
 
       if (error) throw error;
       setCommitments((data || []) as Commitment[]);
+      setTotalCount(count || 0);
     } catch (error: any) {
       toast({
         title: "Erro ao carregar compromissos",
@@ -279,6 +288,11 @@ export function CommitmentsManager() {
     });
     setEditingId(commitment.id);
     setShowForm(true);
+    
+    // Scroll automático para o topo após abrir o formulário
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 100);
   };
 
   const handleDelete = async (id: string) => {
@@ -684,6 +698,44 @@ export function CommitmentsManager() {
               )}
             </TableBody>
           </Table>
+          
+          {totalCount > itemsPerPage && (
+            <div className="p-4 border-t space-y-4">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                  
+                  {Array.from({ length: Math.ceil(totalCount / itemsPerPage) }, (_, i) => i + 1).map((page) => (
+                    <PaginationItem key={page}>
+                      <PaginationLink
+                        onClick={() => setCurrentPage(page)}
+                        isActive={currentPage === page}
+                        className="cursor-pointer"
+                      >
+                        {page}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  
+                  <PaginationItem>
+                    <PaginationNext 
+                      onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalCount / itemsPerPage), p + 1))}
+                      className={currentPage >= Math.ceil(totalCount / itemsPerPage) ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+              
+              <p className="text-sm text-muted-foreground text-center">
+                Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, totalCount)} de {totalCount} compromissos
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
