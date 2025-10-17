@@ -20,8 +20,11 @@ import {
   BarChart,
   Bot,
   Shield,
-  Calendar
+  Calendar,
+  Users,
+  Sparkles
 } from "lucide-react";
+import { TeamManagement } from "../admin/TeamManagement";
 import { AdminPanel } from "../admin/AdminPanel";
 import { useUserRole } from "@/hooks/useUserRole";
 import { 
@@ -153,7 +156,7 @@ export function DashboardTabs({
 
   return (
     <Tabs defaultValue="dashboard" className="w-full">
-      <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-8' : 'grid-cols-7'} bg-muted/30`}>
+      <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-9' : 'grid-cols-8'} bg-muted/30`}>
         <TabsTrigger value="dashboard" className="flex items-center space-x-2">
           <DollarSign className="h-4 w-4" />
           <span>Dashboard</span>
@@ -174,8 +177,16 @@ export function DashboardTabs({
           <Bot className="h-4 w-4" />
           <span>IA Reports</span>
         </TabsTrigger>
+        <TabsTrigger value="agenda" className="flex items-center space-x-2">
+          <Calendar className="h-4 w-4" />
+          <span>Agenda</span>
+        </TabsTrigger>
+        <TabsTrigger value="team" className="flex items-center space-x-2">
+          <Users className="h-4 w-4" />
+          <span>Equipe</span>
+        </TabsTrigger>
         <TabsTrigger value="future" className="flex items-center space-x-2">
-          <User className="h-4 w-4" />
+          <Sparkles className="h-4 w-4" />
           <span>Novidades</span>
         </TabsTrigger>
         <TabsTrigger value="profile" className="flex items-center space-x-2">
@@ -256,6 +267,14 @@ export function DashboardTabs({
 
       <TabsContent value="ai-chat">
         <AIReportsChat />
+      </TabsContent>
+
+      <TabsContent value="agenda">
+        <CommitmentsManager />
+      </TabsContent>
+
+      <TabsContent value="team">
+        <TeamManagement />
       </TabsContent>
 
       <TabsContent value="future">

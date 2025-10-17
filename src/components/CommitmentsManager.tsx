@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, Plus, Edit, Trash2, Clock, Check, RefreshCw, ArrowLeft, Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -15,6 +16,7 @@ import { toZonedTime, fromZonedTime, formatInTimeZone } from "date-fns-tz";
 import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
 import { GoogleCalendarConnect } from "./dashboard/GoogleCalendarConnect";
 import { GoogleCalendarOnboarding } from "./GoogleCalendarOnboarding";
+import { WorkHoursSettings } from "./WorkHoursSettings";
 import { useTranslation } from "react-i18next";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
@@ -417,16 +419,23 @@ export function CommitmentsManager() {
         onOpenChange={setShowOnboarding}
       />
       
-      <div className="flex justify-between items-center flex-wrap gap-2">
-        <h2 className="text-2xl font-bold flex items-center gap-2">
-          <Calendar className="h-6 w-6" />
-          {t('dashboard.agenda') || 'Agenda'}
-        </h2>
-        <Button onClick={() => setShowForm(!showForm)}>
-          <Plus className="h-4 w-4 mr-2" />
-          {showForm ? "Cancelar" : "Novo Compromisso"}
-        </Button>
-      </div>
+      <Tabs defaultValue="commitments" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="commitments">Compromissos</TabsTrigger>
+          <TabsTrigger value="work-hours">Horários de Trabalho</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="commitments" className="space-y-4">
+          <div className="flex justify-between items-center flex-wrap gap-2">
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <Calendar className="h-6 w-6" />
+              {t('dashboard.agenda') || 'Agenda'}
+            </h2>
+            <Button onClick={() => setShowForm(!showForm)}>
+              <Plus className="h-4 w-4 mr-2" />
+              {showForm ? "Cancelar" : "Novo Compromisso"}
+            </Button>
+          </div>
 
       {/* Filtros */}
       <Card>
@@ -853,6 +862,12 @@ export function CommitmentsManager() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="work-hours">
+          <WorkHoursSettings />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
