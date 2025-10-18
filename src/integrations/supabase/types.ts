@@ -388,6 +388,13 @@ export type Database = {
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "organization_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       organizations: {
@@ -670,6 +677,13 @@ export type Database = {
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       user_coupons: {
@@ -923,6 +937,22 @@ export type Database = {
           schedule: string
         }[]
       }
+      get_org_plan_limits: {
+        Args: { _user_id: string }
+        Returns: {
+          has_ai_reports: boolean
+          has_bank_integration: boolean
+          has_google_calendar: boolean
+          has_multi_user: boolean
+          has_priority_support: boolean
+          has_whatsapp: boolean
+          is_inherited: boolean
+          max_categories: number
+          max_transactions: number
+          owner_email: string
+          plan_name: string
+        }[]
+      }
       get_user_active_plan: {
         Args: { _user_id: string }
         Returns: {
@@ -940,6 +970,10 @@ export type Database = {
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_org_permission: {
+        Args: { _org_id: string; _permission_key: string; _user_id: string }
+        Returns: boolean
       }
       has_org_role: {
         Args: { _org_id: string; _role: string; _user_id: string }

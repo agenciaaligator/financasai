@@ -68,6 +68,24 @@ export async function getPlanLimits(userId: string): Promise<PlanLimits> {
     .maybeSingle();
 
   if (!subscription?.subscription_plans) {
+    // Verificar se tem plano herdado da organização
+    const { data: orgPlanData } = await supabase
+      .rpc('get_org_plan_limits', { _user_id: userId })
+      .maybeSingle();
+
+    if (orgPlanData) {
+      return {
+        maxTransactions: orgPlanData.max_transactions,
+        maxCategories: orgPlanData.max_categories,
+        hasWhatsapp: orgPlanData.has_whatsapp,
+        hasAiReports: orgPlanData.has_ai_reports,
+        hasGoogleCalendar: orgPlanData.has_google_calendar,
+        hasBankIntegration: orgPlanData.has_bank_integration,
+        hasMultiUser: orgPlanData.has_multi_user,
+        hasPrioritySupport: orgPlanData.has_priority_support
+      };
+    }
+
     // Retornar limites do plano free por padrão
     return {
       maxTransactions: 50,

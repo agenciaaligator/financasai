@@ -104,6 +104,16 @@ export function useSubscription() {
       }
     }
 
+    // Verificar se tem plano herdado da organização
+    const { data: orgPlanData } = await supabase
+      .rpc('get_org_plan_limits', { _user_id: user.id })
+      .maybeSingle();
+
+    if (orgPlanData && orgPlanData.is_inherited) {
+      console.log('[useSubscription] ✅ Plano herdado da organização');
+      return `${orgPlanData.plan_name} (herdado)`;
+    }
+
     const planName = subscription?.subscription_plans?.display_name || 'Gratuito';
     console.log('[useSubscription] ✅ Plano final:', planName);
     return planName;

@@ -3,6 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, TrendingDown, Trash2, Edit } from "lucide-react";
 import { Transaction } from '@/hooks/useTransactions';
+import { useOrganizationPermissions } from "@/hooks/useOrganizationPermissions";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Pagination,
   PaginationContent,
@@ -34,6 +36,9 @@ export function TransactionList({
   totalItems,
   onPageChange
 }: TransactionListProps) {
+  const { canEditOthers, canDeleteOthers } = useOrganizationPermissions();
+  const { user } = useAuth();
+
   const formatDate = (dateString: string) => {
     // Parse date manually to avoid timezone issues
     // dateString is in format YYYY-MM-DD
@@ -130,7 +135,7 @@ export function TransactionList({
                   </p>
                 </div>
                 <div className="flex space-x-1">
-                  {onEdit && (
+                  {onEdit && (transaction.user_id === user?.id || canEditOthers) && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -140,7 +145,7 @@ export function TransactionList({
                       <Edit className="h-4 w-4" />
                     </Button>
                   )}
-                  {onDelete && (
+                  {onDelete && (transaction.user_id === user?.id || canDeleteOthers) && (
                     <Button
                       variant="ghost"
                       size="sm"

@@ -46,9 +46,9 @@ export function useOrganizationPermissions(): OrganizationPermissions {
         .from('organization_members')
         .select('organization_id, role, permissions')
         .eq('user_id', user.id)
-        .single();
+        .order('created_at', { ascending: false });
 
-      if (error || !data) {
+      if (error || !data || data.length === 0) {
         setPermissions({
           organization_id: null,
           role: null,
@@ -62,10 +62,13 @@ export function useOrganizationPermissions(): OrganizationPermissions {
         return;
       }
 
-      const perms = data.permissions as any;
+      // Preferir organizações onde o usuário não é owner (é membro)
+      const membership = data.find(m => m.role !== 'owner') || data[0];
+
+      const perms = membership.permissions as any;
       setPermissions({
-        organization_id: data.organization_id,
-        role: data.role,
+        organization_id: membership.organization_id,
+        role: membership.role,
         canViewOthers: perms?.view_others ?? false,
         canEditOthers: perms?.edit_others ?? false,
         canDeleteOthers: perms?.delete_others ?? false,
