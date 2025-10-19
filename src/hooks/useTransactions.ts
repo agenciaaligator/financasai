@@ -39,10 +39,12 @@ export function useTransactions() {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
-  const { organization_id, canViewOthers } = useOrganizationPermissions();
+  const { organization_id, canViewOthers, loading: permsLoading } = useOrganizationPermissions();
 
   const fetchTransactions = async () => {
     if (!user) return;
+    
+    setLoading(true);
 
     let query = supabase
       .from('transactions')
@@ -184,11 +186,20 @@ export function useTransactions() {
   };
 
   useEffect(() => {
-    if (user && organization_id !== null) {
-      fetchTransactions();
-      fetchCategories();
+    if (!user) {
+      setTransactions([]);
+      setCategories([]);
+      setLoading(false);
+      return;
     }
-  }, [user, organization_id, canViewOthers]);
+
+    if (permsLoading) {
+      return;
+    }
+
+    fetchTransactions();
+    fetchCategories();
+  }, [user, organization_id, canViewOthers, permsLoading]);
 
   const balance = transactions.reduce((acc, transaction) => {
     return transaction.type === 'income' 
