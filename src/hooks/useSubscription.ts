@@ -104,14 +104,19 @@ export function useSubscription() {
       }
     }
 
-    // Verificar se tem plano herdado da organização
+    // NOVO: Verificar se tem plano herdado da organização
     const { data: orgPlanData } = await supabase
       .rpc('get_org_plan_limits', { _user_id: user.id })
       .maybeSingle();
 
     if (orgPlanData && orgPlanData.is_inherited) {
-      console.log('[useSubscription] ✅ Plano herdado da organização');
-      return `${orgPlanData.plan_name} (herdado)`;
+      console.log('[useSubscription] ✅ Plano herdado da organização de:', orgPlanData.owner_email);
+      const displayName = orgPlanData.plan_name === 'trial' 
+        ? 'Trial Premium' 
+        : orgPlanData.plan_name === 'premium'
+        ? 'Premium'
+        : orgPlanData.plan_name;
+      return `${displayName} (herdado)`;
     }
 
     const planName = subscription?.subscription_plans?.display_name || 'Gratuito';
@@ -137,7 +142,7 @@ export function useSubscription() {
 
   return { 
     subscription, 
-    planLimits, 
+    planLimits: planLimits, 
     loading: loading || loadingPlanName, 
     refetch: fetchSubscription,
     isFreePlan: !subscription || subscription.subscription_plans?.name === 'free',

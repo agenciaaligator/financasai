@@ -131,13 +131,18 @@ export function CommitmentsManager() {
 
       const { data, error, count } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('[CommitmentsManager] Error loading commitments:', error);
+        throw error;
+      }
+      
       setCommitments((data || []) as Commitment[]);
       setTotalCount(count || 0);
     } catch (error: any) {
+      console.error('[CommitmentsManager] Caught error:', error);
       toast({
         title: "Erro ao carregar compromissos",
-        description: error.message,
+        description: error.message || "Erro desconhecido ao carregar agenda",
         variant: "destructive",
       });
     } finally {

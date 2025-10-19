@@ -266,61 +266,16 @@ export function TeamManagement() {
               <DialogTitle>Adicionar Membro à Equipe</DialogTitle>
             </DialogHeader>
             
-            <Tabs value={inviteMode} onValueChange={(v) => setInviteMode(v as 'existing' | 'new')}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="new">Criar Novo Usuário</TabsTrigger>
-                <TabsTrigger value="existing">Adicionar Existente</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="new">
-                {selectedOrg && (
-                  <TeamInvite
-                    organizationId={selectedOrg}
-                    onSuccess={() => {
-                      setOpen(false);
-                      fetchMembers();
-                    }}
-                    onCancel={() => setOpen(false)}
-                  />
-                )}
-              </TabsContent>
-              
-              <TabsContent value="existing">
-                <div className="space-y-4 py-4">
-                  <div>
-                    <Label>E-mail do Membro</Label>
-                    <Input
-                      type="email"
-                      placeholder="membro@exemplo.com"
-                      value={newMember.email}
-                      onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      O membro deve ter uma conta criada no sistema
-                    </p>
-                  </div>
-                  <div>
-                    <Label>Permissão</Label>
-                    <Select
-                      value={newMember.role}
-                      onValueChange={(value) => setNewMember({ ...newMember, role: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">Admin (Pode gerenciar tudo)</SelectItem>
-                        <SelectItem value="member">Membro (Pode criar/editar próprios dados)</SelectItem>
-                        <SelectItem value="viewer">Visualizador (Apenas visualizar)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button onClick={handleInviteMember} className="w-full">
-                    Adicionar Membro
-                  </Button>
-                </div>
-              </TabsContent>
-            </Tabs>
+            {selectedOrg && (
+              <TeamInvite
+                organizationId={selectedOrg}
+                onSuccess={() => {
+                  setOpen(false);
+                  fetchMembers();
+                }}
+                onCancel={() => setOpen(false)}
+              />
+            )}
           </DialogContent>
         </Dialog>
       </div>
@@ -340,8 +295,8 @@ export function TeamManagement() {
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>E-mail</TableHead>
-                  <TableHead>Permissão</TableHead>
-                  <TableHead>Privacidade</TableHead>
+                  <TableHead>Função</TableHead>
+                  <TableHead>Visualização</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -356,23 +311,13 @@ export function TeamManagement() {
                       {member.role === "owner" ? (
                         <Badge>Proprietário</Badge>
                       ) : (
-                        <Select
-                          value={member.role}
-                          onValueChange={(value) => handleUpdateRole(member.id, value)}
-                        >
-                          <SelectTrigger className="w-[150px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="admin">Admin</SelectItem>
-                            <SelectItem value="member">Membro</SelectItem>
-                            <SelectItem value="viewer">Visualizador</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <Badge variant="secondary">Membro</Badge>
                       )}
                     </TableCell>
                     <TableCell>
-                      {member.role === "member" ? (
+                      {member.role === "owner" || member.role === "admin" ? (
+                        <span className="text-sm text-muted-foreground">Acesso total</span>
+                      ) : (
                         <div className="flex items-center gap-2">
                           <Switch
                             checked={member.permissions?.view_others ?? false}
@@ -384,10 +329,6 @@ export function TeamManagement() {
                             {member.permissions?.view_others ? 'Vê todos' : 'Apenas próprio'}
                           </span>
                         </div>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">
-                          {member.role === "owner" || member.role === "admin" ? 'Acesso total' : 'Sem acesso'}
-                        </span>
                       )}
                     </TableCell>
                     <TableCell>

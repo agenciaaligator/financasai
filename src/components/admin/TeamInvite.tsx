@@ -92,51 +92,21 @@ export function TeamInvite({ organizationId, onSuccess, onCancel }: TeamInvitePr
         .insert({
           organization_id: organizationId,
           user_id: authData.user.id,
-          role: formData.role,
-          permissions: formData.role === "owner" || formData.role === "admin"
-            ? {
-                view: true,
-                create: true,
-                edit: true,
-                delete: true,
-                view_own: true,
-                view_others: true,
-                edit_own: true,
-                edit_others: true,
-                delete_own: true,
-                delete_others: true,
-                view_reports: true,
-                manage_members: true
-              }
-            : formData.role === "member"
-            ? {
-                view: true,
-                create: true,
-                edit: true,
-                delete: true,
-                view_own: true,
-                view_others: formData.canViewOthers,
-                edit_own: true,
-                edit_others: false,
-                delete_own: true,
-                delete_others: false,
-                view_reports: false,
-                manage_members: false
-              }
-            : {
-                view: true,
-                create: false,
-                edit: false,
-                delete: false,
-                view_own: true,
-                view_others: false,
-                edit_own: false,
-                edit_others: false,
-                delete_own: false,
-                delete_others: false,
-                view_reports: false,
-                manage_members: false
-              }
+          role: 'member',
+          permissions: {
+            view: true,
+            create: true,
+            edit: true,
+            delete: true,
+            view_own: true,
+            view_others: formData.canViewOthers,
+            edit_own: true,
+            edit_others: false,
+            delete_own: true,
+            delete_others: false,
+            view_reports: false,
+            manage_members: false
+          }
         });
 
       if (memberError) {
@@ -211,37 +181,21 @@ export function TeamInvite({ organizationId, onSuccess, onCancel }: TeamInvitePr
         </p>
       </div>
 
-      <div>
-        <Label>Permissão</Label>
-        <Select
-          value={formData.role}
-          onValueChange={(value) => setFormData({ ...formData, role: value })}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="admin">Admin (Pode gerenciar tudo)</SelectItem>
-            <SelectItem value="member">Membro (Pode criar/editar próprios dados)</SelectItem>
-            <SelectItem value="viewer">Visualizador (Apenas visualizar)</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="flex items-center space-x-2 bg-muted p-3 rounded-md">
+        <input
+          type="checkbox"
+          id="canViewOthers"
+          checked={formData.canViewOthers}
+          onChange={(e) => setFormData({ ...formData, canViewOthers: e.target.checked })}
+          className="h-4 w-4 rounded border-gray-300"
+        />
+        <Label htmlFor="canViewOthers" className="text-sm cursor-pointer">
+          ☑️ Permitir visualizar dados de outros membros
+        </Label>
       </div>
-
-      {formData.role === "member" && (
-        <div className="flex items-center space-x-2 bg-muted p-3 rounded-md">
-          <input
-            type="checkbox"
-            id="canViewOthers"
-            checked={formData.canViewOthers}
-            onChange={(e) => setFormData({ ...formData, canViewOthers: e.target.checked })}
-            className="h-4 w-4 rounded border-gray-300"
-          />
-          <Label htmlFor="canViewOthers" className="text-sm cursor-pointer">
-            Permitir visualizar dados de outros membros
-          </Label>
-        </div>
-      )}
+      <p className="text-xs text-muted-foreground">
+        Se desmarcado, o membro verá apenas suas próprias transações e compromissos.
+      </p>
 
       <div className="flex gap-2 pt-4">
         <Button type="submit" disabled={loading} className="flex-1">

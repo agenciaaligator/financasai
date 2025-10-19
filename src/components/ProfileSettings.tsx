@@ -25,7 +25,7 @@ export function ProfileSettings() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
-  const { subscription, planName, isFreePlan, isTrial, isPremium } = useSubscription();
+  const { subscription, planName, isFreePlan, isTrial, isPremium, planLimits } = useSubscription();
   const { currentUsage, getTransactionProgress, getCategoryProgress } = useFeatureLimits();
   const { status: subscriptionStatus } = useSubscriptionStatus();
   const [managingSubscription, setManagingSubscription] = useState(false);
@@ -321,7 +321,7 @@ export function ProfileSettings() {
             <h4 className="font-semibold text-sm">Recursos Disponíveis</h4>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex items-center gap-2 text-sm">
-                {subscription?.subscription_plans?.has_whatsapp ? (
+                {planLimits?.hasWhatsapp ? (
                   <Check className="h-4 w-4 text-success" />
                 ) : (
                   <X className="h-4 w-4 text-muted-foreground" />
@@ -329,7 +329,7 @@ export function ProfileSettings() {
                 <span>WhatsApp</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
-                {subscription?.subscription_plans?.has_ai_reports ? (
+                {planLimits?.hasAiReports ? (
                   <Check className="h-4 w-4 text-success" />
                 ) : (
                   <X className="h-4 w-4 text-muted-foreground" />
@@ -337,7 +337,7 @@ export function ProfileSettings() {
                 <span>IA Reports</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
-                {subscription?.subscription_plans?.has_google_calendar ? (
+                {planLimits?.hasGoogleCalendar ? (
                   <Check className="h-4 w-4 text-success" />
                 ) : (
                   <X className="h-4 w-4 text-muted-foreground" />
@@ -345,7 +345,7 @@ export function ProfileSettings() {
                 <span>Google Calendar</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
-                {subscription?.subscription_plans?.has_bank_integration ? (
+                {planLimits?.hasBankIntegration ? (
                   <Check className="h-4 w-4 text-success" />
                 ) : (
                   <X className="h-4 w-4 text-muted-foreground" />
@@ -353,7 +353,7 @@ export function ProfileSettings() {
                 <span>Integração Bancária</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
-                {subscription?.subscription_plans?.has_multi_user ? (
+                {planLimits?.hasMultiUser ? (
                   <Check className="h-4 w-4 text-success" />
                 ) : (
                   <X className="h-4 w-4 text-muted-foreground" />
@@ -361,7 +361,7 @@ export function ProfileSettings() {
                 <span>Multi-usuário</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
-                {subscription?.subscription_plans?.has_priority_support ? (
+                {planLimits?.hasPrioritySupport ? (
                   <Check className="h-4 w-4 text-success" />
                 ) : (
                   <X className="h-4 w-4 text-muted-foreground" />
@@ -403,7 +403,7 @@ export function ProfileSettings() {
         </CardContent>
       </Card>
 
-      {subscription?.subscription_plans?.has_google_calendar && (
+      {planLimits?.hasGoogleCalendar && (
         <Card className="bg-gradient-card shadow-card border-0">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">

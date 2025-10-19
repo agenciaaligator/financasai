@@ -62,8 +62,29 @@ export function useOrganizationPermissions(): OrganizationPermissions {
         return;
       }
 
-      // Preferir organizações onde o usuário não é owner (é membro)
-      const membership = data.find(m => m.role !== 'owner') || data[0];
+      console.log('[useOrganizationPermissions] Organizações encontradas:', data);
+
+      // CORREÇÃO CRÍTICA: Preferir organizações onde o usuário NÃO é owner (é membro)
+      // Se só encontrar organizações como owner, significa que não é membro de nenhuma equipe
+      const membershipAsNonOwner = data.find(m => m.role !== 'owner');
+      
+      if (!membershipAsNonOwner) {
+        console.log('[useOrganizationPermissions] Usuário só é owner, não é membro de nenhuma equipe');
+        setPermissions({
+          organization_id: null,
+          role: null,
+          canViewOthers: false,
+          canEditOthers: false,
+          canDeleteOthers: false,
+          canViewReports: false,
+          canManageMembers: false,
+          loading: false,
+        });
+        return;
+      }
+
+      const membership = membershipAsNonOwner;
+      console.log('[useOrganizationPermissions] Membership selecionada:', membership);
 
       const perms = membership.permissions as any;
       setPermissions({
