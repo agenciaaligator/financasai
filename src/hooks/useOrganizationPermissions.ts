@@ -64,37 +64,23 @@ export function useOrganizationPermissions(): OrganizationPermissions {
 
       console.log('[useOrganizationPermissions] Organizações encontradas:', data);
 
-      // CORREÇÃO CRÍTICA: Preferir organizações onde o usuário NÃO é owner (é membro)
-      // Se só encontrar organizações como owner, significa que não é membro de nenhuma equipe
+      // Priorizar membership onde NÃO é owner (membro), senão usar primeira (owner)
       const membershipAsNonOwner = data.find(m => m.role !== 'owner');
-      
-      if (!membershipAsNonOwner) {
-        console.log('[useOrganizationPermissions] Usuário só é owner, não é membro de nenhuma equipe');
-        setPermissions({
-          organization_id: null,
-          role: null,
-          canViewOthers: false,
-          canEditOthers: false,
-          canDeleteOthers: false,
-          canViewReports: false,
-          canManageMembers: false,
-          loading: false,
-        });
-        return;
-      }
+      const selected = membershipAsNonOwner ?? data[0]; // sempre seleciona uma org válida
 
-      const membership = membershipAsNonOwner;
-      console.log('[useOrganizationPermissions] Membership selecionada:', membership);
+      console.log('[useOrganizationPermissions] Org ativa selecionada:', selected);
 
-      const perms = membership.permissions as any;
+      const raw = (selected.permissions as any) || {};
+      const isOwnerRole = selected.role === 'owner';
+
       setPermissions({
-        organization_id: membership.organization_id,
-        role: membership.role,
-        canViewOthers: perms?.view_others ?? false,
-        canEditOthers: perms?.edit_others ?? false,
-        canDeleteOthers: perms?.delete_others ?? false,
-        canViewReports: perms?.view_reports ?? false,
-        canManageMembers: perms?.manage_members ?? false,
+        organization_id: selected.organization_id,
+        role: selected.role,
+        canViewOthers: isOwnerRole ? true : (raw.view_others ?? false),
+        canEditOthers: isOwnerRole ? true : (raw.edit_others ?? false),
+        canDeleteOthers: isOwnerRole ? true : (raw.delete_others ?? false),
+        canViewReports: isOwnerRole ? true : (raw.view_reports ?? false),
+        canManageMembers: isOwnerRole ? true : (raw.manage_members ?? false),
         loading: false,
       });
     }

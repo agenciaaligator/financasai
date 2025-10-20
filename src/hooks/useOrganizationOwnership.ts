@@ -15,37 +15,27 @@ export function useOrganizationOwnership(organizationId?: string | null) {
         return;
       }
 
+      // Se não tem organizationId definido, retornar false (sem fallback)
+      if (!organizationId) {
+        setIsOwner(false);
+        setLoading(false);
+        return;
+      }
+
       try {
-        // Se organization_id foi fornecido, verifica se é owner daquela organização específica
-        if (organizationId) {
-          const { data, error } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('id', organizationId)
-            .eq('owner_id', user.id)
-            .maybeSingle();
+        // Verifica se é owner APENAS da organização ativa
+        const { data, error } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('id', organizationId)
+          .eq('owner_id', user.id)
+          .maybeSingle();
 
-          if (error) {
-            console.error('Erro ao verificar ownership da organização:', error);
-            setIsOwner(false);
-          } else {
-            setIsOwner(!!data);
-          }
+        if (error) {
+          console.error('Erro ao verificar ownership da organização:', error);
+          setIsOwner(false);
         } else {
-          // Comportamento padrão: verifica se é owner de alguma organização
-          const { data, error } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('owner_id', user.id)
-            .limit(1)
-            .maybeSingle();
-
-          if (error) {
-            console.error('Erro ao verificar ownership:', error);
-            setIsOwner(false);
-          } else {
-            setIsOwner(!!data);
-          }
+          setIsOwner(!!data);
         }
       } catch (err) {
         console.error('Erro ao verificar ownership:', err);
