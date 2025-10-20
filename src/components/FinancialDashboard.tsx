@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useOrganizationOwnership } from "@/hooks/useOrganizationOwnership";
+import { useOrganizationPermissions } from "@/hooks/useOrganizationPermissions";
 import { Transaction } from "@/hooks/useTransactions";
 import { DashboardHeader } from "./dashboard/DashboardHeader";
 import { BalanceAlert } from "./dashboard/BalanceAlert";
@@ -26,7 +27,8 @@ export function FinancialDashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, signOut } = useAuth();
   const { isAdmin } = useUserRole();
-  const { isOwner } = useOrganizationOwnership();
+  const { organization_id } = useOrganizationPermissions();
+  const { isOwner } = useOrganizationOwnership(organization_id);
   const { transactions, categories, loading, balance, totalIncome, totalExpenses, addTransaction, deleteTransaction, refetch } = useTransactions();
   const isMobile = useIsMobile();
 

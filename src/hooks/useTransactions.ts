@@ -54,7 +54,7 @@ export function useTransactions() {
           name,
           color
         ),
-        profiles:user_id (
+        profiles!transactions_user_id_fkey (
           full_name,
           email
         )
@@ -75,15 +75,19 @@ export function useTransactions() {
     const { data, error } = await query;
 
     if (error) {
+      console.error('Erro ao carregar transações:', error);
       toast({
         title: "Erro ao carregar transações",
         description: error.message,
         variant: "destructive"
       });
     } else {
+      console.log('✅ Transações carregadas:', data?.length);
+      console.log('Primeira transação (profiles):', data?.[0]?.profiles);
+      
       setTransactions((data as any[])?.map(t => ({
         ...t,
-        profiles: Array.isArray(t.profiles) && t.profiles.length > 0 ? t.profiles[0] : null
+        profiles: Array.isArray(t.profiles) && t.profiles.length > 0 ? t.profiles[0] : t.profiles
       })) || []);
     }
     setLoading(false);
