@@ -104,23 +104,73 @@ Deno.serve(async (req) => {
   try {
     console.log('📅 [DAILY-AGENDA] Starting daily agenda send');
 
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const whatsappToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
+    const whatsappPhoneId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID');
 
-    // Buscar todos os usuários com WhatsApp configurado
-    const { data: profiles, error: profilesError } = await supabaseClient
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Missing Supabase configuration');
+    }
+
+    console.log('📱 [DAILY-AGENDA] WhatsApp credentials check:', {
+      hasToken: !!whatsappToken,
+      hasPhoneId: !!whatsappPhoneId
+    });
+
+    if (!whatsappToken || !whatsappPhoneId) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Credenciais do WhatsApp ausentes no ambiente (WHATSAPP_ACCESS_TOKEN ou WHATSAPP_PHONE_NUMBER_ID)',
+          sent: 0,
+          errors: 1
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+
+    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Suporte a teste com user_id específico
+    const body = await req.json().catch(() => ({}));
+    const testUserId = body?.user_id;
+
+    // Buscar usuários (todos ou apenas o de teste)
+    let profilesQuery = supabaseClient
       .from('profiles')
-      .select('user_id, phone_number')
+      .select('user_id, phone_number, full_name')
       .not('phone_number', 'is', null);
+
+    if (testUserId) {
+      console.log('🧪 [DAILY-AGENDA] Test mode for user:', testUserId);
+      profilesQuery = profilesQuery.eq('user_id', testUserId);
+    }
+
+    const { data: profiles, error: profilesError } = await profilesQuery;
 
     if (profilesError) {
       console.error('[DAILY-AGENDA] Error fetching profiles:', profilesError);
       throw profilesError;
     }
 
-    console.log(`[DAILY-AGENDA] Found ${profiles?.length || 0} users with phone numbers`);
+    if (!profiles || profiles.length === 0) {
+      const message = testUserId 
+        ? 'Usuário de teste não encontrado ou sem telefone cadastrado'
+        : 'No users with phone numbers found';
+      console.log(`ℹ️ [DAILY-AGENDA] ${message}`);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          sent: 0, 
+          errors: testUserId ? 1 : 0, 
+          error: message 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: testUserId ? 400 : 200 }
+      );
+    }
+
+    console.log(`👥 [DAILY-AGENDA] Found ${profiles.length} user(s) with phone numbers`);
 
     let messagesSent = 0;
     let errors = 0;
@@ -153,11 +203,12 @@ Deno.serve(async (req) => {
         const message = formatCommitments(commitments || []);
 
         // Enviar WhatsApp
+        console.log(`📤 [DAILY-AGENDA] Sending to ${profile.phone_number} (${profile.full_name})`);
         const sent = await sendWhatsAppMessage(profile.phone_number, message);
 
         if (sent) {
           messagesSent++;
-          console.log(`✅ [DAILY-AGENDA] Message sent to ${profile.phone_number}`);
+          console.log(`✅ [DAILY-AGENDA] Message sent successfully to ${profile.phone_number}`);
         } else {
           errors++;
           console.error(`❌ [DAILY-AGENDA] Failed to send to ${profile.phone_number}`);
@@ -181,8 +232,19 @@ Deno.serve(async (req) => {
 
     console.log('✅ [DAILY-AGENDA] Daily agenda send completed:', summary);
 
+    const success = messagesSent > 0;
+    const message = testUserId 
+      ? (success ? `Resumo diário enviado para ${profiles[0].full_name}` : 'Falha ao enviar resumo de teste')
+      : `${messagesSent} mensagens enviadas, ${errors} erros`;
+
     return new Response(
-      JSON.stringify(summary),
+      JSON.stringify({ 
+        success, 
+        sent: messagesSent, 
+        errors, 
+        total: profiles?.length || 0,
+        message 
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

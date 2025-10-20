@@ -65,16 +65,18 @@ export function AgendaMonitoring() {
         throw error;
       }
       
-      const result = data as any;
-      const sent = result?.remindersSent || result?.sent || 0;
-      const errors = result?.errors || 0;
-      
-      toast({
-        title: sent > 0 ? "✅ Lembretes enviados" : "⚠️ Nenhum lembrete",
-        description: sent > 0 
-          ? `${sent} lembrete(s) enviado(s)${errors > 0 ? `, ${errors} erro(s)` : ''}`
-          : `Nenhum compromisso na janela de envio. ${errors > 0 ? `Erros: ${errors}` : ''}`,
-      });
+      if (data.success) {
+        toast({
+          title: "✅ Lembretes Enviados",
+          description: `Enviadas: ${data.remindersSent || 0}, Erros: ${data.errors || 0}`,
+        });
+      } else {
+        toast({
+          title: "❌ Erro ao Enviar Lembretes",
+          description: data.error || "Verifique os logs para mais detalhes",
+          variant: "destructive",
+        });
+      }
     } catch (error: any) {
       console.error('❌ Erro crítico ao forçar lembretes:', error);
       toast({
@@ -100,16 +102,18 @@ export function AgendaMonitoring() {
         throw error;
       }
       
-      const result = data as any;
-      const sent = result?.messagesSent || result?.sent || 0;
-      const errors = result?.errors || 0;
-      
-      toast({
-        title: sent > 0 ? "✅ Resumo diário enviado" : "⚠️ Nenhuma mensagem",
-        description: sent > 0
-          ? `${sent} mensagem(ns) enviada(s)${errors > 0 ? `, ${errors} erro(s)` : ''}`
-          : `Nenhum usuário com compromissos hoje. ${errors > 0 ? `Erros: ${errors}` : ''}`,
-      });
+      if (data.success) {
+        toast({
+          title: "✅ Resumo Diário Enviado",
+          description: `Enviadas: ${data.sent || 0}, Erros: ${data.errors || 0}`,
+        });
+      } else {
+        toast({
+          title: "❌ Erro ao Enviar Resumo",
+          description: data.error || "Verifique os logs para mais detalhes",
+          variant: "destructive",
+        });
+      }
     } catch (error: any) {
       console.error('❌ Erro crítico ao enviar resumo diário:', error);
       toast({

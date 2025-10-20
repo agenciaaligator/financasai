@@ -17,6 +17,8 @@ export function WhatsAppSetup() {
   const [hasRecentWhatsAppActivity, setHasRecentWhatsAppActivity] = useState(false);
   const [loading, setLoading] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
+  const [isTestingReminders, setIsTestingReminders] = useState(false);
+  const [isTestingAgenda, setIsTestingAgenda] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -337,6 +339,78 @@ export function WhatsAppSetup() {
     return null;
   };
 
+  const handleTestReminders = async () => {
+    if (!user) return;
+    
+    setIsTestingReminders(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('send-commitment-reminders', {
+        body: { force: true, user_id: user.id }
+      });
+      
+      if (error) throw error;
+      
+      if (data.success) {
+        toast({
+          title: "✅ Teste de Lembretes",
+          description: `Mensagem enviada! Enviadas: ${data.remindersSent || 1}, Erros: ${data.errors || 0}`,
+        });
+      } else {
+        toast({
+          title: "❌ Erro no Teste",
+          description: data.error || "Não foi possível enviar mensagem de teste",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error('Error testing reminders:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Falha ao testar lembretes",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestingReminders(false);
+    }
+  };
+
+  const handleTestAgenda = async () => {
+    if (!user) return;
+    
+    setIsTestingAgenda(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('send-daily-agenda', {
+        body: { user_id: user.id }
+      });
+      
+      if (error) throw error;
+      
+      if (data.success) {
+        toast({
+          title: "✅ Teste de Resumo Diário",
+          description: `Mensagem enviada! Enviadas: ${data.sent || 0}, Erros: ${data.errors || 0}`,
+        });
+      } else {
+        toast({
+          title: "❌ Erro no Teste",
+          description: data.error || "Não foi possível enviar resumo de teste",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error('Error testing daily agenda:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Falha ao testar resumo diário",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestingAgenda(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card className="bg-gradient-card shadow-card border-0">
@@ -387,33 +461,6 @@ export function WhatsAppSetup() {
                     Revalidar WhatsApp
                   </Button>
                   
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      const { data: { user } } = await supabase.auth.getUser();
-                      if (!user) return;
-                      
-                      const { data, error } = await supabase.functions.invoke('send-commitment-reminders', {
-                        body: { force: true, user_id: user.id }
-                      });
-                      
-                      if (error) {
-                        toast({
-                          title: "Erro",
-                          description: "Falha ao enviar mensagem de teste",
-                          variant: "destructive",
-                        });
-                      } else {
-                        toast({
-                          title: "Mensagem enviada",
-                          description: "Verifique seu WhatsApp",
-                        });
-                      }
-                    }}
-                  >
-                    Enviar mensagem teste
-                  </Button>
                 </>
               )}
             </div>
@@ -468,6 +515,33 @@ export function WhatsAppSetup() {
                   </Button>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Botões de teste disponíveis para todos */}
+          {phoneNumber && (
+            <div className="space-y-2 pt-4 border-t">
+              <p className="text-sm font-medium mb-2">Testes do Sistema:</p>
+              
+              <Button 
+                onClick={handleTestReminders}
+                disabled={isTestingReminders}
+                variant="outline"
+                className="w-full"
+                size="sm"
+              >
+                {isTestingReminders ? "Enviando..." : "🔔 Testar Lembretes (meu número)"}
+              </Button>
+              
+              <Button 
+                onClick={handleTestAgenda}
+                disabled={isTestingAgenda}
+                variant="outline"
+                className="w-full"
+                size="sm"
+              >
+                {isTestingAgenda ? "Enviando..." : "📅 Testar Resumo Diário (meu número)"}
+              </Button>
             </div>
           )}
         </CardContent>
