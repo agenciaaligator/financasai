@@ -49,6 +49,10 @@ export function CommitmentsManager() {
   const itemsPerPage = 10;
   const { toast } = useToast();
   
+  // FASE 4: Bulk delete states
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  
   // Filtros
   const [titleFilter, setTitleFilter] = useState("");
   const [dateFromFilter, setDateFromFilter] = useState("");
@@ -64,7 +68,7 @@ export function CommitmentsManager() {
   });
   const { t } = useTranslation();
   const { isAdmin, isPremium, loading: roleLoading } = useUserRole();
-  const { organization_id, canViewOthers } = useOrganizationPermissions();
+  const { organization_id, canViewOthers, canDeleteOthers, role } = useOrganizationPermissions();
   
   // Verificar se tem acesso ao Google Calendar (Premium ou Admin)
   const hasGoogleCalendarAccess = isAdmin || isPremium;
@@ -176,108 +180,112 @@ export function CommitmentsManager() {
       const brasiliaDate = fromZonedTime(formData.scheduled_at, "America/Sao_Paulo");
       const utcISO = brasiliaDate.toISOString();
 
-      // VALIDAÇÃO DE HORÁRIOS DE TRABALHO
-      const scheduledDate = new Date(formData.scheduled_at);
-      const dayOfWeek = scheduledDate.getDay();
-      const timeScheduled = format(scheduledDate, 'HH:mm');
+      // FASE 1: VALIDAÇÃO DE HORÁRIOS DE TRABALHO (apenas para owners)
+      const isMember = role === 'member' || role === 'viewer';
+      
+      if (!isMember) {
+        const scheduledDate = new Date(formData.scheduled_at);
+        const dayOfWeek = scheduledDate.getDay();
+        const timeScheduled = format(scheduledDate, 'HH:mm');
 
-      console.log('🔍 [Validação] Verificando horários:', {
-        scheduledDate: formData.scheduled_at,
-        dayOfWeek,
-        timeScheduled,
-        userId: user.id
-      });
-
-      // Buscar work_hours do usuário para o dia agendado
-      const { data: workHours, error: workHoursError } = await supabase
-        .from('work_hours')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('day_of_week', dayOfWeek)
-        .maybeSingle(); // ✅ Usar maybeSingle() - retorna null se não encontrar
-
-      console.log('🔍 [Validação] Work hours encontrado:', {
-        workHours,
-        error: workHoursError
-      });
-
-      // Se houver erro na query, avisar no console mas continuar
-      if (workHoursError) {
-        console.error('❌ [Validação] Erro ao buscar work_hours:', workHoursError);
-        toast({
-          title: "⚠️ Erro ao validar horários",
-          description: "Não foi possível verificar seus horários de trabalho. Compromisso será criado.",
-          variant: "destructive",
-        });
-      }
-
-      // Se não encontrou work_hours, avisar que não está configurado
-      if (!workHours && !workHoursError) {
-        console.warn('⚠️ [Validação] Work hours não configurado para este dia');
-        toast({
-          title: "⚠️ Horários não configurados",
-          description: "Configure seus horários de trabalho na aba 'Horários de Trabalho' para validações automáticas.",
-          variant: "destructive",
-        });
-      }
-
-      // Validação 1: Dia desabilitado
-      if (workHours && workHours.is_active === false) {
-        const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-        console.log('⚠️ [Validação] Dia desabilitado detectado:', dayNames[dayOfWeek]);
-        
-        const shouldContinue = window.confirm(
-          `⚠️ ATENÇÃO!\n\n${dayNames[dayOfWeek]} está DESABILITADO nos seus horários de trabalho.\n\nDeseja criar o compromisso mesmo assim?`
-        );
-        
-        if (!shouldContinue) {
-          console.log('❌ [Validação] Usuário cancelou criação - dia desabilitado');
-          return; // Cancela a criação
-        }
-        
-        console.log('✅ [Validação] Usuário confirmou criação em dia desabilitado');
-        toast({
-          title: "⚠️ Compromisso criado em dia desabilitado",
-          description: `${dayNames[dayOfWeek]} está marcado como inativo na sua agenda.`,
-          variant: "destructive",
-        });
-      }
-
-      // Validação 2: Fora do horário (apenas se dia estiver ativo)
-      if (workHours && workHours.is_active === true) {
-        const startTime = workHours.start_time.substring(0, 5); // "09:00:00" -> "09:00"
-        const endTime = workHours.end_time.substring(0, 5);
-        
-        console.log('🔍 [Validação] Verificando horário:', {
+        console.log('🔍 [Validação] Verificando horários:', {
+          scheduledDate: formData.scheduled_at,
+          dayOfWeek,
           timeScheduled,
-          startTime,
-          endTime,
-          isBeforeStart: timeScheduled < startTime,
-          isAfterEnd: timeScheduled > endTime
+          userId: user.id
         });
-        
-        if (timeScheduled < startTime || timeScheduled > endTime) {
-          console.log('⚠️ [Validação] Horário fora do expediente detectado');
-          
-          const shouldContinue = window.confirm(
-            `⏰ ATENÇÃO!\n\nO horário ${timeScheduled} está FORA do seu expediente configurado (${startTime} - ${endTime}).\n\nDeseja criar o compromisso mesmo assim?`
-          );
-          
-          if (!shouldContinue) {
-            console.log('❌ [Validação] Usuário cancelou criação - fora do horário');
-            return; // Cancela a criação
-          }
-          
-          console.log('✅ [Validação] Usuário confirmou criação fora do horário');
+
+        // Buscar work_hours do usuário para o dia agendado
+        const { data: workHours, error: workHoursError } = await supabase
+          .from('work_hours')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('day_of_week', dayOfWeek)
+          .maybeSingle();
+
+        console.log('🔍 [Validação] Work hours encontrado:', {
+          workHours,
+          error: workHoursError
+        });
+
+        if (workHoursError) {
+          console.error('❌ [Validação] Erro ao buscar work_hours:', workHoursError);
           toast({
-            title: "⚠️ Compromisso fora do horário de trabalho",
-            description: `Seu expediente é de ${startTime} às ${endTime}.`,
+            title: "⚠️ Erro ao validar horários",
+            description: "Não foi possível verificar seus horários de trabalho. Compromisso será criado.",
             variant: "destructive",
           });
         }
-      }
 
-      console.log('✅ [Validação] Validações concluídas - prosseguindo com criação');
+        if (!workHours && !workHoursError) {
+          console.warn('⚠️ [Validação] Work hours não configurado para este dia');
+          toast({
+            title: "⚠️ Horários não configurados",
+            description: "Configure seus horários de trabalho na aba 'Horários de Trabalho' para validações automáticas.",
+            variant: "destructive",
+          });
+        }
+
+        // Validação 1: Dia desabilitado
+        if (workHours && workHours.is_active === false) {
+          const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+          console.log('⚠️ [Validação] Dia desabilitado detectado:', dayNames[dayOfWeek]);
+          
+          const shouldContinue = window.confirm(
+            `⚠️ ATENÇÃO!\n\n${dayNames[dayOfWeek]} está DESABILITADO nos seus horários de trabalho.\n\nDeseja criar o compromisso mesmo assim?`
+          );
+          
+          if (!shouldContinue) {
+            console.log('❌ [Validação] Usuário cancelou criação - dia desabilitado');
+            return;
+          }
+          
+          console.log('✅ [Validação] Usuário confirmou criação em dia desabilitado');
+          toast({
+            title: "⚠️ Compromisso criado em dia desabilitado",
+            description: `${dayNames[dayOfWeek]} está marcado como inativo na sua agenda.`,
+            variant: "destructive",
+          });
+        }
+
+        // Validação 2: Fora do horário (apenas se dia estiver ativo)
+        if (workHours && workHours.is_active === true) {
+          const startTime = workHours.start_time.substring(0, 5);
+          const endTime = workHours.end_time.substring(0, 5);
+          
+          console.log('🔍 [Validação] Verificando horário:', {
+            timeScheduled,
+            startTime,
+            endTime,
+            isBeforeStart: timeScheduled < startTime,
+            isAfterEnd: timeScheduled > endTime
+          });
+          
+          if (timeScheduled < startTime || timeScheduled > endTime) {
+            console.log('⚠️ [Validação] Horário fora do expediente detectado');
+            
+            const shouldContinue = window.confirm(
+              `⏰ ATENÇÃO!\n\nO horário ${timeScheduled} está FORA do seu expediente configurado (${startTime} - ${endTime}).\n\nDeseja criar o compromisso mesmo assim?`
+            );
+            
+            if (!shouldContinue) {
+              console.log('❌ [Validação] Usuário cancelou criação - fora do horário');
+              return;
+            }
+            
+            console.log('✅ [Validação] Usuário confirmou criação fora do horário');
+            toast({
+              title: "⚠️ Compromisso fora do horário de trabalho",
+              description: `Seu expediente é de ${startTime} às ${endTime}.`,
+              variant: "destructive",
+            });
+          }
+        }
+
+        console.log('✅ [Validação] Validações concluídas - prosseguindo com criação');
+      } else {
+        console.log('ℹ️ [Validação] Membro da equipe - validação de horários desabilitada');
+      }
 
       // Buscar reminder_settings do usuário ou usar padrão
       const { data: reminderSettings } = await supabase
@@ -488,6 +496,90 @@ export function CommitmentsManager() {
         variant: "destructive",
       });
     }
+  };
+
+  // FASE 4: Bulk delete handlers
+  const handleToggleSelection = async (id: string, userId: string) => {
+    // Verificar permissão antes de permitir seleção
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) return;
+    
+    const canSelect = userId === currentUser.id || canDeleteOthers;
+    if (!canSelect) return;
+    
+    setSelectedIds(prev => 
+      prev.includes(id) 
+        ? prev.filter(x => x !== id) 
+        : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = async () => {
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) return;
+    
+    if (selectedIds.length === commitments.length) {
+      setSelectedIds([]);
+    } else {
+      // Selecionar apenas compromissos que o usuário pode deletar
+      const selectableIds = commitments
+        .filter((c: any) => c.user_id === currentUser.id || canDeleteOthers)
+        .map((c: any) => c.id);
+      setSelectedIds(selectableIds);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    
+    const confirm = window.confirm(
+      `🗑️ Confirmar exclusão?\n\n` +
+      `${selectedIds.length} compromisso(s) serão excluídos permanentemente.\n\n` +
+      `Esta ação não pode ser desfeita.`
+    );
+    
+    if (!confirm) return;
+    
+    setLoading(true);
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (const id of selectedIds) {
+      try {
+        const { data: commitment } = await supabase
+          .from('commitments')
+          .select('google_event_id')
+          .eq('id', id)
+          .single();
+        
+        const { error } = await supabase
+          .from('commitments')
+          .delete()
+          .eq('id', id);
+        
+        if (error) throw error;
+        
+        if (isConnected && commitment?.google_event_id) {
+          await syncEvent('delete', id);
+        }
+        
+        successCount++;
+      } catch (err) {
+        console.error('Erro ao deletar:', id, err);
+        errorCount++;
+      }
+    }
+    
+    toast({
+      title: successCount > 0 ? "✅ Compromissos excluídos" : "❌ Erro na exclusão",
+      description: `${successCount} excluídos${errorCount > 0 ? `, ${errorCount} erros` : ''}`,
+      variant: errorCount > 0 ? "destructive" : "default",
+    });
+    
+    setSelectedIds([]);
+    setBulkMode(false);
+    fetchCommitments();
+    setLoading(false);
   };
 
   const handleImportFromGoogle = async () => {
@@ -867,11 +959,59 @@ export function CommitmentsManager() {
         </Card>
       )}
 
+      {/* FASE 4: Bulk delete UI */}
+      <div className="flex items-center justify-between mb-4">
+        <Button
+          variant={bulkMode ? "default" : "outline"}
+          onClick={() => {
+            setBulkMode(!bulkMode);
+            setSelectedIds([]);
+          }}
+        >
+          {bulkMode ? (
+            <>
+              <X className="h-4 w-4 mr-2" />
+              Cancelar Seleção
+            </>
+          ) : (
+            <>
+              <Check className="h-4 w-4 mr-2" />
+              Selecionar Múltiplos
+            </>
+          )}
+        </Button>
+        
+        {bulkMode && (
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary">
+              {selectedIds.length} selecionado(s)
+            </Badge>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSelectAll}
+            >
+              {selectedIds.length === commitments.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleBulkDelete}
+              disabled={selectedIds.length === 0}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Excluir Selecionados
+            </Button>
+          </div>
+        )}
+      </div>
+
       <Card>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
+                {bulkMode && <TableHead className="w-12">Selecionar</TableHead>}
                 <TableHead>Título</TableHead>
                 <TableHead>Data/Hora</TableHead>
                 <TableHead>Categoria</TableHead>
@@ -886,8 +1026,21 @@ export function CommitmentsManager() {
                   </TableCell>
                 </TableRow>
               ) : (
-                commitments.map((commitment) => (
+                commitments.map((commitment: any) => (
                   <TableRow key={commitment.id}>
+                    {bulkMode && (
+                      <TableCell className="w-12">
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(commitment.id)}
+                            onChange={() => handleToggleSelection(commitment.id, commitment.user_id)}
+                            disabled={commitment.user_id !== user?.id && !canDeleteOthers}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                          />
+                        </div>
+                      </TableCell>
+                    )}
                     <TableCell>
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">

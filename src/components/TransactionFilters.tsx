@@ -22,18 +22,21 @@ export interface TransactionFiltersState {
   categories: string[];
   source: 'all' | 'manual' | 'whatsapp';
   searchText: string;
+  responsible: string; // FASE 2: Filtro por responsável
 }
 
 interface TransactionFiltersProps {
   filters: TransactionFiltersState;
   onFiltersChange: (filters: TransactionFiltersState) => void;
   categories: Array<{ id: string; name: string; type: string }>;
+  orgMembers?: Array<{ id: string; name: string }>; // FASE 2: Membros da organização
 }
 
 export function TransactionFilters({ 
   filters, 
   onFiltersChange, 
-  categories 
+  categories,
+  orgMembers = [] // FASE 2
 }: TransactionFiltersProps) {
   const [showCustomDate, setShowCustomDate] = useState(false);
   const [categorySearchOpen, setCategorySearchOpen] = useState(false);
@@ -43,7 +46,8 @@ export function TransactionFilters({
     filters.type !== 'all',
     filters.categories.length > 0,
     filters.source !== 'all',
-    filters.searchText.trim() !== ''
+    filters.searchText.trim() !== '',
+    filters.responsible !== 'all' // FASE 2
   ].filter(Boolean).length;
 
   const handlePeriodChange = (period: string) => {
@@ -71,7 +75,8 @@ export function TransactionFilters({
       type: 'all',
       categories: [],
       source: 'all',
-      searchText: ''
+      searchText: '',
+      responsible: 'all' // FASE 2
     });
     setShowCustomDate(false);
   };
@@ -148,6 +153,29 @@ export function TransactionFilters({
               </SelectContent>
             </Select>
           </div>
+
+          {/* FASE 2: Filtro por Responsável */}
+          {orgMembers.length > 0 && (
+            <div className="space-y-2">
+              <Label>Responsável</Label>
+              <Select 
+                value={filters.responsible || 'all'} 
+                onValueChange={(value) => onFiltersChange({ ...filters, responsible: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos os membros" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os membros</SelectItem>
+                  {orgMembers.map(member => (
+                    <SelectItem key={member.id} value={member.id}>
+                      {member.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Categorias */}
           <div className="space-y-2">

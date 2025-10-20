@@ -108,8 +108,11 @@ export function TransactionList({
                         {transaction.source === 'whatsapp' ? 'WhatsApp' : 'Manual'}
                       </Badge>
                       {transaction.profiles && (
-                        <Badge variant="outline" className="text-xs bg-primary/10">
-                          {transaction.profiles.full_name || transaction.profiles.email}
+                        <Badge 
+                          variant="outline" 
+                          className="text-xs bg-blue-500/20 text-blue-700 dark:text-blue-300 font-semibold border-blue-300 dark:border-blue-700"
+                        >
+                          👤 {transaction.profiles.full_name || transaction.profiles.email}
                         </Badge>
                       )}
                     </div>
