@@ -138,3 +138,6 @@ verify_jwt = false
 
 [functions.sync-all-google-calendars]
 verify_jwt = false
+
+[functions.backfill-whatsapp-transactions]
+verify_jwt = true

@@ -53,22 +53,33 @@ export function AgendaMonitoring() {
   const handleForceReminders = async () => {
     setTestingReminders(true);
     try {
+      console.log('📤 Invocando send-commitment-reminders com force=true...');
       const { data, error } = await supabase.functions.invoke('send-commitment-reminders', {
         body: { force: true }
       });
       
-      if (error) throw error;
+      console.log('📥 Resposta:', { data, error });
+      
+      if (error) {
+        console.error('❌ Erro ao forçar lembretes:', error);
+        throw error;
+      }
       
       const result = data as any;
+      const sent = result?.remindersSent || result?.sent || 0;
+      const errors = result?.errors || 0;
+      
       toast({
-        title: "Lembretes enviados",
-        description: `${result?.remindersSent || 0} lembretes enviados com sucesso`,
+        title: sent > 0 ? "✅ Lembretes enviados" : "⚠️ Nenhum lembrete",
+        description: sent > 0 
+          ? `${sent} lembrete(s) enviado(s)${errors > 0 ? `, ${errors} erro(s)` : ''}`
+          : `Nenhum compromisso na janela de envio. ${errors > 0 ? `Erros: ${errors}` : ''}`,
       });
     } catch (error: any) {
-      console.error('Error forcing reminders:', error);
+      console.error('❌ Erro crítico ao forçar lembretes:', error);
       toast({
-        title: "Erro",
-        description: error.message || "Falha ao enviar lembretes",
+        title: "❌ Erro",
+        description: error.message || "Falha ao enviar lembretes. Verifique os logs da função.",
         variant: "destructive",
       });
     } finally {
@@ -79,20 +90,31 @@ export function AgendaMonitoring() {
   const handleForceDailySummary = async () => {
     setTestingDaily(true);
     try {
+      console.log('📤 Invocando send-daily-agenda...');
       const { data, error } = await supabase.functions.invoke('send-daily-agenda');
       
-      if (error) throw error;
+      console.log('📥 Resposta:', { data, error });
+      
+      if (error) {
+        console.error('❌ Erro ao enviar resumo diário:', error);
+        throw error;
+      }
       
       const result = data as any;
+      const sent = result?.messagesSent || result?.sent || 0;
+      const errors = result?.errors || 0;
+      
       toast({
-        title: "Resumo diário enviado",
-        description: `${result?.messagesSent || 0} mensagens enviadas, ${result?.errors || 0} erros`,
+        title: sent > 0 ? "✅ Resumo diário enviado" : "⚠️ Nenhuma mensagem",
+        description: sent > 0
+          ? `${sent} mensagem(ns) enviada(s)${errors > 0 ? `, ${errors} erro(s)` : ''}`
+          : `Nenhum usuário com compromissos hoje. ${errors > 0 ? `Erros: ${errors}` : ''}`,
       });
     } catch (error: any) {
-      console.error('Error forcing daily summary:', error);
+      console.error('❌ Erro crítico ao enviar resumo diário:', error);
       toast({
-        title: "Erro",
-        description: error.message || "Falha ao enviar resumo diário",
+        title: "❌ Erro",
+        description: error.message || "Falha ao enviar resumo diário. Verifique os logs da função.",
         variant: "destructive",
       });
     } finally {

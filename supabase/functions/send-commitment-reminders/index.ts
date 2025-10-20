@@ -66,8 +66,18 @@ async function sendWhatsAppReminder(commitment: Commitment, minutesUntil: number
   const accessToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
   const recipientPhone = commitment.profiles.phone_number;
 
+  console.log('📱 [REMINDER] WhatsApp config check:', {
+    hasPhoneNumberId: !!phoneNumberId,
+    hasAccessToken: !!accessToken,
+    hasRecipientPhone: !!recipientPhone
+  });
+
   if (!phoneNumberId || !accessToken || !recipientPhone) {
-    console.log('[REMINDER] Missing WhatsApp config or phone number');
+    console.error('❌ [REMINDER] Missing WhatsApp credentials:', {
+      phoneNumberId: phoneNumberId ? 'SET' : 'MISSING',
+      accessToken: accessToken ? 'SET' : 'MISSING',
+      recipientPhone: recipientPhone || 'MISSING'
+    });
     return false;
   }
 

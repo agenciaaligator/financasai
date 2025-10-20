@@ -3216,6 +3216,16 @@ class WhatsAppAgent {
 
       console.log('✅ saveTransaction: User ID validated');
 
+      // FASE 2: Buscar organization_id do usuário
+      const { data: orgMember } = await supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', userId)
+        .maybeSingle();
+      
+      const organizationId = orgMember?.organization_id || null;
+      console.log('🏢 Organization ID for user:', organizationId);
+
       // Buscar melhor categoria automaticamente se não foi especificada
       let categoryInfo = { category_id: null, category_name: 'Sem categoria', suggested: false };
       
@@ -3236,7 +3246,8 @@ class WhatsAppAgent {
         date: transaction.date,
         description: transaction.description,
         category_id: transaction.category_id || categoryInfo.category_id,
-        source: 'whatsapp'
+        source: 'whatsapp',
+        organization_id: organizationId  // FASE 2: Preencher org_id
       };
 
       console.log('🔵 saveTransaction: Calling Supabase insert with:', transactionData);

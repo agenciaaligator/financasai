@@ -78,11 +78,12 @@ export function WhatsAppSetup() {
       });
       
       if (error) {
-        console.error('Erro ao verificar autenticação:', error);
+        console.error('Erro RPC is_whatsapp_authenticated_for_user:', error);
         setIsAuthenticated(false);
         return;
       }
       
+      console.log('✅ RPC is_whatsapp_authenticated_for_user resultado:', data);
       setIsAuthenticated(data === true);
     } catch (error) {
       console.error('Erro ao verificar autenticação WhatsApp:', error);
@@ -250,18 +251,21 @@ export function WhatsAppSetup() {
     try {
       await checkAuthenticationStatus();
       await checkRecentWhatsAppActivity();
+      await fetchSessionInfo();
+      
+      const effective = isAuthenticated || hasRecentWhatsAppActivity || (sessionInfo?.expires_at && new Date(sessionInfo.expires_at) > new Date());
       
       toast({
-        title: effectiveAuthenticated ? "✅ Conectado" : "❌ Não conectado",
-        description: effectiveAuthenticated 
-          ? "WhatsApp autenticado e funcionando corretamente" 
-          : "WhatsApp não está autenticado",
-        variant: effectiveAuthenticated ? "default" : "destructive"
+        title: effective ? "✅ Conectado" : "❌ Não conectado",
+        description: effective 
+          ? `WhatsApp autenticado${getStatusMessage() ? ' - ' + getStatusMessage() : ''}` 
+          : "WhatsApp não está autenticado. Solicite um novo código.",
       });
     } catch (error) {
+      console.error('Erro ao verificar status:', error);
       toast({
-        title: "Erro ao verificar status",
-        description: "Não foi possível verificar o status da conexão",
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Não foi possível verificar o status",
         variant: "destructive"
       });
     } finally {
@@ -273,46 +277,63 @@ export function WhatsAppSetup() {
   // FASE 4: Status mais inteligente considerando last_activity
   const [sessionInfo, setSessionInfo] = useState<{ last_activity?: string; expires_at?: string } | null>(null);
 
+  const fetchSessionInfo = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('phone_number')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!profile?.phone_number) return;
+
+    const { data: session } = await supabase
+      .from('whatsapp_sessions')
+      .select('last_activity, expires_at')
+      .eq('phone_number', profile.phone_number)
+      .maybeSingle();
+
+    console.log('📱 Session info:', session);
+    setSessionInfo(session);
+  };
+
   useEffect(() => {
-    const fetchSessionInfo = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('phone_number')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!profile?.phone_number) return;
-
-      const { data: session } = await supabase
-        .from('whatsapp_sessions')
-        .select('last_activity, expires_at')
-        .eq('phone_number', profile.phone_number)
-        .maybeSingle();
-
-      setSessionInfo(session);
-    };
-
     fetchSessionInfo();
   }, [isAuthenticated, hasRecentWhatsAppActivity]);
 
-  const effectiveAuthenticated = isAuthenticated || hasRecentWhatsAppActivity;
+  // FASE 1: effectiveAuthenticated considera RPC + expires_at ativo
+  const effectiveAuthenticated = isAuthenticated || 
+    hasRecentWhatsAppActivity || 
+    (sessionInfo?.expires_at && new Date(sessionInfo.expires_at) > new Date());
   
   const getStatusMessage = () => {
     if (!sessionInfo) return null;
     
     const now = new Date();
+    const expiresAt = sessionInfo.expires_at ? new Date(sessionInfo.expires_at) : null;
     const lastActivity = sessionInfo.last_activity ? new Date(sessionInfo.last_activity) : null;
     
-    if (!lastActivity) return null;
+    // Se expirou, mostrar expirado
+    if (expiresAt && expiresAt <= now) {
+      return "Sessão expirada - Revalide";
+    }
     
-    const daysSinceActivity = Math.floor((now.getTime() - lastActivity.getTime()) / (1000 * 60 * 60 * 24));
+    // Se sessão ativa, mostrar quando expira + último uso
+    if (expiresAt && expiresAt > now && lastActivity) {
+      const daysSinceActivity = Math.floor((now.getTime() - lastActivity.getTime()) / (1000 * 60 * 60 * 24));
+      const daysUntilExpiry = Math.floor((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      
+      let activityMsg = "";
+      if (daysSinceActivity === 0) activityMsg = "usado hoje";
+      else if (daysSinceActivity === 1) activityMsg = "usado ontem";
+      else if (daysSinceActivity <= 7) activityMsg = `usado há ${daysSinceActivity} dias`;
+      else activityMsg = `último uso há ${daysSinceActivity} dias`;
+      
+      return `Sessão ativa (${activityMsg}, expira em ${daysUntilExpiry}d)`;
+    }
     
-    if (daysSinceActivity === 0) return "Ativo (usado hoje)";
-    if (daysSinceActivity === 1) return "Ativo (usado ontem)";
-    if (daysSinceActivity <= 7) return `Ativo (usado há ${daysSinceActivity} dias)`;
     return null;
   };
 
