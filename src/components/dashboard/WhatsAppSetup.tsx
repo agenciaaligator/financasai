@@ -12,6 +12,7 @@ import { Phone, Shield, MessageSquare, BarChart3 } from "lucide-react";
 export function WhatsAppSetup() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [authCode, setAuthCode] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [hasRecentWhatsAppActivity, setHasRecentWhatsAppActivity] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -269,7 +270,51 @@ export function WhatsAppSetup() {
   };
 
 
+  // FASE 4: Status mais inteligente considerando last_activity
+  const [sessionInfo, setSessionInfo] = useState<{ last_activity?: string; expires_at?: string } | null>(null);
+
+  useEffect(() => {
+    const fetchSessionInfo = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('phone_number')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profile?.phone_number) return;
+
+      const { data: session } = await supabase
+        .from('whatsapp_sessions')
+        .select('last_activity, expires_at')
+        .eq('phone_number', profile.phone_number)
+        .maybeSingle();
+
+      setSessionInfo(session);
+    };
+
+    fetchSessionInfo();
+  }, [isAuthenticated, hasRecentWhatsAppActivity]);
+
   const effectiveAuthenticated = isAuthenticated || hasRecentWhatsAppActivity;
+  
+  const getStatusMessage = () => {
+    if (!sessionInfo) return null;
+    
+    const now = new Date();
+    const lastActivity = sessionInfo.last_activity ? new Date(sessionInfo.last_activity) : null;
+    
+    if (!lastActivity) return null;
+    
+    const daysSinceActivity = Math.floor((now.getTime() - lastActivity.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysSinceActivity === 0) return "Ativo (usado hoje)";
+    if (daysSinceActivity === 1) return "Ativo (usado ontem)";
+    if (daysSinceActivity <= 7) return `Ativo (usado há ${daysSinceActivity} dias)`;
+    return null;
+  };
 
   return (
     <div className="space-y-6">
@@ -282,19 +327,75 @@ export function WhatsAppSetup() {
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Status */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Status:</span>
-            <Badge variant={effectiveAuthenticated ? "default" : "secondary"}>
-              {effectiveAuthenticated ? "Autenticado" : "Não autenticado"}
-            </Badge>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCheckStatus}
-              disabled={statusLoading}
-            >
-              {statusLoading ? "Verificando..." : "Verificar status"}
-            </Button>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Status:</span>
+              <Badge variant={effectiveAuthenticated ? "default" : "secondary"}>
+                {effectiveAuthenticated ? "Autenticado" : "Não autenticado"}
+              </Badge>
+              {effectiveAuthenticated && getStatusMessage() && (
+                <span className="text-xs text-muted-foreground">
+                  {getStatusMessage()}
+                </span>
+              )}
+            </div>
+            
+            {/* FASE 4: Botões de revalidação e teste */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCheckStatus}
+                disabled={statusLoading}
+              >
+                {statusLoading ? "Verificando..." : "Verificar status"}
+              </Button>
+              
+              {effectiveAuthenticated && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      setIsAuthenticated(false);
+                      setCodeSent(false);
+                      setAuthCode("");
+                      await handleRequestCode();
+                    }}
+                  >
+                    Revalidar WhatsApp
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      const { data: { user } } = await supabase.auth.getUser();
+                      if (!user) return;
+                      
+                      const { data, error } = await supabase.functions.invoke('send-commitment-reminders', {
+                        body: { force: true, user_id: user.id }
+                      });
+                      
+                      if (error) {
+                        toast({
+                          title: "Erro",
+                          description: "Falha ao enviar mensagem de teste",
+                          variant: "destructive",
+                        });
+                      } else {
+                        toast({
+                          title: "Mensagem enviada",
+                          description: "Verifique seu WhatsApp",
+                        });
+                      }
+                    }}
+                  >
+                    Enviar mensagem teste
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Autenticação */}

@@ -302,12 +302,13 @@ class SessionManager {
       } as any;
     }
     
+    // FASE 4: Aumentar TTL para 7 dias e renovar expires_at em toda interação
     const { error } = await supabase
       .from('whatsapp_sessions')
       .update({
         ...finalUpdates,
         last_activity: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 dias
       })
       .eq('id', sessionId);
 

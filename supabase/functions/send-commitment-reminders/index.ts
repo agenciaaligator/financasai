@@ -157,6 +157,92 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // FASE 1: Suporte ao modo "force" para testes
+    const body = await req.json().catch(() => ({}));
+    const forceMode = body.force === true;
+    const specificUserId = body.user_id || null;
+
+    console.log(`[REMINDER] [${executionId}] Force mode: ${forceMode}, User ID: ${specificUserId || 'all'}`);
+
+    if (forceMode && specificUserId) {
+      // Modo teste: enviar mensagem de teste para usuário específico
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('phone_number, full_name')
+        .eq('user_id', specificUserId)
+        .single();
+
+      if (!profile?.phone_number) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Usuário sem telefone cadastrado' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Buscar próximos compromissos nas próximas 48h
+      const { data: upcomingCommitments } = await supabase
+        .from('commitments')
+        .select('*')
+        .eq('user_id', specificUserId)
+        .gte('scheduled_at', new Date().toISOString())
+        .lte('scheduled_at', new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString())
+        .order('scheduled_at', { ascending: true })
+        .limit(3);
+
+      if (!upcomingCommitments || upcomingCommitments.length === 0) {
+        // Enviar mensagem de teste genérica
+        const testMessage = `✅ *Teste de Lembretes WhatsApp*\n\nSeu canal de lembretes está funcionando perfeitamente!\n\nVocê não tem compromissos nas próximas 48h.`;
+        
+        const sent = await sendWhatsAppReminder({ 
+          profiles: { phone_number: profile.phone_number, full_name: profile.full_name } 
+        } as any, 0);
+        
+        if (sent) {
+          // Sobrescrever com mensagem customizada
+          const phoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID');
+          const accessToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
+          
+          await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              messaging_product: 'whatsapp',
+              to: profile.phone_number,
+              type: 'text',
+              text: { body: testMessage }
+            }),
+          });
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, remindersSent: 1, testMode: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } else {
+        // Enviar lembretes dos próximos compromissos
+        let sent = 0;
+        for (const commitment of upcomingCommitments) {
+          const scheduledAt = new Date(commitment.scheduled_at);
+          const minutesUntil = (scheduledAt.getTime() - Date.now()) / (1000 * 60);
+          
+          const success = await sendWhatsAppReminder({
+            ...commitment,
+            profiles: { phone_number: profile.phone_number, full_name: profile.full_name }
+          } as Commitment, minutesUntil);
+          
+          if (success) sent++;
+        }
+        
+        return new Response(
+          JSON.stringify({ success: true, remindersSent: sent, testMode: true, commitments: upcomingCommitments.length }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     // Buscar TODOS os compromissos futuros com informações do usuário
     const { data: commitments, error: fetchError } = await supabase
       .from('commitments')

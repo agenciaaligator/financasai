@@ -53,19 +53,22 @@ export function AgendaMonitoring() {
   const handleForceReminders = async () => {
     setTestingReminders(true);
     try {
-      const { error } = await supabase.functions.invoke('send-commitment-reminders');
+      const { data, error } = await supabase.functions.invoke('send-commitment-reminders', {
+        body: { force: true }
+      });
       
       if (error) throw error;
       
+      const result = data as any;
       toast({
         title: "Lembretes enviados",
-        description: "Processo de lembretes executado com sucesso",
+        description: `${result?.remindersSent || 0} lembretes enviados com sucesso`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error forcing reminders:', error);
       toast({
         title: "Erro",
-        description: "Falha ao enviar lembretes",
+        description: error.message || "Falha ao enviar lembretes",
         variant: "destructive",
       });
     } finally {
@@ -76,19 +79,20 @@ export function AgendaMonitoring() {
   const handleForceDailySummary = async () => {
     setTestingDaily(true);
     try {
-      const { error } = await supabase.functions.invoke('send-daily-agenda');
+      const { data, error } = await supabase.functions.invoke('send-daily-agenda');
       
       if (error) throw error;
       
+      const result = data as any;
       toast({
         title: "Resumo diário enviado",
-        description: "Processo de resumo diário executado com sucesso",
+        description: `${result?.messagesSent || 0} mensagens enviadas, ${result?.errors || 0} erros`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error forcing daily summary:', error);
       toast({
         title: "Erro",
-        description: "Falha ao enviar resumo diário",
+        description: error.message || "Falha ao enviar resumo diário",
         variant: "destructive",
       });
     } finally {
