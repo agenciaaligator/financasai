@@ -908,6 +908,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      backfill_transactions_org: {
+        Args: { p_organization_id: string }
+        Returns: number
+      }
       check_user_exists: {
         Args: { email_to_check: string }
         Returns: boolean
