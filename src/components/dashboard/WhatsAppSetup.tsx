@@ -71,8 +71,10 @@ export function WhatsAppSetup() {
     if (!user) return;
 
     try {
-      // Usar função segura do banco que verifica diretamente
-      const { data, error } = await supabase.rpc('is_whatsapp_authenticated');
+      // Usar função segura do banco que verifica para qualquer usuário
+      const { data, error } = await supabase.rpc('is_whatsapp_authenticated_for_user', {
+        p_user_id: user.id
+      });
       
       if (error) {
         console.error('Erro ao verificar autenticação:', error);

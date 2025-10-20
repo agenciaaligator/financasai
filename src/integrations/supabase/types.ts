@@ -1002,6 +1002,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      is_whatsapp_authenticated_for_user: {
+        Args: { p_user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "premium" | "free" | "trial"

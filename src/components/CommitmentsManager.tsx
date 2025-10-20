@@ -961,26 +961,101 @@ export function CommitmentsManager() {
       )}
 
       {/* FASE 4: Bulk delete UI */}
-      <div className="flex items-center justify-between mb-4">
-        <Button
-          variant={bulkMode ? "default" : "outline"}
-          onClick={() => {
-            setBulkMode(!bulkMode);
-            setSelectedIds([]);
-          }}
-        >
-          {bulkMode ? (
-            <>
-              <X className="h-4 w-4 mr-2" />
-              Cancelar Seleção
-            </>
-          ) : (
-            <>
-              <Check className="h-4 w-4 mr-2" />
-              Selecionar Múltiplos
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            variant={bulkMode ? "default" : "outline"}
+            onClick={() => {
+              setBulkMode(!bulkMode);
+              setSelectedIds([]);
+            }}
+          >
+            {bulkMode ? (
+              <>
+                <X className="h-4 w-4 mr-2" />
+                Cancelar Seleção
+              </>
+            ) : (
+              <>
+                <Check className="h-4 w-4 mr-2" />
+                Selecionar Múltiplos
             </>
           )}
         </Button>
+        
+        {/* FASE 4: Botões de teste para admins/owners */}
+        {(isAdmin || role === 'owner') && (
+          <>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={async () => {
+                try {
+                  const supabaseUrl = "https://fsamlnlabdjoqpiuhgex.supabase.co";
+                  const response = await fetch(`${supabaseUrl}/functions/v1/send-commitment-reminders`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+                    }
+                  });
+                  
+                  if (response.ok) {
+                    toast({
+                      title: "✅ Teste de lembretes executado",
+                      description: "Verifique os logs da função para detalhes",
+                    });
+                  } else {
+                    throw new Error('Erro ao executar teste');
+                  }
+                } catch (error) {
+                  toast({
+                    title: "Erro ao testar lembretes",
+                    description: error instanceof Error ? error.message : "Erro desconhecido",
+                    variant: "destructive"
+                  });
+                }
+              }}
+            >
+              🔔 Testar Lembretes
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={async () => {
+                try {
+                  const supabaseUrl = "https://fsamlnlabdjoqpiuhgex.supabase.co";
+                  const response = await fetch(`${supabaseUrl}/functions/v1/send-daily-agenda`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+                    }
+                  });
+                  
+                  if (response.ok) {
+                    toast({
+                      title: "✅ Teste de agenda diária executado",
+                      description: "Verifique os logs da função para detalhes",
+                    });
+                  } else {
+                    throw new Error('Erro ao executar teste');
+                  }
+                } catch (error) {
+                  toast({
+                    title: "Erro ao testar agenda",
+                    description: error instanceof Error ? error.message : "Erro desconhecido",
+                    variant: "destructive"
+                  });
+                }
+              }}
+            >
+              📅 Testar Agenda
+            </Button>
+          </>
+        )}
+        </div>
         
         {bulkMode && (
           <div className="flex items-center gap-2">
