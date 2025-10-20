@@ -35,6 +35,7 @@ interface Commitment {
   duration_minutes?: number | null;
   notes?: string | null;
   google_event_id?: string | null;
+  user_id?: string; // FASE 4: Necessário para verificar permissões
 }
 
 export function CommitmentsManager() {
@@ -1034,8 +1035,13 @@ export function CommitmentsManager() {
                           <input
                             type="checkbox"
                             checked={selectedIds.includes(commitment.id)}
-                            onChange={() => handleToggleSelection(commitment.id, commitment.user_id)}
-                            disabled={commitment.user_id !== user?.id && !canDeleteOthers}
+                            onChange={async () => {
+                              const { data: { user: currentUser } } = await supabase.auth.getUser();
+                              if (currentUser && commitment.user_id) {
+                                handleToggleSelection(commitment.id, commitment.user_id);
+                              }
+                            }}
+                            disabled={!commitment.user_id}
                             className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                           />
                         </div>

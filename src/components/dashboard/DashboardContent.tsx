@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -75,8 +76,37 @@ export function DashboardContent({
 }: DashboardContentProps) {
   const { planName, planLimits } = useSubscription();
   const { getTransactionProgress, getCategoryProgress } = useFeatureLimits();
-  const { canViewOthers } = useOrganizationPermissions();
+  const { canViewOthers, organization_id } = useOrganizationPermissions();
   const { user } = useAuth();
+  
+  // FASE 2: Buscar membros da organização
+  const [orgMembers, setOrgMembers] = useState<Array<{id: string, name: string}>>([]);
+  
+  useEffect(() => {
+    const fetchOrgMembers = async () => {
+      if (!organization_id || !user) return;
+      
+      const { data, error } = await supabase
+        .from('organization_members')
+        .select(`
+          user_id,
+          profiles:user_id (
+            full_name,
+            email
+          )
+        `)
+        .eq('organization_id', organization_id);
+      
+      if (!error && data) {
+        setOrgMembers(data.map((m: any) => ({
+          id: m.user_id,
+          name: m.profiles?.full_name || m.profiles?.email || 'Sem nome'
+        })));
+      }
+    };
+    
+    fetchOrgMembers();
+  }, [organization_id, user]);
   
   const [filters, setFilters] = useState<TransactionFiltersState>({
     period: 'all',
@@ -84,7 +114,8 @@ export function DashboardContent({
     type: 'all',
     categories: [],
     source: 'all',
-    searchText: ''
+    searchText: '',
+    responsible: 'all' // FASE 2
   });
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -171,6 +202,11 @@ export function DashboardContent({
 
       // Filtro de fonte
       if (filters.source !== 'all' && transaction.source !== filters.source) {
+        return false;
+      }
+
+      // FASE 2: Filtro de responsável
+      if (filters.responsible !== 'all' && transaction.user_id !== filters.responsible) {
         return false;
       }
 
@@ -286,6 +322,7 @@ export function DashboardContent({
             filters={filters}
             onFiltersChange={setFilters}
             categories={categories}
+            orgMembers={orgMembers}
           />
           
           {hasActiveFilters && (

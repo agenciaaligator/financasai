@@ -72,7 +72,8 @@ export function DashboardTabs({
     type: 'all',
     categories: [],
     source: 'all',
-    searchText: ''
+    searchText: '',
+    responsible: 'all' // FASE 2
   });
 
   const filteredTransactions = useMemo(() => {
