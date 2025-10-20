@@ -35,6 +35,7 @@ interface AppSidebarProps {
   showForm: boolean;
   onToggleForm: () => void;
   isAdmin?: boolean;
+  isOwner?: boolean;
 }
 
 import { Shield } from "lucide-react";
@@ -110,7 +111,8 @@ export function AppSidebar({
   onTabChange, 
   showForm, 
   onToggleForm,
-  isAdmin = false
+  isAdmin = false,
+  isOwner = false
 }: AppSidebarProps) {
   const { open } = useSidebar();
   const isMobile = useIsMobile();
@@ -150,7 +152,7 @@ export function AppSidebar({
 
           {/* Menu de navegação */}
           <div className="space-y-1">
-            {[...sidebarItems, ...(isAdmin ? adminItems : [])].map((item) => {
+            {[...sidebarItems.filter(item => item.id !== 'team' || isOwner), ...(isAdmin ? adminItems : [])].map((item) => {
               const isActive = currentTab === item.id;
               return (
                 <button
@@ -215,7 +217,7 @@ export function AppSidebar({
             </div>
 
             <SidebarMenu>
-              {[...sidebarItems, ...(isAdmin ? adminItems : [])].map((item) => {
+              {[...sidebarItems.filter(item => item.id !== 'team' || isOwner), ...(isAdmin ? adminItems : [])].map((item) => {
                 const isActive = currentTab === item.id;
                 return (
                   <SidebarMenuItem key={item.id}>

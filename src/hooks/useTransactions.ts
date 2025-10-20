@@ -54,7 +54,7 @@ export function useTransactions() {
           name,
           color
         ),
-        profiles!transactions_user_id_fkey (
+        profiles:user_id (
           full_name,
           email
         )
@@ -131,7 +131,7 @@ export function useTransactions() {
           name,
           color
         ),
-        profiles!transactions_user_id_fkey (
+        profiles:user_id (
           full_name,
           email
         )

@@ -4,6 +4,7 @@ import { EditTransactionModal } from "./EditTransactionModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useOrganizationOwnership } from "@/hooks/useOrganizationOwnership";
 import { Transaction } from "@/hooks/useTransactions";
 import { DashboardHeader } from "./dashboard/DashboardHeader";
 import { BalanceAlert } from "./dashboard/BalanceAlert";
@@ -25,6 +26,7 @@ export function FinancialDashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, signOut } = useAuth();
   const { isAdmin } = useUserRole();
+  const { isOwner } = useOrganizationOwnership();
   const { transactions, categories, loading, balance, totalIncome, totalExpenses, addTransaction, deleteTransaction, refetch } = useTransactions();
   const isMobile = useIsMobile();
 
@@ -138,13 +140,15 @@ export function FinancialDashboard() {
                       >
                         Agenda
                       </Button>
-                      <Button
-                        variant={currentTab === 'team' ? 'secondary' : 'ghost'}
-                        className="w-full justify-start"
-                        onClick={() => handleTabChange('team')}
-                      >
-                        Equipe
-                      </Button>
+                      {isOwner && (
+                        <Button
+                          variant={currentTab === 'team' ? 'secondary' : 'ghost'}
+                          className="w-full justify-start"
+                          onClick={() => handleTabChange('team')}
+                        >
+                          Equipe
+                        </Button>
+                      )}
                       <Button
                         variant={currentTab === 'profile' ? 'secondary' : 'ghost'}
                         className="w-full justify-start"
@@ -251,6 +255,7 @@ export function FinancialDashboard() {
           showForm={showForm}
           onToggleForm={() => setShowForm(!showForm)}
           isAdmin={isAdmin}
+          isOwner={isOwner}
         />
         
         <main className="flex-1 flex flex-col">

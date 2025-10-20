@@ -110,9 +110,9 @@ export function TransactionList({
                       {transaction.profiles && (
                         <Badge 
                           variant="outline" 
-                          className="text-xs bg-blue-500/20 text-blue-700 dark:text-blue-300 font-semibold border-blue-300 dark:border-blue-700"
+                          className="text-xs bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 font-semibold"
                         >
-                          👤 {transaction.profiles.full_name || transaction.profiles.email}
+                          👤 {transaction.profiles.full_name || transaction.profiles.email || 'Sem nome'}
                         </Badge>
                       )}
                     </div>
