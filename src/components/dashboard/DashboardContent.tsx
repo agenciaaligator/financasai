@@ -76,8 +76,9 @@ export function DashboardContent({
 }: DashboardContentProps) {
   const { planName, planLimits } = useSubscription();
   const { getTransactionProgress, getCategoryProgress } = useFeatureLimits();
-  const { canViewOthers, organization_id } = useOrganizationPermissions();
+  const { canViewOthers, organization_id, role } = useOrganizationPermissions();
   const { user } = useAuth();
+  const [backfilling, setBackfilling] = useState(false);
   
   // FASE 2: Buscar membros da organização
   const [orgMembers, setOrgMembers] = useState<Array<{id: string, name: string}>>([]);
@@ -121,6 +122,29 @@ export function DashboardContent({
   const [currentPage, setCurrentPage] = useState(1);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [showOnlyMine, setShowOnlyMine] = useState(false);
+
+  const handleBackfill = async () => {
+    if (!organization_id) return;
+    
+    setBackfilling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('backfill-transactions', {
+        body: { organization_id }
+      });
+      
+      if (error) throw error;
+      
+      // Refetch transações após backfill
+      await onRefresh();
+      
+      alert(`Backfill concluído com sucesso! ${data.count || 0} transações corrigidas.`);
+    } catch (error: any) {
+      console.error('[BACKFILL] Erro:', error);
+      alert('Erro ao executar backfill: ' + error.message);
+    } finally {
+      setBackfilling(false);
+    }
+  };
 
   // Reset para página 1 quando filtros mudarem
   useEffect(() => {
@@ -280,6 +304,32 @@ export function DashboardContent({
     return (
       <ErrorBoundary>
         <div className="space-y-4">
+          {/* Banner de Backfill para Owners */}
+          {role === 'owner' && canViewOthers && (
+            <Card className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
+              <CardContent className="pt-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-yellow-900 dark:text-yellow-100 mb-2">
+                      Corrigir dados legados
+                    </h3>
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                      Algumas transações dos membros podem estar sem organização vinculada. 
+                      Clique para corrigir e visualizar todas as transações da equipe.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleBackfill}
+                    disabled={backfilling}
+                    variant="outline"
+                    className="shrink-0"
+                  >
+                    {backfilling ? 'Corrigindo...' : 'Corrigir agora'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
             <AddTransactionButton 
               showForm={showTransactionForm}

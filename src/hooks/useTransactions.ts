@@ -115,19 +115,13 @@ export function useTransactions() {
   const addTransaction = async (transaction: Omit<Transaction, 'id' | 'created_at' | 'categories' | 'user_id' | 'organization_id' | 'profiles'>) => {
     if (!user) return;
 
-    // Fetch organization_id
-    const { data: orgData } = await supabase
-      .from('organization_members')
-      .select('organization_id')
-      .eq('user_id', user.id)
-      .single();
-
+    // Usar organization_id direto do hook (sem .single() que causa erro)
     const { data, error } = await supabase
       .from('transactions')
       .insert([{
         ...transaction,
         user_id: user.id,
-        organization_id: orgData?.organization_id || null
+        organization_id: organization_id || null
       }])
       .select(`
         *,

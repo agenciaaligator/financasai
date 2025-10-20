@@ -27,8 +27,8 @@ export function FinancialDashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, signOut } = useAuth();
   const { isAdmin } = useUserRole();
-  const { organization_id } = useOrganizationPermissions();
-  const { isOwner } = useOrganizationOwnership(organization_id);
+  const { organization_id, role } = useOrganizationPermissions();
+  const isOwner = role === 'owner'; // Derivar isOwner da role ativa
   const { transactions, categories, loading, balance, totalIncome, totalExpenses, addTransaction, deleteTransaction, refetch } = useTransactions();
   const isMobile = useIsMobile();
 
@@ -37,6 +37,7 @@ export function FinancialDashboard() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentTab]);
 
+  console.log('[FinancialDashboard] org_id:', organization_id, 'role:', role, 'isOwner:', isOwner);
   console.log('Dashboard renderizado - user:', user?.email);
   console.log('Categories carregadas:', categories?.length);
   console.log('Transactions carregadas:', transactions?.length);
