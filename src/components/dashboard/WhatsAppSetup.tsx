@@ -522,6 +522,9 @@ export function WhatsAppSetup() {
           {phoneNumber && (
             <div className="space-y-2 pt-4 border-t">
               <p className="text-sm font-medium mb-2">Testes do Sistema:</p>
+              <p className="text-xs text-muted-foreground mb-3">
+                ⚠️ Os lembretes reais são enviados apenas 24h e 1h antes de cada compromisso
+              </p>
               
               <Button 
                 onClick={handleTestReminders}

@@ -290,16 +290,17 @@ export function AgendaMonitoring() {
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           <div className="flex gap-2">
             <MessageCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-            <p>
-              <strong>Lembretes:</strong> Executam a cada 5 minutos e enviam notificações
-              60 minutos e 1 dia antes de cada compromisso
-            </p>
+            <div>
+              <p><strong>Lembretes:</strong> Verifica a cada 5 minutos para não perder a janela</p>
+              <p className="text-xs mt-1">• Envia 1 lembrete 24h e 1 lembrete 1h antes de cada compromisso</p>
+              <p className="text-xs">• Nunca duplica: o sistema marca como enviado</p>
+            </div>
           </div>
           <div className="flex gap-2">
             <Calendar className="h-4 w-4 mt-0.5 flex-shrink-0" />
             <p>
               <strong>Resumo Diário:</strong> Enviado às 08:00 todos os dias com a
-              agenda do dia via WhatsApp
+              agenda do dia via WhatsApp (ou mensagem informando que não há compromissos)
             </p>
           </div>
           <div className="flex gap-2">
