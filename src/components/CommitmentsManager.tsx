@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,8 +74,9 @@ export function CommitmentsManager() {
   // Verificar se tem acesso ao Google Calendar (Premium ou Admin)
   const hasGoogleCalendarAccess = isAdmin || isPremium;
   
-  // Ref para scroll automático do formulário
+  // Ref para scroll automático do formulário e foco no primeiro campo
   const formRef = useRef<HTMLDivElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -97,13 +98,67 @@ export function CommitmentsManager() {
     }
   }, [isConnected, currentPage, titleFilter, dateFromFilter, dateToFilter, categoryFilter]);
 
-  // Scroll automático quando o formulário abre
-  useEffect(() => {
-    if (showForm && formRef.current) {
+  // Scroll automático quando o formulário abre (robusto com container)
+  useLayoutEffect(() => {
+    if (!showForm || !formRef.current) return;
+
+    const log = (...args: any[]) => console.info('[Agenda] Scroll form:', ...args);
+
+    const findScrollParent = (el: HTMLElement | null): HTMLElement | null => {
+      let node = el?.parentElement;
+      while (node) {
+        const style = window.getComputedStyle(node);
+        const overflowY = style.overflowY;
+        if ((overflowY === 'auto' || overflowY === 'scroll') && node.scrollHeight > node.clientHeight) {
+          return node;
+        }
+        node = node.parentElement;
+      }
+      return null;
+    };
+
+    const explicit = formRef.current.closest('[data-scroll-container]') as HTMLElement | null;
+    const container = explicit || findScrollParent(formRef.current) || document.scrollingElement as HTMLElement;
+
+    const isWindow = container === document.scrollingElement || container === document.documentElement || container === document.body;
+
+    const scrollToTarget = () => {
+      const el = formRef.current!;
+      const elRect = el.getBoundingClientRect();
+      const contRect = isWindow ? { top: 0 } as DOMRect | any : (container as HTMLElement).getBoundingClientRect();
+      const currentTop = isWindow ? window.pageYOffset : (container as HTMLElement).scrollTop;
+
+      // Offset para header sticky no mobile
+      const mobileOffset = window.innerWidth < 768 ? 64 : 8;
+      const targetTop = currentTop + (elRect.top - (contRect.top || 0)) - mobileOffset;
+
+      log({ isWindow, targetTop, mobileOffset, containerTagged: explicit ? true : false });
+      if (isWindow) {
+        window.scrollTo({ top: Math.max(targetTop, 0), behavior: 'smooth' });
+      } else {
+        (container as HTMLElement).scrollTo({ top: Math.max(targetTop, 0), behavior: 'smooth' });
+      }
+
+      // Foco no primeiro campo após um pequeno delay
       setTimeout(() => {
-        formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
-    }
+        try {
+          titleInputRef.current?.focus();
+          log('Focando campo título.');
+        } catch {}
+      }, 200);
+
+      // Verificação pós-scroll
+      setTimeout(() => {
+        const rect = el.getBoundingClientRect();
+        const viewportH = isWindow ? window.innerHeight : (container as HTMLElement).clientHeight;
+        log('Post-scroll check', { rectTop: rect.top, rectBottom: rect.bottom, viewportH });
+      }, 350);
+    };
+
+    // rAF para garantir layout atualizado
+    requestAnimationFrame(() => {
+      scrollToTarget();
+    });
   }, [showForm]);
 
   const fetchCommitments = async () => {
@@ -801,7 +856,7 @@ export function CommitmentsManager() {
       )}
 
       {showForm && (
-        <div ref={formRef}>
+        <div ref={formRef} className="scroll-mt-24 md:scroll-mt-4">
           <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -834,6 +889,7 @@ export function CommitmentsManager() {
               <div>
                 <label className="text-sm font-medium">Título</label>
                 <Input
+                  ref={titleInputRef}
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   required

@@ -210,7 +210,7 @@ export function FinancialDashboard() {
         </header>
 
         {/* Conteúdo Mobile */}
-        <div className="p-4 overflow-auto">
+        <div className="p-4 overflow-auto" data-scroll-container>
           {showForm && (
             <div className="mb-4">
               <TransactionForm 
@@ -294,7 +294,7 @@ export function FinancialDashboard() {
           </header>
 
           {/* Conteúdo Desktop */}
-          <div className="flex-1 p-6 overflow-auto">
+          <div className="flex-1 p-6 overflow-auto" data-scroll-container>
             {showForm && (
               <div className="mb-6">
                 <TransactionForm 
