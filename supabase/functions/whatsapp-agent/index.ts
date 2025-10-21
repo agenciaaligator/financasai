@@ -497,6 +497,44 @@ function parseCommandFilters(text: string): CommandFilters {
   return filters;
 }
 
+function extractSpecialtyFromTitle(title: string): string | null {
+  const normalizedTitle = title
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  
+  // Mapa de palavras-chave -> especialidades
+  const specialtyKeywords: Record<string, string> = {
+    'dentist': 'Dentista',
+    'dermat': 'Dermatologista',
+    'oftalm': 'Oftalmologista',
+    'cardio': 'Cardiologista',
+    'ortoped': 'Ortopedista',
+    'pediatr': 'Pediatra',
+    'ginecolog': 'Ginecologista',
+    'urologis': 'Urologista',
+    'psicolog': 'Psicólogo',
+    'psiquiatr': 'Psiquiatra',
+    'neurolog': 'Neurologista',
+    'endocrin': 'Endocrinologista',
+    'nutricio': 'Nutricionista',
+    'fisioter': 'Fisioterapeuta',
+    'fonoaudi': 'Fonoaudiólogo',
+    'otorrino': 'Otorrinolaringologista',
+  };
+  
+  // Procurar por palavra-chave no título
+  for (const [keyword, specialty] of Object.entries(specialtyKeywords)) {
+    if (normalizedTitle.includes(keyword)) {
+      console.log(`[SPECIALTY-DETECTION] Found "${specialty}" in title: "${title}"`);
+      return specialty;
+    }
+  }
+  
+  console.log(`[SPECIALTY-DETECTION] No specialty found in title: "${title}"`);
+  return null;
+}
+
 class DateParser {
   static parseDate(text: string): string | null {
     const normalizedText = text.toLowerCase().trim();
@@ -4466,14 +4504,26 @@ Se não especificar hora, retorne scheduled_at: null.`
         
         // Decidir próximo passo baseado na categoria
         if (pending.category === 'appointment') {
-          pending.detailsStep = 'specialty';
-          await SessionManager.updateSession(session.id, {
-            session_data: { ...sessionData, pending_commitment: pending }
-          });
-          return {
-            response: '🩺 Qual a especialidade médica?\n_Digite "pular" para continuar._',
-            sessionData: { ...sessionData, pending_commitment: pending }
-          };
+          // ✨ INTELIGÊNCIA CONTEXTUAL: verificar se título já contém especialidade
+          const detectedSpecialty = extractSpecialtyFromTitle(pending.title);
+          
+          if (detectedSpecialty) {
+            // Usar a especialidade detectada e pular a pergunta
+            console.log('[COMMITMENT-FLOW] Auto-detected specialty:', detectedSpecialty);
+            pending.specialty = detectedSpecialty;
+            pending.detailsStep = 'completed';
+            return await this.showCommitmentConfirmation(session, pending);
+          } else {
+            // Perguntar apenas se NÃO detectou
+            pending.detailsStep = 'specialty';
+            await SessionManager.updateSession(session.id, {
+              session_data: { ...sessionData, pending_commitment: pending }
+            });
+            return {
+              response: '🩺 Qual a especialidade médica?\n\n_Você pode digitar "pular" se não quiser especificar._',
+              sessionData: { ...sessionData, pending_commitment: pending }
+            };
+          }
         } else if (pending.category === 'meeting') {
           pending.detailsStep = 'company';
           await SessionManager.updateSession(session.id, {
@@ -4605,7 +4655,9 @@ Se não especificar hora, retorne scheduled_at: null.`
     }
     
     if (pending.specialty) {
-      confirmMsg += `🩺 *Especialidade:* ${pending.specialty}\n`;
+      // Indicar visualmente se foi auto-detectada
+      const wasAutoDetected = extractSpecialtyFromTitle(pending.title) === pending.specialty;
+      confirmMsg += `🩺 *Especialidade:* ${pending.specialty}${wasAutoDetected ? ' ✨' : ''}\n`;
     }
     
     if (pending.company) {
