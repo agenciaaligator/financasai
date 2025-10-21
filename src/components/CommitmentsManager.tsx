@@ -651,7 +651,14 @@ export function CommitmentsManager() {
               <Calendar className="h-6 w-6" />
               {t('dashboard.agenda') || 'Agenda'}
             </h2>
-            <Button onClick={() => setShowForm(!showForm)}>
+            <Button onClick={() => {
+              setShowForm(!showForm);
+              if (!showForm) {
+                setTimeout(() => {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }, 100);
+              }
+            }}>
               <Plus className="h-4 w-4 mr-2" />
               {showForm ? "Cancelar" : "Novo Compromisso"}
             </Button>
