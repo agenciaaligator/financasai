@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +73,9 @@ export function CommitmentsManager() {
   
   // Verificar se tem acesso ao Google Calendar (Premium ou Admin)
   const hasGoogleCalendarAccess = isAdmin || isPremium;
+  
+  // Ref para scroll automático do formulário
+  const formRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -93,6 +96,15 @@ export function CommitmentsManager() {
       setShowOnboarding(false);
     }
   }, [isConnected, currentPage, titleFilter, dateFromFilter, dateToFilter, categoryFilter]);
+
+  // Scroll automático quando o formulário abre
+  useEffect(() => {
+    if (showForm && formRef.current) {
+      setTimeout(() => {
+        formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  }, [showForm]);
 
   const fetchCommitments = async () => {
     try {
@@ -459,11 +471,6 @@ export function CommitmentsManager() {
     });
     setEditingId(commitment.id);
     setShowForm(true);
-    
-    // Scroll automático para o topo após abrir o formulário
-    setTimeout(() => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 100);
   };
 
   const handleDelete = async (id: string) => {
@@ -651,14 +658,7 @@ export function CommitmentsManager() {
               <Calendar className="h-6 w-6" />
               {t('dashboard.agenda') || 'Agenda'}
             </h2>
-            <Button onClick={() => {
-              setShowForm(!showForm);
-              if (!showForm) {
-                setTimeout(() => {
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }, 100);
-              }
-            }}>
+            <Button onClick={() => setShowForm(!showForm)}>
               <Plus className="h-4 w-4 mr-2" />
               {showForm ? "Cancelar" : "Novo Compromisso"}
             </Button>
@@ -801,7 +801,8 @@ export function CommitmentsManager() {
       )}
 
       {showForm && (
-        <Card>
+        <div ref={formRef}>
+          <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>{editingId ? "Editar Compromisso" : "Novo Compromisso"}</CardTitle>
@@ -965,6 +966,7 @@ export function CommitmentsManager() {
             </form>
           </CardContent>
         </Card>
+        </div>
       )}
 
       {/* FASE 4: Bulk delete UI */}
