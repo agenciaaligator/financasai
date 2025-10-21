@@ -47,12 +47,12 @@ function timeToKey(minutes: number): 'week' | 'day' | 'hours' | 'confirmed' | 'u
 }
 
 function getTimeMessage(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const mins = Math.floor(minutes % 60);
+  const hours = Math.round(minutes / 60);
+  const mins = Math.round(minutes % 60);
   
   if (minutes >= 10080) return `⏰ Falta 1 semana!`;
   if (minutes >= 1440) {
-    const days = Math.floor(minutes / 1440);
+    const days = Math.round(minutes / 1440);
     return `⏰ ${days === 1 ? 'Falta 1 dia' : `Faltam ${days} dias`}!`;
   }
   if (minutes >= 60) {
@@ -81,7 +81,7 @@ async function sendWhatsAppReminder(commitment: Commitment, minutesUntil: number
     return false;
   }
 
-  const timeMessage = getTimeMessage(Math.floor(minutesUntil));
+  const timeMessage = getTimeMessage(Math.round(minutesUntil));
   const categoryLabels: Record<string, string> = {
     payment: "💰 Pagamento",
     meeting: "👥 Reunião",
