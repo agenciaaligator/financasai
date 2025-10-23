@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { LogOut, User, AlertCircle, X } from "lucide-react";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganizationPermissions } from "@/hooks/useOrganizationPermissions";
@@ -130,6 +131,22 @@ export function DashboardHeader({ userEmail, onSignOut, minimal = false }: Dashb
         
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-lg">
+            {role && (
+              <Badge 
+                variant="outline" 
+                className={
+                  role === 'owner' 
+                    ? 'bg-yellow-100 dark:bg-yellow-900/30 border-yellow-300 dark:border-yellow-700 text-yellow-700 dark:text-yellow-300' 
+                    : role === 'admin'
+                    ? 'bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300'
+                    : 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'
+                }
+              >
+                {role === 'owner' && '👑 Proprietário'}
+                {role === 'admin' && '⭐ Administrador'}
+                {role === 'member' && '👤 Membro'}
+              </Badge>
+            )}
             <User className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">
               {userEmail}

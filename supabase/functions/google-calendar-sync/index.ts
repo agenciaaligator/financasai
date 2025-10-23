@@ -71,6 +71,13 @@ serve(async (req) => {
   }
 
   try {
+    console.log('[GOOGLE-CALENDAR-SYNC] 🚀 Iniciando sincronização', {
+      action,
+      commitmentId,
+      effectiveUserId: userId || 'from JWT',
+      timestamp: new Date().toISOString()
+    });
+
     const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
     if (!authHeader) {
       throw new Error('Missing Authorization header');
@@ -142,6 +149,62 @@ serve(async (req) => {
     }
     
     console.log('[GOOGLE-CALENDAR-SYNC] Commitment found:', commitment.title);
+
+    // VALIDAR CONEXÃO
+    const { data: connection, error: connError } = await effectiveClient
+      .from('calendar_connections')
+      .select('*')
+      .eq('user_id', effectiveUserId)
+      .eq('is_active', true)
+      .single();
+
+    console.log('[GOOGLE-CALENDAR-SYNC] 📊 Status da conexão:', {
+      exists: !!connection,
+      isActive: connection?.is_active,
+      expiresAt: connection?.expires_at,
+      hasRefreshToken: !!connection?.refresh_token,
+      provider: connection?.provider
+    });
+
+    if (connError || !connection) {
+      console.error('[GOOGLE-CALENDAR-SYNC] ❌ Conexão inválida', connError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Conexão com Google Calendar não encontrada ou inativa' 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // VALIDAR DADOS DO COMMITMENT
+    if (!commitment.title || !commitment.scheduled_at) {
+      console.error('[GOOGLE-CALENDAR-SYNC] ❌ Dados inválidos', {
+        hasTitle: !!commitment.title,
+        hasScheduledAt: !!commitment.scheduled_at
+      });
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Dados do compromisso incompletos' 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const scheduledDate = new Date(commitment.scheduled_at);
+    if (isNaN(scheduledDate.getTime())) {
+      console.error('[GOOGLE-CALENDAR-SYNC] ❌ Data inválida', {
+        scheduled_at: commitment.scheduled_at
+      });
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Data do compromisso inválida' 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const accessToken = await getValidAccessToken(effectiveClient, effectiveUserId);
 
@@ -220,6 +283,18 @@ serve(async (req) => {
         event.attendees = attendees;
       }
 
+      console.log('[GOOGLE-CALENDAR-SYNC] 📤 Enviando para Google API', {
+        method: 'POST',
+        event: {
+          summary: commitment.title,
+          start: event.start.dateTime,
+          end: event.end.dateTime,
+          hasLocation: !!event.location,
+          hasMeet: !!event.conferenceData,
+          attendeesCount: attendees.length
+        }
+      });
+
       const response = await fetch(
         'https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1',
         {
@@ -232,13 +307,43 @@ serve(async (req) => {
         }
       );
 
+      console.log('[GOOGLE-CALENDAR-SYNC] 📥 Resposta do Google', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
+
       if (!response.ok) {
         const errorBody = await response.text();
-        console.error('[GOOGLE-CALENDAR-SYNC] Failed to create event:', response.status, errorBody);
-        throw new Error(`Failed to create Google Calendar event: ${response.status}`);
+        console.error('[GOOGLE-CALENDAR-SYNC] ❌ Erro da API do Google', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorBody,
+          commitment: {
+            id: commitmentId,
+            title: commitment.title,
+            scheduled_at: commitment.scheduled_at
+          }
+        });
+        
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: `Google Calendar API error: ${response.status} ${response.statusText}`,
+            details: errorBody.substring(0, 200)
+          }),
+          { 
+            status: response.status,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
       }
 
       const createdEvent = await response.json();
+      console.log('[GOOGLE-CALENDAR-SYNC] ✅ Evento criado com sucesso', {
+        eventId: createdEvent.id,
+        htmlLink: createdEvent.htmlLink
+      });
 
       // Salvar google_event_id usando effectiveClient
       await effectiveClient
@@ -252,6 +357,13 @@ serve(async (req) => {
         JSON.stringify({ success: true, eventId: createdEvent.id }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+      } catch (fetchError: any) {
+        console.error('[GOOGLE-CALENDAR-SYNC] 💥 Fetch error:', {
+          message: fetchError.message,
+          stack: fetchError.stack
+        });
+        throw fetchError;
+      }
     }
 
     if (action === 'update') {

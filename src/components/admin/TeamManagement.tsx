@@ -143,10 +143,44 @@ export function TeamManagement() {
     }
   };
 
-  const handleRemoveMember = async (memberId: string, memberEmail: string) => {
-    if (!confirm(`Deseja realmente remover ${memberEmail} da equipe?`)) return;
-
+  const handleRemoveMember = async (memberId: string, memberName: string, memberUserId: string) => {
+    setLoading(true);
+    
     try {
+      // 1. Buscar quantos dados o membro tem
+      const [transactionsResult, commitmentsResult] = await Promise.all([
+        supabase
+          .from('transactions')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', memberUserId),
+        supabase
+          .from('commitments')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', memberUserId)
+      ]);
+      
+      const transactionsCount = transactionsResult.count || 0;
+      const commitmentsCount = commitmentsResult.count || 0;
+      
+      // 2. Montar mensagem de confirmação
+      let confirmMessage = `Deseja realmente remover "${memberName}" da equipe?\n\n`;
+      
+      if (transactionsCount > 0 || commitmentsCount > 0) {
+        confirmMessage += `⚠️ ATENÇÃO: Este membro possui:\n`;
+        if (transactionsCount > 0) confirmMessage += `• ${transactionsCount} transação(ões)\n`;
+        if (commitmentsCount > 0) confirmMessage += `• ${commitmentsCount} compromisso(s)\n`;
+        confirmMessage += `\n❗ Estes dados NÃO serão deletados, mas o membro perderá acesso a eles.\n`;
+        confirmMessage += `\n✅ Você poderá re-adicionar este membro depois sem perder os dados.`;
+      } else {
+        confirmMessage += `✅ Este membro não possui transações ou compromissos vinculados.`;
+      }
+      
+      if (!window.confirm(confirmMessage)) {
+        setLoading(false);
+        return;
+      }
+      
+      // 3. Remover membro
       const { error } = await supabase
         .from("organization_members")
         .delete()
@@ -154,21 +188,22 @@ export function TeamManagement() {
 
       if (error) throw error;
 
-      toast.success("Membro removido com sucesso!");
+      toast.success("Membro removido com sucesso!", {
+        description: `${memberName} foi removido da equipe.`
+      });
+      
+      // Recarregar lista
       fetchMembers();
     } catch (error: any) {
+      console.error("Erro ao remover membro:", error);
       toast.error("Erro ao remover membro", { description: error.message });
+    } finally {
+      setLoading(false);
     }
   };
 
 
   if (loading) return <div>Carregando...</div>;
-
-  const roleLabels: Record<string, string> = {
-    owner: 'Proprietário',
-    admin: 'Admin',
-    member: 'Membro'
-  };
 
   const roleVariants: Record<string, 'default' | 'secondary' | 'outline'> = {
     owner: 'default',
@@ -252,7 +287,9 @@ export function TeamManagement() {
                     <TableCell>{member.email}</TableCell>
                     <TableCell>
                       <Badge variant={roleVariants[member.role] || 'outline'}>
-                        {roleLabels[member.role] || member.role}
+                        {member.role === 'owner' && '👑 Proprietário'}
+                        {member.role === 'admin' && '⭐ Administrador'}
+                        {member.role === 'member' && '👤 Membro'}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -287,7 +324,11 @@ export function TeamManagement() {
                             )}
                             {(isOwner || member.user_id === user?.id) && (
                               <DropdownMenuItem 
-                                onClick={() => handleRemoveMember(member.id, member.email)}
+                                onClick={() => handleRemoveMember(
+                                  member.id, 
+                                  member.full_name || member.email, 
+                                  member.user_id
+                                )}
                                 className="text-destructive"
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />

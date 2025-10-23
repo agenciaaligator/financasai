@@ -249,6 +249,12 @@ export const useGoogleCalendar = () => {
 
   const syncEvent = async (action: 'create' | 'update' | 'delete', commitmentId: string) => {
     try {
+      console.log('[useGoogleCalendar] 🔄 Iniciando sync', {
+        action,
+        commitmentId,
+        connectionExists: !!connection
+      });
+
       // Obter token da sessão
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData.session?.access_token;
@@ -258,16 +264,22 @@ export const useGoogleCalendar = () => {
         return { success: false, error: new Error('No access token') };
       }
       
-      const { error } = await supabase.functions.invoke('google-calendar-sync', {
+      const { data, error } = await supabase.functions.invoke('google-calendar-sync', {
         body: { action, commitmentId },
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
       });
       
+      console.log('[useGoogleCalendar] 📊 Resultado do sync', {
+        success: data?.success || false,
+        error: error?.message || data?.error,
+        details: data?.details
+      });
+
       if (error) throw error;
       
-      return { success: true };
+      return { success: data?.success || false, error: error?.message || data?.error };
     } catch (error) {
       console.error('Error syncing with Google Calendar:', error);
       return { success: false, error };

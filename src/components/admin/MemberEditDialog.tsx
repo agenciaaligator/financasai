@@ -4,7 +4,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Member {
   id: string;
@@ -24,6 +25,7 @@ interface MemberEditDialogProps {
 }
 
 export function MemberEditDialog({ member, isOpen, onClose, onSave, isOwner }: MemberEditDialogProps) {
+  const { user } = useAuth();
   const [role, setRole] = useState(member?.role || 'member');
   const [permissions, setPermissions] = useState(member?.permissions || {});
   const [saving, setSaving] = useState(false);
@@ -35,6 +37,9 @@ export function MemberEditDialog({ member, isOpen, onClose, onSave, isOwner }: M
       setPermissions(member.permissions || {});
     }
   });
+
+  const isEditingSelf = member?.user_id === user?.id;
+  const isMemberOwner = member?.role === 'owner';
 
   const handleSave = async () => {
     if (!member) return;
@@ -52,11 +57,6 @@ export function MemberEditDialog({ member, isOpen, onClose, onSave, isOwner }: M
 
   if (!member) return null;
 
-  const roleDescriptions: Record<string, string> = {
-    admin: '⭐ Pode gerenciar membros e visualizar tudo',
-    member: '👤 Acesso básico com permissões personalizadas'
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
@@ -69,7 +69,7 @@ export function MemberEditDialog({ member, isOpen, onClose, onSave, isOwner }: M
           {/* Role Selector */}
           <div className="space-y-2">
             <Label>Função</Label>
-            <Select value={role} onValueChange={setRole}>
+            <Select value={role} onValueChange={setRole} disabled={isMemberOwner}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -78,10 +78,111 @@ export function MemberEditDialog({ member, isOpen, onClose, onSave, isOwner }: M
                 <SelectItem value="member">Membro</SelectItem>
               </SelectContent>
             </Select>
-            {roleDescriptions[role] && (
-              <p className="text-xs text-muted-foreground">
-                {roleDescriptions[role]}
+            {isMemberOwner && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                <AlertCircle className="h-3 w-3" />
+                Proprietários não podem ter sua função alterada
               </p>
+            )}
+            
+            {/* Descrição expandida do role selecionado */}
+            {role && (
+              <div className={`border rounded-lg p-4 mt-3 ${
+                role === 'admin' 
+                  ? 'bg-primary/5 border-primary/20' 
+                  : role === 'owner'
+                  ? 'bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800'
+                  : 'bg-muted'
+              }`}>
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">
+                    {role === 'owner' && '👑'}
+                    {role === 'admin' && '⭐'}
+                    {role === 'member' && '👤'}
+                  </span>
+                  <div className="flex-1">
+                    <h4 className="font-semibold mb-1">
+                      {role === 'owner' && 'Proprietário'}
+                      {role === 'admin' && 'Administrador'}
+                      {role === 'member' && 'Membro'}
+                    </h4>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      {role === 'owner' && 'Controle total da organização'}
+                      {role === 'admin' && 'Acesso completo para gerenciar a organização'}
+                      {role === 'member' && 'Acesso básico com permissões personalizadas'}
+                    </p>
+                    
+                    <ul className="text-xs space-y-1.5 text-muted-foreground">
+                      {role === 'owner' && (
+                        <>
+                          <li className="flex items-center gap-2">
+                            <span className="text-green-600 dark:text-green-400">✓</span>
+                            Controle absoluto sobre a organização
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <span className="text-green-600 dark:text-green-400">✓</span>
+                            Promover membros a administradores
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <span className="text-green-600 dark:text-green-400">✓</span>
+                            Gerenciar assinaturas e pagamentos
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <span className="text-green-600 dark:text-green-400">✓</span>
+                            Adicionar e remover qualquer membro
+                          </li>
+                        </>
+                      )}
+                      
+                      {role === 'admin' && (
+                        <>
+                          <li className="flex items-center gap-2">
+                            <span className="text-green-600 dark:text-green-400">✓</span>
+                            Ver, editar e deletar todos os dados
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <span className="text-green-600 dark:text-green-400">✓</span>
+                            Adicionar e remover membros (exceto proprietário)
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <span className="text-green-600 dark:text-green-400">✓</span>
+                            Editar permissões de outros membros
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <span className="text-green-600 dark:text-green-400">✓</span>
+                            Acessar relatórios completos
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <span className="text-red-600 dark:text-red-400">✗</span>
+                            Não pode remover o proprietário
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <span className="text-red-600 dark:text-red-400">✗</span>
+                            Não pode promover outros a administrador
+                          </li>
+                        </>
+                      )}
+                      
+                      {role === 'member' && (
+                        <>
+                          <li className="flex items-center gap-2">
+                            <span className="text-green-600 dark:text-green-400">✓</span>
+                            Gerenciar seus próprios dados
+                          </li>
+                          <li className="flex items-center gap-2 font-semibold">
+                            <span className="text-blue-600 dark:text-blue-400">⚙️</span>
+                            Permissões configuráveis abaixo:
+                          </li>
+                          <li className="pl-6 text-muted-foreground/80">• Ver dados de outros membros</li>
+                          <li className="pl-6 text-muted-foreground/80">• Editar dados de outros membros</li>
+                          <li className="pl-6 text-muted-foreground/80">• Deletar dados de outros membros</li>
+                          <li className="pl-6 text-muted-foreground/80">• Acessar relatórios gerais</li>
+                        </>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
 
@@ -146,18 +247,6 @@ export function MemberEditDialog({ member, isOpen, onClose, onSave, isOwner }: M
             </div>
           )}
 
-          {/* Admin permissions info */}
-          {role === 'admin' && (
-            <div className="bg-primary/10 border border-primary/20 rounded-md p-4 text-sm">
-              <p className="font-semibold mb-2">Permissões de Administrador:</p>
-              <ul className="space-y-1 text-muted-foreground">
-                <li>✓ Ver e editar tudo</li>
-                <li>✓ Gerenciar membros</li>
-                <li>✓ Acessar relatórios</li>
-                <li>✓ Adicionar/remover membros</li>
-              </ul>
-            </div>
-          )}
 
           <div className="flex gap-2 pt-4">
             <Button onClick={handleSave} disabled={saving} className="flex-1">

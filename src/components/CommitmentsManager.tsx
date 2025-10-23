@@ -456,6 +456,12 @@ export function CommitmentsManager() {
         // Sincronizar com Google Calendar se conectado
         if (isConnected && newCommitment) {
           const syncResult = await syncEvent('create', newCommitment.id);
+          console.log('🔍 [CommitmentsManager] Sync result:', {
+            success: syncResult.success,
+            error: syncResult.error,
+            commitmentId: newCommitment.id,
+            title: newCommitment.title
+          });
           if (!syncResult.success) {
             toast({
               title: "Compromisso criado",

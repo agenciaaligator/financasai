@@ -17,7 +17,8 @@ interface Invitation {
   expires_at: string;
   inviter: {
     full_name: string;
-  };
+    email: string;
+  } | null;
 }
 
 interface PendingInvitesProps {
@@ -36,16 +37,31 @@ export function PendingInvites({ organizationId }: PendingInvitesProps) {
     try {
       const { data, error } = await supabase
         .from('organization_invitations')
-        .select(`
-          *,
-          inviter:profiles!organization_invitations_invited_by_fkey(full_name)
-        `)
+        .select('*')
         .eq('organization_id', organizationId)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setInvites(data || []);
+      
+      // Buscar perfis dos convidadores
+      if (data && data.length > 0) {
+        const inviterIds = [...new Set(data.map(inv => inv.invited_by))];
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, full_name, email')
+          .in('user_id', inviterIds);
+        
+        const profilesMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+        const invitesWithInviters = data.map(inv => ({
+          ...inv,
+          inviter: profilesMap.get(inv.invited_by) || null
+        }));
+        
+        setInvites(invitesWithInviters as Invitation[]);
+      } else {
+        setInvites([]);
+      }
     } catch (error: any) {
       console.error('Erro ao carregar convites:', error);
       toast.error('Erro ao carregar convites');
@@ -128,7 +144,7 @@ export function PendingInvites({ organizationId }: PendingInvitesProps) {
                     <Badge variant="outline">{roleLabels[invite.role] || invite.role}</Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Convidado por {invite.inviter?.full_name || 'Desconhecido'}
+                    Convidado por {invite.inviter?.full_name || invite.inviter?.email || 'Desconhecido'}
                   </p>
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <Clock className="h-3 w-3" />

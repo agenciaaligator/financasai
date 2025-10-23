@@ -13,12 +13,14 @@ interface Invitation {
   role: string;
   token: string;
   status: string;
+  expires_at: string;
   organization: {
     name: string;
   };
   inviter: {
     full_name: string;
-  };
+    email: string;
+  } | null;
 }
 
 export default function InviteAccept() {
@@ -55,8 +57,7 @@ export default function InviteAccept() {
         .from('organization_invitations')
         .select(`
           *,
-          organization:organizations(name),
-          inviter:profiles!organization_invitations_invited_by_fkey(full_name)
+          organization:organizations(name)
         `)
         .eq('token', token)
         .eq('status', 'pending')
@@ -75,7 +76,17 @@ export default function InviteAccept() {
         return;
       }
 
-      setInvitation(data as Invitation);
+      // Buscar perfil do convidador
+      const { data: inviterProfile } = await supabase
+        .from('profiles')
+        .select('full_name, email')
+        .eq('user_id', data.invited_by)
+        .single();
+
+      setInvitation({
+        ...data,
+        inviter: inviterProfile || null
+      } as Invitation);
     } catch (err) {
       console.error('Erro ao carregar convite:', err);
       setError('Erro ao carregar convite');
@@ -201,7 +212,7 @@ export default function InviteAccept() {
         <CardContent className="space-y-6">
           <div className="bg-muted p-4 rounded-lg space-y-2">
             <p className="text-sm text-muted-foreground">
-              <strong>{invitation?.inviter.full_name}</strong> convidou você para:
+              <strong>{invitation?.inviter?.full_name || invitation?.inviter?.email || 'Alguém'}</strong> convidou você para:
             </p>
             <p className="text-lg font-semibold">{invitation?.organization.name}</p>
             <p className="text-sm text-muted-foreground">
