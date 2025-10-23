@@ -352,6 +352,59 @@ export type Database = {
         }
         Relationships: []
       }
+      organization_invitations: {
+        Row: {
+          accepted_at: string | null
+          created_at: string | null
+          email: string
+          expires_at: string | null
+          id: string
+          invited_by: string
+          organization_id: string
+          permissions: Json | null
+          role: string
+          status: string
+          token: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string | null
+          email: string
+          expires_at?: string | null
+          id?: string
+          invited_by: string
+          organization_id: string
+          permissions?: Json | null
+          role?: string
+          status?: string
+          token?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string | null
+          email?: string
+          expires_at?: string | null
+          id?: string
+          invited_by?: string
+          organization_id?: string
+          permissions?: Json | null
+          role?: string
+          status?: string
+          token?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_invitations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_members: {
         Row: {
           created_at: string
@@ -908,32 +961,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_organization_invite: {
+        Args: { p_token: string; p_user_id: string }
+        Returns: Json
+      }
       backfill_transactions_org: {
         Args: { p_organization_id: string }
         Returns: number
       }
-      check_user_exists: {
-        Args: { email_to_check: string }
-        Returns: boolean
-      }
-      clean_duplicate_profiles: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      cleanup_expired_whatsapp_data: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      cleanup_old_security_events: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      cleanup_rate_limit_events: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      check_user_exists: { Args: { email_to_check: string }; Returns: boolean }
+      clean_duplicate_profiles: { Args: never; Returns: undefined }
+      cleanup_expired_whatsapp_data: { Args: never; Returns: undefined }
+      cleanup_old_security_events: { Args: never; Returns: undefined }
+      cleanup_rate_limit_events: { Args: never; Returns: undefined }
       get_cron_jobs_status: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           active: boolean
           jobname: string
@@ -990,18 +1032,16 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_master_user: {
-        Args: { _user_id: string }
+      is_master_user: { Args: { _user_id: string }; Returns: boolean }
+      is_org_manager: {
+        Args: { p_org_id: string; p_user_id: string }
         Returns: boolean
       }
       is_org_member: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }
-      is_whatsapp_authenticated: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      is_whatsapp_authenticated: { Args: never; Returns: boolean }
       is_whatsapp_authenticated_for_user: {
         Args: { p_user_id: string }
         Returns: boolean
