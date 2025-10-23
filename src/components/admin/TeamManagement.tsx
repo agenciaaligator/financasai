@@ -1,19 +1,17 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Label } from "@/components/ui/label";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Trash2, Users } from "lucide-react";
+import { Plus, Trash2, Users, MoreVertical, Edit, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { TeamInvite } from "./TeamInvite";
+import { MemberEditDialog } from "./MemberEditDialog";
+import { PendingInvites } from "./PendingInvites";
 
 interface Organization {
   id: string;
@@ -37,11 +35,8 @@ export function TeamManagement() {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-  const [inviteMode, setInviteMode] = useState<'existing' | 'new'>('new');
-  const [newMember, setNewMember] = useState({
-    email: "",
-    role: "member",
-  });
+  const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -101,56 +96,55 @@ export function TeamManagement() {
       })) || [];
 
       setMembers(membersData);
+
+      // Verificar se o usuário atual é owner
+      const currentUserMember = membersData.find(m => m.user_id === user?.id);
+      setIsOwner(currentUserMember?.role === 'owner');
     } catch (error: any) {
       toast.error("Erro ao carregar membros", { description: error.message });
     }
   };
 
-  const handleInviteMember = async () => {
-    if (!selectedOrg || !newMember.email) {
-      toast.error("Preencha todos os campos");
-      return;
-    }
-
+  const handleUpdateMember = async (memberId: string, updates: { role: string; permissions: any }) => {
     try {
-      // Buscar usuário pelo email
-      const { data: profiles, error: profileError } = await supabase
-        .from("profiles")
-        .select("user_id")
-        .eq("email", newMember.email)
-        .single();
+      // Se alterando para admin, dar permissões completas
+      const finalPermissions = updates.role === 'admin' 
+        ? {
+            view: true,
+            create: true,
+            edit: true,
+            delete: true,
+            view_own: true,
+            view_others: true,
+            edit_own: true,
+            edit_others: true,
+            delete_own: true,
+            delete_others: true,
+            view_reports: true,
+            manage_members: true
+          }
+        : updates.permissions;
 
-      if (profileError || !profiles) {
-        toast.error("Usuário não encontrado com este email");
-        return;
-      }
-
-      // Adicionar membro
       const { error } = await supabase
-        .from("organization_members")
-        .insert({
-          organization_id: selectedOrg,
-          user_id: profiles.user_id,
-          role: newMember.role,
-          permissions: 
-            newMember.role === "owner" || newMember.role === "admin"
-              ? { view: true, create: true, edit: true, delete: true }
-              : { view: true, create: false, edit: false, delete: false },
-        });
+        .from('organization_members')
+        .update({
+          role: updates.role,
+          permissions: finalPermissions,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', memberId);
 
       if (error) throw error;
 
-      toast.success("Membro adicionado com sucesso!");
-      setOpen(false);
-      setNewMember({ email: "", role: "member" });
+      toast.success('Membro atualizado com sucesso!');
       fetchMembers();
     } catch (error: any) {
-      toast.error("Erro ao adicionar membro", { description: error.message });
+      toast.error('Erro ao atualizar membro', { description: error.message });
     }
   };
 
-  const handleRemoveMember = async (memberId: string) => {
-    if (!confirm("Deseja realmente remover este membro?")) return;
+  const handleRemoveMember = async (memberId: string, memberEmail: string) => {
+    if (!confirm(`Deseja realmente remover ${memberEmail} da equipe?`)) return;
 
     try {
       const { error } = await supabase
@@ -167,81 +161,23 @@ export function TeamManagement() {
     }
   };
 
-  const handleUpdateRole = async (memberId: string, newRole: string) => {
-    try {
-      const { error } = await supabase
-        .from("organization_members")
-        .update({
-          role: newRole,
-          permissions: newRole === "owner" || newRole === "admin"
-            ? {
-                view: true,
-                create: true,
-                edit: true,
-                delete: true,
-                view_own: true,
-                view_others: true,
-                edit_own: true,
-                edit_others: true,
-                delete_own: true,
-                delete_others: true,
-                view_reports: true,
-                manage_members: true
-              }
-            : {
-                view: true,
-                create: true,
-                edit: true,
-                delete: true,
-                view_own: true,
-                view_others: false,
-                edit_own: true,
-                edit_others: false,
-                delete_own: true,
-                delete_others: false,
-                view_reports: false,
-                manage_members: false
-              },
-        })
-        .eq("id", memberId);
-
-      if (error) throw error;
-
-      toast.success("Permissão atualizada!");
-      fetchMembers();
-    } catch (error: any) {
-      toast.error("Erro ao atualizar permissão", { description: error.message });
-    }
-  };
-
-  const handleUpdatePermission = async (memberId: string, permissionKey: string, value: boolean) => {
-    try {
-      const member = members.find(m => m.id === memberId);
-      if (!member) return;
-
-      const updatedPermissions = {
-        ...member.permissions,
-        [permissionKey]: value
-      };
-
-      const { error } = await supabase
-        .from("organization_members")
-        .update({ permissions: updatedPermissions })
-        .eq("id", memberId);
-
-      if (error) throw error;
-
-      toast.success("Privacidade atualizada!");
-      fetchMembers();
-    } catch (error: any) {
-      toast.error("Erro ao atualizar privacidade", { description: error.message });
-    }
-  };
 
   if (loading) return <div>Carregando...</div>;
 
+  const roleLabels: Record<string, string> = {
+    owner: 'Proprietário',
+    admin: 'Admin',
+    member: 'Membro'
+  };
+
+  const roleVariants: Record<string, 'default' | 'secondary' | 'outline'> = {
+    owner: 'default',
+    admin: 'secondary',
+    member: 'outline'
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
@@ -261,7 +197,7 @@ export function TeamManagement() {
               Adicionar à Equipe
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Adicionar Membro à Equipe</DialogTitle>
             </DialogHeader>
@@ -280,6 +216,10 @@ export function TeamManagement() {
         </Dialog>
       </div>
 
+      {/* Convites Pendentes */}
+      {selectedOrg && <PendingInvites organizationId={selectedOrg} />}
+
+      {/* Membros Ativos */}
       <Card>
         <CardHeader>
           <CardTitle>Membros da Equipe</CardTitle>
@@ -296,8 +236,8 @@ export function TeamManagement() {
                   <TableHead>Nome</TableHead>
                   <TableHead>E-mail</TableHead>
                   <TableHead>Função</TableHead>
-                  <TableHead>Visualização</TableHead>
-                  <TableHead>Ações</TableHead>
+                  <TableHead>Permissões</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -305,41 +245,57 @@ export function TeamManagement() {
                   <TableRow key={member.id}>
                     <TableCell className="font-medium">
                       {member.full_name || "Sem nome"}
+                      {member.user_id === user?.id && (
+                        <Badge variant="outline" className="ml-2">Você</Badge>
+                      )}
                     </TableCell>
                     <TableCell>{member.email}</TableCell>
                     <TableCell>
-                      {member.role === "owner" ? (
-                        <Badge>Proprietário</Badge>
-                      ) : (
-                        <Badge variant="secondary">Membro</Badge>
-                      )}
+                      <Badge variant={roleVariants[member.role] || 'outline'}>
+                        {roleLabels[member.role] || member.role}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       {member.role === "owner" || member.role === "admin" ? (
-                        <span className="text-sm text-muted-foreground">Acesso total</span>
+                        <span className="text-sm text-muted-foreground">✓ Acesso total</span>
                       ) : (
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={member.permissions?.view_others ?? false}
-                            onCheckedChange={(checked) => 
-                              handleUpdatePermission(member.id, 'view_others', checked)
-                            }
-                          />
-                          <span className="text-sm text-muted-foreground">
-                            {member.permissions?.view_others ? 'Vê todos' : 'Apenas próprio'}
-                          </span>
-                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {member.permissions?.view_others && '👁 Ver outros • '}
+                          {member.permissions?.edit_others && '✏️ Editar outros • '}
+                          {member.permissions?.delete_others && '🗑 Deletar outros • '}
+                          {member.permissions?.view_reports && '📊 Relatórios'}
+                          {!member.permissions?.view_others && !member.permissions?.edit_others && 
+                           !member.permissions?.delete_others && !member.permissions?.view_reports && 
+                           '🔒 Apenas próprio'}
+                        </span>
                       )}
                     </TableCell>
-                    <TableCell>
-                      {member.role !== "owner" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveMember(member.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                    <TableCell className="text-right">
+                      {member.role !== "owner" && (isOwner || member.user_id === user?.id) && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {isOwner && member.user_id !== user?.id && (
+                              <DropdownMenuItem onClick={() => setEditingMember(member)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar
+                              </DropdownMenuItem>
+                            )}
+                            {(isOwner || member.user_id === user?.id) && (
+                              <DropdownMenuItem 
+                                onClick={() => handleRemoveMember(member.id, member.email)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                {member.user_id === user?.id ? 'Sair da Equipe' : 'Remover'}
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       )}
                     </TableCell>
                   </TableRow>
@@ -349,6 +305,15 @@ export function TeamManagement() {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog de Edição */}
+      <MemberEditDialog
+        member={editingMember}
+        isOpen={!!editingMember}
+        onClose={() => setEditingMember(null)}
+        onSave={handleUpdateMember}
+        isOwner={isOwner}
+      />
     </div>
   );
 }

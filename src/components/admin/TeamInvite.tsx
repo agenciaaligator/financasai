@@ -3,9 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Mail, UserPlus } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface TeamInviteProps {
   organizationId: string;
@@ -14,85 +17,39 @@ interface TeamInviteProps {
 }
 
 export function TeamInvite({ organizationId, onSuccess, onCancel }: TeamInviteProps) {
+  const { user } = useAuth();
+  const [inviteMode, setInviteMode] = useState<'token' | 'existing'>('token');
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
     phone: "",
-    password: "",
     role: "member",
-    canViewOthers: false
+    canViewOthers: false,
+    canEditOthers: false,
+    canDeleteOthers: false,
+    canViewReports: false
   });
   const [loading, setLoading] = useState(false);
 
-  const generateRandomPassword = () => {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
-    let password = "";
-    for (let i = 0; i < 12; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setFormData({ ...formData, password });
-    toast.success("Senha gerada!", { description: password });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.fullName || !formData.email || !formData.password) {
-      toast.error("Preencha todos os campos obrigatórios");
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      toast.error("A senha deve ter pelo menos 6 caracteres");
+    if (!formData.email) {
+      toast.error("Preencha o email");
       return;
     }
 
     setLoading(true);
 
     try {
-      // 1. Criar usuário via Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: formData.fullName
-          },
-          emailRedirectTo: `${window.location.origin}/`
-        }
-      });
-
-      if (authError) {
-        if (authError.message.includes('already registered')) {
-          toast.error("Email já cadastrado", {
-            description: "Este email já possui uma conta. Use 'Adicionar Membro Existente'."
-          });
-        } else {
-          toast.error("Erro ao criar usuário", { description: authError.message });
-        }
-        return;
-      }
-
-      if (!authData.user) {
-        toast.error("Erro ao criar usuário");
-        return;
-      }
-
-      // 2. Atualizar telefone no perfil (se fornecido)
-      if (formData.phone) {
-        await supabase
-          .from('profiles')
-          .update({ phone_number: formData.phone })
-          .eq('user_id', authData.user.id);
-      }
-
-      // 3. Adicionar à organização
-      const { error: memberError } = await supabase
-        .from('organization_members')
+      // Criar convite
+      const { data: invitation, error: inviteError } = await supabase
+        .from('organization_invitations')
         .insert({
           organization_id: organizationId,
-          user_id: authData.user.id,
-          role: 'member',
+          invited_by: user?.id,
+          email: formData.email,
+          role: formData.role,
           permissions: {
             view: true,
             create: true,
@@ -101,119 +58,319 @@ export function TeamInvite({ organizationId, onSuccess, onCancel }: TeamInvitePr
             view_own: true,
             view_others: formData.canViewOthers,
             edit_own: true,
-            edit_others: false,
+            edit_others: formData.canEditOthers,
             delete_own: true,
-            delete_others: false,
-            view_reports: false,
+            delete_others: formData.canDeleteOthers,
+            view_reports: formData.canViewReports,
+            manage_members: false
+          }
+        })
+        .select()
+        .single();
+
+      if (inviteError) throw inviteError;
+
+      // Enviar email via edge function
+      const { error: emailError } = await supabase.functions.invoke('send-team-invitation', {
+        body: { invitationId: invitation.id }
+      });
+
+      if (emailError) {
+        console.error('Erro ao enviar email:', emailError);
+        toast.success("Convite criado!", {
+          description: "Mas houve um problema ao enviar o email. Copie o link manualmente."
+        });
+      } else {
+        toast.success("Convite enviado!", {
+          description: `Um email foi enviado para ${formData.email}`
+        });
+      }
+
+      // Limpar e fechar
+      setFormData({ 
+        fullName: "", 
+        email: "", 
+        phone: "", 
+        role: "member", 
+        canViewOthers: false,
+        canEditOthers: false,
+        canDeleteOthers: false,
+        canViewReports: false
+      });
+      onSuccess();
+
+    } catch (error: any) {
+      toast.error("Erro ao criar convite", { description: error.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddExisting = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.email) {
+      toast.error("Preencha o email");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Buscar usuário existente
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, email')
+        .eq('email', formData.email)
+        .single();
+
+      if (profileError || !profile) {
+        toast.error("Usuário não encontrado", {
+          description: "Não existe conta com este email. Use 'Enviar Convite' para criar."
+        });
+        return;
+      }
+
+      // Adicionar diretamente como membro
+      const { error: memberError } = await supabase
+        .from('organization_members')
+        .insert({
+          organization_id: organizationId,
+          user_id: profile.user_id,
+          role: formData.role,
+          permissions: {
+            view: true,
+            create: true,
+            edit: true,
+            delete: true,
+            view_own: true,
+            view_others: formData.canViewOthers,
+            edit_own: true,
+            edit_others: formData.canEditOthers,
+            delete_own: true,
+            delete_others: formData.canDeleteOthers,
+            view_reports: formData.canViewReports,
             manage_members: false
           }
         });
 
       if (memberError) {
-        toast.error("Erro ao adicionar à equipe", { description: memberError.message });
+        if (memberError.code === '23505') {
+          toast.error("Usuário já é membro desta organização");
+        } else {
+          toast.error("Erro ao adicionar membro", { description: memberError.message });
+        }
         return;
       }
 
-      toast.success("Usuário criado e adicionado à equipe!", {
-        description: `${formData.fullName} receberá um email de confirmação em ${formData.email}`
+      toast.success("Membro adicionado com sucesso!", {
+        description: `${profile.full_name || profile.email} foi adicionado à equipe`
       });
 
-      // Limpar formulário e fechar
-      setFormData({ fullName: "", email: "", phone: "", password: "", role: "member", canViewOthers: false });
+      // Limpar e fechar
+      setFormData({ 
+        fullName: "", 
+        email: "", 
+        phone: "", 
+        role: "member", 
+        canViewOthers: false,
+        canEditOthers: false,
+        canDeleteOthers: false,
+        canViewReports: false
+      });
       onSuccess();
 
     } catch (error: any) {
-      toast.error("Erro ao criar usuário", { description: error.message });
+      toast.error("Erro ao adicionar membro", { description: error.message });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 py-4">
-      <div>
-        <Label>Nome Completo *</Label>
-        <Input
-          placeholder="Ex: Maria Silva"
-          value={formData.fullName}
-          onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-          required
-        />
-      </div>
+    <Tabs value={inviteMode} onValueChange={(v) => setInviteMode(v as 'token' | 'existing')} className="w-full">
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="token" className="flex items-center gap-2">
+          <Mail className="h-4 w-4" />
+          Enviar Convite
+        </TabsTrigger>
+        <TabsTrigger value="existing" className="flex items-center gap-2">
+          <UserPlus className="h-4 w-4" />
+          Adicionar Existente
+        </TabsTrigger>
+      </TabsList>
 
-      <div>
-        <Label>E-mail *</Label>
-        <Input
-          type="email"
-          placeholder="maria@exemplo.com"
-          value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          required
-        />
-      </div>
+      <TabsContent value="token" className="space-y-4 mt-4">
+        <form onSubmit={handleSendInvite} className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm">
+            <p className="text-blue-900">
+              📧 Um email com link de convite será enviado para o email informado.
+              O convidado poderá criar conta ou fazer login para aceitar.
+            </p>
+          </div>
 
-      <div>
-        <Label>Telefone (WhatsApp)</Label>
-        <Input
-          type="tel"
-          placeholder="+55 11 99999-9999"
-          value={formData.phone}
-          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-        />
-      </div>
+          <div>
+            <Label>E-mail *</Label>
+            <Input
+              type="email"
+              placeholder="maria@exemplo.com"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              required
+            />
+          </div>
 
-      <div>
-        <Label>Senha *</Label>
-        <div className="flex gap-2">
-          <Input
-            type="text"
-            placeholder="Mínimo 6 caracteres"
-            value={formData.password}
-            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-            required
-          />
-          <Button type="button" variant="outline" onClick={generateRandomPassword}>
-            Gerar
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground mt-1">
-          💡 Dica: Clique em "Gerar" para criar uma senha segura
-        </p>
-      </div>
+          <div>
+            <Label>Função</Label>
+            <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">Administrador</SelectItem>
+                <SelectItem value="member">Membro</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              {formData.role === 'admin' ? '⭐ Acesso total e pode gerenciar membros' : '👤 Acesso básico com permissões personalizadas'}
+            </p>
+          </div>
 
-      <div className="flex items-center space-x-2 bg-muted p-3 rounded-md">
-        <input
-          type="checkbox"
-          id="canViewOthers"
-          checked={formData.canViewOthers}
-          onChange={(e) => setFormData({ ...formData, canViewOthers: e.target.checked })}
-          className="h-4 w-4 rounded border-gray-300"
-        />
-        <Label htmlFor="canViewOthers" className="text-sm cursor-pointer">
-          ☑️ Permitir visualizar dados de outros membros
-        </Label>
-      </div>
-      <p className="text-xs text-muted-foreground">
-        Se desmarcado, o membro verá apenas suas próprias transações e compromissos.
-      </p>
+          {formData.role === 'member' && (
+            <div className="space-y-3 border-t pt-3">
+              <Label className="text-sm font-semibold">Permissões</Label>
+              
+              <div className="flex items-center justify-between py-2 px-3 bg-muted rounded-md">
+                <Label className="text-sm font-normal cursor-pointer">Ver dados de outros</Label>
+                <Switch
+                  checked={formData.canViewOthers}
+                  onCheckedChange={(checked) => setFormData({ ...formData, canViewOthers: checked })}
+                />
+              </div>
 
-      <div className="flex gap-2 pt-4">
-        <Button type="submit" disabled={loading} className="flex-1">
-          {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Criar e Adicionar
-        </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancelar
-        </Button>
-      </div>
+              <div className="flex items-center justify-between py-2 px-3 bg-muted rounded-md">
+                <Label className="text-sm font-normal cursor-pointer">Editar dados de outros</Label>
+                <Switch
+                  checked={formData.canEditOthers}
+                  onCheckedChange={(checked) => setFormData({ ...formData, canEditOthers: checked })}
+                />
+              </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm">
-        <p className="text-blue-900">
-          📧 O novo membro receberá um email para confirmar a conta.
-          <br />
-          💾 Anote a senha gerada para enviar ao membro por outro canal (WhatsApp, SMS, etc).
-        </p>
-      </div>
-    </form>
+              <div className="flex items-center justify-between py-2 px-3 bg-muted rounded-md">
+                <Label className="text-sm font-normal cursor-pointer">Deletar dados de outros</Label>
+                <Switch
+                  checked={formData.canDeleteOthers}
+                  onCheckedChange={(checked) => setFormData({ ...formData, canDeleteOthers: checked })}
+                />
+              </div>
+
+              <div className="flex items-center justify-between py-2 px-3 bg-muted rounded-md">
+                <Label className="text-sm font-normal cursor-pointer">Ver relatórios gerais</Label>
+                <Switch
+                  checked={formData.canViewReports}
+                  onCheckedChange={(checked) => setFormData({ ...formData, canViewReports: checked })}
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-4">
+            <Button type="submit" disabled={loading} className="flex-1">
+              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Enviar Convite
+            </Button>
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancelar
+            </Button>
+          </div>
+        </form>
+      </TabsContent>
+
+      <TabsContent value="existing" className="space-y-4 mt-4">
+        <form onSubmit={handleAddExisting} className="space-y-4">
+          <div className="bg-green-50 border border-green-200 rounded-md p-3 text-sm">
+            <p className="text-green-900">
+              ✅ Adicione usuários que já possuem conta no sistema.
+              Eles terão acesso imediato à organização.
+            </p>
+          </div>
+
+          <div>
+            <Label>E-mail do Membro Existente *</Label>
+            <Input
+              type="email"
+              placeholder="maria@exemplo.com"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              required
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Buscaremos este email no sistema
+            </p>
+          </div>
+
+          <div>
+            <Label>Função</Label>
+            <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">Administrador</SelectItem>
+                <SelectItem value="member">Membro</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {formData.role === 'member' && (
+            <div className="space-y-3 border-t pt-3">
+              <Label className="text-sm font-semibold">Permissões</Label>
+              
+              <div className="flex items-center justify-between py-2 px-3 bg-muted rounded-md">
+                <Label className="text-sm font-normal">Ver dados de outros</Label>
+                <Switch
+                  checked={formData.canViewOthers}
+                  onCheckedChange={(checked) => setFormData({ ...formData, canViewOthers: checked })}
+                />
+              </div>
+
+              <div className="flex items-center justify-between py-2 px-3 bg-muted rounded-md">
+                <Label className="text-sm font-normal">Editar dados de outros</Label>
+                <Switch
+                  checked={formData.canEditOthers}
+                  onCheckedChange={(checked) => setFormData({ ...formData, canEditOthers: checked })}
+                />
+              </div>
+
+              <div className="flex items-center justify-between py-2 px-3 bg-muted rounded-md">
+                <Label className="text-sm font-normal">Deletar dados de outros</Label>
+                <Switch
+                  checked={formData.canDeleteOthers}
+                  onCheckedChange={(checked) => setFormData({ ...formData, canDeleteOthers: checked })}
+                />
+              </div>
+
+              <div className="flex items-center justify-between py-2 px-3 bg-muted rounded-md">
+                <Label className="text-sm font-normal">Ver relatórios gerais</Label>
+                <Switch
+                  checked={formData.canViewReports}
+                  onCheckedChange={(checked) => setFormData({ ...formData, canViewReports: checked })}
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-4">
+            <Button type="submit" disabled={loading} className="flex-1">
+              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Adicionar Membro
+            </Button>
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancelar
+            </Button>
+          </div>
+        </form>
+      </TabsContent>
+    </Tabs>
   );
 }

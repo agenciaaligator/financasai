@@ -10,6 +10,7 @@ import PaymentCancelled from "./pages/PaymentCancelled";
 import NotFound from "./pages/NotFound";
 import GCBridge from "./pages/GCBridge";
 import GCAuthResult from "./pages/GCAuthResult";
+import InviteAccept from "./pages/InviteAccept";
 import { AdminPanel } from "@/components/admin/AdminPanel";
 import { useUserRole } from "@/hooks/useUserRole";
 
@@ -41,6 +42,7 @@ const App = () => (
           <Route path="/payment-cancelled" element={<PaymentCancelled />} />
           <Route path="/gc-bridge" element={<GCBridge />} />
           <Route path="/gc-done" element={<GCAuthResult />} />
+          <Route path="/invite/:token" element={<InviteAccept />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
