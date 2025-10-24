@@ -20,6 +20,7 @@ export function AgendaMonitoring() {
   const [testingReminders, setTestingReminders] = useState(false);
   const [testingDaily, setTestingDaily] = useState(false);
   const [testingSync, setTestingSync] = useState(false);
+  const [testingReminderForce, setTestingReminderForce] = useState(false);
 
   useEffect(() => {
     loadCronStatus();
@@ -258,6 +259,38 @@ export function AgendaMonitoring() {
                 <MessageCircle className="h-4 w-4" />
               )}
               Forçar Lembretes WhatsApp Agora
+            </Button>
+
+            <Button
+              onClick={async () => {
+                setTestingReminderForce(true);
+                try {
+                  const { data: { user } } = await supabase.auth.getUser();
+                  const { data, error } = await supabase.functions.invoke('send-commitment-reminders', {
+                    body: { force: true, user_id: user?.id }
+                  });
+                  if (error) throw error;
+                  toast({
+                    title: data.success ? "✅ Teste enviado" : "⚠️ Erro",
+                    description: data.success ? `Mensagem teste enviada` : data.error,
+                    variant: data.success ? "default" : "destructive"
+                  });
+                } catch (error: any) {
+                  toast({ title: "Erro", description: error.message, variant: "destructive" });
+                } finally {
+                  setTestingReminderForce(false);
+                }
+              }}
+              disabled={testingReminderForce}
+              variant="secondary"
+              className="justify-start gap-2"
+            >
+              {testingReminderForce ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <MessageCircle className="h-4 w-4" />
+              )}
+              Teste Lembrete (Mensagem Agora)
             </Button>
 
             <Button

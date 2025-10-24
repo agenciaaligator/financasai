@@ -25,13 +25,25 @@ export const useGoogleCalendar = () => {
 
       const { data, error } = await supabase
         .from('calendar_connections')
-        .select('calendar_email, calendar_name, is_active')
+        .select('calendar_email, calendar_name, is_active, expires_at')
         .eq('user_id', user.id)
         .eq('provider', 'google')
         .eq('is_active', true)
         .maybeSingle();
 
       if (error) throw error;
+      
+      // Verificar se token expirou
+      if (data) {
+        const expiresAt = new Date(data.expires_at);
+        const now = new Date();
+        
+        if (expiresAt <= now) {
+          console.log('[useGoogleCalendar] Token expired, marking as not connected');
+          setConnection(null);
+          return;
+        }
+      }
       
       setConnection(data);
     } catch (error) {

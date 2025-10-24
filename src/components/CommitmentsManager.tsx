@@ -656,7 +656,19 @@ export function CommitmentsManager() {
     try {
       const { data, error } = await supabase.functions.invoke('google-calendar-import');
       
-      if (error) throw error;
+      // Check for 401 reconnect_required response
+      if (error) {
+        // Try to parse error message for reconnect_required code
+        if (error.message && (error.message.includes('reconnect_required') || error.message.includes('401'))) {
+          toast({
+            title: "⚠️ Reconexão necessária",
+            description: "Sua conexão com o Google expirou. Clique em Desconectar e depois em Conectar novamente.",
+            variant: "destructive",
+          });
+          return;
+        }
+        throw error;
+      }
 
       toast({
         title: "Sincronização concluída!",
@@ -667,7 +679,7 @@ export function CommitmentsManager() {
     } catch (error: any) {
       toast({
         title: "Erro ao sincronizar",
-        description: error.message,
+        description: error.message || "Erro desconhecido ao sincronizar com Google Calendar",
         variant: "destructive",
       });
     } finally {
