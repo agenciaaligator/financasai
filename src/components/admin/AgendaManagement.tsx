@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { formatInTimeZone } from "date-fns-tz";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import {
   Pagination,
   PaginationContent,
@@ -79,12 +79,14 @@ export function AgendaManagement() {
         query = query.ilike("title", `%${titleFilter}%`);
       }
       if (dateFromFilter) {
-        query = query.gte("scheduled_at", new Date(dateFromFilter).toISOString());
+        const fromIso = fromZonedTime(`${dateFromFilter}T00:00:00`, 'America/Sao_Paulo').toISOString();
+        query = query.gte("scheduled_at", fromIso);
+        console.log('[Agenda Debug][Admin] Effective date range from:', fromIso);
       }
       if (dateToFilter) {
-        const dateTo = new Date(dateToFilter);
-        dateTo.setHours(23, 59, 59, 999);
-        query = query.lte("scheduled_at", dateTo.toISOString());
+        const toIso = fromZonedTime(`${dateToFilter}T23:59:59.999`, 'America/Sao_Paulo').toISOString();
+        query = query.lte("scheduled_at", toIso);
+        console.log('[Agenda Debug][Admin] Effective date range to:', toIso);
       }
       if (responsibleFilter) {
         query = query.or(`profiles.full_name.ilike.%${responsibleFilter}%,profiles.email.ilike.%${responsibleFilter}%`);

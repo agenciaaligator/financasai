@@ -60,9 +60,10 @@ export function CommitmentsManager() {
   const [dateToFilter, setDateToFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showReconnectBanner, setShowReconnectBanner] = useState(false);
   const [viewScope, setViewScope] = useState<'self' | 'organization'>('self');
   
-  const { connection, loading: gcLoading, isConnected, connect, disconnect, syncEvent, refresh } = useGoogleCalendar();
+  const { connection, loading: gcLoading, isConnected, hadConnectionBefore, connect, disconnect, syncEvent, refresh } = useGoogleCalendar();
   const { t } = useTranslation();
   const { role, isAdmin, isPremium, loading: roleLoading } = useUserRole();
   const { organization_id, role: orgRole, canViewOthers, canEditOthers, canDeleteOthers, computedScope, loading: permissionsLoading } = useOrganizationPermissions();
@@ -91,12 +92,45 @@ export function CommitmentsManager() {
 
   // CORREÇÃO [24/10/2025]: useEffect separado para evitar popup aparecer repetidamente
   useEffect(() => {
-    if (gcLoading === false && !isConnected) {
-      const hasSeenOnboarding = localStorage.getItem('googleCalendarOnboardingSeen');
-      if (!hasSeenOnboarding) {
-        setShowOnboarding(true);
-      }
-    } else if (isConnected && showOnboarding) {
+    if (gcLoading) return;
+    
+    const hasSeenOnboarding = localStorage.getItem('googleCalendarOnboardingSeen');
+    
+    // Se já teve conexão antes mas agora não está conectado, mostra banner de reconexão
+    if (hadConnectionBefore && !isConnected) {
+      setShowReconnectBanner(true);
+      setShowOnboarding(false);
+      console.log('[Agenda Debug] Onboarding vs Reconnect banner:', { 
+        showModal: false, 
+        showBanner: true,
+        reason: 'hadConnectionBefore but disconnected'
+      });
+    } 
+    // Se nunca teve conexão e não viu onboarding, mostra modal
+    else if (!isConnected && !hasSeenOnboarding && !hadConnectionBefore) {
+      setShowOnboarding(true);
+      setShowReconnectBanner(false);
+      console.log('[Agenda Debug] Onboarding vs Reconnect banner:', { 
+        showModal: true, 
+        showBanner: false,
+        reason: 'first time, never connected'
+      });
+    }
+    // Caso contrário, esconde ambos
+    else {
+      setShowOnboarding(false);
+      setShowReconnectBanner(false);
+      console.log('[Agenda Debug] Onboarding vs Reconnect banner:', { 
+        showModal: false, 
+        showBanner: false,
+        reason: isConnected ? 'connected' : 'onboarding seen'
+      });
+    }
+  }, [gcLoading, isConnected, hadConnectionBefore]);
+
+  // Fechar modal quando conectar
+  useEffect(() => {
+    if (isConnected && showOnboarding) {
       setShowOnboarding(false);
     }
   }, [gcLoading, isConnected]);
@@ -212,6 +246,16 @@ export function CommitmentsManager() {
       // CORREÇÃO [24/10/2025]: Segurança de escopo - sempre filtrar por user_id por padrão
       // Apenas usar organization_id quando viewScope for 'organization' E usuário tiver permissão
       const isOwnerOrAdmin = orgRole === 'owner' || isAdmin || canViewOthers;
+      
+      console.log('[Agenda Debug] Effective scope:', { 
+        viewScope, 
+        isOwnerOrAdmin, 
+        organization_id,
+        orgRole,
+        isAdmin,
+        canViewOthers
+      });
+      
       if (viewScope === 'organization' && isOwnerOrAdmin && organization_id) {
         query = query.eq("organization_id", organization_id);
       } else {
@@ -231,6 +275,18 @@ export function CommitmentsManager() {
       let filteredData = data || [];
       if (!canViewOthers) {
         filteredData = filteredData.filter(c => c.user_id === user.id);
+      }
+      
+      console.log('[Agenda Debug] Loaded count:', { 
+        filtered: filteredData.length, 
+        dbCount: count 
+      });
+      
+      if (filteredData.length > 0) {
+        console.log('[Agenda Debug] First/Last scheduled_at:', 
+          filteredData[0]?.scheduled_at, 
+          filteredData[filteredData.length - 1]?.scheduled_at
+        );
       }
       
       console.log('[Agenda] Loaded:', filteredData.length, 'commitments, total:', count);
@@ -264,12 +320,21 @@ export function CommitmentsManager() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Buscar organization_id para associar
-      const { data: orgData } = await supabase
+      // Buscar organization_id para associar - preferir onde é owner
+      const { data: memberships } = await supabase
         .from('organization_members')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .single();
+        .select('organization_id, role')
+        .eq('user_id', user.id);
+
+      const ownerMembership = memberships?.find(m => m.role === 'owner');
+      const fallbackMembership = memberships?.[0];
+      const orgIdToUse = ownerMembership?.organization_id || fallbackMembership?.organization_id || organization_id;
+
+      console.log('[Agenda Debug] Selected org for saving:', { 
+        ownerOrg: ownerMembership?.organization_id, 
+        fallbackOrg: fallbackMembership?.organization_id, 
+        finalOrgId: orgIdToUse
+      });
 
       // Converter datetime-local (interpretado como America/Sao_Paulo) → UTC
       const brasiliaDate = fromZonedTime(formData.scheduled_at, "America/Sao_Paulo");
@@ -473,7 +538,7 @@ export function CommitmentsManager() {
           .insert({
             ...dataToSave,
             user_id: user.id,
-            organization_id: orgData?.organization_id || null,
+            organization_id: orgIdToUse || null,
           })
           .select()
           .single();
@@ -576,6 +641,13 @@ export function CommitmentsManager() {
         throw new Error('Compromisso não encontrado');
       }
 
+      console.log('[Agenda Debug] Delete check:', { 
+        isOwner: commitment.user_id === user.id, 
+        canDeleteOthers,
+        commitmentUserId: commitment.user_id,
+        currentUserId: user.id
+      });
+
       // Verificar permissões
       if (commitment.user_id !== user.id && !canDeleteOthers) {
         toast({
@@ -587,7 +659,14 @@ export function CommitmentsManager() {
       }
 
       // Sincronizar com Google Calendar ANTES de deletar (apenas se for o próprio compromisso)
-      if (isConnected && commitment.google_event_id && commitment.user_id === user.id) {
+      const shouldSyncToGoogle = isConnected && commitment.google_event_id && commitment.user_id === user.id;
+      console.log('[Agenda Debug] Sync delete to Google?', shouldSyncToGoogle, {
+        isConnected,
+        hasGoogleEventId: !!commitment.google_event_id,
+        isOwner: commitment.user_id === user.id
+      });
+
+      if (shouldSyncToGoogle) {
         await syncEvent('delete', id);
       }
 
@@ -820,6 +899,26 @@ export function CommitmentsManager() {
         open={showOnboarding} 
         onOpenChange={setShowOnboarding}
       />
+      
+      {/* Reconnect Banner */}
+      {showReconnectBanner && (
+        <Card className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-yellow-600" />
+                <div>
+                  <p className="font-semibold text-yellow-900 dark:text-yellow-100">Reconexão necessária</p>
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300">Sua conexão com o Google Calendar expirou. Reconecte para sincronizar eventos.</p>
+                </div>
+              </div>
+              <Button onClick={connect} variant="default" size="sm">
+                Reconectar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       
       <Tabs defaultValue="commitments" className="w-full">
         <TabsList className="grid w-full grid-cols-2">

@@ -11,6 +11,7 @@ interface CalendarConnection {
 export const useGoogleCalendar = () => {
   const [connection, setConnection] = useState<CalendarConnection | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hadConnectionBefore, setHadConnectionBefore] = useState(false);
   const { toast } = useToast();
 
   const checkConnection = async () => {
@@ -20,6 +21,7 @@ export const useGoogleCalendar = () => {
       
       if (!user) {
         setConnection(null);
+        setHadConnectionBefore(false);
         return;
       }
 
@@ -28,26 +30,40 @@ export const useGoogleCalendar = () => {
         .select('calendar_email, calendar_name, is_active, expires_at')
         .eq('user_id', user.id)
         .eq('provider', 'google')
-        .eq('is_active', true)
         .maybeSingle();
 
       if (error) throw error;
       
-      // Verificar se token expirou
       if (data) {
+        // Marca que já teve conexão antes
+        setHadConnectionBefore(true);
+        
         const expiresAt = new Date(data.expires_at);
         const now = new Date();
         
-        if (expiresAt <= now) {
-          console.log('[useGoogleCalendar] Token expired, marking as not connected');
+        if (expiresAt <= now || !data.is_active) {
+          console.log('[Agenda Debug][GC] Connection record found but expired?', { 
+            hadConnectionBefore: true, 
+            isConnected: false,
+            tokenExpired: expiresAt <= now,
+            isActive: data.is_active
+          });
           setConnection(null);
-          return;
+        } else {
+          console.log('[Agenda Debug][GC] Active connection found', {
+            email: data.calendar_email,
+            expiresAt: data.expires_at
+          });
+          setConnection(data);
         }
+      } else {
+        console.log('[Agenda Debug][GC] No connection record found');
+        setHadConnectionBefore(false);
+        setConnection(null);
       }
-      
-      setConnection(data);
     } catch (error) {
       console.error('Error checking calendar connection:', error);
+      setHadConnectionBefore(false);
       setConnection(null);
     } finally {
       setLoading(false);
@@ -421,6 +437,7 @@ export const useGoogleCalendar = () => {
     connection,
     loading,
     isConnected: !!connection,
+    hadConnectionBefore,
     connect,
     disconnect,
     syncEvent,
