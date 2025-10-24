@@ -71,13 +71,6 @@ serve(async (req) => {
   }
 
   try {
-    console.log('[GOOGLE-CALENDAR-SYNC] 🚀 Iniciando sincronização', {
-      action,
-      commitmentId,
-      effectiveUserId: userId || 'from JWT',
-      timestamp: new Date().toISOString()
-    });
-
     const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
     if (!authHeader) {
       throw new Error('Missing Authorization header');
@@ -357,13 +350,6 @@ serve(async (req) => {
         JSON.stringify({ success: true, eventId: createdEvent.id }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-      } catch (fetchError: any) {
-        console.error('[GOOGLE-CALENDAR-SYNC] 💥 Fetch error:', {
-          message: fetchError.message,
-          stack: fetchError.stack
-        });
-        throw fetchError;
-      }
     }
 
     if (action === 'update') {
