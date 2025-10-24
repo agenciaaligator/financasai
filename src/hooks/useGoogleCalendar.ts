@@ -261,7 +261,13 @@ export const useGoogleCalendar = () => {
       
       if (!accessToken) {
         console.error('[useGoogleCalendar] syncEvent: No access token available');
-        return { success: false, error: new Error('No access token') };
+        const errorMsg = 'Sessão expirada. Faça login novamente.';
+        toast({
+          title: "Erro de autenticação",
+          description: errorMsg,
+          variant: "destructive"
+        });
+        return { success: false, error: errorMsg };
       }
       
       const { data, error } = await supabase.functions.invoke('google-calendar-sync', {
@@ -277,12 +283,46 @@ export const useGoogleCalendar = () => {
         details: data?.details
       });
 
-      if (error) throw error;
+      if (error) {
+        const errorMsg = typeof error === 'string' ? error : error?.message || 'Erro desconhecido';
+        
+        // Identificar tipo de erro e mostrar mensagem clara
+        if (errorMsg.includes('auth') || errorMsg.includes('401')) {
+          toast({
+            title: "Sessão Google expirada",
+            description: "Reconecte o Google Calendar nas configurações.",
+            variant: "destructive"
+          });
+          return { success: false, error: 'Sessão Google expirada' };
+        } else if (errorMsg.includes('connection') || errorMsg.includes('not found')) {
+          toast({
+            title: "Google não conectado",
+            description: "Conecte sua conta Google nas configurações.",
+            variant: "destructive"
+          });
+          return { success: false, error: 'Google Calendar não conectado' };
+        } else {
+          toast({
+            title: "Erro ao sincronizar",
+            description: errorMsg.substring(0, 100),
+            variant: "destructive"
+          });
+        }
+        throw error;
+      }
       
-      return { success: data?.success || false, error: error?.message || data?.error };
-    } catch (error) {
+      if (data?.error) {
+        toast({
+          title: "Erro na sincronização",
+          description: data.error,
+          variant: "destructive"
+        });
+      }
+      
+      return { success: data?.success || false, error: data?.error };
+    } catch (error: any) {
       console.error('Error syncing with Google Calendar:', error);
-      return { success: false, error };
+      return { success: false, error: error?.message || 'Erro ao sincronizar' };
     }
   };
 

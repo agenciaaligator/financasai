@@ -64,11 +64,13 @@ export function useOrganizationPermissions(): OrganizationPermissions {
 
       console.log('[useOrganizationPermissions] Organizações encontradas:', data);
 
-      // Priorizar membership onde É owner (principal), senão usar primeira disponível
+      // PRIORIZAR membership onde NÃO É owner (organizações de terceiros)
+      // Se não houver, aí sim usar a organização onde é owner
+      const nonOwnerMembership = data.find(m => m.role !== 'owner');
       const ownerMembership = data.find(m => m.role === 'owner');
-      const selected = ownerMembership ?? data[0]; // sempre seleciona uma org válida
+      const selected = nonOwnerMembership ?? ownerMembership ?? data[0];
 
-      console.log('[useOrganizationPermissions] Org ativa selecionada:', selected, '(role:', selected.role, ')');
+      console.log('[useOrganizationPermissions] Org ativa selecionada:', selected, '(role:', selected.role, ', prioridade: terceiros)');
 
       const raw = (selected.permissions as any) || {};
       const isOwnerRole = selected.role === 'owner';

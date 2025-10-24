@@ -46,6 +46,7 @@ export function useTransactions() {
     
     setLoading(true);
 
+    // FETCH TRANSAÇÕES SEM PROFILES (evitar problemas de RLS)
     let query = supabase
       .from('transactions')
       .select(`
@@ -53,10 +54,6 @@ export function useTransactions() {
         categories (
           name,
           color
-        ),
-        profiles (
-          full_name,
-          email
         )
       `)
       .order('date', { ascending: false });
@@ -81,15 +78,40 @@ export function useTransactions() {
         description: error.message,
         variant: "destructive"
       });
-    } else {
-      console.log('✅ Transações carregadas:', data?.length);
-      console.log('Primeira transação (profiles):', data?.[0]?.profiles);
-      
-      setTransactions((data as any[])?.map(t => ({
-        ...t,
-        profiles: Array.isArray(t.profiles) && t.profiles.length > 0 ? t.profiles[0] : t.profiles
-      })) || []);
+      setLoading(false);
+      return;
     }
+
+    // BUSCAR PROFILES SEPARADAMENTE (respeitando RLS)
+    const userIds = [...new Set((data || []).map((t: any) => t.user_id))];
+    let profilesMap: Record<string, { full_name: string | null; email: string | null }> = {};
+
+    if (userIds.length > 0) {
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, email')
+        .in('user_id', userIds);
+
+      if (profilesData) {
+        profilesData.forEach((p: any) => {
+          profilesMap[p.user_id] = {
+            full_name: p.full_name,
+            email: p.email
+          };
+        });
+      }
+    }
+
+    // MERGE PROFILES COM TRANSAÇÕES
+    const transactionsWithProfiles = (data || []).map((t: any) => ({
+      ...t,
+      profiles: profilesMap[t.user_id] || null
+    }));
+
+    console.log('✅ Transações carregadas:', transactionsWithProfiles.length);
+    console.log('Primeira transação (profiles):', transactionsWithProfiles[0]?.profiles);
+    
+    setTransactions(transactionsWithProfiles);
     setLoading(false);
   };
 
@@ -115,7 +137,7 @@ export function useTransactions() {
   const addTransaction = async (transaction: Omit<Transaction, 'id' | 'created_at' | 'categories' | 'user_id' | 'organization_id' | 'profiles'>) => {
     if (!user) return;
 
-    // Usar organization_id direto do hook (sem .single() que causa erro)
+    // Inserir transação SEM profiles
     const { data, error } = await supabase
       .from('transactions')
       .insert([{
@@ -128,10 +150,6 @@ export function useTransactions() {
         categories (
           name,
           color
-        ),
-        profiles:user_id (
-          full_name,
-          email
         )
       `)
       .single();
@@ -145,11 +163,16 @@ export function useTransactions() {
       return { error };
     }
 
+    // BUSCAR PROFILE SEPARADAMENTE
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('full_name, email')
+      .eq('user_id', user.id)
+      .single();
+
     const mappedData = {
       ...data,
-      profiles: Array.isArray((data as any).profiles) && (data as any).profiles.length > 0 
-        ? (data as any).profiles[0] 
-        : null
+      profiles: profileData || null
     } as Transaction;
     
     setTransactions(prev => [mappedData, ...prev]);

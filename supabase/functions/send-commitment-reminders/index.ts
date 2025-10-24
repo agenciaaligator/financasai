@@ -332,8 +332,9 @@ serve(async (req) => {
       // Usar configurações padrão se não houver configurações personalizadas
       const reminderSettings: ReminderSettings = settings || {
         default_reminders: [
-          { time: 1440, enabled: true }, // 1 dia
-          { time: 60, enabled: true }    // 1 hora
+          { time: 1440, enabled: true }, // 24h (1 dia)
+          { time: 120, enabled: true },  // 2h
+          { time: 60, enabled: true }    // 1h
         ],
         send_via_whatsapp: true
       };

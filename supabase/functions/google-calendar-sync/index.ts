@@ -72,9 +72,24 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
+    
+    console.log('[GOOGLE-CALENDAR-SYNC] 🔐 Auth check:', {
+      hasAuthHeader: !!authHeader,
+      tokenPrefix: authHeader ? authHeader.substring(0, 20) + '...' : 'NONE'
+    });
+    
     if (!authHeader) {
-      throw new Error('Missing Authorization header');
+      console.error('[GOOGLE-CALENDAR-SYNC] ❌ Missing Authorization header');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'auth',
+          message: 'Sessão expirada ou inválida. Faça login novamente.' 
+        }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
+    
     const token = authHeader.replace(/^Bearer\s+/i, '').trim();
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -103,17 +118,58 @@ serve(async (req) => {
       );
       console.log('[GOOGLE-CALENDAR-SYNC] Using SERVICE_ROLE_KEY client');
     } else {
-      // Autenticação JWT normal (chamada do frontend)
-      const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-      if (userError) {
-        console.error('[GOOGLE-CALENDAR-SYNC] getUser error:', userError);
+      // Autenticação JWT normal (chamada do frontend) COM FALLBACK
+      console.log('[GOOGLE-CALENDAR-SYNC] 🔍 Tentando getUser(token)...');
+      let user: any = null;
+      
+      try {
+        const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+        if (userError) {
+          console.warn('[GOOGLE-CALENDAR-SYNC] ⚠️ getUser(token) falhou:', userError.message);
+          // FALLBACK: tentar getUser() sem parâmetro
+          console.log('[GOOGLE-CALENDAR-SYNC] 🔄 Fallback: tentando getUser() sem token...');
+          const { data: fallbackData, error: fallbackError } = await supabaseClient.auth.getUser();
+          if (fallbackError) {
+            console.error('[GOOGLE-CALENDAR-SYNC] ❌ Fallback também falhou:', fallbackError);
+            return new Response(
+              JSON.stringify({ 
+                success: false, 
+                error: 'auth',
+                message: 'Não foi possível autenticar. Faça login novamente.' 
+              }),
+              { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          user = fallbackData?.user;
+        } else {
+          user = userData?.user;
+        }
+      } catch (authErr: any) {
+        console.error('[GOOGLE-CALENDAR-SYNC] ❌ Erro crítico de auth:', authErr);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'auth',
+            message: 'Erro de autenticação. Tente novamente.' 
+          }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
-      const user = userData?.user;
+      
       if (!user) {
-        throw new Error('User not authenticated');
+        console.error('[GOOGLE-CALENDAR-SYNC] ❌ User not authenticated after all attempts');
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'auth',
+            message: 'Usuário não autenticado. Faça login novamente.' 
+          }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
+      
       effectiveUserId = user.id;
-      console.log('[GOOGLE-CALENDAR-SYNC] Using JWT client');
+      console.log('[GOOGLE-CALENDAR-SYNC] ✅ Autenticado via JWT:', effectiveUserId.substring(0, 8) + '...');
     }
 
     if (!effectiveUserId) {

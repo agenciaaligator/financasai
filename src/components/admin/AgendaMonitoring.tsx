@@ -53,9 +53,12 @@ export function AgendaMonitoring() {
   const handleForceReminders = async () => {
     setTestingReminders(true);
     try {
-      console.log('📤 Invocando send-commitment-reminders com force=true...');
+      // Obter user_id do usuário atual para teste imediato
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      console.log('📤 Invocando send-commitment-reminders com force=true e user_id...');
       const { data, error } = await supabase.functions.invoke('send-commitment-reminders', {
-        body: { force: true }
+        body: { force: true, user_id: user?.id }
       });
       
       console.log('📥 Resposta:', { data, error });
@@ -92,8 +95,13 @@ export function AgendaMonitoring() {
   const handleForceDailySummary = async () => {
     setTestingDaily(true);
     try {
-      console.log('📤 Invocando send-daily-agenda...');
-      const { data, error } = await supabase.functions.invoke('send-daily-agenda');
+      // Obter user_id do usuário atual para teste imediato
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      console.log('📤 Invocando send-daily-agenda com user_id para teste...');
+      const { data, error } = await supabase.functions.invoke('send-daily-agenda', {
+        body: { user_id: user?.id }
+      });
       
       console.log('📥 Resposta:', { data, error });
       

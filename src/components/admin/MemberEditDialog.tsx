@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
@@ -31,12 +31,12 @@ export function MemberEditDialog({ member, isOpen, onClose, onSave, isOwner }: M
   const [saving, setSaving] = useState(false);
 
   // Atualizar state quando member mudar
-  useState(() => {
+  useEffect(() => {
     if (member) {
       setRole(member.role);
       setPermissions(member.permissions || {});
     }
-  });
+  }, [member]);
 
   const isEditingSelf = member?.user_id === user?.id;
   const isMemberOwner = member?.role === 'owner';
