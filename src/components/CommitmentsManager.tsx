@@ -59,17 +59,13 @@ export function CommitmentsManager() {
   const [dateFromFilter, setDateFromFilter] = useState("");
   const [dateToFilter, setDateToFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
-  const { isConnected, syncEvent } = useGoogleCalendar();
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [viewScope, setViewScope] = useState<'self' | 'organization'>('self');
   
-  // Inicializar showOnboarding com callback para verificar isConnected
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    const hasSeenOnboarding = localStorage.getItem('googleCalendarOnboardingSeen');
-    // Só mostra se: não viu onboarding E não está conectado
-    return !hasSeenOnboarding && !isConnected;
-  });
+  const { connection, loading: gcLoading, isConnected, connect, disconnect, syncEvent, refresh } = useGoogleCalendar();
   const { t } = useTranslation();
-  const { isAdmin, isPremium, loading: roleLoading } = useUserRole();
-  const { organization_id, canViewOthers, canDeleteOthers, role } = useOrganizationPermissions();
+  const { role, isAdmin, isPremium, loading: roleLoading } = useUserRole();
+  const { organization_id, role: orgRole, canViewOthers, canEditOthers, canDeleteOthers, computedScope, loading: permissionsLoading } = useOrganizationPermissions();
   
   // Verificar se tem acesso ao Google Calendar (Premium ou Admin)
   const hasGoogleCalendarAccess = isAdmin || isPremium;
@@ -91,15 +87,19 @@ export function CommitmentsManager() {
 
   useEffect(() => {
     fetchCommitments();
-  }, [currentPage, titleFilter, dateFromFilter, dateToFilter, categoryFilter]);
+  }, [currentPage, titleFilter, dateFromFilter, dateToFilter, categoryFilter, viewScope]);
 
-  // useEffect separado para controlar onboarding (roda apenas quando isConnected muda)
+  // CORREÇÃO [24/10/2025]: useEffect separado para evitar popup aparecer repetidamente
   useEffect(() => {
-    if (isConnected && showOnboarding) {
-      console.log('[Agenda] Closing onboarding because user connected');
+    if (gcLoading === false && !isConnected) {
+      const hasSeenOnboarding = localStorage.getItem('googleCalendarOnboardingSeen');
+      if (!hasSeenOnboarding) {
+        setShowOnboarding(true);
+      }
+    } else if (isConnected && showOnboarding) {
       setShowOnboarding(false);
     }
-  }, [isConnected]);
+  }, [gcLoading, isConnected]);
 
   // Scroll automático quando o formulário abre (robusto com container)
   useLayoutEffect(() => {
@@ -167,57 +167,55 @@ export function CommitmentsManager() {
   const fetchCommitments = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || !organization_id) return;
 
       const from = (currentPage - 1) * itemsPerPage;
       const to = from + itemsPerPage - 1;
+
+      console.log('[Agenda] Fetching commitments:', {
+        page: currentPage,
+        filters: { titleFilter, dateFromFilter, dateToFilter, categoryFilter },
+        organization: organization_id,
+        canViewOthers,
+        viewScope
+      });
 
       let query = supabase
         .from("commitments")
         .select("*", { count: 'exact' })
         .order("scheduled_at", { ascending: true });
 
-      // Filtro de organização/privacidade
-      if (!canViewOthers) {
-        query = query.eq('user_id', user.id);
-      } else if (organization_id) {
-        query = query.eq('organization_id', organization_id);
+      // CORREÇÃO [24/10/2025]: Timezone conversion para filtros de data funcionarem corretamente
+      if (dateFromFilter) {
+        const dateFrom = fromZonedTime(`${dateFromFilter}T00:00:00`, 'America/Sao_Paulo');
+        query = query.gte("scheduled_at", dateFrom.toISOString());
+        console.log('[Agenda] Filter dateFrom:', dateFromFilter, '→', dateFrom.toISOString());
       } else {
-        query = query.eq('user_id', user.id);
-      }
-
-      // IMPORTANTE: Filtro padrão para não mostrar compromissos passados
-      // Se o usuário não definiu um filtro manual de data, mostrar apenas futuros
-      if (!dateFromFilter) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // Início do dia de hoje
+        const today = fromZonedTime(format(new Date(), 'yyyy-MM-dd') + 'T00:00:00', 'America/Sao_Paulo');
         query = query.gte("scheduled_at", today.toISOString());
       }
 
-      console.log('[Agenda] Fetching commitments:', {
-        page: currentPage,
-        filters: { titleFilter, dateFromFilter, dateToFilter, categoryFilter },
-        organization: organization_id,
-        canViewOthers
-      });
-
-      // Aplicar filtros manuais
-      if (titleFilter) {
-        query = query.ilike("title", `%${titleFilter}%`);
-      }
-      if (dateFromFilter) {
-        // Converter data do input (YYYY-MM-DD) para timezone de São Paulo
-        const dateFrom = fromZonedTime(dateFromFilter + 'T00:00:00', 'America/Sao_Paulo');
-        query = query.gte("scheduled_at", dateFrom.toISOString());
-        console.log('[Agenda] Filter dateFrom:', dateFromFilter, '→', dateFrom.toISOString());
-      }
       if (dateToFilter) {
-        const dateTo = fromZonedTime(dateToFilter + 'T23:59:59', 'America/Sao_Paulo');
+        const dateTo = fromZonedTime(`${dateToFilter}T23:59:59.999`, 'America/Sao_Paulo');
         query = query.lte("scheduled_at", dateTo.toISOString());
         console.log('[Agenda] Filter dateTo:', dateToFilter, '→', dateTo.toISOString());
       }
+
+      if (titleFilter) {
+        query = query.ilike("title", `%${titleFilter}%`);
+      }
+
       if (categoryFilter) {
         query = query.eq("category", categoryFilter);
+      }
+
+      // CORREÇÃO [24/10/2025]: Segurança de escopo - sempre filtrar por user_id por padrão
+      // Apenas usar organization_id quando viewScope for 'organization' E usuário tiver permissão
+      const isOwnerOrAdmin = orgRole === 'owner' || isAdmin || canViewOthers;
+      if (viewScope === 'organization' && isOwnerOrAdmin && organization_id) {
+        query = query.eq("organization_id", organization_id);
+      } else {
+        query = query.eq("user_id", user.id);
       }
 
       query = query.range(from, to);
@@ -228,10 +226,16 @@ export function CommitmentsManager() {
         console.error('[CommitmentsManager] Error loading commitments:', error);
         throw error;
       }
+
+      // CORREÇÃO [24/10/2025]: Safety-net no cliente para prevenir vazamento de dados
+      let filteredData = data || [];
+      if (!canViewOthers) {
+        filteredData = filteredData.filter(c => c.user_id === user.id);
+      }
       
-      console.log('[Agenda] Loaded:', data?.length, 'commitments, total:', count);
+      console.log('[Agenda] Loaded:', filteredData.length, 'commitments, total:', count);
       
-      setCommitments((data || []) as Commitment[]);
+      setCommitments(filteredData as Commitment[]);
       setTotalCount(count || 0);
     } catch (error: any) {
       console.error('[CommitmentsManager] Caught error:', error);
@@ -272,7 +276,7 @@ export function CommitmentsManager() {
       const utcISO = brasiliaDate.toISOString();
 
       // FASE 1: VALIDAÇÃO DE HORÁRIOS DE TRABALHO (apenas para owners)
-      const isMember = role === 'member' || role === 'viewer';
+      const isMember = orgRole === 'member' || orgRole === 'viewer';
       
       if (!isMember) {
         const scheduledDate = new Date(formData.scheduled_at);
@@ -557,12 +561,33 @@ export function CommitmentsManager() {
     setShowForm(true);
   };
 
+  // CORREÇÃO [24/10/2025]: Validar permissões antes de deletar
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir este compromisso?")) return;
 
     try {
-      // Sincronizar com Google Calendar ANTES de deletar
-      if (isConnected) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Usuário não autenticado');
+
+      // Buscar o compromisso antes de deletar para verificar permissões
+      const commitment = commitments.find((c) => c.id === id);
+      
+      if (!commitment) {
+        throw new Error('Compromisso não encontrado');
+      }
+
+      // Verificar permissões
+      if (commitment.user_id !== user.id && !canDeleteOthers) {
+        toast({
+          title: 'Permissão negada',
+          description: 'Você não tem permissão para deletar compromissos de outros usuários',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Sincronizar com Google Calendar ANTES de deletar (apenas se for o próprio compromisso)
+      if (isConnected && commitment.google_event_id && commitment.user_id === user.id) {
         await syncEvent('delete', id);
       }
 
@@ -575,7 +600,7 @@ export function CommitmentsManager() {
 
       toast({
         title: t('agenda.commitmentDeleted') || "Compromisso excluído",
-        description: isConnected 
+        description: isConnected && commitment.user_id === user.id
           ? t('agenda.deletedFromGoogle') || "Excluído e removido do Google Calendar!" 
           : t('agenda.deletedSuccess') || "Excluído com sucesso!",
       });
@@ -887,8 +912,44 @@ export function CommitmentsManager() {
         </CardContent>
       </Card>
 
+      {/* Indicador de escopo e toggle para owner/admin */}
+      {(orgRole === 'owner' || isAdmin || canViewOthers) && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm text-muted-foreground">
+                Visualizando: 
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant={viewScope === 'self' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    setViewScope('self');
+                    setCurrentPage(1);
+                  }}
+                >
+                  Meus Compromissos
+                </Button>
+                <Button
+                  variant={viewScope === 'organization' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    setViewScope('organization');
+                    setCurrentPage(1);
+                  }}
+                  disabled={computedScope === 'self'}
+                >
+                  Organização
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Google Calendar Integration Card */}
-      {roleLoading ? (
+      {roleLoading || permissionsLoading ? (
         <Card className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -1155,7 +1216,7 @@ export function CommitmentsManager() {
         </Button>
         
         {/* FASE 4: Botões de teste para admins/owners */}
-        {(isAdmin || role === 'owner') && (
+        {(isAdmin || orgRole === 'owner') && (
           <>
             <Button 
               variant="outline" 

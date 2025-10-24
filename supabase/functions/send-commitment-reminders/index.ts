@@ -224,6 +224,21 @@ serve(async (req) => {
         );
       }
 
+      // CORREÇÃO [24/10/2025]: Validar formato do telefone
+      const phoneNumber = profile.phone_number.replace(/\D/g, '');
+      if (!phoneNumber.startsWith('55') || phoneNumber.length < 12 || phoneNumber.length > 13) {
+        console.error('❌ [REMINDERS] Invalid phone format:', profile.phone_number);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Formato de telefone inválido. Deve começar com 55 e ter 12-13 dígitos',
+            remindersSent: 0,
+            errors: 1
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
+      }
+
       // Enviar mensagem de teste direta
       const testMessage = `✅ *Teste de Lembretes*\n\nOlá ${profile.full_name || 'Usuário'}! Este é um teste do sistema de lembretes via WhatsApp.\n\nSe você recebeu esta mensagem, significa que o sistema está funcionando corretamente! 🎉`;
 

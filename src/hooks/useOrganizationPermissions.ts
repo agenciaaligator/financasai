@@ -10,6 +10,7 @@ interface OrganizationPermissions {
   canDeleteOthers: boolean;
   canViewReports: boolean;
   canManageMembers: boolean;
+  computedScope: 'self' | 'organization';
   loading: boolean;
 }
 
@@ -23,6 +24,7 @@ export function useOrganizationPermissions(): OrganizationPermissions {
     canDeleteOthers: false,
     canViewReports: false,
     canManageMembers: false,
+    computedScope: 'self',
     loading: true,
   });
 
@@ -37,6 +39,7 @@ export function useOrganizationPermissions(): OrganizationPermissions {
           canDeleteOthers: false,
           canViewReports: false,
           canManageMembers: false,
+          computedScope: 'self',
           loading: false,
         });
         return;
@@ -57,6 +60,7 @@ export function useOrganizationPermissions(): OrganizationPermissions {
           canDeleteOthers: false,
           canViewReports: false,
           canManageMembers: false,
+          computedScope: 'self',
           loading: false,
         });
         return;
@@ -74,6 +78,7 @@ export function useOrganizationPermissions(): OrganizationPermissions {
 
       const raw = (selected.permissions as any) || {};
       const isOwnerRole = selected.role === 'owner';
+      const isMemberRole = selected.role === 'member' || selected.role === 'viewer';
 
       setPermissions({
         organization_id: selected.organization_id,
@@ -83,6 +88,7 @@ export function useOrganizationPermissions(): OrganizationPermissions {
         canDeleteOthers: isOwnerRole ? true : (raw.delete_others ?? false),
         canViewReports: isOwnerRole ? true : (raw.view_reports ?? false),
         canManageMembers: isOwnerRole ? true : (raw.manage_members ?? false),
+        computedScope: isMemberRole ? 'self' : 'organization',
         loading: false,
       });
     }

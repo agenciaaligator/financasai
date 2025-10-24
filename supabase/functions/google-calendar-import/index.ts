@@ -245,6 +245,7 @@ Deno.serve(async (req) => {
             sent: false
           }));
 
+        // CORREÇÃO [24/10/2025]: user_id sempre do usuário autenticado, NÃO setar organization_id
         const commitmentData = {
           user_id: targetUserId,
           title: googleEvent.summary || 'Sem título',
