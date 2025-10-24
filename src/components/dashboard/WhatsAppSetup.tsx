@@ -349,6 +349,8 @@ export function WhatsAppSetup() {
         body: { force: true, user_id: user.id }
       });
       
+      console.log('[WhatsAppSetup] Test reminders response:', { data, error });
+      
       if (error) throw error;
       
       if (data.success) {
@@ -357,6 +359,7 @@ export function WhatsAppSetup() {
           description: `Mensagem enviada! Enviadas: ${data.remindersSent || 1}, Erros: ${data.errors || 0}`,
         });
       } else {
+        console.error('[WhatsAppSetup] Test reminders failed:', data);
         toast({
           title: "❌ Erro no Teste",
           description: data.error || "Não foi possível enviar mensagem de teste",
@@ -364,7 +367,7 @@ export function WhatsAppSetup() {
         });
       }
     } catch (error: any) {
-      console.error('Error testing reminders:', error);
+      console.error('[WhatsAppSetup] Error testing reminders:', error);
       toast({
         title: "Erro",
         description: error.message || "Falha ao testar lembretes",
@@ -385,6 +388,8 @@ export function WhatsAppSetup() {
         body: { user_id: user.id }
       });
       
+      console.log('[WhatsAppSetup] Test daily agenda response:', { data, error });
+      
       if (error) throw error;
       
       if (data.success) {
@@ -393,6 +398,7 @@ export function WhatsAppSetup() {
           description: `Mensagem enviada! Enviadas: ${data.sent || 0}, Erros: ${data.errors || 0}`,
         });
       } else {
+        console.error('[WhatsAppSetup] Test daily agenda failed:', data);
         toast({
           title: "❌ Erro no Teste",
           description: data.error || "Não foi possível enviar resumo de teste",
@@ -400,7 +406,7 @@ export function WhatsAppSetup() {
         });
       }
     } catch (error: any) {
-      console.error('Error testing daily agenda:', error);
+      console.error('[WhatsAppSetup] Error testing daily agenda:', error);
       toast({
         title: "Erro",
         description: error.message || "Falha ao testar resumo diário",

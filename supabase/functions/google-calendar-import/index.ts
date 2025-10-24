@@ -149,8 +149,23 @@ Deno.serve(async (req) => {
     const accessToken = await getValidAccessToken(supabaseClient, targetUserId);
 
     // Buscar eventos futuros do Google Calendar (próximos 90 dias)
-    const timeMin = new Date().toISOString();
-    const timeMax = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+    // Usar timezone de São Paulo para garantir que eventos de "hoje" sejam incluídos
+    const now = new Date();
+    const saoPauloOffset = -3 * 60; // UTC-3
+    const localOffset = now.getTimezoneOffset();
+    const saoPauloTime = new Date(now.getTime() + (localOffset - saoPauloOffset) * 60000);
+    
+    // Início do dia em São Paulo
+    saoPauloTime.setHours(0, 0, 0, 0);
+    const timeMin = saoPauloTime.toISOString();
+    const timeMax = new Date(saoPauloTime.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString();
+
+    console.log('[GOOGLE-CALENDAR-IMPORT] Fetching events from Google Calendar:', {
+      timeMin,
+      timeMax,
+      calendar: 'primary',
+      timezone: 'America/Sao_Paulo'
+    });
 
     const eventsResponse = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&orderBy=startTime`,
@@ -176,6 +191,13 @@ Deno.serve(async (req) => {
 
     for (const googleEvent of googleEvents || []) {
       try {
+        // Pular eventos sem título
+        if (!googleEvent.summary) {
+          console.warn('[GOOGLE-CALENDAR-IMPORT] Skipping event without title:', googleEvent.id);
+          skipped++;
+          continue;
+        }
+
         const googleEventId = googleEvent.id;
         
         // Verificar se já existe no banco
@@ -185,9 +207,20 @@ Deno.serve(async (req) => {
           .eq('google_event_id', googleEventId)
           .maybeSingle();
 
-        // Calcular duração em minutos
-        const startTime = new Date(googleEvent.start.dateTime || googleEvent.start.date);
-        const endTime = new Date(googleEvent.end.dateTime || googleEvent.end.date);
+        // Calcular duração em minutos - corrigir para eventos "all-day"
+        let startTime: Date;
+        let endTime: Date;
+        
+        if (googleEvent.start.dateTime) {
+          // Evento com horário específico
+          startTime = new Date(googleEvent.start.dateTime);
+          endTime = new Date(googleEvent.end.dateTime);
+        } else {
+          // Evento "dia inteiro" - usar 00:00:00 e 23:59:59 em São Paulo
+          startTime = new Date(googleEvent.start.date + 'T00:00:00-03:00');
+          endTime = new Date(googleEvent.end.date + 'T23:59:59-03:00');
+        }
+        
         const durationMinutes = Math.round((endTime.getTime() - startTime.getTime()) / 60000);
 
         // Buscar reminder_settings do usuário ou usar padrão

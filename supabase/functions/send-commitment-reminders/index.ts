@@ -156,8 +156,7 @@ serve(async (req) => {
 
   try {
     const executionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    console.log(`🔔 [REMINDER] [${executionId}] Starting commitment reminders check at ${new Date().toISOString()}`);
-
+    
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const whatsappToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
@@ -167,11 +166,6 @@ serve(async (req) => {
       throw new Error('Missing Supabase configuration');
     }
 
-    console.log('📱 [REMINDERS] WhatsApp credentials check:', {
-      hasToken: !!whatsappToken,
-      hasPhoneId: !!whatsappPhoneId
-    });
-
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // FASE 1: Suporte ao modo "force" para testes
@@ -179,7 +173,21 @@ serve(async (req) => {
     const forceMode = body.force === true;
     const specificUserId = body.user_id || null;
 
-    console.log(`[REMINDER] [${executionId}] Force mode: ${forceMode}, User ID: ${specificUserId || 'all'}`);
+    console.log(`🔔 [REMINDER] [${executionId}] Starting commitment reminders check at ${new Date().toISOString()}`);
+    console.log(`[REMINDER] [${executionId}] Request details:`, {
+      method: req.method,
+      hasBody: !!body,
+      forceMode,
+      specificUserId: specificUserId || 'none',
+      headers: {
+        contentType: req.headers.get('content-type'),
+        authorization: req.headers.get('authorization') ? 'present' : 'missing'
+      }
+    });
+    console.log('📱 [REMINDERS] WhatsApp credentials check:', {
+      hasToken: !!whatsappToken,
+      hasPhoneId: !!whatsappPhoneId
+    });
 
     if (forceMode && specificUserId) {
       // Validar credenciais WhatsApp
@@ -223,7 +231,7 @@ serve(async (req) => {
 
       try {
         const whatsappResponse = await fetch(
-          `https://graph.facebook.com/v17.0/${whatsappPhoneId}/messages`,
+          `https://graph.facebook.com/v18.0/${whatsappPhoneId}/messages`,
           {
             method: 'POST',
             headers: {
@@ -242,11 +250,12 @@ serve(async (req) => {
         const responseData = await whatsappResponse.json();
 
         if (!whatsappResponse.ok) {
-          console.error('❌ [REMINDERS] WhatsApp API error:', responseData);
+          console.error('❌ [REMINDERS] WhatsApp API error response:', JSON.stringify(responseData, null, 2));
           return new Response(
             JSON.stringify({ 
               success: false, 
               error: `Erro da API WhatsApp: ${responseData.error?.message || 'Desconhecido'}`,
+              details: responseData,
               remindersSent: 0,
               errors: 1
             }),

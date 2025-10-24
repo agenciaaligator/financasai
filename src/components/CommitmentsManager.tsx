@@ -183,7 +183,15 @@ export function CommitmentsManager() {
         query = query.eq('user_id', user.id);
       }
 
-      // Aplicar filtros
+      // IMPORTANTE: Filtro padrão para não mostrar compromissos passados
+      // Se o usuário não definiu um filtro manual de data, mostrar apenas futuros
+      if (!dateFromFilter) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Início do dia de hoje
+        query = query.gte("scheduled_at", today.toISOString());
+      }
+
+      // Aplicar filtros manuais
       if (titleFilter) {
         query = query.ilike("title", `%${titleFilter}%`);
       }
