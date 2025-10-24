@@ -91,12 +91,15 @@ export function CommitmentsManager() {
 
   useEffect(() => {
     fetchCommitments();
-    
-    // Se conectar, fechar onboarding
-    if (isConnected) {
+  }, [currentPage, titleFilter, dateFromFilter, dateToFilter, categoryFilter]);
+
+  // useEffect separado para controlar onboarding (roda apenas quando isConnected muda)
+  useEffect(() => {
+    if (isConnected && showOnboarding) {
+      console.log('[Agenda] Closing onboarding because user connected');
       setShowOnboarding(false);
     }
-  }, [isConnected, currentPage, titleFilter, dateFromFilter, dateToFilter, categoryFilter]);
+  }, [isConnected]);
 
   // Scroll automático quando o formulário abre (robusto com container)
   useLayoutEffect(() => {
@@ -191,17 +194,27 @@ export function CommitmentsManager() {
         query = query.gte("scheduled_at", today.toISOString());
       }
 
+      console.log('[Agenda] Fetching commitments:', {
+        page: currentPage,
+        filters: { titleFilter, dateFromFilter, dateToFilter, categoryFilter },
+        organization: organization_id,
+        canViewOthers
+      });
+
       // Aplicar filtros manuais
       if (titleFilter) {
         query = query.ilike("title", `%${titleFilter}%`);
       }
       if (dateFromFilter) {
-        query = query.gte("scheduled_at", new Date(dateFromFilter).toISOString());
+        // Converter data do input (YYYY-MM-DD) para timezone de São Paulo
+        const dateFrom = fromZonedTime(dateFromFilter + 'T00:00:00', 'America/Sao_Paulo');
+        query = query.gte("scheduled_at", dateFrom.toISOString());
+        console.log('[Agenda] Filter dateFrom:', dateFromFilter, '→', dateFrom.toISOString());
       }
       if (dateToFilter) {
-        const dateTo = new Date(dateToFilter);
-        dateTo.setHours(23, 59, 59, 999);
+        const dateTo = fromZonedTime(dateToFilter + 'T23:59:59', 'America/Sao_Paulo');
         query = query.lte("scheduled_at", dateTo.toISOString());
+        console.log('[Agenda] Filter dateTo:', dateToFilter, '→', dateTo.toISOString());
       }
       if (categoryFilter) {
         query = query.eq("category", categoryFilter);
@@ -215,6 +228,8 @@ export function CommitmentsManager() {
         console.error('[CommitmentsManager] Error loading commitments:', error);
         throw error;
       }
+      
+      console.log('[Agenda] Loaded:', data?.length, 'commitments, total:', count);
       
       setCommitments((data || []) as Commitment[]);
       setTotalCount(count || 0);
@@ -659,6 +674,60 @@ export function CommitmentsManager() {
     setLoading(false);
   };
 
+  const handleSyncToGoogle = async () => {
+    setSyncingFromGoogle(true);
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Usuário não autenticado');
+
+      // Buscar compromissos sem google_event_id
+      const { data: commitmentsToSync, error: fetchError } = await supabase
+        .from('commitments')
+        .select('*')
+        .is('google_event_id', null)
+        .eq('user_id', user.id);
+
+      if (fetchError) throw fetchError;
+
+      if (!commitmentsToSync || commitmentsToSync.length === 0) {
+        toast({
+          title: "Nenhum compromisso para enviar",
+          description: "Todos os seus compromissos já estão sincronizados com o Google Calendar",
+        });
+        setSyncingFromGoogle(false);
+        return;
+      }
+
+      let synced = 0;
+      let failed = 0;
+
+      for (const commitment of commitmentsToSync) {
+        const syncResult = await syncEvent('create', commitment.id);
+        if (syncResult.success) {
+          synced++;
+        } else {
+          failed++;
+        }
+      }
+
+      toast({
+        title: "Sincronização concluída!",
+        description: `${synced} enviados com sucesso${failed > 0 ? `, ${failed} falharam` : ''}`,
+      });
+
+      fetchCommitments();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao enviar para Google",
+        description: error.message || "Erro desconhecido ao sincronizar",
+        variant: "destructive",
+      });
+    } finally {
+      setSyncingFromGoogle(false);
+    }
+  };
+
   const handleImportFromGoogle = async () => {
     setSyncingFromGoogle(true);
     try {
@@ -848,15 +917,26 @@ export function CommitmentsManager() {
             <div className="space-y-4">
               <GoogleCalendarConnect />
               {isConnected && (
-                <Button 
-                  onClick={handleImportFromGoogle} 
-                  disabled={syncingFromGoogle}
-                  variant="outline"
-                  className="w-full"
-                >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${syncingFromGoogle ? 'animate-spin' : ''}`} />
-                  {syncingFromGoogle ? "Sincronizando..." : "Sincronizar do Google agora"}
-                </Button>
+                <>
+                  <Button 
+                    onClick={handleImportFromGoogle} 
+                    disabled={syncingFromGoogle}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <RefreshCw className={`h-4 w-4 mr-2 ${syncingFromGoogle ? 'animate-spin' : ''}`} />
+                    {syncingFromGoogle ? "Sincronizando..." : "Sincronizar do Google agora"}
+                  </Button>
+                  <Button 
+                    onClick={handleSyncToGoogle} 
+                    disabled={syncingFromGoogle}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <Calendar className={`h-4 w-4 mr-2 ${syncingFromGoogle ? 'animate-spin' : ''}`} />
+                    {syncingFromGoogle ? "Enviando..." : "Enviar para Google"}
+                  </Button>
+                </>
               )}
             </div>
           </CardContent>
@@ -1082,13 +1162,29 @@ export function CommitmentsManager() {
               size="sm"
               onClick={async () => {
                 try {
+                  const { data: { user } } = await supabase.auth.getUser();
+                  if (!user) {
+                    toast({
+                      title: "Erro",
+                      description: "Usuário não autenticado",
+                      variant: "destructive"
+                    });
+                    return;
+                  }
+
                   const supabaseUrl = "https://fsamlnlabdjoqpiuhgex.supabase.co";
                   const response = await fetch(`${supabaseUrl}/functions/v1/send-commitment-reminders`, {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json',
                       'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-                    }
+                    },
+                    body: JSON.stringify({ force: true, user_id: user.id })
+                  });
+                  
+                  console.log('[Agenda] Test reminders response:', { 
+                    ok: response.ok, 
+                    status: response.status 
                   });
                   
                   if (response.ok) {
@@ -1116,13 +1212,29 @@ export function CommitmentsManager() {
               size="sm"
               onClick={async () => {
                 try {
+                  const { data: { user } } = await supabase.auth.getUser();
+                  if (!user) {
+                    toast({
+                      title: "Erro",
+                      description: "Usuário não autenticado",
+                      variant: "destructive"
+                    });
+                    return;
+                  }
+
                   const supabaseUrl = "https://fsamlnlabdjoqpiuhgex.supabase.co";
                   const response = await fetch(`${supabaseUrl}/functions/v1/send-daily-agenda`, {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json',
                       'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-                    }
+                    },
+                    body: JSON.stringify({ user_id: user.id })
+                  });
+                  
+                  console.log('[Agenda] Test daily agenda response:', { 
+                    ok: response.ok, 
+                    status: response.status 
                   });
                   
                   if (response.ok) {
