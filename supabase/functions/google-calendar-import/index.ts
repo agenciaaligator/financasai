@@ -30,35 +30,46 @@ async function getValidAccessToken(supabaseClient: any, userId: string): Promise
 
   console.log('[GOOGLE-CALENDAR-IMPORT] Token expired, renewing...');
   
-  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      client_id: Deno.env.get('GOOGLE_CLIENT_ID'),
-      client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET'),
-      refresh_token: connection.refresh_token,
-      grant_type: 'refresh_token',
-    }),
-  });
+  try {
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: Deno.env.get('GOOGLE_CLIENT_ID') || '',
+        client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET') || '',
+        refresh_token: connection.refresh_token,
+        grant_type: 'refresh_token',
+      }),
+    });
 
-  if (!tokenResponse.ok) {
-    throw new Error('Failed to refresh Google token');
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      console.error('[GOOGLE-CALENDAR-IMPORT] Google API token renewal failed:', {
+        status: tokenResponse.status,
+        statusText: tokenResponse.statusText,
+        error: errorText.substring(0, 500)
+      });
+      throw new Error(`Failed to refresh Google token: ${tokenResponse.status}`);
+    }
+
+    const tokenData = await tokenResponse.json();
+    const newExpiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
+
+    await supabaseClient
+      .from('calendar_connections')
+      .update({
+        access_token: tokenData.access_token,
+        expires_at: newExpiresAt.toISOString(),
+      })
+      .eq('id', connection.id);
+
+    console.log('[GOOGLE-CALENDAR-IMPORT] Token renewed successfully');
+    return tokenData.access_token;
+  } catch (error) {
+    console.error('[GOOGLE-CALENDAR-IMPORT] Error during token renewal:', error);
+    throw error;
   }
 
-  const tokenData = await tokenResponse.json();
-  const newExpiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
-
-  await supabaseClient
-    .from('calendar_connections')
-    .update({
-      access_token: tokenData.access_token,
-      expires_at: newExpiresAt.toISOString(),
-    })
-    .eq('id', connection.id);
-
-  console.log('[GOOGLE-CALENDAR-IMPORT] Token renewed successfully');
-  return tokenData.access_token;
-}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -87,7 +98,7 @@ Deno.serve(async (req) => {
       );
     } else {
       // Chamada externa (do frontend)
-      const authHeader = req.headers.get('Authorization');
+      const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
       if (!authHeader) {
         throw new Error('Missing authorization header');
       }
