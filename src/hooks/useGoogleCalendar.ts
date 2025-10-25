@@ -11,7 +11,7 @@ interface CalendarConnection {
 export const useGoogleCalendar = () => {
   const [connection, setConnection] = useState<CalendarConnection | null>(null);
   const [loading, setLoading] = useState(true);
-  const [hadConnectionBefore, setHadConnectionBefore] = useState(false);
+  const [hadConnectionBefore, setHadConnectionBefore] = useState(false); // Se alguma vez teve conexão (mesmo expirada)
   const { toast } = useToast();
 
   const checkConnection = async () => {
@@ -34,30 +34,29 @@ export const useGoogleCalendar = () => {
 
       if (error) throw error;
       
+      // ✅ Se existe registro (mesmo expirado), marca como "já conectou alguma vez"
       if (data) {
-        // Marca que já teve conexão antes
         setHadConnectionBefore(true);
         
         const expiresAt = new Date(data.expires_at);
         const now = new Date();
         
+        console.log('[Agenda Debug][GC] Connection record found:', {
+          expiresAt: expiresAt.toISOString(),
+          now: now.toISOString(),
+          isActive: data.is_active,
+          isExpired: expiresAt <= now
+        });
+        
         if (expiresAt <= now || !data.is_active) {
-          console.log('[Agenda Debug][GC] Connection record found but expired?', { 
-            hadConnectionBefore: true, 
-            isConnected: false,
-            tokenExpired: expiresAt <= now,
-            isActive: data.is_active
-          });
-          setConnection(null);
+          console.log('[Agenda Debug][GC] Connection expired or inactive, setting hadConnectionBefore=true but connection=null');
+          setConnection(null); // Desconectado MAS já teve conexão
         } else {
-          console.log('[Agenda Debug][GC] Active connection found', {
-            email: data.calendar_email,
-            expiresAt: data.expires_at
-          });
-          setConnection(data);
+          console.log('[Agenda Debug][GC] Connection active, setting both hadConnectionBefore=true and connection');
+          setConnection(data); // Conectado e ativo
         }
       } else {
-        console.log('[Agenda Debug][GC] No connection record found');
+        console.log('[Agenda Debug][GC] No connection record found, hadConnectionBefore=false');
         setHadConnectionBefore(false);
         setConnection(null);
       }

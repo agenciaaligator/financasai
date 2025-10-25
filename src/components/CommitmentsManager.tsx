@@ -219,21 +219,30 @@ export function CommitmentsManager() {
         .select("*", { count: 'exact' })
         .order("scheduled_at", { ascending: true });
 
-      // CORREÇÃO [24/10/2025]: Timezone conversion para filtros de data funcionarem corretamente
+      // ✅ SEMPRE manter filtro "gte hoje" como base
+      const today = fromZonedTime(format(new Date(), 'yyyy-MM-dd') + 'T00:00:00', 'America/Sao_Paulo');
+      let gteIso = today.toISOString();
+      let lteIso = null;
+
+      // ✅ Se usuário definir dateFromFilter, sobrescrever o "gte hoje"
       if (dateFromFilter) {
         const dateFrom = fromZonedTime(`${dateFromFilter}T00:00:00`, 'America/Sao_Paulo');
-        query = query.gte("scheduled_at", dateFrom.toISOString());
-        console.log('[Agenda] Filter dateFrom:', dateFromFilter, '→', dateFrom.toISOString());
-      } else {
-        const today = fromZonedTime(format(new Date(), 'yyyy-MM-dd') + 'T00:00:00', 'America/Sao_Paulo');
-        query = query.gte("scheduled_at", today.toISOString());
+        gteIso = dateFrom.toISOString();
+        console.log('[Agenda Debug] Date range filter from:', dateFromFilter, '→', gteIso);
       }
 
       if (dateToFilter) {
         const dateTo = fromZonedTime(`${dateToFilter}T23:59:59.999`, 'America/Sao_Paulo');
-        query = query.lte("scheduled_at", dateTo.toISOString());
-        console.log('[Agenda] Filter dateTo:', dateToFilter, '→', dateTo.toISOString());
+        lteIso = dateTo.toISOString();
+        console.log('[Agenda Debug] Date range filter to:', dateToFilter, '→', lteIso);
       }
+
+      query = query.gte("scheduled_at", gteIso);
+      if (lteIso) {
+        query = query.lte("scheduled_at", lteIso);
+      }
+
+      console.log('[Agenda Debug] Effective date range ISO:', { gte: gteIso, lte: lteIso });
 
       if (titleFilter) {
         query = query.ilike("title", `%${titleFilter}%`);
@@ -253,7 +262,8 @@ export function CommitmentsManager() {
         organization_id,
         orgRole,
         isAdmin,
-        canViewOthers
+        canViewOthers,
+        computedScope
       });
       
       if (viewScope === 'organization' && isOwnerOrAdmin && organization_id) {
@@ -856,6 +866,7 @@ export function CommitmentsManager() {
         description: `${data.imported || 0} novos, ${data.updated || 0} atualizados, ${data.skipped || 0} ignorados`,
       });
 
+      console.log('[Agenda Debug] After import → refetch called');
       fetchCommitments();
     } catch (error: any) {
       toast({
@@ -1011,8 +1022,18 @@ export function CommitmentsManager() {
         </CardContent>
       </Card>
 
-      {/* Indicador de escopo e toggle para owner/admin */}
-      {(orgRole === 'owner' || isAdmin || canViewOthers) && (
+      {/* Indicador de escopo e toggle para owner/admin - OCULTAR para membros */}
+      {(() => {
+        const shouldShow = (orgRole === 'owner' || isAdmin) && computedScope === 'organization';
+        console.log('[Agenda Debug] Toggle visibility:', { 
+          orgRole, 
+          isAdmin, 
+          canViewOthers, 
+          computedScope,
+          willShow: shouldShow
+        });
+        return shouldShow;
+      })() && (
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 flex-wrap">
@@ -1037,9 +1058,8 @@ export function CommitmentsManager() {
                     setViewScope('organization');
                     setCurrentPage(1);
                   }}
-                  disabled={computedScope === 'self'}
                 >
-                  Organização
+                  Ver Todos da Empresa
                 </Button>
               </div>
             </div>
@@ -1086,15 +1106,6 @@ export function CommitmentsManager() {
                   >
                     <RefreshCw className={`h-4 w-4 mr-2 ${syncingFromGoogle ? 'animate-spin' : ''}`} />
                     {syncingFromGoogle ? "Sincronizando..." : "Sincronizar do Google agora"}
-                  </Button>
-                  <Button 
-                    onClick={handleSyncToGoogle} 
-                    disabled={syncingFromGoogle}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    <Calendar className={`h-4 w-4 mr-2 ${syncingFromGoogle ? 'animate-spin' : ''}`} />
-                    {syncingFromGoogle ? "Enviando..." : "Enviar para Google"}
                   </Button>
                 </>
               )}
@@ -1323,42 +1334,41 @@ export function CommitmentsManager() {
               onClick={async () => {
                 try {
                   const { data: { user } } = await supabase.auth.getUser();
-                  if (!user) {
+                  if (!user) throw new Error('Usuário não autenticado');
+
+                  console.log('[Agenda Debug] Test reminders invoke:', { user_id: user.id });
+
+                  const { data, error } = await supabase.functions.invoke('send-commitment-reminders', {
+                    body: { force: true, user_id: user.id }
+                  });
+
+                  console.log('[Agenda Debug] Response:', { data, error });
+
+                  if (error) {
                     toast({
-                      title: "Erro",
-                      description: "Usuário não autenticado",
+                      title: "❌ Erro ao testar lembretes",
+                      description: error.message || "Erro desconhecido",
                       variant: "destructive"
                     });
                     return;
                   }
 
-                  const supabaseUrl = "https://fsamlnlabdjoqpiuhgex.supabase.co";
-                  const response = await fetch(`${supabaseUrl}/functions/v1/send-commitment-reminders`, {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-                    },
-                    body: JSON.stringify({ force: true, user_id: user.id })
-                  });
-                  
-                  console.log('[Agenda] Test reminders response:', { 
-                    ok: response.ok, 
-                    status: response.status 
-                  });
-                  
-                  if (response.ok) {
+                  if (data.success) {
                     toast({
-                      title: "✅ Teste de lembretes executado",
-                      description: "Verifique os logs da função para detalhes",
+                      title: "✅ Lembrete enviado!",
+                      description: data.message || `Mensagem enviada para ${data.phone}`,
                     });
                   } else {
-                    throw new Error('Erro ao executar teste');
+                    toast({
+                      title: "⚠️ Erro ao enviar lembrete",
+                      description: data.error || "Erro desconhecido",
+                      variant: "destructive"
+                    });
                   }
-                } catch (error) {
+                } catch (error: any) {
                   toast({
                     title: "Erro ao testar lembretes",
-                    description: error instanceof Error ? error.message : "Erro desconhecido",
+                    description: error.message,
                     variant: "destructive"
                   });
                 }
@@ -1373,42 +1383,41 @@ export function CommitmentsManager() {
               onClick={async () => {
                 try {
                   const { data: { user } } = await supabase.auth.getUser();
-                  if (!user) {
+                  if (!user) throw new Error('Usuário não autenticado');
+
+                  console.log('[Agenda Debug] Test daily agenda invoke:', { user_id: user.id });
+
+                  const { data, error } = await supabase.functions.invoke('send-daily-agenda', {
+                    body: { user_id: user.id }
+                  });
+
+                  console.log('[Agenda Debug] Response:', { data, error });
+
+                  if (error) {
                     toast({
-                      title: "Erro",
-                      description: "Usuário não autenticado",
+                      title: "❌ Erro ao testar agenda diária",
+                      description: error.message || "Erro desconhecido",
                       variant: "destructive"
                     });
                     return;
                   }
 
-                  const supabaseUrl = "https://fsamlnlabdjoqpiuhgex.supabase.co";
-                  const response = await fetch(`${supabaseUrl}/functions/v1/send-daily-agenda`, {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-                    },
-                    body: JSON.stringify({ user_id: user.id })
-                  });
-                  
-                  console.log('[Agenda] Test daily agenda response:', { 
-                    ok: response.ok, 
-                    status: response.status 
-                  });
-                  
-                  if (response.ok) {
+                  if (data.success) {
                     toast({
-                      title: "✅ Teste de agenda diária executado",
-                      description: "Verifique os logs da função para detalhes",
+                      title: "✅ Agenda diária enviada!",
+                      description: data.message || "Mensagem enviada com sucesso",
                     });
                   } else {
-                    throw new Error('Erro ao executar teste');
+                    toast({
+                      title: "⚠️ Erro ao enviar agenda",
+                      description: data.error || "Erro desconhecido",
+                      variant: "destructive"
+                    });
                   }
-                } catch (error) {
+                } catch (error: any) {
                   toast({
                     title: "Erro ao testar agenda",
-                    description: error instanceof Error ? error.message : "Erro desconhecido",
+                    description: error.message,
                     variant: "destructive"
                   });
                 }
