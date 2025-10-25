@@ -106,7 +106,7 @@ interface SessionData {
   authenticated?: boolean;
   last_command?: string | null;
   context?: any;
-  conversation_state?: 'idle' | 'waiting_date' | 'waiting_confirmation' | 'awaiting_category' | 'confirming_ocr' | 'awaiting_delete_confirmation' | 'awaiting_edit_field' | 'awaiting_edit_value' | 'awaiting_commitment_resolution' | 'awaiting_commitment_edit_field' | 'awaiting_commitment_edit_value' | 'awaiting_commitment_cancel_selection' | 'awaiting_commitment_time' | 'awaiting_commitment_details' | 'awaiting_commitment_confirmation';
+  conversation_state?: 'idle' | 'waiting_date' | 'waiting_confirmation' | 'awaiting_category' | 'confirming_ocr' | 'awaiting_delete_confirmation' | 'awaiting_edit_field' | 'awaiting_edit_value' | 'awaiting_commitment_resolution' | 'awaiting_commitment_edit_field' | 'awaiting_commitment_edit_value' | 'awaiting_commitment_cancel_selection' | 'awaiting_commitment_time' | 'awaiting_commitment_details' | 'awaiting_commitment_confirmation' | 'awaiting_work_hour_override';
   pending_transaction?: Partial<Transaction>;
   pending_ocr_data?: {
     amount: number;
@@ -1556,6 +1556,45 @@ class WhatsAppAgent {
       return await this.handleDeleteConfirmation(session, messageText);
     }
 
+    // ✅ FASE 4: Detectar mensagens de fim de conversa
+    const isPoliteClosing = /^(obrigad[oa]|valeu|legal|ok|tudo certo|entendi|beleza|blz|show|👍|✅)$/i.test(messageText.trim());
+
+    if (isPoliteClosing && sessionData.conversation_state === 'idle') {
+      console.log('[Agenda Debug][WhatsApp] Polite closing detected, responding naturally');
+      
+      const closingResponses = [
+        '😊 Disponha! Estou aqui sempre que precisar.',
+        '✨ Por nada! Qualquer coisa é só chamar.',
+        '👍 Tmj! Me chama quando precisar agendar algo.',
+        '🙌 Sempre à disposição!',
+        '😄 Fechou! Até a próxima.'
+      ];
+      
+      const randomResponse = closingResponses[Math.floor(Math.random() * closingResponses.length)];
+      
+      return {
+        response: randomResponse,
+        sessionData: {
+          ...sessionData,
+          last_interaction: new Date().toISOString()
+        }
+      };
+    }
+
+    // Detectar também após cancelamento/finalização
+    if (isPoliteClosing && ['awaiting_commitment_confirmation', 'awaiting_work_hour_override'].includes(sessionData.conversation_state || '')) {
+      console.log('[Agenda Debug][WhatsApp] Post-action polite closing, ending conversation');
+      
+      return {
+        response: '😊 De nada! Me chama se precisar agendar outra coisa.',
+        sessionData: {
+          ...sessionData,
+          conversation_state: 'idle',
+          pending_commitment: undefined
+        }
+      };
+    }
+
     // PRIORIDADE 0.91: Input de horário para compromisso
     if (sessionData.conversation_state === 'awaiting_commitment_time' && sessionData.pending_commitment) {
       return await this.handleCommitmentTimeInput(session, messageText);
@@ -1564,6 +1603,11 @@ class WhatsAppAgent {
     // PRIORIDADE 0.92: Input de detalhes adicionais (FASE 2)
     if (sessionData.conversation_state === 'awaiting_commitment_details' && sessionData.pending_commitment) {
       return await this.handleCommitmentDetailsInput(session, messageText);
+    }
+
+    // PRIORIDADE 0.923: Override de work hours
+    if (sessionData.conversation_state === 'awaiting_work_hour_override' && sessionData.pending_commitment) {
+      return await this.handleWorkHourOverride(session, messageText);
     }
 
     // PRIORIDADE 0.925: Confirmação final (FASE 3)
@@ -3851,11 +3895,134 @@ class WhatsAppAgent {
           };
         }
         
-        // ✨ FASE 2: SEM CONFLITO! Preparar para coleta de detalhes (NÃO inserir ainda)
-        console.log('✅ [COMMITMENT] No conflicts, preparing detail collection');
+        // ✨ FASE 2: SEM CONFLITO! Validar data passada e work_hours ANTES de pedir detalhes
+        console.log('✅ [COMMITMENT] No conflicts, validating date and work hours...');
         
-        // Formatar data para preview
         const scheduledDate = new Date(scheduledISO);
+        const now = new Date();
+
+        // ✅ FASE 2A: VALIDAR SE DATA JÁ PASSOU
+        console.log('[Agenda Debug][WhatsApp] Checking if date is in past:', { 
+          scheduledDate: scheduledDate.toISOString(), 
+          now: now.toISOString(),
+          isPast: scheduledDate < now
+        });
+
+        if (scheduledDate < now) {
+          console.log('[Agenda Debug][WhatsApp] Date is in the past, generating suggestions');
+          
+          // Sugerir próximos 3 horários disponíveis hoje
+          const today = new Date();
+          const suggestions: string[] = [];
+          const suggestionTimes: string[] = [];
+          
+          for (let i = 1; i <= 3; i++) {
+            const suggestedHour = today.getHours() + i;
+            if (suggestedHour < 22) { // Até 22h
+              const suggestedDate = new Date(today);
+              suggestedDate.setHours(suggestedHour, 0, 0, 0);
+              
+              suggestions.push(`${suggestedHour}:00`);
+              suggestionTimes.push(suggestedDate.toISOString());
+            }
+          }
+          
+          let responseMsg = `⚠️ Esse horário já passou (${format(scheduledDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}).\n\n`;
+          
+          if (suggestions.length > 0) {
+            responseMsg += `💡 *Horários disponíveis hoje:*\n`;
+            suggestions.forEach((time, idx) => {
+              responseMsg += `${idx + 1}️⃣ ${time}\n`;
+            });
+            responseMsg += `\n${suggestions.length + 1}️⃣ Digitar outro horário\n`;
+            responseMsg += `${suggestions.length + 2}️⃣ Cancelar`;
+          } else {
+            responseMsg += `Por favor, informe uma data futura.\n\nExemplo: *agendar ${title} amanhã 14h*`;
+          }
+          
+          return {
+            response: responseMsg,
+            sessionData: {
+              conversation_state: 'awaiting_commitment_resolution',
+              pending_commitment: {
+                title,
+                category,
+                scheduledISO: scheduledISO,
+                suggestions: suggestionTimes
+              }
+            }
+          };
+        }
+
+        // ✅ FASE 2B: VALIDAR WORK_HOURS
+        const dayOfWeek = scheduledDate.getUTCDay() === 0 ? 7 : scheduledDate.getUTCDay();
+
+        console.log('[Agenda Debug][WhatsApp] Pre-validating work hours:', { dayOfWeek });
+
+        const { data: workHours } = await supabase
+          .from('work_hours')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('day_of_week', dayOfWeek)
+          .maybeSingle();
+
+        // Se dia inativo
+        if (workHours && !workHours.is_active) {
+          console.log('[Agenda Debug][WhatsApp] Day is inactive (pre-check)');
+          
+          const dayName = scheduledDate.toLocaleDateString('pt-BR', { 
+            weekday: 'long', 
+            timeZone: 'America/Sao_Paulo' 
+          });
+          
+          return {
+            response: `⚠️ *Atenção:* ${dayName} está marcado como dia inativo.\n\n*Deseja agendar mesmo assim?*\n\n✅ Digite *SIM* para continuar\n❌ Digite *NÃO* para escolher outro dia`,
+            sessionData: {
+              conversation_state: 'awaiting_work_hour_override',
+              pending_commitment: {
+                title,
+                category,
+                scheduledISO,
+                needsWorkHourConfirmation: 'inactive_day'
+              }
+            }
+          };
+        }
+
+        // Se fora do expediente
+        if (workHours && workHours.is_active) {
+          const timeScheduled = scheduledDate.toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'America/Sao_Paulo',
+            hour12: false
+          });
+          const startTime = workHours.start_time.substring(0, 5);
+          const endTime = workHours.end_time.substring(0, 5);
+          
+          if (timeScheduled < startTime || timeScheduled > endTime) {
+            console.log('[Agenda Debug][WhatsApp] Time outside work hours (pre-check):', { 
+              timeScheduled, startTime, endTime 
+            });
+            
+            return {
+              response: `⏰ *Atenção:* ${timeScheduled} está fora do expediente (${startTime} - ${endTime}).\n\n*Deseja agendar mesmo assim?*\n\n✅ Digite *SIM* para continuar\n❌ Digite *NÃO* para escolher outro horário`,
+              sessionData: {
+                conversation_state: 'awaiting_work_hour_override',
+                pending_commitment: {
+                  title,
+                  category,
+                  scheduledISO,
+                  needsWorkHourConfirmation: 'outside_hours'
+                }
+              }
+            };
+          }
+        }
+
+        console.log('[Agenda Debug][WhatsApp] Work hours validation passed (pre-check)');
+
+        // Prosseguir para coleta de detalhes
         const formattedDate = scheduledDate.toLocaleDateString('pt-BR', { 
           weekday: 'long', 
           year: 'numeric', 
@@ -3866,7 +4033,6 @@ class WhatsAppAgent {
           timeZone: 'America/Sao_Paulo'
         });
         
-        // Preparar dados pendentes (SEM inserir no banco)
         const pending = {
           title: title.charAt(0).toUpperCase() + title.slice(1),
           category: category,
@@ -3877,9 +4043,9 @@ class WhatsAppAgent {
         
         return {
           response: `✅ *Vou agendar:*\n\n` +
-                   `📌 ${title.charAt(0).toUpperCase() + title.slice(1)}\n` +
+                   `📌 ${pending.title}\n` +
                    `🗓️ ${formattedDate}\n\n` +
-                   `📍 Qual o endereço ou local do compromisso?\n` +
+                   `📍 Qual o endereço ou local?\n` +
                    `_Digite "pular" para prosseguir sem detalhes._`,
           sessionData: {
             conversation_state: 'awaiting_commitment_details' as const,
@@ -4469,6 +4635,70 @@ Se não especificar hora, retorne scheduled_at: null.`
     }
   }
 
+  // ✨ FASE 2C: Handler para override de work hours
+  static async handleWorkHourOverride(
+    session: Session,
+    messageText: string
+  ): Promise<{ response: string, sessionData: SessionData }> {
+    const normalized = messageText.trim().toLowerCase();
+    const sessionData = session.session_data || {};
+    const pending = sessionData.pending_commitment!;
+    
+    console.log('[Agenda Debug][WhatsApp] Work hour override response:', { input: messageText, normalized });
+    
+    // Usuário confirmou agendar mesmo com alerta
+    if (/^(sim|s|yes|confirmar)$/i.test(normalized)) {
+      console.log('[Agenda Debug][WhatsApp] User confirmed override, proceeding to details');
+      
+      // Prosseguir para coleta de detalhes
+      pending.detailsStep = 'location';
+      
+      const scheduledDate = new Date(pending.scheduledISO);
+      const formattedDate = scheduledDate.toLocaleDateString('pt-BR', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'America/Sao_Paulo'
+      });
+      
+      return {
+        response: `✅ Ok! Vou agendar mesmo assim.\n\n` +
+                 `📌 ${pending.title}\n` +
+                 `🗓️ ${formattedDate}\n\n` +
+                 `📍 Qual o endereço ou local?\n` +
+                 `_Digite "pular" para prosseguir sem detalhes._`,
+        sessionData: {
+          ...sessionData,
+          conversation_state: 'awaiting_commitment_details',
+          pending_commitment: pending
+        }
+      };
+    }
+    
+    // Usuário cancelou
+    if (/^(n(ao|ão)?|não|no|cancelar)$/i.test(normalized)) {
+      console.log('[Agenda Debug][WhatsApp] User rejected override, canceling');
+      
+      return {
+        response: '❌ Agendamento cancelado.\n\nDigite *agendar [título] [data] [hora]* para tentar novamente.',
+        sessionData: {
+          ...sessionData,
+          conversation_state: 'idle',
+          pending_commitment: undefined
+        }
+      };
+    }
+    
+    // Resposta inválida
+    return {
+      response: '❓ *Não entendi sua resposta.*\n\n✅ Digite *SIM* para agendar mesmo assim\n❌ Digite *NÃO* para cancelar',
+      sessionData
+    };
+  }
+
   // ✨ FASE 2: Coletar informações contextuais (local, especialidade, empresa, contato, participantes)
   static async handleCommitmentDetailsInput(
     session: Session, 
@@ -4720,74 +4950,55 @@ Se não especificar hora, retorne scheduled_at: null.`
       timeZone: 'America/Sao_Paulo'
     });
     
-    // Montar mensagem de confirmação
-    let confirmMsg = `📋 *Confirme os dados do compromisso:*\n\n`;
-    confirmMsg += `📌 *Título:* ${pending.title}\n`;
-    confirmMsg += `📅 *Data/Hora:* ${formattedDateTime}\n`;
-    
-    // ✅ Remover "📍 undefined"
-    if (pending.location && pending.location !== 'undefined' && pending.location.trim() !== '' && pending.location !== 'pular') {
-      confirmMsg += `📍 *Local:* ${pending.location}\n`;
-      console.log('[Agenda Debug][WhatsApp] Location field:', { location: pending.location, willShow: true });
-    } else {
-      console.log('[Agenda Debug][WhatsApp] Location field skipped:', { location: pending.location, willShow: false });
-    }
-    
-    if (pending.specialty) {
-      // Indicar visualmente se foi auto-detectada
-      const wasAutoDetected = extractSpecialtyFromTitle(pending.title) === pending.specialty;
-      confirmMsg += `🩺 *Especialidade:* ${pending.specialty}${wasAutoDetected ? ' ✨' : ''}\n`;
-    }
-    
-    if (pending.company) {
-      confirmMsg += `🏢 *Empresa:* ${pending.company}\n`;
-    }
-    
-    if (pending.email) {
-      confirmMsg += `📧 *Email:* ${pending.email}\n`;
-    }
-    
-    if (pending.contactName) {
-      confirmMsg += `👤 *Contato:* ${pending.contactName}`;
-      if (pending.contactPhone) {
-        confirmMsg += ` - ${pending.contactPhone}`;
-      }
-      confirmMsg += '\n';
-    }
-    
-    // ✅ Informações sobre lembretes
-    confirmMsg += `\n🔔 *Você receberá lembretes:*`;
-    confirmMsg += `\n• WhatsApp: 1 dia, 2h e 1h antes`;
-    confirmMsg += `\n• Google Calendar: 1 dia, 2h, 1h e 30 min`;
-    
-    // ✅ Informações sobre Google Meet (se for reunião)
-    if (pending.category === 'meeting') {
-      confirmMsg += `\n\n📧 *Google Meet:*`;
-      confirmMsg += `\n• Link será criado automaticamente`;
-      if (pending.email) {
-        confirmMsg += `\n• Convite será enviado para ${pending.email}`;
+    // ✅ FASE 3: Montar mensagem de confirmação SIMPLIFICADA
+    let confirmMsg = `✅ *Pronto para agendar!*\n\n`;
+    confirmMsg += `📌 ${pending.title}\n`;
+    confirmMsg += `📅 ${formattedDateTime}\n`;
+
+    // Detalhes essenciais (se informados)
+    const hasDetails = pending.location || pending.specialty || pending.company || pending.email;
+
+    if (hasDetails) {
+      confirmMsg += `\n📋 *Detalhes:*\n`;
+      
+      if (pending.location && pending.location !== 'undefined' && pending.location.trim() && pending.location !== 'pular') {
+        confirmMsg += `📍 ${pending.location}\n`;
+        console.log('[Agenda Debug][WhatsApp] Location field:', { location: pending.location, willShow: true });
       } else {
-        confirmMsg += `\n• Link estará disponível no Google Calendar`;
+        console.log('[Agenda Debug][WhatsApp] Location field skipped:', { location: pending.location, willShow: false });
+      }
+      
+      if (pending.specialty) {
+        confirmMsg += `🩺 ${pending.specialty}\n`;
+      }
+      
+      if (pending.company) {
+        confirmMsg += `🏢 ${pending.company}\n`;
+      }
+      
+      if (pending.email) {
+        confirmMsg += `📧 ${pending.email}\n`;
+      }
+      
+      if (pending.contactName) {
+        confirmMsg += `👤 ${pending.contactName}`;
+        if (pending.contactPhone) confirmMsg += ` - ${pending.contactPhone}`;
+        confirmMsg += '\n';
       }
     }
-    
-    if (pending.participants) {
-      confirmMsg += `👥 *Participantes:* ${pending.participants}\n`;
-    }
-    
-    // Preview de lembretes
-    confirmMsg += `\n\n🔔 *Lembretes configurados:*`;
-    confirmMsg += `\n• 1 dia antes`;
-    confirmMsg += `\n• 2 horas antes`;
-    confirmMsg += `\n• 1 hora antes`;
-    confirmMsg += `\n• 30 minutos antes`;
-    
+
+    // Lembretes (versão compacta)
+    confirmMsg += `\n🔔 Você receberá lembretes automáticos`;
+
+    // Google Meet (apenas se for reunião)
     if (pending.category === 'meeting') {
-      confirmMsg += `\n\n📧 Link do Google Meet será criado automaticamente`;
+      confirmMsg += `\n📧 Link do Google Meet será criado`;
     }
-    
-    confirmMsg += `\n\n✅ Digite *confirmar* para agendar`;
-    confirmMsg += `\n❌ Digite *cancelar* para desistir`;
+
+    confirmMsg += `\n\n✅ *CONFIRMAR* para agendar`;
+    confirmMsg += `\n❌ *CANCELAR* para desistir`;
+
+    console.log('[Agenda Debug][WhatsApp] Confirmation message length:', confirmMsg.length);
     
     // Atualizar estado para aguardar confirmação
     await SessionManager.updateSession(session.id, {

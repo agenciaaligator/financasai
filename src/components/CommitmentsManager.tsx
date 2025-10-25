@@ -265,15 +265,12 @@ export function CommitmentsManager() {
         throw error;
       }
 
-      // CORREÇÃO [24/10/2025]: Safety-net no cliente para prevenir vazamento de dados
-      let filteredData = data || [];
-      if (!canViewOthers) {
-        filteredData = filteredData.filter(c => c.user_id === user.id);
-      }
-      
-      console.log('[Agenda Debug] Loaded count:', { 
-        filtered: filteredData.length, 
-        dbCount: count 
+      const filteredData = data || [];
+      console.log('[Agenda Debug] Data loaded from DB:', { count: filteredData.length });
+      console.log('[Agenda Debug] Fetch completed:', { 
+        page: currentPage, 
+        loaded: filteredData.length,
+        totalInDB: count 
       });
       
       if (filteredData.length > 0) {
