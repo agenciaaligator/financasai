@@ -4633,8 +4633,83 @@ Se não especificar hora, retorne scheduled_at: null.`
     
     const sessionData = session.session_data || {};
     
-    // Formatar data/hora em português
+    // ✅ VALIDAR WORK_HOURS ANTES DE MOSTRAR CONFIRMAÇÃO
     const scheduledDate = new Date(pending.scheduledISO);
+    const dayOfWeek = scheduledDate.getUTCDay() === 0 ? 7 : scheduledDate.getUTCDay(); // Domingo = 7
+    
+    console.log('[Agenda Debug][WhatsApp] Validating work hours for day:', dayOfWeek);
+    
+    const { data: workHours } = await supabase
+      .from('work_hours')
+      .select('*')
+      .eq('user_id', session.user_id)
+      .eq('day_of_week', dayOfWeek)
+      .maybeSingle();
+    
+    // Se dia está marcado como inativo
+    if (workHours && !workHours.is_active) {
+      console.log('[Agenda Debug][WhatsApp] Day is inactive, asking user confirmation');
+      
+      pending.needsWorkHourConfirmation = 'inactive_day';
+      
+      await SessionManager.updateSession(session.id, {
+        session_data: {
+          ...sessionData,
+          conversation_state: 'awaiting_commitment_confirmation',
+          pending_commitment: pending
+        }
+      });
+      
+      const dayName = scheduledDate.toLocaleDateString('pt-BR', { weekday: 'long', timeZone: 'America/Sao_Paulo' });
+      
+      return {
+        response: `⚠️ *Atenção:* ${dayName} (${scheduledDate.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}) está marcado como *dia inativo* na sua agenda.\n\n*Deseja agendar mesmo assim?*\n\n✅ Digite *SIM* para confirmar\n❌ Digite *NÃO* para escolher outro horário`,
+        sessionData: {
+          ...sessionData,
+          conversation_state: 'awaiting_commitment_confirmation',
+          pending_commitment: pending
+        }
+      };
+    }
+    
+    // Se horário está fora do expediente
+    if (workHours && workHours.is_active) {
+      const timeScheduled = scheduledDate.toLocaleTimeString('pt-BR', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        timeZone: 'America/Sao_Paulo',
+        hour12: false
+      });
+      const startTime = workHours.start_time.substring(0, 5);
+      const endTime = workHours.end_time.substring(0, 5);
+      
+      if (timeScheduled < startTime || timeScheduled > endTime) {
+        console.log('[Agenda Debug][WhatsApp] Time outside work hours:', { timeScheduled, startTime, endTime });
+        
+        pending.needsWorkHourConfirmation = 'outside_hours';
+        
+        await SessionManager.updateSession(session.id, {
+          session_data: {
+            ...sessionData,
+            conversation_state: 'awaiting_commitment_confirmation',
+            pending_commitment: pending
+          }
+        });
+        
+        return {
+          response: `⏰ *Atenção:* O horário ${timeScheduled} está *fora do seu expediente* (${startTime} - ${endTime}).\n\n*Deseja agendar mesmo assim?*\n\n✅ Digite *SIM* para confirmar\n❌ Digite *NÃO* para escolher outro horário`,
+          sessionData: {
+            ...sessionData,
+            conversation_state: 'awaiting_commitment_confirmation',
+            pending_commitment: pending
+          }
+        };
+      }
+    }
+    
+    console.log('[Agenda Debug][WhatsApp] Work hours validation passed');
+    
+    // Formatar data/hora em português
     const formattedDateTime = scheduledDate.toLocaleDateString('pt-BR', {
       weekday: 'long',
       year: 'numeric',
@@ -4650,8 +4725,12 @@ Se não especificar hora, retorne scheduled_at: null.`
     confirmMsg += `📌 *Título:* ${pending.title}\n`;
     confirmMsg += `📅 *Data/Hora:* ${formattedDateTime}\n`;
     
-    if (pending.location) {
+    // ✅ Remover "📍 undefined"
+    if (pending.location && pending.location !== 'undefined' && pending.location.trim() !== '' && pending.location !== 'pular') {
       confirmMsg += `📍 *Local:* ${pending.location}\n`;
+      console.log('[Agenda Debug][WhatsApp] Location field:', { location: pending.location, willShow: true });
+    } else {
+      console.log('[Agenda Debug][WhatsApp] Location field skipped:', { location: pending.location, willShow: false });
     }
     
     if (pending.specialty) {
@@ -4741,8 +4820,9 @@ Se não especificar hora, retorne scheduled_at: null.`
     
     console.log('✅ Processando confirmação:', { input: messageText, normalized });
     
-    // Se cancelar, limpar estado E deletar compromisso órfão se existir
-    if (/^cancel(ar)?$/i.test(normalized)) {
+    // ✅ Aceitar variações de "não"
+    if (/^(n(ao|ão)?|não|no|cancelar)$/i.test(normalized)) {
+      console.log('[Agenda Debug][WhatsApp] User rejected commitment');
       console.log('[COMMITMENT-FLOW] User cancelled confirmation, checking for orphan');
       
       // ✅ SE JÁ CRIOU COMPROMISSO NO BANCO, DELETAR
@@ -4764,7 +4844,7 @@ Se não especificar hora, retorne scheduled_at: null.`
       });
       
       return {
-        response: '❌ Agendamento cancelado.',
+        response: '❌ Agendamento cancelado.\n\nDigite *agendar [título] [data] [hora]* para tentar novamente.',
         sessionData: {
           ...sessionData,
           conversation_state: 'idle',
@@ -4773,8 +4853,9 @@ Se não especificar hora, retorne scheduled_at: null.`
       };
     }
     
-    // Se confirmar, salvar no banco
-    if (/^confirm(ar)?$/i.test(normalized)) {
+    // ✅ Aceitar variações de "sim"
+    if (/^(sim|s|yes|confirmar|confirmo)$/i.test(normalized)) {
+      console.log('[Agenda Debug][WhatsApp] User confirmed commitment');
       const supabase = createClient(
         Deno.env.get('SUPABASE_URL')!,
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -4852,8 +4933,8 @@ Se não especificar hora, retorne scheduled_at: null.`
         pending
       );
       
-      // Adicionar link do Google Maps se houver localização
-      if (pending.location && pending.location !== 'pular') {
+      // ✅ Adicionar link do Google Maps se houver localização (sem undefined)
+      if (pending.location && pending.location !== 'pular' && pending.location !== 'undefined' && pending.location.trim() !== '') {
         const encodedAddress = encodeURIComponent(pending.location);
         successMsg += `\n\n📍 Ver no mapa: https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
       }
@@ -4897,7 +4978,13 @@ Se não especificar hora, retorne scheduled_at: null.`
       };
     }
     
-    // Se não for nem confirmar nem cancelar, pedir novamente
+    // ✅ Se não for sim nem não
+    return {
+      response: '❓ *Não entendi sua resposta.*\n\n✅ Digite *SIM* para confirmar o agendamento\n❌ Digite *NÃO* para cancelar',
+      sessionData
+    };
+    
+    // Se não for nem confirmar nem cancelar, pedir novamente (não deveria chegar aqui)
     return {
       response: '❓ Não entendi. Digite *confirmar* para agendar ou *cancelar* para desistir.',
       sessionData

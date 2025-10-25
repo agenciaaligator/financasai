@@ -61,7 +61,7 @@ export function CommitmentsManager() {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showReconnectBanner, setShowReconnectBanner] = useState(false);
-  const [viewScope, setViewScope] = useState<'self' | 'organization'>('self');
+  // viewScope removido - sempre visualização pessoal
   
   const { connection, loading: gcLoading, isConnected, hadConnectionBefore, connect, disconnect, syncEvent, refresh } = useGoogleCalendar();
   const { t } = useTranslation();
@@ -88,7 +88,7 @@ export function CommitmentsManager() {
 
   useEffect(() => {
     fetchCommitments();
-  }, [currentPage, titleFilter, dateFromFilter, dateToFilter, categoryFilter, viewScope]);
+  }, [currentPage, titleFilter, dateFromFilter, dateToFilter, categoryFilter]);
 
   // CORREÇÃO [24/10/2025]: useEffect separado para evitar popup aparecer repetidamente
   useEffect(() => {
@@ -210,8 +210,7 @@ export function CommitmentsManager() {
         page: currentPage,
         filters: { titleFilter, dateFromFilter, dateToFilter, categoryFilter },
         organization: organization_id,
-        canViewOthers,
-        viewScope
+        canViewOthers
       });
 
       let query = supabase
@@ -252,25 +251,10 @@ export function CommitmentsManager() {
         query = query.eq("category", categoryFilter);
       }
 
-      // CORREÇÃO [24/10/2025]: Segurança de escopo - sempre filtrar por user_id por padrão
-      // Apenas usar organization_id quando viewScope for 'organization' E usuário tiver permissão
-      const isOwnerOrAdmin = orgRole === 'owner' || isAdmin || canViewOthers;
+      // ✅ SEMPRE filtrar por user_id (visualização pessoal apenas)
+      query = query.eq("user_id", user.id);
       
-      console.log('[Agenda Debug] Effective scope:', { 
-        viewScope, 
-        isOwnerOrAdmin, 
-        organization_id,
-        orgRole,
-        isAdmin,
-        canViewOthers,
-        computedScope
-      });
-      
-      if (viewScope === 'organization' && isOwnerOrAdmin && organization_id) {
-        query = query.eq("organization_id", organization_id);
-      } else {
-        query = query.eq("user_id", user.id);
-      }
+      console.log('[Agenda Debug] Scope locked to self (user_id):', user.id);
 
       query = query.range(from, to);
 
@@ -1022,50 +1006,7 @@ export function CommitmentsManager() {
         </CardContent>
       </Card>
 
-      {/* Indicador de escopo e toggle para owner/admin - OCULTAR para membros */}
-      {(() => {
-        const shouldShow = (orgRole === 'owner' || isAdmin) && computedScope === 'organization';
-        console.log('[Agenda Debug] Toggle visibility:', { 
-          orgRole, 
-          isAdmin, 
-          canViewOthers, 
-          computedScope,
-          willShow: shouldShow
-        });
-        return shouldShow;
-      })() && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm text-muted-foreground">
-                Visualizando: 
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant={viewScope === 'self' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => {
-                    setViewScope('self');
-                    setCurrentPage(1);
-                  }}
-                >
-                  Meus Compromissos
-                </Button>
-                <Button
-                  variant={viewScope === 'organization' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => {
-                    setViewScope('organization');
-                    setCurrentPage(1);
-                  }}
-                >
-                  Ver Todos da Empresa
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Toggle removido - sistema simplificado para uso pessoal apenas */}
 
       {/* Google Calendar Integration Card */}
       {roleLoading || permissionsLoading ? (
