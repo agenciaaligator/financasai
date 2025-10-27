@@ -1595,17 +1595,66 @@ class WhatsAppAgent {
       };
     }
 
-    // PRIORIDADE 0.91: Detectar comandos de cancelamento/ajuda ANTES de processar horário
+    // PRIORIDADE 0.91: Detectar comandos de cancelamento/ajuda/transações ANTES de processar horário
     if (sessionData.conversation_state === 'awaiting_commitment_time' && sessionData.pending_commitment) {
       const normalizedInput = messageText.trim().toLowerCase();
+      
+      console.log('[Agenda Debug][WhatsApp] awaiting_time state, analyzing input:', { 
+        input: messageText, 
+        normalized: normalizedInput 
+      });
+      
+      // 1️⃣ Detectar comandos explícitos de cancelamento/ajuda
       if (/^(cancelar|ajuda|help|menu)$/i.test(normalizedInput)) {
         console.log('[Agenda Debug][WhatsApp] Detected cancel/help during time input, resetting state');
-        // Resetar estado para processar comando normalmente
         sessionData.conversation_state = 'idle';
         sessionData.pending_commitment = undefined;
         // Continuar para processar o comando normalmente abaixo
-      } else {
-        return await this.handleCommitmentTimeInput(session, messageText);
+      } 
+      // 2️⃣ Validar se é um horário estrito (APENAS números + opcional h/: )
+      else {
+        const strictTimeRegex = /^\s*(\d{1,2})(?::(\d{2}))?\s*(?:h|horas?)?\s*$/i;
+        const isStrictTime = strictTimeRegex.test(normalizedInput);
+        
+        console.log('[Agenda Debug][WhatsApp] Strict time check:', { 
+          isStrictTime, 
+          input: normalizedInput 
+        });
+        
+        if (isStrictTime) {
+          // É um horário válido, processar normalmente
+          return await this.handleCommitmentTimeInput(session, messageText);
+        }
+        
+        // 3️⃣ NÃO é horário estrito - verificar se é transação
+        const parsedTransaction = TransactionParser.parseTransactionFromText(messageText);
+        
+        console.log('[Agenda Debug][WhatsApp] Transaction parse result:', { 
+          isTransaction: !!parsedTransaction,
+          input: messageText
+        });
+        
+        if (parsedTransaction) {
+          console.log('[Agenda Debug][WhatsApp] Breakout to transaction flow from awaiting_time');
+          
+          // Resetar estado de agendamento e processar como transação
+          sessionData.conversation_state = 'idle';
+          sessionData.pending_commitment = undefined;
+          
+          await SessionManager.updateSession(session.id, {
+            session_data: sessionData
+          });
+          
+          // Continuar abaixo para processar a transação
+          // NÃO retornar aqui - deixar o fluxo seguir para a seção de transações
+        } else {
+          // 4️⃣ Não é horário nem transação - pedir formato correto
+          console.log('[Agenda Debug][WhatsApp] Input is neither time nor transaction');
+          return {
+            response: '⏰ Por favor, digite apenas o horário.\n\nExemplos:\n• 11h\n• 14:30\n• 9h\n\n_Ou digite "cancelar" para desistir._',
+            sessionData
+          };
+        }
       }
     }
 
@@ -5245,14 +5294,15 @@ Se não especificar hora, retorne scheduled_at: null.`
     const normalized = messageText.toLowerCase().trim();
     
     // 🔄 FASE 1: Detectar se o usuário está iniciando um NOVO agendamento (regex CORRIGIDA)
-    const startsNewScheduling = /\b(agendar|marcar|cadastrar)\s+\w+/i.test(normalized);
+    const startsNewScheduling = /\b(agendar|marcar|cadastrar)\b/i.test(normalized);
     if (startsNewScheduling) {
       console.log('[COMMITMENT-FLOW] Novo comando de agendamento detectado. Reiniciando fluxo.');
       return await this.addCommitment(session.user_id!, messageText);
     }
     
     // ✅ VALIDAÇÃO: Se não for um horário válido, retornar erro claro
-    const timeMatch = normalized.match(/\b(\d{1,2})(?::(\d{2}))?\s*(?:h|horas?)?/);
+    // Regex ANCORADA para aceitar APENAS horários puros
+    const timeMatch = normalized.match(/^(\d{1,2})(?::(\d{2}))?\s*(?:h|horas?)?$/i);
     
     if (!timeMatch) {
       console.log('[COMMITMENT-FLOW] Invalid time format, rejecting input');
@@ -5289,14 +5339,37 @@ Se não especificar hora, retorne scheduled_at: null.`
     
     console.log('🗓️ Horário validado:', { hour, minute, scheduledISO });
     
-    // ✅ Validar se horário já passou (BRT)
-    const nowBRT = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-    const scheduledBRT = new Date(new Date(scheduledISO).toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-    if (scheduledBRT <= nowBRT) {
-      console.log('⏰ [COMMITMENT-FLOW] Rejected past time at time input:', { scheduledBRT, nowBRT });
+    // ✅ Validar se horário já passou (BRT) usando date-fns-tz
+    const { toZonedTime } = await import('https://esm.sh/date-fns-tz@3.2.0');
+    const nowSP = toZonedTime(new Date(), 'America/Sao_Paulo');
+    const scheduledSP = toZonedTime(new Date(scheduledISO), 'America/Sao_Paulo');
+
+    console.log('[Agenda Debug][WhatsApp] Timezone validation in handleCommitmentTimeInput:', { 
+      nowSP: nowSP.toISOString(),
+      scheduledSP: scheduledSP.toISOString(),
+      isPast: scheduledSP <= nowSP
+    });
+
+    if (scheduledSP <= nowSP) {
+      console.log('⏰ [COMMITMENT-FLOW] Rejected past time at time input:', { scheduledSP, nowSP });
       const suggestions = await this.suggestAvailableSlots(session.user_id!, new Date(pending.targetDate), hour);
+      
+      // Formatar sugestões com emojis numerados
+      const formattedSuggestions = suggestions.length > 0 
+        ? suggestions.map((time, idx) => `${idx + 1}️⃣ ${time}`).join('\n')
+        : '';
+
+      const suggestionText = formattedSuggestions 
+        ? `💡 *Horários disponíveis hoje:*\n${formattedSuggestions}\n\n${suggestions.length + 1}️⃣ Digitar outro horário\n${suggestions.length + 2}️⃣ Cancelar`
+        : `Por favor, informe um horário futuro.\n\nExemplo: *14h* ou *14:30*`;
+
+      console.log('[Agenda Debug][WhatsApp] Formatted suggestions:', { 
+        count: suggestions.length, 
+        formatted: formattedSuggestions 
+      });
+
       return {
-        response: `⏰ *Esse horário já passou!*\n\nPor favor, informe um horário futuro.\n\n💡 *Sugestões para hoje:*\n${suggestions.join('\n')}`,
+        response: `⏰ *Esse horário já passou!*\n\n${suggestionText}`,
         sessionData: {
           ...sessionData,
           conversation_state: 'awaiting_commitment_time',
