@@ -1595,9 +1595,18 @@ class WhatsAppAgent {
       };
     }
 
-    // PRIORIDADE 0.91: Input de horário para compromisso
+    // PRIORIDADE 0.91: Detectar comandos de cancelamento/ajuda ANTES de processar horário
     if (sessionData.conversation_state === 'awaiting_commitment_time' && sessionData.pending_commitment) {
-      return await this.handleCommitmentTimeInput(session, messageText);
+      const normalizedInput = messageText.trim().toLowerCase();
+      if (/^(cancelar|ajuda|help|menu)$/i.test(normalizedInput)) {
+        console.log('[Agenda Debug][WhatsApp] Detected cancel/help during time input, resetting state');
+        // Resetar estado para processar comando normalmente
+        sessionData.conversation_state = 'idle';
+        sessionData.pending_commitment = undefined;
+        // Continuar para processar o comando normalmente abaixo
+      } else {
+        return await this.handleCommitmentTimeInput(session, messageText);
+      }
     }
 
     // PRIORIDADE 0.92: Input de detalhes adicionais (FASE 2)
@@ -1801,8 +1810,11 @@ class WhatsAppAgent {
     }
     
     // PRIORIDADE 2: Comandos de AGENDA (ANTES de outros comandos genéricos)
-    if (/agend|compromisso|reuniao|consulta|evento|marc/i.test(messageText)) {
-      console.log('🗓️ AGENDA COMMAND DETECTED:', messageText);
+    if (/\b(agendar|compromisso|reuni[aã]o|consulta|evento|marcar)\b/i.test(messageText)) {
+      console.log('[Agenda Debug][WhatsApp] Agenda regex match:', { 
+        messageText, 
+        matched: /\b(agendar|compromisso|reuni[aã]o|consulta|evento|marcar)\b/i.test(messageText)
+      });
       
       // Listar compromissos
       if (/meus|proximos|listar|ver|mostrar/i.test(messageText)) {
@@ -3773,11 +3785,18 @@ class WhatsAppAgent {
           scheduledISO
         });
         
-        // ✅ VALIDAR HORÁRIO PASSADO (BRT)
-        const nowBRT = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-        const scheduledBRT = new Date(new Date(scheduledISO).toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+        // ✅ VALIDAR HORÁRIO PASSADO (BRT) usando date-fns-tz
+        const { toZonedTime } = await import('https://esm.sh/date-fns-tz@3.2.0');
+        const nowSP = toZonedTime(new Date(), 'America/Sao_Paulo');
+        const scheduledSP = toZonedTime(new Date(scheduledISO), 'America/Sao_Paulo');
         
-        if (scheduledBRT <= nowBRT) {
+        console.log('[Agenda Debug][WhatsApp] Timezone validation:', { 
+          nowSP: nowSP.toISOString(),
+          scheduledSP: scheduledSP.toISOString(),
+          isPast: scheduledSP <= nowSP
+        });
+        
+        if (scheduledSP <= nowSP) {
           console.log('⏰ [COMMITMENT-FLOW] Rejected past time:', { scheduledBRT, nowBRT });
           
           // Buscar horários disponíveis
@@ -3787,10 +3806,17 @@ class WhatsAppAgent {
           );
           const suggestions = await this.suggestAvailableSlots(userId, target, hour);
           
+          // Formatar sugestões com emojis
+          const formattedSuggestions = suggestions.length > 0 
+            ? suggestions.map((time, idx) => `${idx + 1}️⃣ ${time}`).join('\n')
+            : '';
+          
+          const suggestionText = formattedSuggestions 
+            ? `💡 *Horários disponíveis hoje:*\n${formattedSuggestions}\n\n${suggestions.length + 1}️⃣ Digitar outro horário\n${suggestions.length + 2}️⃣ Cancelar`
+            : `Por favor, informe um horário futuro.\n\nExemplo: *agendar ${title} amanhã 14h*`;
+          
           return {
-            response: `⏰ *Esse horário já passou!*\n\n` +
-                     `Por favor, informe um horário futuro.\n\n` +
-                     `💡 *Sugestões para hoje:*\n${suggestions.join('\n')}`,
+            response: `⏰ *Esse horário já passou!*\n\n${suggestionText}`,
             sessionData: {
               conversation_state: 'awaiting_commitment_time',
               pending_commitment: {

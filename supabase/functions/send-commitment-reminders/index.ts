@@ -406,8 +406,17 @@ serve(async (req) => {
           continue;
         }
 
-        // Janela de envio reduzida para 10 minutos para evitar reenvios a cada execução de cron
-        const shouldSend = minutesUntil <= reminder.time && minutesUntil > (reminder.time - 10);
+        // Janela de envio de 15 minutos para cobrir intervalos de cron
+        const shouldSend = minutesUntil <= reminder.time && minutesUntil > (reminder.time - 15);
+        
+        console.log('[Reminder Debug] Window check:', { 
+          commitmentId: commitment.id,
+          minutesUntil, 
+          reminderTime: reminder.time,
+          windowStart: reminder.time - 15,
+          windowEnd: reminder.time,
+          shouldSend 
+        });
 
         if (shouldSend) {
           console.log(`[REMINDER] [${executionId}] Sending ${reminder.time}min reminder for ${commitment.title} to user ${commitment.user_id} (${Math.floor(minutesUntil)}min until event)`);
