@@ -108,24 +108,71 @@ export function DashboardContent({
     fetchOrgMembers();
   }, [organization_id, user]);
   
-  const [filters, setFilters] = useState<TransactionFiltersState>({
-    period: 'all',
-    customDateRange: { start: null, end: null },
-    type: 'all',
-    categories: [],
-    source: 'all',
-    searchText: '',
-    responsible: 'all' // FASE 2
+  // 🔄 Carregar filtros do localStorage na montagem
+  const [filters, setFilters] = useState<TransactionFiltersState>(() => {
+    try {
+      const saved = localStorage.getItem('transactions_filters_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          period: parsed.period || 'all',
+          customDateRange: parsed.customDateRange || { start: null, end: null },
+          type: parsed.type || 'all',
+          categories: parsed.categories || [],
+          source: parsed.source || 'all',
+          searchText: parsed.searchText || '',
+          responsible: parsed.responsible || 'all'
+        };
+      }
+    } catch (e) {
+      console.warn('Erro ao carregar filtros do localStorage:', e);
+    }
+    return {
+      period: 'all',
+      customDateRange: { start: null, end: null },
+      type: 'all',
+      categories: [],
+      source: 'all',
+      searchText: '',
+      responsible: 'all'
+    };
   });
 
   const [currentPage, setCurrentPage] = useState(1);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
-  const [showOnlyMine, setShowOnlyMine] = useState(false);
+  
+  // 🔄 Carregar showOnlyMine do localStorage
+  const [showOnlyMine, setShowOnlyMine] = useState(() => {
+    try {
+      const saved = localStorage.getItem('transactions_showOnlyMine_v1');
+      return saved === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  // 💾 Salvar filtros no localStorage quando mudarem
+  useEffect(() => {
+    try {
+      localStorage.setItem('transactions_filters_v1', JSON.stringify(filters));
+    } catch (e) {
+      console.warn('Erro ao salvar filtros:', e);
+    }
+  }, [filters]);
+
+  // 💾 Salvar showOnlyMine no localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('transactions_showOnlyMine_v1', showOnlyMine.toString());
+    } catch (e) {
+      console.warn('Erro ao salvar showOnlyMine:', e);
+    }
+  }, [showOnlyMine]);
 
   // Reset para página 1 quando filtros mudarem
   useEffect(() => {
     setCurrentPage(1);
-  }, [filters]);
+  }, [filters, showOnlyMine]);
 
   const filteredTransactions = useMemo(() => {
     const now = toZonedTime(new Date(), TIMEZONE);
@@ -143,44 +190,63 @@ export function DashboardContent({
           let endDate: Date;
 
           switch (filters.period) {
-            case 'today':
-              startDate = startOfDay(now);
-              endDate = endOfDay(now);
+            case 'today': {
+              // 🔧 FIX: Comparar datas como string para evitar problema de timezone
+              const todayStr = now.toISOString().split('T')[0]; // yyyy-mm-dd
+              const transactionDateStr = transaction.date; // já está em yyyy-mm-dd
+              
+              if (transactionDateStr !== todayStr) {
+                return false;
+              }
+              // Continuar para os próximos filtros
               break;
+            }
             case 'week':
               startDate = startOfWeek(now, { weekStartsOn: 0 });
               endDate = endOfWeek(now, { weekStartsOn: 0 });
+              if (!isWithinInterval(transactionDate, { start: startDate, end: endDate })) {
+                return false;
+              }
               break;
             case 'month':
               startDate = startOfMonth(now);
               endDate = endOfMonth(now);
+              if (!isWithinInterval(transactionDate, { start: startDate, end: endDate })) {
+                return false;
+              }
               break;
             case '30days':
               startDate = startOfDay(subDays(now, 30));
               endDate = endOfDay(now);
+              if (!isWithinInterval(transactionDate, { start: startDate, end: endDate })) {
+                return false;
+              }
               break;
             case '90days':
               startDate = startOfDay(subDays(now, 90));
               endDate = endOfDay(now);
+              if (!isWithinInterval(transactionDate, { start: startDate, end: endDate })) {
+                return false;
+              }
               break;
             case 'year':
               startDate = startOfYear(now);
               endDate = endOfYear(now);
+              if (!isWithinInterval(transactionDate, { start: startDate, end: endDate })) {
+                return false;
+              }
               break;
             case 'custom':
               if (filters.customDateRange.start && filters.customDateRange.end) {
                 startDate = startOfDay(toZonedTime(filters.customDateRange.start, TIMEZONE));
                 endDate = endOfDay(toZonedTime(filters.customDateRange.end, TIMEZONE));
-              } else {
-                return true;
+                if (!isWithinInterval(transactionDate, { start: startDate, end: endDate })) {
+                  return false;
+                }
               }
               break;
             default:
-              return true;
-          }
-
-          if (!isWithinInterval(transactionDate, { start: startDate, end: endDate })) {
-            return false;
+              break;
           }
         } catch (error) {
           console.warn('[DashboardContent] Data inválida na transação:', transaction.id, transaction.date);
@@ -226,11 +292,12 @@ export function DashboardContent({
   
   // FASE 3: Calcular valores filtrados para dashboard quando showOnlyMine está ativo
   const visibleTransactions = useMemo(() => {
-    if (!showOnlyMine || !canViewOthers || !user?.id) {
+    // Aplicar showOnlyMine independente de canViewOthers (se tiver organization_id, já pode filtrar)
+    if (!showOnlyMine || !organization_id || !user?.id) {
       return transactions;
     }
     return transactions.filter(t => t.user_id === user.id);
-  }, [transactions, showOnlyMine, canViewOthers, user]);
+  }, [transactions, showOnlyMine, organization_id, user]);
 
   const visibleBalance = useMemo(() => {
     return visibleTransactions.reduce((acc, transaction) => {
@@ -255,9 +322,65 @@ export function DashboardContent({
   }, [visibleTransactions]);
 
   if (currentTab === "dashboard") {
+    // 📊 Diagnóstico de visibilidade
+    const myTransactions = transactions.filter(t => t.user_id === user?.id);
+    const orgTransactions = organization_id ? transactions.filter(t => t.organization_id === organization_id) : [];
+    const myTransactionsWithOrg = myTransactions.filter(t => t.organization_id);
+    const myTransactionsWithoutOrg = myTransactions.filter(t => !t.organization_id);
+    
     return (
       <div className="space-y-6">
         <BalanceAlert isNegative={isNegative} />
+        
+        {/* 🔍 Card de Diagnóstico de Visibilidade */}
+        {organization_id && (
+          <Card className="bg-muted/50 border-primary/20">
+            <CardHeader>
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                🔍 Diagnóstico de Visibilidade
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-muted-foreground">Organização ativa:</p>
+                  <p className="font-mono text-xs">{organization_id.substring(0, 8)}...</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Permissão ver outros:</p>
+                  <p className="font-semibold">{canViewOthers ? '✅ Sim' : '❌ Não'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Minhas transações:</p>
+                  <p className="font-semibold">{myTransactions.length} total</p>
+                  <p className="text-xs text-muted-foreground">
+                    {myTransactionsWithOrg.length} com org_id | {myTransactionsWithoutOrg.length} sem org_id
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Da organização:</p>
+                  <p className="font-semibold">{orgTransactions.length} total</p>
+                </div>
+              </div>
+              
+              {!canViewOthers && (
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-3 mt-2">
+                  <p className="text-yellow-700 dark:text-yellow-300 text-xs">
+                    💡 <strong>Membro sem permissão:</strong> Você está vendo apenas suas próprias transações.
+                  </p>
+                </div>
+              )}
+              
+              {myTransactionsWithoutOrg.length > 0 && (
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded p-3 mt-2">
+                  <p className="text-blue-700 dark:text-blue-300 text-xs">
+                    ℹ️ <strong>Transações antigas detectadas:</strong> Você tem {myTransactionsWithoutOrg.length} transações sem organization_id (criadas antes da correção). Novas transações via WhatsApp já incluem organization_id automaticamente.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
         
         {/* FASE 3: Switch "Ver apenas minhas transações" no dashboard */}
         {organization_id && (
@@ -273,7 +396,7 @@ export function DashboardContent({
           </div>
         )}
         
-        <SummaryCards 
+        <SummaryCards
           balance={visibleBalance}
           totalIncome={visibleTotalIncome}
           totalExpenses={visibleTotalExpenses}
@@ -320,10 +443,40 @@ export function DashboardContent({
 
     const transactionProgress = getTransactionProgress();
     const categoryProgress = getCategoryProgress();
+    
+    // 📊 Diagnóstico de visibilidade na aba de transações
+    const myTransactions = transactions.filter(t => t.user_id === user?.id);
+    const orgTransactions = organization_id ? transactions.filter(t => t.organization_id === organization_id) : [];
 
     return (
       <ErrorBoundary>
         <div className="space-y-4">
+          {/* 🔍 Diagnóstico no topo da aba de transações */}
+          {organization_id && (
+            <Card className="bg-muted/50 border-primary/20">
+              <CardContent className="pt-4 space-y-2 text-sm">
+                <div className="flex flex-wrap gap-4">
+                  <div>
+                    <span className="text-muted-foreground">Permissão ver outros: </span>
+                    <span className="font-semibold">{canViewOthers ? '✅ Sim' : '❌ Não'}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Minhas: </span>
+                    <span className="font-semibold">{myTransactions.length}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Da org: </span>
+                    <span className="font-semibold">{orgTransactions.length}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Filtradas: </span>
+                    <span className="font-semibold">{filteredTransactions.length}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
             <AddTransactionButton 
               showForm={showTransactionForm}

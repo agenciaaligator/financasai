@@ -1528,6 +1528,28 @@ class WhatsAppAgent {
     });
 
     // 📸 PRIORIDADE 0: Processar imagens (OCR de notas fiscais)
+    // 🔐 VALIDAÇÃO DE SEGREDOS ANTES DE PROCESSAR IMAGEM
+    if (message.image || message.type === 'image') {
+      const WHATSAPP_ACCESS_TOKEN = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
+      const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+      
+      if (!WHATSAPP_ACCESS_TOKEN) {
+        console.error('❌ WHATSAPP_ACCESS_TOKEN não configurado');
+        return {
+          response: '⚙️ Configuração do WhatsApp indisponível. Entre em contato com o suporte.',
+          sessionData: session.session_data || {}
+        };
+      }
+      
+      if (!LOVABLE_API_KEY) {
+        console.error('❌ LOVABLE_API_KEY não configurado');
+        return {
+          response: '🤖 Serviço de OCR temporariamente indisponível. Tente adicionar manualmente: "gastei 50 mercado"',
+          sessionData: session.session_data || {}
+        };
+      }
+    }
+    
     if (message.image && message.image.id) {
       console.log('📸 IMAGEM DETECTADA! Processando OCR...', message.image);
       return await this.handleImageMessage(session, message);
@@ -2555,11 +2577,38 @@ class WhatsAppAgent {
     }
 
     try {
-      console.log('📸 Baixando imagem...');
+      console.log('📸 Baixando imagem...', {
+        mediaId: message.image!.id,
+        mimeType: message.image!.mime_type
+      });
+      
       const imageData = await ReceiptOCR.downloadWhatsAppMedia(message.image!.id);
+      
+      // 🔍 Validar tamanho do buffer
+      const imageSizeBytes = imageData.length;
+      const imageSizeMB = imageSizeBytes / (1024 * 1024);
+      
+      console.log('📊 Imagem baixada:', {
+        sizeBytes: imageSizeBytes,
+        sizeMB: imageSizeMB.toFixed(2)
+      });
+      
+      if (imageSizeMB > 5) {
+        console.warn('⚠️ Imagem muito grande:', imageSizeMB.toFixed(2), 'MB');
+        return {
+          response: '📸 Imagem muito grande!\n\n' +
+                   `Tamanho: ${imageSizeMB.toFixed(1)}MB (máx 5MB)\n\n` +
+                   'Tente comprimir ou enviar outra foto.',
+          sessionData
+        };
+      }
       
       // Converter para base64
       const base64Image = btoa(String.fromCharCode(...imageData));
+      console.log('🔄 Base64 gerado:', {
+        base64Length: base64Image.length,
+        estimatedKB: (base64Image.length / 1024).toFixed(2)
+      });
       
       console.log('🤖 Analisando nota fiscal com Gemini Vision...');
       const ocrData = await ReceiptOCR.analyzeReceipt(base64Image);
@@ -3392,15 +3441,37 @@ class WhatsAppAgent {
 
       console.log('✅ saveTransaction: User ID validated');
 
-      // FASE 2: Buscar organization_id do usuário
+      // FASE 2: Buscar organization_id do usuário (membership ou owner)
+      let organization_id: string | null = null;
+      
+      // Primeiro: tentar membership
       const { data: orgMember } = await supabase
         .from('organization_members')
         .select('organization_id')
         .eq('user_id', userId)
+        .order('created_at', { ascending: false })
         .maybeSingle();
       
-      const organizationId = orgMember?.organization_id || null;
-      console.log('🏢 Organization ID for user:', organizationId);
+      if (orgMember?.organization_id) {
+        organization_id = orgMember.organization_id;
+        console.log('✅ Organization ID encontrado via membership:', organization_id);
+      } else {
+        // Fallback: se não tem membership, buscar se é owner
+        const { data: ownedOrg } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('owner_id', userId)
+          .maybeSingle();
+        
+        if (ownedOrg?.id) {
+          organization_id = ownedOrg.id;
+          console.log('✅ Organization ID encontrado via owner:', organization_id);
+        } else {
+          console.log('⚠️ Usuário sem organization_id (nem membership nem owner)');
+        }
+      }
+      
+      console.log('🏢 Organization ID for user:', organization_id);
 
       // Buscar melhor categoria automaticamente se não foi especificada
       let categoryInfo = { category_id: null, category_name: 'Sem categoria', suggested: false };
@@ -3423,7 +3494,7 @@ class WhatsAppAgent {
         description: transaction.description,
         category_id: transaction.category_id || categoryInfo.category_id,
         source: 'whatsapp',
-        organization_id: organizationId  // FASE 2: Preencher org_id
+        organization_id: organization_id  // FASE 2: Sempre preencher org_id (membership ou owner)
       };
 
       console.log('🔵 saveTransaction: Calling Supabase insert with:', transactionData);
