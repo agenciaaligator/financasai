@@ -131,8 +131,8 @@ export function DashboardContent({
     const now = toZonedTime(new Date(), TIMEZONE);
     
     return transactions.filter(transaction => {
-      // Filtro "Ver apenas minhas" se habilitado
-      if (showOnlyMine && canViewOthers && user?.id && transaction.user_id !== user.id) {
+      // Filtro "Ver apenas minhas" se habilitado (funciona se há organization_id)
+      if (showOnlyMine && organization_id && user?.id && transaction.user_id !== user.id) {
         return false;
       }
       // Filtro de período
@@ -260,7 +260,7 @@ export function DashboardContent({
         <BalanceAlert isNegative={isNegative} />
         
         {/* FASE 3: Switch "Ver apenas minhas transações" no dashboard */}
-        {canViewOthers && (
+        {organization_id && (
           <div className="flex items-center justify-end space-x-2">
             <Switch
               id="dashboard-show-only-mine"
@@ -330,7 +330,7 @@ export function DashboardContent({
               onToggle={onToggleTransactionForm}
             />
             
-            {canViewOthers && (
+            {organization_id && (
               <div className="flex items-center space-x-2">
                 <Switch
                   id="show-only-mine"

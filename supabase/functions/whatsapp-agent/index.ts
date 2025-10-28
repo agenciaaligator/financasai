@@ -1520,10 +1520,24 @@ class WhatsAppAgent {
     console.log('Autenticado:', !!session.user_id);
     console.log('=====================================');
     
+    console.log('📸 Image check:', {
+      hasImageProp: !!message.image,
+      imageId: message.image?.id,
+      messageType: message.type,
+      bodyText: message.body
+    });
+
     // 📸 PRIORIDADE 0: Processar imagens (OCR de notas fiscais)
-    if (message.image) {
+    if (message.image && message.image.id) {
       console.log('📸 IMAGEM DETECTADA! Processando OCR...', message.image);
       return await this.handleImageMessage(session, message);
+    } else if (message.type === 'image' || message.body === '[IMAGE]') {
+      // Fallback: se type é image mas não tem dados
+      console.error('❌ Image message detected but no image data provided!');
+      return {
+        response: '❌ Erro ao receber a imagem. Tente enviar novamente.\n\n💡 Certifique-se de que a imagem não seja muito grande (máx 5MB).',
+        sessionData: session.session_data || {}
+      };
     }
 
     // 🎤 ÁUDIO: Deve vir já transcrito do webhook
@@ -2576,14 +2590,33 @@ class WhatsAppAgent {
       };
 
     } catch (error) {
-      console.error('❌ Erro ao processar imagem:', error);
+      console.error('❌ Erro ao processar imagem:', {
+        errorMessage: error.message,
+        errorStack: error.stack,
+        imageId: message.image?.id,
+        hasUserId: !!session.user_id
+      });
+      
+      let errorMsg = '❌ Não consegui processar a nota fiscal.\n\n';
+      
+      if (error.message?.includes('404')) {
+        errorMsg += '⚠️ Imagem não encontrada no WhatsApp. Tente enviar novamente.\n\n';
+      } else if (error.message?.includes('timeout')) {
+        errorMsg += '⏱️ O processamento demorou muito. Tente com uma imagem menor.\n\n';
+      } else if (error.message?.includes('API')) {
+        errorMsg += '🤖 Serviço de OCR temporariamente indisponível.\n\n';
+      } else {
+        errorMsg += `Tente:\n` +
+                   `• Foto mais nítida\n` +
+                   `• Boa iluminação\n` +
+                   `• Nota fiscal completa na imagem\n` +
+                   `• Imagem menor que 5MB\n\n`;
+      }
+      
+      errorMsg += `Ou adicione manualmente: "gastei 50 mercado"`;
+      
       return {
-        response: `❌ Não consegui processar a nota fiscal.\n\n` +
-                 `Tente:\n` +
-                 `• Foto mais nítida\n` +
-                 `• Boa iluminação\n` +
-                 `• Nota fiscal completa na imagem\n\n` +
-                 `Ou adicione manualmente: "gasto 50 mercado"`,
+        response: errorMsg,
         sessionData
       };
     }

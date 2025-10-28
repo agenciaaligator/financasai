@@ -747,7 +747,7 @@ const handler = async (req: Request): Promise<Response> => {
         text = message.text?.body;
       } else if (message.type === 'image' && message.image?.id) {
         console.log('📸 Image message detected - will process via agent');
-        text = '[IMAGE]'; // Placeholder para o agente detectar
+        text = ''; // Vazio, imageData será usado no agent
       } else if (message.type === 'video' && message.video?.id) {
         // Processar vídeos/Live Photos como imagem
         console.log('📹 Vídeo/Live Photo recebido, tentando processar como imagem...');
@@ -1053,8 +1053,11 @@ const handler = async (req: Request): Promise<Response> => {
 
       console.log('🔍 Message details:', { 
         type: messageType, 
-        hasImage: !!imageData, 
-        hasAudio: !!audioData 
+        hasImage: !!imageData,
+        imageId: imageData?.id,
+        imageCaption: imageData?.caption,
+        hasAudio: !!audioData,
+        textPlaceholder: text
       });
 
       // PHASE 1: Validação de contexto para áudio em modo de edição

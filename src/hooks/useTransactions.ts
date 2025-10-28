@@ -60,12 +60,13 @@ export function useTransactions() {
 
     // Se o usuário pode ver apenas os próprios dados
     if (!canViewOthers) {
+      // Membro sem view_others: vê APENAS as próprias
       query = query.eq('user_id', user.id);
     } else if (organization_id) {
-      // Se pode ver outros, busca por organization_id
-      query = query.eq('organization_id', organization_id);
+      // Owner/Admin ou membro com view_others: vê org + próprias sem org
+      query = query.or(`organization_id.eq.${organization_id},and(user_id.eq.${user.id},organization_id.is.null)`);
     } else {
-      // Fallback: apenas os próprios
+      // Fallback: apenas as próprias
       query = query.eq('user_id', user.id);
     }
 
@@ -108,8 +109,18 @@ export function useTransactions() {
       profiles: profilesMap[t.user_id] || null
     }));
 
-    console.log('✅ Transações carregadas:', transactionsWithProfiles.length);
-    console.log('Primeira transação (profiles):', transactionsWithProfiles[0]?.profiles);
+    console.log('✅ Transações carregadas:', {
+      total: transactionsWithProfiles.length,
+      canViewOthers,
+      organization_id,
+      sampleTransaction: transactionsWithProfiles[0] ? {
+        id: transactionsWithProfiles[0].id,
+        user_id: transactionsWithProfiles[0].user_id,
+        organization_id: transactionsWithProfiles[0].organization_id,
+        title: transactionsWithProfiles[0].title,
+        profiles: transactionsWithProfiles[0].profiles
+      } : null
+    });
     
     setTransactions(transactionsWithProfiles);
     setLoading(false);
