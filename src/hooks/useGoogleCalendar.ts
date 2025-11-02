@@ -40,23 +40,59 @@ export const useGoogleCalendar = () => {
         
         const expiresAt = new Date(data.expires_at);
         const now = new Date();
+        const isExpired = expiresAt <= now;
         
-        console.log('[Agenda Debug][GC] Connection record found:', {
+        console.log('[GC] Connection record found:', {
           expiresAt: expiresAt.toISOString(),
           now: now.toISOString(),
           isActive: data.is_active,
-          isExpired: expiresAt <= now
+          isExpired
         });
         
-        if (expiresAt <= now || !data.is_active) {
-          console.log('[Agenda Debug][GC] Connection expired or inactive, setting hadConnectionBefore=true but connection=null');
+        // Se token expirado mas conexão ainda ativa, tentar renovação silenciosa
+        if (isExpired && data.is_active) {
+          console.log('[GC] 🔄 Token expirado detectado, tentando renovação automática...');
+          
+          // Mostrar loading enquanto renova
+          setLoading(true);
+          
+          try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            const accessToken = sessionData.session?.access_token;
+            
+            const { error: importError } = await supabase.functions.invoke('google-calendar-import', {
+              headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
+            });
+            
+            if (importError) {
+              console.error('[GC] ❌ Erro ao tentar renovar token:', importError);
+              // Se erro de reconexão necessária, marcar como desconectado
+              setConnection(null);
+            } else {
+              console.log('[GC] ✅ Token renovado com sucesso, recarregando...');
+              // Aguardar 1s e recarregar conexão
+              setTimeout(() => {
+                checkConnection();
+              }, 1000);
+              return; // Não continuar com lógica abaixo, pois vai recarregar
+            }
+          } catch (err) {
+            console.error('[GC] ❌ Falha na renovação automática:', err);
+            setConnection(null);
+          } finally {
+            setLoading(false);
+          }
+        }
+        
+        if (isExpired || !data.is_active) {
+          console.log('[GC] Connection expired or inactive');
           setConnection(null); // Desconectado MAS já teve conexão
         } else {
-          console.log('[Agenda Debug][GC] Connection active, setting both hadConnectionBefore=true and connection');
+          console.log('[GC] Connection active');
           setConnection(data); // Conectado e ativo
         }
       } else {
-        console.log('[Agenda Debug][GC] No connection record found, hadConnectionBefore=false');
+        console.log('[GC] No connection record found');
         setHadConnectionBefore(false);
         setConnection(null);
       }

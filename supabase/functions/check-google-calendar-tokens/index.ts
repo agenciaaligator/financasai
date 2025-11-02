@@ -11,35 +11,45 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log('🔄 [SYNC-ALL-GOOGLE] Starting automatic Google Calendar sync for all users');
+    console.log('🔄 [CHECK-TOKENS] Iniciando verificação proativa de tokens do Google Calendar');
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Buscar todos os usuários com calendário ativo (incluindo expirados, pois google-calendar-import renova)
+    // Buscar conexões ativas que vão expirar nas próximas 24h
+    const expirationThreshold = new Date();
+    expirationThreshold.setHours(expirationThreshold.getHours() + 24);
+
     const { data: connections, error: connectionsError } = await supabaseClient
       .from('calendar_connections')
       .select('user_id, calendar_email, expires_at')
-      .eq('is_active', true);
+      .eq('is_active', true)
+      .lt('expires_at', expirationThreshold.toISOString());
 
     if (connectionsError) {
-      console.error('[SYNC-ALL-GOOGLE] Error fetching connections:', connectionsError);
+      console.error('[CHECK-TOKENS] Erro ao buscar conexões:', connectionsError);
       throw connectionsError;
     }
 
-    console.log(`[SYNC-ALL-GOOGLE] Found ${connections?.length || 0} active calendar connections`);
+    console.log(`[CHECK-TOKENS] Encontradas ${connections?.length || 0} conexões que expiram em <24h`);
 
-    let synced = 0;
-    let errors = 0;
+    let renewed = 0;
+    let failed = 0;
 
     for (const connection of connections || []) {
       try {
-        const isExpired = new Date(connection.expires_at) <= new Date();
-        console.log(`[SYNC-ALL-GOOGLE] Syncing for user ${connection.user_id} (${connection.calendar_email}) - Token ${isExpired ? '🔴 EXPIRADO' : '🟢 VÁLIDO'}`);
+        const hoursUntilExpiration = Math.round(
+          (new Date(connection.expires_at).getTime() - new Date().getTime()) / (1000 * 60 * 60)
+        );
+        
+        console.log(
+          `[CHECK-TOKENS] Renovando token para ${connection.calendar_email} ` +
+          `(expira em ${hoursUntilExpiration}h)`
+        );
 
-        // Chamar google-calendar-import para este usuário (renovará token se expirado)
+        // Chamar google-calendar-import para renovar
         const response = await fetch(
           `${Deno.env.get('SUPABASE_URL')}/functions/v1/google-calendar-import`,
           {
@@ -53,50 +63,51 @@ Deno.serve(async (req) => {
         );
 
         if (response.ok) {
-          const result = await response.json();
-          synced++;
-          console.log(`✅ [SYNC-ALL-GOOGLE] Synced user ${connection.user_id}:`, result);
+          renewed++;
+          console.log(`✅ [CHECK-TOKENS] Token renovado: ${connection.calendar_email}`);
         } else {
           const errorText = await response.text();
-          errors++;
+          failed++;
           
-          // Verificar se é erro de reconexão necessária
           try {
             const errorJson = JSON.parse(errorText);
             if (errorJson.code === 'reconnect_required') {
-              console.error(`🔑 [SYNC-ALL-GOOGLE] User ${connection.user_id} precisa reconectar (${errorJson.googleError || 'token revogado'})`);
+              console.error(
+                `🔑 [CHECK-TOKENS] ${connection.calendar_email} precisa reconectar manualmente ` +
+                `(${errorJson.googleError || 'token revogado'})`
+              );
             } else {
-              console.error(`❌ [SYNC-ALL-GOOGLE] Failed to sync user ${connection.user_id}:`, errorText);
+              console.error(`❌ [CHECK-TOKENS] Falha ao renovar ${connection.calendar_email}:`, errorText);
             }
           } catch {
-            console.error(`❌ [SYNC-ALL-GOOGLE] Failed to sync user ${connection.user_id}:`, errorText);
+            console.error(`❌ [CHECK-TOKENS] Falha ao renovar ${connection.calendar_email}:`, errorText);
           }
         }
 
-        // Delay entre chamadas para respeitar rate limits do Google
+        // Delay entre renovações
         await new Promise(resolve => setTimeout(resolve, 1000));
 
       } catch (userError) {
-        console.error(`[SYNC-ALL-GOOGLE] Error syncing user ${connection.user_id}:`, userError);
-        errors++;
+        console.error(`[CHECK-TOKENS] Erro ao processar ${connection.calendar_email}:`, userError);
+        failed++;
       }
     }
 
     const summary = {
-      totalConnections: connections?.length || 0,
-      synced,
-      errors,
+      totalChecked: connections?.length || 0,
+      renewed,
+      failed,
       timestamp: new Date().toISOString(),
     };
 
-    console.log('✅ [SYNC-ALL-GOOGLE] Sync completed:', summary);
+    console.log('✅ [CHECK-TOKENS] Verificação concluída:', summary);
 
     return new Response(
       JSON.stringify(summary),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('❌ [SYNC-ALL-GOOGLE] Sync failed:', error);
+    console.error('❌ [CHECK-TOKENS] Falha na verificação:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
