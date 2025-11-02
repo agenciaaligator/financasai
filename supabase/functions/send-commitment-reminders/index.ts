@@ -406,19 +406,23 @@ serve(async (req) => {
           continue;
         }
 
-        // Janela de envio de 15 minutos para cobrir intervalos de cron
-        const shouldSend = minutesUntil <= reminder.time && minutesUntil > (reminder.time - 15);
+        // Janela de envio de 30 minutos para cobrir intervalos de cron (6 execuções a cada 5min)
+        const windowSize = 30;
+        const windowStart = reminder.time - windowSize;
+        const windowEnd = reminder.time;
+        const shouldSend = minutesUntil <= windowEnd && minutesUntil > windowStart;
         
         console.log('[Reminder Debug] Window check:', { 
           commitmentId: commitment.id,
           minutesUntil, 
           reminderTime: reminder.time,
-          windowStart: reminder.time - 15,
-          windowEnd: reminder.time,
+          windowStart,
+          windowEnd,
           shouldSend 
         });
 
         if (shouldSend) {
+          console.log(`🔔 [REMINDER] [${executionId}] ENVIANDO: ${reminder.time}min para "${commitment.title}" (faltam ${Math.floor(minutesUntil)}min)`);
           console.log(`[REMINDER] [${executionId}] Sending ${reminder.time}min reminder for ${commitment.title} to user ${commitment.user_id} (${Math.floor(minutesUntil)}min until event)`);
 
           // Enviar lembrete via WhatsApp
@@ -456,6 +460,7 @@ serve(async (req) => {
             console.error(`[REMINDER] [${executionId}] ❌ Failed to send ${reminder.time}min reminder for ${commitment.title}`);
           }
         } else {
+          console.log(`⏭️ [REMINDER] [${executionId}] PULANDO: ${reminder.time}min para "${commitment.title}" (faltam ${Math.floor(minutesUntil)}min, janela: ${windowStart}-${windowEnd})`);
           console.log(`[REMINDER] [${executionId}] Skipping ${reminder.time}min reminder for ${commitment.id}: not in window (${Math.floor(minutesUntil)}min until event)`);
         }
       }
