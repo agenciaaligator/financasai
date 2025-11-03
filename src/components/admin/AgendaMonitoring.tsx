@@ -272,34 +272,37 @@ export function AgendaMonitoring() {
                     });
                     if (error) throw error;
 
-                    const deliveryStatus = data.deliverability;
-                    const success = data.success;
-                    const errorCode = data.error;
+                    const { deliverability, success, message_id, status, error: errorMsg, error_type, code } = data;
 
-                    if (errorCode === 'missing_whatsapp_secrets') {
+                    if (code === 'missing_whatsapp_secrets') {
                       toast({
                         title: "❌ Credenciais WhatsApp ausentes",
                         description: "Configure WHATSAPP_ACCESS_TOKEN e WHATSAPP_PHONE_NUMBER_ID nos secrets do Supabase Edge Functions.",
                         variant: "destructive",
                       });
-                    } else if (success && deliveryStatus === 'sent_with_template') {
+                    } else if (deliverability === 'failed') {
+                      const isTemplateError = error_type?.includes('TEMPLATE') || errorMsg?.toLowerCase().includes('template');
+                      toast({
+                        title: "❌ Falha no envio",
+                        description: isTemplateError 
+                          ? `Erro no template WhatsApp. Verifique se o template "hello_word" (pt_BR) está aprovado no Meta Business. Status: ${status || 'unknown'}`
+                          : `${errorMsg || 'Não foi possível enviar'}. Status: ${status || 'unknown'}`,
+                        variant: "destructive",
+                      });
+                    } else if (success && deliverability === 'sent_template') {
                       toast({
                         title: "✅ Mensagem enviada via template",
-                        description: data.commitment?.is_synthetic 
-                          ? "Teste enviado usando template (compromisso sintético criado). Verifique seu WhatsApp."
-                          : "Lembrete enviado usando template WhatsApp (fora da janela de 24h). Verifique seu WhatsApp.",
+                        description: `ID: ${message_id || 'N/A'}. ${data.commitment?.is_synthetic ? 'Compromisso sintético criado. ' : ''}Verifique seu WhatsApp.`,
                       });
-                    } else if (success && deliveryStatus === 'sent_text') {
+                    } else if (success && deliverability === 'sent_text') {
                       toast({
                         title: "✅ Mensagem enviada como texto",
-                        description: data.commitment?.is_synthetic
-                          ? "Teste enviado com sucesso (compromisso sintético criado). Verifique seu WhatsApp."
-                          : "Lembrete enviado com sucesso. Verifique seu WhatsApp.",
+                        description: `ID: ${message_id || 'N/A'}. ${data.commitment?.is_synthetic ? 'Compromisso sintético criado. ' : ''}Verifique seu WhatsApp.`,
                       });
                     } else {
                       toast({
                         title: "❌ Falha no envio",
-                        description: data.error || "Não foi possível enviar o lembrete",
+                        description: errorMsg || "Não foi possível enviar o lembrete",
                         variant: "destructive",
                       });
                     }
@@ -321,9 +324,22 @@ export function AgendaMonitoring() {
                 Teste Lembrete (Mensagem Agora)
               </Button>
               <p className="text-xs text-muted-foreground px-2">
-                💡 Funciona com ou sem compromisso futuro. Fallback automático para template se necessário.
+                💡 Envia mensagem teste imediata. Fallback automático para template "hello_word" (pt_BR) se necessário.
               </p>
             </div>
+
+            <Button
+              onClick={() => {
+                const phoneNumber = '5511979577468';
+                const message = encodeURIComponent('Oi! Quero ativar meus lembretes 🔔');
+                window.open(`https://wa.me/${phoneNumber}?text=${message}`, '_blank');
+              }}
+              variant="outline"
+              className="justify-start gap-2"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Iniciar Conversa (Ativar 24h)
+            </Button>
 
             <Button
               onClick={handleForceDailySummary}

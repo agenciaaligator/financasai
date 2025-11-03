@@ -157,8 +157,11 @@ async function sendWhatsAppReminder(
 
     const result = await response.json();
 
-    if (!response.ok) {
-      console.error('❌ [REMINDER] WhatsApp API error:', JSON.stringify(result));
+    if (!response.ok || !result.messages?.[0]?.id) {
+      console.error('❌ [REMINDER] WhatsApp API error:', {
+        status: response.status,
+        result: JSON.stringify(result)
+      });
       
       // Se for erro 470/131026 (fora da janela de 24h) e estiver em modo force, tentar template
       const errorCode = result?.error?.code;
@@ -167,14 +170,18 @@ async function sendWhatsAppReminder(
       if (forceMode && (errorCode === 470 || errorSubcode === 131026 || result?.error?.message?.includes('template'))) {
         console.log(`🔄 [FALLBACK] Trying template message for ${recipientPhone}...`);
         
+        // Usar variáveis de ambiente para template de teste
+        const templateName = Deno.env.get('WHATSAPP_TEMPLATE_TEST_NAME') || 'hello_word';
+        const templateLang = Deno.env.get('WHATSAPP_TEMPLATE_LANG') || 'pt_BR';
+        
         const templatePayload = {
           messaging_product: 'whatsapp',
           to: recipientPhone,
           type: 'template',
           template: {
-            name: 'hello_world',
+            name: templateName,
             language: {
-              code: 'en_US'
+              code: templateLang
             }
           }
         };
@@ -190,23 +197,42 @@ async function sendWhatsAppReminder(
 
         const templateResult = await templateResponse.json();
 
-        if (!templateResponse.ok) {
-          console.error('❌ [FALLBACK] Template also failed:', JSON.stringify(templateResult));
+        if (!templateResponse.ok || !templateResult.messages?.[0]?.id) {
+          console.error('❌ [FALLBACK] Template also failed:', {
+            status: templateResponse.status,
+            result: JSON.stringify(templateResult)
+          });
           return { 
-            success: false, 
-            error: `Text failed (${result?.error?.message}), Template also failed (${templateResult?.error?.message})` 
+            success: false,
+            code: 'whatsapp_send_failed',
+            status: templateResponse.status,
+            error: templateResult?.error?.message || 'Template send failed',
+            error_type: templateResult?.error?.type,
+            deliverability: 'failed'
           };
         }
 
-        console.log(`✅ [FALLBACK] Template sent successfully to ${recipientPhone}`);
-        return { success: true, deliverability: 'sent_with_template' };
+        console.log(`✅ [FALLBACK] Template sent successfully to ${recipientPhone}`, {
+          message_id: templateResult.messages[0].id
+        });
+        return { 
+          success: true, 
+          deliverability: 'sent_template',
+          message_id: templateResult.messages[0].id
+        };
       }
       
       return { success: false, error: result?.error?.message || 'WhatsApp API error' };
     }
 
-    console.log(`✅ [REMINDER] WhatsApp message sent successfully to ${recipientPhone}:`, result);
-    return { success: true, deliverability: 'sent_text' };
+    console.log(`✅ [REMINDER] WhatsApp message sent successfully to ${recipientPhone}`, {
+      message_id: result.messages[0].id
+    });
+    return { 
+      success: true, 
+      deliverability: 'sent_text',
+      message_id: result.messages[0].id
+    };
   } catch (error) {
     console.error('❌ [REMINDER] Error sending WhatsApp message:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -319,7 +345,11 @@ serve(async (req) => {
         JSON.stringify({ 
           success: result.success,
           deliverability: result.deliverability,
+          message_id: result.message_id,
+          status: result.status,
           error: result.error,
+          error_type: result.error_type,
+          code: result.code,
           message: result.success 
             ? `Teste enviado (${result.deliverability})` 
             : `Falha: ${result.error}`,
