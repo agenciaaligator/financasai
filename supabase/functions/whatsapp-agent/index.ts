@@ -3469,19 +3469,22 @@ class WhatsAppAgent {
       // FASE 2: Buscar organization_id do usuário (membership ou owner)
       let organization_id: string | null = null;
       
-      // Primeiro: tentar membership
-      const { data: orgMember } = await supabase
+      // Buscar todas memberships e priorizar onde é owner
+      const { data: memberships } = await supabase
         .from('organization_members')
-        .select('organization_id')
+        .select('organization_id, role')
         .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .maybeSingle();
+        .order('created_at', { ascending: false });
       
-      if (orgMember?.organization_id) {
-        organization_id = orgMember.organization_id;
-        console.log('✅ Organization ID encontrado via membership:', organization_id);
+      const ownerMembership = memberships?.find(m => m.role === 'owner');
+      const fallbackMembership = memberships?.[0];
+      const selectedMembership = ownerMembership ?? fallbackMembership;
+      
+      if (selectedMembership?.organization_id) {
+        organization_id = selectedMembership.organization_id;
+        console.log('✅ Organization ID selecionado:', organization_id, '(role:', selectedMembership.role, ')');
       } else {
-        // Fallback: se não tem membership, buscar se é owner
+        // Fallback: se não tem membership, buscar se é owner direto
         const { data: ownedOrg } = await supabase
           .from('organizations')
           .select('id')
@@ -3490,7 +3493,7 @@ class WhatsAppAgent {
         
         if (ownedOrg?.id) {
           organization_id = ownedOrg.id;
-          console.log('✅ Organization ID encontrado via owner:', organization_id);
+          console.log('✅ Organization ID encontrado via ownership direto:', organization_id);
         } else {
           console.log('⚠️ Usuário sem organization_id (nem membership nem owner)');
         }

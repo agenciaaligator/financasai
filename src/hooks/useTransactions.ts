@@ -60,8 +60,13 @@ export function useTransactions() {
 
     // Se o usuário pode ver apenas os próprios dados
     if (!canViewOthers) {
-      // Membro sem view_others: vê APENAS as próprias
-      query = query.eq('user_id', user.id);
+      // Membro sem view_others OU owner da própria org: vê transações próprias + org própria
+      if (organization_id) {
+        query = query.or(`user_id.eq.${user.id},and(organization_id.eq.${organization_id},organization_id.not.is.null)`);
+      } else {
+        query = query.eq('user_id', user.id);
+      }
+      console.log('[useTransactions] Query mode: canViewOthers=false, organization_id:', organization_id);
     } else if (organization_id) {
       // Owner/Admin ou membro com view_others: vê org + próprias sem org
       query = query.or(`organization_id.eq.${organization_id},and(user_id.eq.${user.id},organization_id.is.null)`);
