@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -40,6 +40,7 @@ export function useTransactions() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { organization_id, canViewOthers, loading: permsLoading } = useOrganizationPermissions();
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const fetchTransactions = async () => {
     if (!user) return;
@@ -236,6 +237,120 @@ export function useTransactions() {
 
     fetchTransactions();
     fetchCategories();
+
+    // 🔄 Realtime subscription para transações
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+    }
+
+    const channel = supabase
+      .channel('transactions-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transactions',
+          filter: canViewOthers && organization_id 
+            ? `organization_id=eq.${organization_id}`
+            : `user_id=eq.${user.id}`
+        },
+        async (payload) => {
+          console.log('[useTransactions] Realtime event:', payload.eventType, payload.new);
+
+          if (payload.eventType === 'INSERT') {
+            const newTransaction = payload.new as any;
+            
+            // Buscar profile e categories
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('full_name, email')
+              .eq('user_id', newTransaction.user_id)
+              .single();
+
+            let categoryData = null;
+            if (newTransaction.category_id) {
+              const { data } = await supabase
+                .from('categories')
+                .select('name, color')
+                .eq('id', newTransaction.category_id)
+                .single();
+              categoryData = data;
+            }
+
+            const mappedTransaction = {
+              ...newTransaction,
+              profiles: profileData || null,
+              categories: categoryData || null
+            } as Transaction;
+
+            setTransactions(prev => {
+              // Evitar duplicatas
+              if (prev.some(t => t.id === mappedTransaction.id)) {
+                return prev;
+              }
+              return [mappedTransaction, ...prev];
+            });
+
+            toast({
+              title: "Nova transação recebida",
+              description: `${newTransaction.type === 'income' ? 'Receita' : 'Despesa'} de R$ ${newTransaction.amount.toFixed(2)}`,
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedTransaction = payload.new as any;
+            
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('full_name, email')
+              .eq('user_id', updatedTransaction.user_id)
+              .single();
+
+            let categoryData = null;
+            if (updatedTransaction.category_id) {
+              const { data } = await supabase
+                .from('categories')
+                .select('name, color')
+                .eq('id', updatedTransaction.category_id)
+                .single();
+              categoryData = data;
+            }
+
+            const mappedTransaction = {
+              ...updatedTransaction,
+              profiles: profileData || null,
+              categories: categoryData || null
+            } as Transaction;
+
+            setTransactions(prev => 
+              prev.map(t => t.id === mappedTransaction.id ? mappedTransaction : t)
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setTransactions(prev => prev.filter(t => t.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    // 🔄 Refetch on focus
+    const handleFocus = () => {
+      if (!document.hidden) {
+        fetchTransactions();
+      }
+    };
+
+    window.addEventListener('visibilitychange', handleFocus);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+      window.removeEventListener('visibilitychange', handleFocus);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [user, organization_id, canViewOthers, permsLoading]);
 
   const balance = transactions.reduce((acc, transaction) => {

@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import { FinancialChart } from "../FinancialChart";
 import { CategoryManager } from "../CategoryManager";
 import { ProfileSettings } from "../ProfileSettings";
@@ -413,8 +413,16 @@ export function DashboardContent({
           </Card>
 
           <Card className="bg-gradient-card shadow-card border-0">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <CardTitle>Transações Recentes</CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onRefresh}
+                className="h-8 w-8 p-0"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
             </CardHeader>
             <CardContent>
               <TransactionList 
@@ -530,12 +538,44 @@ export function DashboardContent({
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>Todas as Transações</span>
-                <span className="text-sm font-normal text-muted-foreground">
-                  {filteredTransactions.length} de {transactions.length} transações
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-normal text-muted-foreground">
+                    {filteredTransactions.length} de {transactions.length} transações
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onRefresh}
+                    className="h-8 w-8 p-0"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent>
+              {hasActiveFilters && filteredTransactions.length > 0 && (
+                <div className="mb-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-sm flex items-center justify-between">
+                  <p className="text-blue-800 dark:text-blue-200">
+                    ℹ️ <strong>Filtros ativos:</strong> Mostrando {filteredTransactions.length} de {transactions.length} transações
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setFilters({
+                      period: 'all',
+                      customDateRange: { start: null, end: null },
+                      type: 'all',
+                      categories: [],
+                      source: 'all',
+                      searchText: '',
+                      responsible: 'all'
+                    })}
+                  >
+                    Limpar filtros
+                  </Button>
+                </div>
+              )}
               <TransactionList 
                 transactions={paginatedTransactions} 
                 onDelete={onDelete}
@@ -545,6 +585,18 @@ export function DashboardContent({
                 itemsPerPage={ITEMS_PER_PAGE}
                 totalItems={filteredTransactions.length}
                 onPageChange={setCurrentPage}
+                onRefresh={onRefresh}
+                hasActiveFilters={hasActiveFilters}
+                onClearFilters={() => setFilters({
+                  period: 'all',
+                  customDateRange: { start: null, end: null },
+                  type: 'all',
+                  categories: [],
+                  source: 'all',
+                  searchText: '',
+                  responsible: 'all'
+                })}
+                totalTransactionsCount={transactions.length}
               />
             </CardContent>
           </Card>

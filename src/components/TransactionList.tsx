@@ -24,6 +24,10 @@ interface TransactionListProps {
   itemsPerPage?: number;
   totalItems?: number;
   onPageChange?: (page: number) => void;
+  onRefresh?: () => void;
+  hasActiveFilters?: boolean;
+  onClearFilters?: () => void;
+  totalTransactionsCount?: number;
 }
 
 export function TransactionList({ 
@@ -34,7 +38,11 @@ export function TransactionList({
   totalPages,
   itemsPerPage,
   totalItems,
-  onPageChange
+  onPageChange,
+  onRefresh,
+  hasActiveFilters,
+  onClearFilters,
+  totalTransactionsCount
 }: TransactionListProps) {
   const { canEditOthers, canDeleteOthers } = useOrganizationPermissions();
   const { user } = useAuth();
@@ -56,8 +64,40 @@ export function TransactionList({
 
   if (transactions.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        <p>Nenhuma transação encontrada</p>
+      <div className="text-center py-8 space-y-4">
+        <p className="text-muted-foreground">Nenhuma transação encontrada</p>
+        
+        {hasActiveFilters && (
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 text-sm">
+            <p className="text-yellow-800 dark:text-yellow-200 font-medium mb-2">
+              ⚠️ Você tem filtros ativos
+            </p>
+            <p className="text-yellow-700 dark:text-yellow-300 mb-3">
+              As transações podem estar ocultas pelos filtros aplicados.
+            </p>
+            {onClearFilters && (
+              <Button variant="outline" size="sm" onClick={onClearFilters}>
+                Limpar todos os filtros
+              </Button>
+            )}
+          </div>
+        )}
+
+        {!hasActiveFilters && totalTransactionsCount && totalTransactionsCount > 0 && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-sm">
+            <p className="text-blue-800 dark:text-blue-200 font-medium mb-2">
+              💡 Existem {totalTransactionsCount} transações no total
+            </p>
+            <p className="text-blue-700 dark:text-blue-300 mb-3">
+              Tente recarregar para ver as transações mais recentes.
+            </p>
+            {onRefresh && (
+              <Button variant="outline" size="sm" onClick={onRefresh}>
+                Recarregar transações
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     );
   }
