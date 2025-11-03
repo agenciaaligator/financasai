@@ -47,50 +47,63 @@ export function useTransactions() {
     
     setLoading(true);
 
-    // FETCH TRANSAÇÕES SEM PROFILES (evitar problemas de RLS)
-    let query = supabase
-      .from('transactions')
-      .select(`
+    // Consulta base com categorias (profiles serão buscados separadamente por causa do RLS)
+    const baseSelect = `
         *,
         categories (
           name,
           color
         )
-      `)
-      .order('date', { ascending: false });
+      `;
 
-    // Se o usuário pode ver apenas os próprios dados
-    if (!canViewOthers) {
-      // Membro sem view_others OU owner da própria org: vê transações próprias + org própria
-      if (organization_id) {
-        query = query.or(`user_id.eq.${user.id},and(organization_id.eq.${organization_id},organization_id.not.is.null)`);
-      } else {
-        query = query.eq('user_id', user.id);
-      }
-      console.log('[useTransactions] Query mode: canViewOthers=false, organization_id:', organization_id);
-    } else if (organization_id) {
-      // Owner/Admin ou membro com view_others: vê org + próprias sem org
-      query = query.or(`organization_id.eq.${organization_id},and(user_id.eq.${user.id},organization_id.is.null)`);
-    } else {
-      // Fallback: apenas as próprias
-      query = query.eq('user_id', user.id);
-    }
+    // Sempre buscar minhas transações
+    const myQuery = supabase
+      .from('transactions')
+      .select(baseSelect)
+      .eq('user_id', user.id);
 
-    const { data, error } = await query;
+    // Se houver organização ativa, buscar também as da organização
+    const orgQuery = organization_id
+      ? supabase
+          .from('transactions')
+          .select(baseSelect)
+          .eq('organization_id', organization_id)
+      : null;
 
-    if (error) {
+    // Executar em paralelo
+    const [{ data: myData, error: myError }, orgResult] = await Promise.all([
+      myQuery,
+      orgQuery ? orgQuery : Promise.resolve({ data: [], error: null } as any)
+    ]);
+
+    const orgData = (orgResult as any)?.data || [];
+    const orgError = (orgResult as any)?.error;
+
+    if (myError || orgError) {
+      const error = myError || orgError;
       console.error('Erro ao carregar transações:', error);
       toast({
         title: "Erro ao carregar transações",
-        description: error.message,
+        description: (error as any).message || 'Falha ao buscar transações',
         variant: "destructive"
       });
       setLoading(false);
       return;
     }
 
+    // Merge + dedupe
+    const merged = [...(myData || []), ...(orgData || [])];
+    const dedupedMap = new Map<string, any>();
+    merged.forEach((t: any) => {
+      dedupedMap.set(t.id, t);
+    });
+    const mergedDeduped = Array.from(dedupedMap.values());
+
+    // Ordenar por date desc (mantém comportamento atual)
+    mergedDeduped.sort((a: any, b: any) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+
     // BUSCAR PROFILES SEPARADAMENTE (respeitando RLS)
-    const userIds = [...new Set((data || []).map((t: any) => t.user_id))];
+    const userIds = [...new Set((mergedDeduped || []).map((t: any) => t.user_id))];
     let profilesMap: Record<string, { full_name: string | null; email: string | null }> = {};
 
     if (userIds.length > 0) {
@@ -110,13 +123,15 @@ export function useTransactions() {
     }
 
     // MERGE PROFILES COM TRANSAÇÕES
-    const transactionsWithProfiles = (data || []).map((t: any) => ({
+    const transactionsWithProfiles = (mergedDeduped || []).map((t: any) => ({
       ...t,
       profiles: profilesMap[t.user_id] || null
     }));
 
-    console.log('✅ Transações carregadas:', {
+    console.log('✅ Transações carregadas (merge):', {
       total: transactionsWithProfiles.length,
+      mine: (myData || []).length,
+      org: (orgData || []).length,
       canViewOthers,
       organization_id,
       sampleTransaction: transactionsWithProfiles[0] ? {
@@ -238,110 +253,94 @@ export function useTransactions() {
     fetchTransactions();
     fetchCategories();
 
-    // 🔄 Realtime subscription para transações
+    // 🔄 Realtime subscription para transações (dois filtros: org e usuário)
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
     }
 
-    const channel = supabase
-      .channel('transactions-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'transactions',
-          filter: canViewOthers && organization_id 
-            ? `organization_id=eq.${organization_id}`
-            : `user_id=eq.${user.id}`
-        },
-        async (payload) => {
-          console.log('[useTransactions] Realtime event:', payload.eventType, payload.new);
+    const handleRealtime = async (payload: any) => {
+      console.log('[useTransactions] Realtime event:', payload.eventType, payload.new || payload.old);
 
-          if (payload.eventType === 'INSERT') {
-            const newTransaction = payload.new as any;
-            
-            // Buscar profile e categories
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('full_name, email')
-              .eq('user_id', newTransaction.user_id)
-              .single();
+      if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+        const row = (payload.new as any);
 
-            let categoryData = null;
-            if (newTransaction.category_id) {
-              const { data } = await supabase
+        // Buscar profile e categoria para compor o objeto exibido
+        const [{ data: profileData }, { data: categoryData }] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('full_name, email')
+            .eq('user_id', row.user_id)
+            .maybeSingle(),
+          row.category_id
+            ? supabase
                 .from('categories')
                 .select('name, color')
-                .eq('id', newTransaction.category_id)
-                .single();
-              categoryData = data;
-            }
+                .eq('id', row.category_id)
+                .maybeSingle()
+            : Promise.resolve({ data: null } as any)
+        ]);
 
-            const mappedTransaction = {
-              ...newTransaction,
-              profiles: profileData || null,
-              categories: categoryData || null
-            } as Transaction;
+        const mapped = {
+          ...row,
+          profiles: profileData || null,
+          categories: categoryData || null
+        } as Transaction;
 
-            setTransactions(prev => {
-              // Evitar duplicatas
-              if (prev.some(t => t.id === mappedTransaction.id)) {
-                return prev;
-              }
-              return [mappedTransaction, ...prev];
-            });
-
-            toast({
-              title: "Nova transação recebida",
-              description: `${newTransaction.type === 'income' ? 'Receita' : 'Despesa'} de R$ ${newTransaction.amount.toFixed(2)}`,
-            });
-          } else if (payload.eventType === 'UPDATE') {
-            const updatedTransaction = payload.new as any;
-            
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('full_name, email')
-              .eq('user_id', updatedTransaction.user_id)
-              .single();
-
-            let categoryData = null;
-            if (updatedTransaction.category_id) {
-              const { data } = await supabase
-                .from('categories')
-                .select('name, color')
-                .eq('id', updatedTransaction.category_id)
-                .single();
-              categoryData = data;
-            }
-
-            const mappedTransaction = {
-              ...updatedTransaction,
-              profiles: profileData || null,
-              categories: categoryData || null
-            } as Transaction;
-
-            setTransactions(prev => 
-              prev.map(t => t.id === mappedTransaction.id ? mappedTransaction : t)
-            );
-          } else if (payload.eventType === 'DELETE') {
-            setTransactions(prev => prev.filter(t => t.id !== payload.old.id));
+        setTransactions(prev => {
+          const exists = prev.some(t => t.id === mapped.id);
+          if (exists) {
+            return prev.map(t => (t.id === mapped.id ? mapped : t));
           }
-        }
-      )
-      .subscribe();
+          return [mapped, ...prev];
+        });
 
+        if (payload.eventType === 'INSERT') {
+          toast({
+            title: 'Nova transação recebida',
+            description: `${row.type === 'income' ? 'Receita' : 'Despesa'} de R$ ${Number(row.amount).toFixed(2)}`,
+          });
+        }
+      } else if (payload.eventType === 'DELETE') {
+        setTransactions(prev => prev.filter(t => t.id !== (payload.old as any).id));
+      }
+    };
+
+    const channel = supabase.channel('transactions-changes');
+
+    // Eventos da organização ativa (se houver)
+    if (organization_id) {
+      channel.on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'transactions', filter: `organization_id=eq.${organization_id}` },
+        handleRealtime
+      );
+    }
+
+    // Sempre ouvir minhas próprias transações
+    channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${user.id}` },
+      handleRealtime
+    );
+
+    channel.subscribe();
     channelRef.current = channel;
 
-    // 🔄 Refetch on focus
+    // 🔄 Refetch on focus e evento customizado
     const handleFocus = () => {
       if (!document.hidden) {
         fetchTransactions();
       }
     };
 
+    const handleForceRefetch = () => {
+      fetchTransactions();
+      fetchCategories();
+    };
+
     window.addEventListener('visibilitychange', handleFocus);
     window.addEventListener('focus', handleFocus);
+    window.addEventListener('force-transactions-refetch', handleForceRefetch as unknown as EventListener);
 
     return () => {
       if (channelRef.current) {
@@ -350,6 +349,7 @@ export function useTransactions() {
       }
       window.removeEventListener('visibilitychange', handleFocus);
       window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('force-transactions-refetch', handleForceRefetch as unknown as EventListener);
     };
   }, [user, organization_id, canViewOthers, permsLoading]);
 

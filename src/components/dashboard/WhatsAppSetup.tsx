@@ -305,6 +305,9 @@ export function WhatsAppSetup() {
       });
       
       await fetchLinkedOrganization();
+      // Forçar atualização das transações no dashboard
+      window.dispatchEvent(new Event('force-transactions-refetch'));
+
     } catch (error) {
       console.error('Error linking WhatsApp to organization:', error);
       toast({
