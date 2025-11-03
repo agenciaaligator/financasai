@@ -38,7 +38,6 @@ interface ReminderSettings {
   send_via_whatsapp: boolean;
 }
 
-// Map configured minutes to a semantic key used by the legacy reminders_sent column
 function timeToKey(minutes: number): 'week' | 'day' | 'hours' | 'confirmed' | 'unknown' {
   if (minutes >= 10080) return 'week';
   if (minutes >= 1440) return 'day';
@@ -61,15 +60,25 @@ function getTimeMessage(minutes: number): string {
   return `⏰ Faltam ${mins} minutos!`;
 }
 
-async function sendWhatsAppReminder(commitment: Commitment, minutesUntil: number) {
+async function sendWhatsAppReminder(
+  commitment: Commitment,
+  minutesUntil: number,
+  forceMode: boolean = false
+): Promise<{ success: boolean; deliverability?: string; error?: string }> {
   const phoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID');
   const accessToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
-  const recipientPhone = commitment.profiles.phone_number;
+  const rawPhone = commitment.profiles.phone_number;
+
+  // Normalizar para E.164 (apenas dígitos)
+  const recipientPhone = rawPhone?.replace(/\D/g, '') || '';
 
   console.log('📱 [REMINDER] WhatsApp config check:', {
     hasPhoneNumberId: !!phoneNumberId,
     hasAccessToken: !!accessToken,
-    hasRecipientPhone: !!recipientPhone
+    hasRecipientPhone: !!recipientPhone,
+    rawPhone,
+    recipientPhone,
+    forceMode
   });
 
   if (!phoneNumberId || !accessToken || !recipientPhone) {
@@ -78,7 +87,12 @@ async function sendWhatsAppReminder(commitment: Commitment, minutesUntil: number
       accessToken: accessToken ? 'SET' : 'MISSING',
       recipientPhone: recipientPhone || 'MISSING'
     });
-    return false;
+    return { success: false, error: 'Missing credentials or phone' };
+  }
+
+  if (recipientPhone.length < 10) {
+    console.error('❌ [REMINDER] Invalid phone format:', recipientPhone);
+    return { success: false, error: 'Invalid phone number format (too short)' };
   }
 
   const timeMessage = getTimeMessage(Math.round(minutesUntil));
@@ -117,35 +131,85 @@ async function sendWhatsAppReminder(commitment: Commitment, minutesUntil: number
   
   message += `\n\n🗓️ Data: ${dateStr}`;
 
+  if (forceMode) {
+    console.log(`🔔 [FORCE REMINDER] Sending immediate test to ${recipientPhone} for: "${commitment.title}"`);
+  }
+
+  const url = `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`;
+  
+  // Tentar enviar mensagem de texto normal
+  const textPayload = {
+    messaging_product: 'whatsapp',
+    to: recipientPhone,
+    type: 'text',
+    text: { body: message }
+  };
+
   try {
-    const response = await fetch(
-      `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messaging_product: 'whatsapp',
-          to: recipientPhone,
-          type: 'text',
-          text: { body: message }
-        }),
-      }
-    );
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(textPayload),
+    });
+
+    const result = await response.json();
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[REMINDER] WhatsApp API error:', errorText);
-      return false;
+      console.error('❌ [REMINDER] WhatsApp API error:', JSON.stringify(result));
+      
+      // Se for erro 470/131026 (fora da janela de 24h) e estiver em modo force, tentar template
+      const errorCode = result?.error?.code;
+      const errorSubcode = result?.error?.error_subcode;
+      
+      if (forceMode && (errorCode === 470 || errorSubcode === 131026 || result?.error?.message?.includes('template'))) {
+        console.log(`🔄 [FALLBACK] Trying template message for ${recipientPhone}...`);
+        
+        const templatePayload = {
+          messaging_product: 'whatsapp',
+          to: recipientPhone,
+          type: 'template',
+          template: {
+            name: 'hello_world',
+            language: {
+              code: 'en_US'
+            }
+          }
+        };
+
+        const templateResponse = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(templatePayload),
+        });
+
+        const templateResult = await templateResponse.json();
+
+        if (!templateResponse.ok) {
+          console.error('❌ [FALLBACK] Template also failed:', JSON.stringify(templateResult));
+          return { 
+            success: false, 
+            error: `Text failed (${result?.error?.message}), Template also failed (${templateResult?.error?.message})` 
+          };
+        }
+
+        console.log(`✅ [FALLBACK] Template sent successfully to ${recipientPhone}`);
+        return { success: true, deliverability: 'sent_with_template' };
+      }
+      
+      return { success: false, error: result?.error?.message || 'WhatsApp API error' };
     }
 
-    console.log('[REMINDER] WhatsApp reminder sent successfully:', commitment.id);
-    return true;
+    console.log(`✅ [REMINDER] WhatsApp message sent successfully to ${recipientPhone}:`, result);
+    return { success: true, deliverability: 'sent_text' };
   } catch (error) {
-    console.error('[REMINDER] Error sending WhatsApp message:', error);
-    return false;
+    console.error('❌ [REMINDER] Error sending WhatsApp message:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
 
@@ -168,7 +232,6 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // FASE 1: Suporte ao modo "force" para testes
     const body = await req.json().catch(() => ({}));
     const forceMode = body.force === true;
     const specificUserId = body.user_id || null;
@@ -178,25 +241,16 @@ serve(async (req) => {
       method: req.method,
       hasBody: !!body,
       forceMode,
-      specificUserId: specificUserId || 'none',
-      headers: {
-        contentType: req.headers.get('content-type'),
-        authorization: req.headers.get('authorization') ? 'present' : 'missing'
-      }
-    });
-    console.log('📱 [REMINDERS] WhatsApp credentials check:', {
-      hasToken: !!whatsappToken,
-      hasPhoneId: !!whatsappPhoneId
+      specificUserId: specificUserId || 'none'
     });
 
     if (forceMode && specificUserId) {
-      // Validar credenciais WhatsApp
       if (!whatsappToken || !whatsappPhoneId) {
         console.error('❌ [REMINDERS] Missing WhatsApp credentials');
         return new Response(
           JSON.stringify({ 
             success: false, 
-            error: 'Credenciais do WhatsApp ausentes no ambiente (WHATSAPP_ACCESS_TOKEN ou WHATSAPP_PHONE_NUMBER_ID)',
+            error: 'Credenciais do WhatsApp ausentes',
             remindersSent: 0,
             errors: 1
           }),
@@ -204,107 +258,52 @@ serve(async (req) => {
         );
       }
 
-      // Buscar telefone do usuário
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('phone_number, full_name')
+      const { data: testCommitment, error: commitmentError } = await supabase
+        .from('commitments')
+        .select(`
+          *,
+          profiles!inner(phone_number, full_name)
+        `)
         .eq('user_id', specificUserId)
+        .gte('scheduled_at', new Date().toISOString())
+        .order('scheduled_at', { ascending: true })
+        .limit(1)
         .single();
 
-      if (!profile?.phone_number) {
-        console.error('❌ [REMINDERS] User has no phone number');
+      if (commitmentError || !testCommitment) {
+        console.error('❌ [TEST MODE] No future commitment found for test');
         return new Response(
           JSON.stringify({ 
             success: false, 
-            error: 'Usuário não possui telefone cadastrado',
-            remindersSent: 0,
-            errors: 1
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-        );
-      }
-
-      // CORREÇÃO [24/10/2025]: Validar formato do telefone
-      const phoneNumber = profile.phone_number.replace(/\D/g, '');
-      if (!phoneNumber.startsWith('55') || phoneNumber.length < 12 || phoneNumber.length > 13) {
-        console.error('❌ [REMINDERS] Invalid phone format:', profile.phone_number);
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: 'Formato de telefone inválido. Deve começar com 55 e ter 12-13 dígitos',
-            remindersSent: 0,
-            errors: 1
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-        );
-      }
-
-      // Enviar mensagem de teste direta
-      const testMessage = `✅ *Teste de Lembretes*\n\nOlá ${profile.full_name || 'Usuário'}! Este é um teste do sistema de lembretes via WhatsApp.\n\nSe você recebeu esta mensagem, significa que o sistema está funcionando corretamente! 🎉`;
-
-      console.log('📤 [REMINDERS] Sending test message to:', profile.phone_number);
-
-      try {
-        const whatsappResponse = await fetch(
-          `https://graph.facebook.com/v18.0/${whatsappPhoneId}/messages`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${whatsappToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              messaging_product: 'whatsapp',
-              to: profile.phone_number,
-              type: 'text',
-              text: { body: testMessage }
-            })
-          }
-        );
-
-        const responseData = await whatsappResponse.json();
-
-        if (!whatsappResponse.ok) {
-          console.error('❌ [REMINDERS] WhatsApp API error response:', JSON.stringify(responseData, null, 2));
-          return new Response(
-            JSON.stringify({ 
-              success: false, 
-              error: `Erro da API WhatsApp: ${responseData.error?.message || 'Desconhecido'}`,
-              details: responseData,
-              remindersSent: 0,
-              errors: 1
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-          );
-        }
-
-        console.log('✅ [REMINDERS] Test message sent successfully:', responseData);
-
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            message: 'Mensagem de teste enviada com sucesso',
-            remindersSent: 1,
-            errors: 0,
-            phone: profile.phone_number
+            error: 'Nenhum compromisso futuro encontrado para teste',
+            suggestion: 'Crie um compromisso antes de testar lembretes'
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
-      } catch (error) {
-        console.error('❌ [REMINDERS] Error sending test message:', error);
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: `Erro ao enviar mensagem: ${error.message}`,
-            remindersSent: 0,
-            errors: 1
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-        );
       }
+
+      console.log(`📤 [TEST MODE] Sending test message for commitment: ${testCommitment.title}`);
+      const result = await sendWhatsAppReminder(testCommitment, 60, true);
+
+      return new Response(
+        JSON.stringify({ 
+          success: result.success,
+          deliverability: result.deliverability,
+          error: result.error,
+          message: result.success 
+            ? `Teste enviado (${result.deliverability})` 
+            : `Falha: ${result.error}`,
+          commitment: {
+            id: testCommitment.id,
+            title: testCommitment.title,
+            scheduled_at: testCommitment.scheduled_at
+          }
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // Buscar TODOS os compromissos futuros com informações do usuário
+    // Buscar TODOS os compromissos futuros
     const { data: commitments, error: fetchError } = await supabase
       .from('commitments')
       .select(`
@@ -340,7 +339,6 @@ serve(async (req) => {
 
       console.log(`[REMINDER] [${executionId}] Processing commitment ${commitment.id} for user ${commitment.user_id}: "${commitment.title}" in ${Math.floor(minutesUntil)} minutes`);
 
-      // Buscar configurações de lembrete do usuário
       const { data: settings, error: settingsError } = await supabase
         .from('reminder_settings')
         .select('default_reminders, send_via_whatsapp')
@@ -353,12 +351,11 @@ serve(async (req) => {
         continue;
       }
 
-      // Usar configurações padrão se não houver configurações personalizadas
       const reminderSettings: ReminderSettings = settings || {
         default_reminders: [
-          { time: 1440, enabled: true }, // 24h (1 dia)
-          { time: 120, enabled: true },  // 2h
-          { time: 60, enabled: true }    // 1h
+          { time: 1440, enabled: true },
+          { time: 120, enabled: true },
+          { time: 60, enabled: true }
         ],
         send_via_whatsapp: true
       };
@@ -379,7 +376,6 @@ serve(async (req) => {
       const scheduledReminders = commitment.scheduled_reminders || [];
       const remindersSentMap: Record<string, any> = (commitment as any).reminders_sent || {};
 
-      // Verificar cada lembrete configurado
       for (const reminder of reminderSettings.default_reminders) {
         if (!reminder.enabled) continue;
 
@@ -394,7 +390,6 @@ serve(async (req) => {
           continue;
         }
 
-        // Anti-flood: se qualquer lembrete deste compromisso foi enviado nos últimos 9 minutos, pula
         const nowTs = Date.now();
         const sentRecently = scheduledReminders.some((r) => {
           if (!r.sent_at) return false;
@@ -406,7 +401,6 @@ serve(async (req) => {
           continue;
         }
 
-        // Janela de envio de 30 minutos para cobrir intervalos de cron (6 execuções a cada 5min)
         const windowSize = 30;
         const windowStart = reminder.time - windowSize;
         const windowEnd = reminder.time;
@@ -423,16 +417,13 @@ serve(async (req) => {
 
         if (shouldSend) {
           console.log(`🔔 [REMINDER] [${executionId}] ENVIANDO: ${reminder.time}min para "${commitment.title}" (faltam ${Math.floor(minutesUntil)}min)`);
-          console.log(`[REMINDER] [${executionId}] Sending ${reminder.time}min reminder for ${commitment.title} to user ${commitment.user_id} (${Math.floor(minutesUntil)}min until event)`);
 
-          // Enviar lembrete via WhatsApp
-          const sent = await sendWhatsAppReminder(commitment, minutesUntil);
+          const result = await sendWhatsAppReminder(commitment, minutesUntil, false);
 
-          if (sent) {
+          if (result.success) {
             remindersSent++;
             console.log(`[REMINDER] [${executionId}] ✅ Sent ${reminder.time}min reminder for ${commitment.title}`);
 
-            // Marcar como enviado nas duas colunas para idempotência
             const updatedReminders = [
               ...scheduledReminders.filter((r) => r.time_minutes !== reminder.time),
               {
@@ -457,11 +448,10 @@ serve(async (req) => {
             }
           } else {
             errors++;
-            console.error(`[REMINDER] [${executionId}] ❌ Failed to send ${reminder.time}min reminder for ${commitment.title}`);
+            console.error(`[REMINDER] [${executionId}] ❌ Failed to send ${reminder.time}min reminder for ${commitment.title}: ${result.error}`);
           }
         } else {
           console.log(`⏭️ [REMINDER] [${executionId}] PULANDO: ${reminder.time}min para "${commitment.title}" (faltam ${Math.floor(minutesUntil)}min, janela: ${windowStart}-${windowEnd})`);
-          console.log(`[REMINDER] [${executionId}] Skipping ${reminder.time}min reminder for ${commitment.id}: not in window (${Math.floor(minutesUntil)}min until event)`);
         }
       }
     }
@@ -489,7 +479,7 @@ serve(async (req) => {
     );
 
   } catch (error: any) {
-    console.error('[REMINDER] Error:', error);
+    console.error('Error in send-commitment-reminders function:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { 

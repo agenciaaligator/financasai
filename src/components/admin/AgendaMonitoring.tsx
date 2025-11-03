@@ -261,37 +261,58 @@ export function AgendaMonitoring() {
               Forçar Lembretes WhatsApp Agora
             </Button>
 
-            <Button
-              onClick={async () => {
-                setTestingReminderForce(true);
-                try {
-                  const { data: { user } } = await supabase.auth.getUser();
-                  const { data, error } = await supabase.functions.invoke('send-commitment-reminders', {
-                    body: { force: true, user_id: user?.id }
-                  });
-                  if (error) throw error;
-                  toast({
-                    title: data.success ? "✅ Teste enviado" : "⚠️ Erro",
-                    description: data.success ? `Mensagem teste enviada` : data.error,
-                    variant: data.success ? "default" : "destructive"
-                  });
-                } catch (error: any) {
-                  toast({ title: "Erro", description: error.message, variant: "destructive" });
-                } finally {
-                  setTestingReminderForce(false);
-                }
-              }}
-              disabled={testingReminderForce}
-              variant="secondary"
-              className="justify-start gap-2"
-            >
-              {testingReminderForce ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <MessageCircle className="h-4 w-4" />
-              )}
-              Teste Lembrete (Mensagem Agora)
-            </Button>
+            <div className="space-y-2">
+              <Button
+                onClick={async () => {
+                  setTestingReminderForce(true);
+                  try {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    const { data, error } = await supabase.functions.invoke('send-commitment-reminders', {
+                      body: { force: true, user_id: user?.id }
+                    });
+                    if (error) throw error;
+
+                    const deliveryStatus = data.deliverability;
+                    const success = data.success;
+
+                    if (success && deliveryStatus === 'sent_with_template') {
+                      toast({
+                        title: "✅ Mensagem enviada via template",
+                        description: "Lembrete enviado usando template WhatsApp (fora da janela de 24h). Verifique seu WhatsApp.",
+                      });
+                    } else if (success && deliveryStatus === 'sent_text') {
+                      toast({
+                        title: "✅ Mensagem enviada como texto",
+                        description: "Lembrete enviado com sucesso. Verifique seu WhatsApp.",
+                      });
+                    } else {
+                      toast({
+                        title: "❌ Falha no envio",
+                        description: data.error || "Não foi possível enviar o lembrete",
+                        variant: "destructive",
+                      });
+                    }
+                  } catch (error: any) {
+                    toast({ title: "Erro ao testar lembretes", description: error.message, variant: "destructive" });
+                  } finally {
+                    setTestingReminderForce(false);
+                  }
+                }}
+                disabled={testingReminderForce}
+                variant="secondary"
+                className="justify-start gap-2 w-full"
+              >
+                {testingReminderForce ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <MessageCircle className="h-4 w-4" />
+                )}
+                Teste Lembrete (Mensagem Agora)
+              </Button>
+              <p className="text-xs text-muted-foreground px-2">
+                💡 Se houver erro de template, o sistema enviará via WhatsApp template automaticamente
+              </p>
+            </div>
 
             <Button
               onClick={handleForceDailySummary}
@@ -320,6 +341,116 @@ export function AgendaMonitoring() {
               )}
               Sincronizar Google Calendar Agora
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>⚙️ Instalação de Agendamentos (Cron Jobs)</CardTitle>
+          <CardDescription>
+            Configure os crons <strong>uma única vez</strong> para automação completa
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="bg-muted/50 p-4 rounded-md space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Execute os passos abaixo no SQL Editor do Supabase:
+            </p>
+            <ol className="text-sm space-y-2 list-decimal list-inside">
+              <li>Abra o <a href="https://supabase.com/dashboard/project/fsamlnlabdjoqpiuhgex/sql/new" target="_blank" rel="noopener noreferrer" className="text-primary underline">SQL Editor</a></li>
+              <li>Clique em "Copiar SQL" abaixo</li>
+              <li>Cole no editor e execute</li>
+              <li>Recarregue esta página e confirme que os crons aparecem ativos acima</li>
+            </ol>
+            <div className="relative">
+              <pre className="bg-background p-3 rounded text-xs overflow-x-auto border max-h-64">
+{`-- Lembretes de compromissos (a cada 5 minutos)
+SELECT cron.schedule(
+  'send-commitment-reminders-5min',
+  '*/5 * * * *',
+  $$
+  SELECT net.http_post(
+    url:='https://fsamlnlabdjoqpiuhgex.supabase.co/functions/v1/send-commitment-reminders',
+    headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZzYW1sbmxhYmRqb3FwaXVoZ2V4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIxOTE0MzYsImV4cCI6MjA2Nzc2NzQzNn0.T2KJeHIfVomYe58J-lt8beMByX00kloteIIvz1whyaM"}'::jsonb
+  ) as request_id;
+  $$
+);
+
+-- Resumo diário (8h BRT = 11h UTC)
+SELECT cron.schedule(
+  'send-daily-agenda-8am',
+  '0 11 * * *',
+  $$
+  SELECT net.http_post(
+    url:='https://fsamlnlabdjoqpiuhgex.supabase.co/functions/v1/send-daily-agenda',
+    headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZzYW1sbmxhYmRqb3FwaXVoZ2V4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIxOTE0MzYsImV4cCI6MjA2Nzc2NzQzNn0.T2KJeHIfVomYe58J-lt8beMByX00kloteIIvz1whyaM"}'::jsonb
+  ) as request_id;
+  $$
+);
+
+-- Sincronização Google (a cada 10 minutos)
+SELECT cron.schedule(
+  'sync-all-google-calendars-10min',
+  '*/10 * * * *',
+  $$
+  SELECT net.http_post(
+    url:='https://fsamlnlabdjoqpiuhgex.supabase.co/functions/v1/sync-all-google-calendars',
+    headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZzYW1sbmxhYmRqb3FwaXVoZ2V4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIxOTE0MzYsImV4cCI6MjA2Nzc2NzQzNn0.T2KJeHIfVomYe58J-lt8beMByX00kloteIIvz1whyaM"}'::jsonb
+  ) as request_id;
+  $$
+);`}
+              </pre>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="absolute top-2 right-2"
+                onClick={() => {
+                  const sql = `-- Lembretes de compromissos (a cada 5 minutos)
+SELECT cron.schedule(
+  'send-commitment-reminders-5min',
+  '*/5 * * * *',
+  $$
+  SELECT net.http_post(
+    url:='https://fsamlnlabdjoqpiuhgex.supabase.co/functions/v1/send-commitment-reminders',
+    headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZzYW1sbmxhYmRqb3FwaXVoZ2V4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIxOTE0MzYsImV4cCI6MjA2Nzc2NzQzNn0.T2KJeHIfVomYe58J-lt8beMByX00kloteIIvz1whyaM"}'::jsonb
+  ) as request_id;
+  $$
+);
+
+-- Resumo diário (8h BRT = 11h UTC)
+SELECT cron.schedule(
+  'send-daily-agenda-8am',
+  '0 11 * * *',
+  $$
+  SELECT net.http_post(
+    url:='https://fsamlnlabdjoqpiuhgex.supabase.co/functions/v1/send-daily-agenda',
+    headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZzYW1sbmxhYmRqb3FwaXVoZ2V4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIxOTE0MzYsImV4cCI6MjA2Nzc2NzQzNn0.T2KJeHIfVomYe58J-lt8beMByX00kloteIIvz1whyaM"}'::jsonb
+  ) as request_id;
+  $$
+);
+
+-- Sincronização Google (a cada 10 minutos)
+SELECT cron.schedule(
+  'sync-all-google-calendars-10min',
+  '*/10 * * * *',
+  $$
+  SELECT net.http_post(
+    url:='https://fsamlnlabdjoqpiuhgex.supabase.co/functions/v1/sync-all-google-calendars',
+    headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZzYW1sbmxhYmRqb3FwaXVoZ2V4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIxOTE0MzYsImV4cCI6MjA2Nzc2NzQzNn0.T2KJeHIfVomYe58J-lt8beMByX00kloteIIvz1whyaM"}'::jsonb
+  ) as request_id;
+  $$
+);`;
+                  navigator.clipboard.writeText(sql);
+                  toast({
+                    title: "SQL copiado!",
+                    description: "Cole no SQL Editor do Supabase",
+                  });
+                }}
+              >
+                📋 Copiar SQL
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

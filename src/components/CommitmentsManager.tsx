@@ -87,8 +87,10 @@ export function CommitmentsManager() {
   });
 
   useEffect(() => {
-    fetchCommitments();
-  }, [currentPage, titleFilter, dateFromFilter, dateToFilter, categoryFilter]);
+    if (organization_id) {
+      fetchCommitments();
+    }
+  }, [currentPage, titleFilter, dateFromFilter, dateToFilter, categoryFilter, organization_id]);
 
   // CORREÇÃO [24/10/2025]: useEffect separado para evitar popup aparecer repetidamente
   useEffect(() => {
@@ -201,7 +203,12 @@ export function CommitmentsManager() {
   const fetchCommitments = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user || !organization_id) return;
+      if (!user) return;
+      if (!organization_id) {
+        setLoading(true);
+        return;
+      }
+      setLoading(true);
 
       const from = (currentPage - 1) * itemsPerPage;
       const to = from + itemsPerPage - 1;
