@@ -1034,7 +1034,7 @@ const handler = async (req: Request): Promise<Response> => {
               
               if (phoneForApi.includes('{') || phoneForApi.includes('}') || 
                   !/^\+?\d{10,15}$/.test(phoneForApi)) {
-                console.log('Ignoring webhook with placeholder/invalid phone (GPT Maker legacy)');
+                console.log('Ignoring webhook with placeholder/invalid phone');
                 return new Response(JSON.stringify({ 
                   success: true, 
                   skipped: true

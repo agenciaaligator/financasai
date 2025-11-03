@@ -1895,24 +1895,26 @@ class WhatsAppAgent {
     }
     
     // PRIORIDADE 2: Comandos de AGENDA (ANTES de outros comandos genéricos)
-    if (/\b(agendar|compromisso|reuni[aã]o|consulta|evento|marcar|agenda)\b/i.test(messageText)) {
-      console.log('[Agenda Debug][WhatsApp] Agenda regex match:', { 
-        messageText, 
-        matched: /\b(agendar|compromisso|reuni[aã]o|consulta|evento|marcar|agenda)\b/i.test(messageText)
+    // Aceita singular/plural e variações sem acento usando normalizedText
+    if (/(\b(agendar|agenda|marc)\w*\b|\bcompromiss\w*\b|\breunia\w*\b|\bconsult\w*\b|\bevento\w*\b)/.test(normalizedText)) {
+      console.log('[Agenda Debug][WhatsApp] Agenda regex match:', {
+        messageText,
+        normalizedText,
+        matched: /(\b(agendar|agenda|marc)\w*\b|\bcompromiss\w*\b|\breunia\w*\b|\bconsult\w*\b|\bevento\w*\b)/.test(normalizedText)
       });
-      
-      // Listar compromissos - MUITO MAIS VARIAÇÕES NATURAIS
-      if (/\b(meus|proximos|listar|ver|mostrar|quais|tenho|tem|hoje|amanha|semana)\b/i.test(messageText)) {
+
+      // Listar compromissos - variações naturais
+      if (/\b(meus|proximos|listar|ver|mostrar|quais|tenho|tem|hoje|amanha|semana)\b/.test(normalizedText)) {
         console.log('🗓️ Listando compromissos');
         return await this.listCommitments(session.user_id!);
       }
-      
+
       // Criar novo compromisso
-      if (/\b(agend|marc|cadastr|criar|add|adicionar)\b/i.test(messageText)) {
+      if (/\b(agend|marc|cadastr|criar|add|adicionar)\b/.test(normalizedText)) {
         console.log('🗓️ Criando compromisso:', messageText);
         return await this.addCommitment(session.user_id!, messageText);
       }
-      
+
       // Fallback: se mencionou agenda mas não identificou ação
       return {
         response: '📅 *Comandos de Agenda:*\n\n' +
@@ -6130,7 +6132,7 @@ serve(async (req) => {
     
     // Detectar placeholders (ex: {contact.phone}) e ignorar silenciosamente
     if (cleanPhone.includes('{') || cleanPhone.includes('}') || !/^\+?\d{10,15}$/.test(cleanPhone)) {
-      console.log('Ignoring request with placeholder/invalid phone (GPT Maker legacy):', phone_number);
+      console.log('Ignoring request with placeholder/invalid phone:', phone_number);
       return new Response(JSON.stringify({
         success: true,
         response: '🔐 Configure o webhook do WhatsApp Business API para usar este assistente.',
