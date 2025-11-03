@@ -622,9 +622,12 @@ const handler = async (req: Request): Promise<Response> => {
     let from: string | undefined;
     let text: string | undefined;
     let messageId: string | undefined;
+    let forceText = false; // ✅ CRITICAL FIX: Declarar forceText
+    let whatsappMessage: any; // ✅ CRITICAL FIX: Declarar no escopo correto
 
     if (body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
       const message = body.entry[0].changes[0].value.messages[0];
+      whatsappMessage = message; // ✅ Atribuir aqui
       from = message.from;
       messageId = message.id;
       
@@ -665,20 +668,12 @@ const handler = async (req: Request): Promise<Response> => {
         } catch (transcribeError) {
           console.error(`❌ [${messageId?.substring(0,10)}] Transcription failed:`, transcribeError.message);
           
-          // ✅ CRITICAL FIX: Não enviar erro antecipado - enviar ao agente para fallback guiado
+          // ✅ CRITICAL FIX: Não retornar - seguir para o agente com fallback marker
           forceText = true;
           text = '__AUDIO_TRANSCRIPTION_FAILED__';
-          console.log(`⚠️ [${messageId?.substring(0,10)}] Setting fallback marker for agent`);
+          console.log(`⚠️ [${messageId?.substring(0,10)}] Setting fallback marker for agent - will continue processing`);
           
-          // NÃO RETORNAR - seguir para o agente processar
-          return new Response(JSON.stringify({ 
-            success: true, 
-            skipped: true,
-            reason: 'transcription_failed'
-          }), {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
+          // ✅ NÃO RETORNAR MAIS - deixar processar normalmente para o agente orientar o usuário
         }
       } else if (message.type === 'text') {
         text = message.text?.body;
@@ -729,10 +724,9 @@ const handler = async (req: Request): Promise<Response> => {
           // Marcar como imagem para o agente processar
           text = '[VIDEO_AS_IMAGE]';
           
-          // Adicionar dados do vídeo para o agente processar
-          if (whatsappMessage) {
-            whatsappMessage.video.base64 = base64Video;
-          }
+          // ✅ CRITICAL FIX: whatsappMessage.video pode não existir, criar estrutura completa
+          message.video = message.video || {};
+          message.video.base64 = base64Video;
           
         } catch (error) {
           console.error('❌ Erro ao processar vídeo/Live Photo:', error);
@@ -871,18 +865,22 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Processar mensagem oficial do WhatsApp
-    if (from && text) {
+    if (from && text !== undefined) {
       console.log('✅ Mensagem válida recebida de:', from);
       console.log('📝 Conteúdo:', text);
 
-      // Detectar tipo de mensagem para o agente
-      const whatsappMessage = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+      // ✅ whatsappMessage já foi declarado anteriormente (linha 632)
       const messageType = whatsappMessage?.type || 'text';
       const imageData = whatsappMessage?.image;
       const audioData = whatsappMessage?.audio;
+      
+      // ✅ Determinar sendingType para o agente
+      const sendingType = forceText ? 'text' : messageType;
 
       console.log('🔍 Message details:', { 
-        type: messageType, 
+        type: messageType,
+        sendingType,
+        forceText,
         hasImage: !!imageData,
         imageId: imageData?.id,
         imageCaption: imageData?.caption,
@@ -935,7 +933,14 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       try {
-        console.log('🔵 Chamando whatsapp-agent...');
+        console.log('🔵 [BEFORE_AGENT_CALL] Calling whatsapp-agent...', {
+          from: from?.substring(0, 8) + '***',
+          sendingType,
+          forceText,
+          hasImage: !!imageData,
+          hasAudio: !!audioData && !forceText,
+          textLength: text?.length || 0
+        });
         
         // Criar promise com timeout de 28 segundos
         const agentPromise = fetch(`${supabaseUrl}/functions/v1/whatsapp-agent`, {
@@ -950,7 +955,7 @@ const handler = async (req: Request): Promise<Response> => {
               from: from,
               body: text,
               id: body.messageId || 'unknown',
-              type: forceText ? 'text' : messageType,
+              type: sendingType, // ✅ Usar sendingType calculado
               image: imageData,
               audio: forceText ? undefined : audioData
             },
@@ -967,9 +972,9 @@ const handler = async (req: Request): Promise<Response> => {
           agentResponse = await Promise.race([agentPromise, timeoutPromise]);
         } catch (error) {
           if (error instanceof Error && error.message === 'AGENT_TIMEOUT') {
-            console.error('⏱️ Agent timeout (28s) - sending fallback message');
+            console.error('⏱️ [AGENT_TIMEOUT] Agent timeout (28s) - sending fallback message');
             
-            // Enviar mensagem de fallback ao usuário
+            // ✅ Mensagem de fallback mais genérica (não assumir transação)
             if (whatsappAccessToken && whatsappPhoneNumberId) {
               await fetch(`https://graph.facebook.com/v21.0/${whatsappPhoneNumberId}/messages`, {
                 method: 'POST',
@@ -982,9 +987,9 @@ const handler = async (req: Request): Promise<Response> => {
                   to: from,
                   type: 'text',
                   text: { 
-                    body: '✅ *Transação processada!*\n\n' +
-                          'Sua transação foi registrada.\n' +
-                          'Digite *"saldo"* para verificar ou acesse a plataforma.' 
+                    body: '⏱️ *Estamos processando sua solicitação...*\n\n' +
+                          'Por favor, aguarde alguns instantes ou tente novamente.\n\n' +
+                          'Digite *"ajuda"* para ver comandos disponíveis.' 
                   }
                 })
               });
@@ -1035,7 +1040,11 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         const agentResult = await agentResponse.json();
-        console.log('Agent response received');
+        console.log('✅ [AFTER_AGENT_CALL] Agent response received', {
+          success: agentResult.success,
+          hasResponse: !!agentResult.response,
+          hasTransactionId: !!agentResult.transactionId
+        });
 
         if (agentResult.success && agentResult.response) {
           if (whatsappAccessToken && whatsappPhoneNumberId) {
