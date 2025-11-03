@@ -1895,20 +1895,20 @@ class WhatsAppAgent {
     }
     
     // PRIORIDADE 2: Comandos de AGENDA (ANTES de outros comandos genéricos)
-    if (/\b(agendar|compromisso|reuni[aã]o|consulta|evento|marcar)\b/i.test(messageText)) {
+    if (/\b(agendar|compromisso|reuni[aã]o|consulta|evento|marcar|agenda)\b/i.test(messageText)) {
       console.log('[Agenda Debug][WhatsApp] Agenda regex match:', { 
         messageText, 
-        matched: /\b(agendar|compromisso|reuni[aã]o|consulta|evento|marcar)\b/i.test(messageText)
+        matched: /\b(agendar|compromisso|reuni[aã]o|consulta|evento|marcar|agenda)\b/i.test(messageText)
       });
       
-      // Listar compromissos
-      if (/meus|proximos|listar|ver|mostrar/i.test(messageText)) {
+      // Listar compromissos - MUITO MAIS VARIAÇÕES NATURAIS
+      if (/\b(meus|proximos|listar|ver|mostrar|quais|tenho|tem|hoje|amanha|semana)\b/i.test(messageText)) {
         console.log('🗓️ Listando compromissos');
         return await this.listCommitments(session.user_id!);
       }
       
-      // Criar novo compromisso (qualquer coisa com "agendar", "marcar", etc)
-      if (/agend|marc|cadastr/i.test(messageText)) {
+      // Criar novo compromisso
+      if (/\b(agend|marc|cadastr|criar|add|adicionar)\b/i.test(messageText)) {
         console.log('🗓️ Criando compromisso:', messageText);
         return await this.addCommitment(session.user_id!, messageText);
       }
@@ -6305,7 +6305,6 @@ serve(async (req) => {
     }
 
     // Usuário autenticado - processar mensagem
-    // Suportar tanto formato GPT Maker (string) quanto WhatsApp oficial (objeto)
     const messageText = typeof message === 'string' ? message : (message?.body || '');
     const whatsappMessage: WhatsAppMessage = {
       from: cleanPhone,
@@ -6332,15 +6331,12 @@ serve(async (req) => {
       }
     });
 
-    // Resposta formatada para GPT Maker
+    // Resposta formatada para Meta WhatsApp Business API
     const responseBody = {
       success: true,
       response: result.response,
       transactionId: result.transactionId,
-      sendButtons: result.sendButtons,
-      stop: true, // CRÍTICO: Instrui GPT Maker a usar APENAS esta resposta
-      force_response: true, // Força GPT Maker a usar esta resposta
-      bypass_ai: true // Não processar com IA
+      buttons: result.buttons
     };
     
     console.log('✅ Response:', { 

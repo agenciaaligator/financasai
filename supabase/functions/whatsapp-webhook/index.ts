@@ -45,10 +45,6 @@ const whatsappAccessToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
 const whatsappPhoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID');
 const whatsappBusinessAccountId = Deno.env.get('WHATSAPP_BUSINESS_ACCOUNT_ID');
 
-// GPT Maker auth (used when messages come via GPT Maker, not Meta webhook)
-const gptMakerToken = Deno.env.get('GPT_MAKER_TOKEN');
-const gptMakerChannelId = Deno.env.get('GPT_MAKER_CHANNEL_ID');
-
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Função helper para enviar mensagens via WhatsApp
@@ -379,35 +375,6 @@ async function verifyWhatsAppSignature(payload: string, signature: string): Prom
   }
 }
 
-// Verify GPT Maker authorization via token header or Bearer token
-async function verifyGptMakerAuth(req: Request, body: any): Promise<boolean> {
-  try {
-    const authHeader = req.headers.get('authorization') || '';
-    const tokenHeader = req.headers.get('x-gptmaker-token') || '';
-    const bodyToken = body?.token;
-    
-    const provided = authHeader.startsWith('Bearer ')
-      ? authHeader.slice(7)
-      : (tokenHeader || bodyToken);
-
-    if (!gptMakerToken) {
-      return false; // Token not configured
-    }
-    
-    if (!provided || provided !== gptMakerToken) {
-      return false;
-    }
-
-    // If a channel id is provided, validate it as well for extra safety
-    if (gptMakerChannelId && body?.channelId && body.channelId !== gptMakerChannelId) {
-      return false;
-    }
-    return true;
-  } catch (_err) {
-    return false;
-  }
-}
-
 function checkRateLimit(identifier: string): boolean {
   const now = Date.now();
   const key = identifier;
@@ -633,60 +600,30 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // CRITICAL: Verify auth (GPT Maker) or WhatsApp signature
-    const isPotentialGptMaker = Boolean(
-      body?.message || body?.contactPhone || body?.channelId || body?.from || body?.text || body?.role
-    );
-    console.log('🔎 Detectando origem. Chaves no body:', Object.keys(body || {}));
-
-    if (isPotentialGptMaker) {
-      const ok = await verifyGptMakerAuth(req, body);
-      if (!ok && gptMakerToken) {
-        // Log the event but proceed anyway to allow testing
-        console.warn('⚠️ GPT Maker token validation issue - proceeding anyway for testing');
-        await logSecurityEvent('GPTMAKER_AUTH_WARNING', { ip: clientIP, timestamp: new Date().toISOString() });
-      }
-    } else {
-      const signature = req.headers.get('x-hub-signature-256') || '';
-      const valid = await verifyWhatsAppSignature(rawBody, signature);
-      if (!valid) {
-        await logSecurityEvent('INVALID_SIGNATURE', { 
-          ip: clientIP, 
-          timestamp: new Date().toISOString()
-        });
-        return new Response(JSON.stringify({ 
-          success: false, 
-          message: 'Invalid signature' 
-        }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
+    // CRITICAL: Verificar assinatura do WhatsApp
+    const signature = req.headers.get('x-hub-signature-256') || '';
+    const valid = await verifyWhatsAppSignature(rawBody, signature);
+    if (!valid) {
+      await logSecurityEvent('INVALID_SIGNATURE', { 
+        ip: clientIP, 
+        timestamp: new Date().toISOString()
+      });
+      return new Response(JSON.stringify({ 
+        success: false, 
+        message: 'Invalid signature' 
+      }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    console.log('WhatsApp webhook received (verified)');
-
-    const isGPTMakerFormat = Boolean(body.message || body.contactPhone || body.from || body.text || body.role);
-    console.log('🔵 Formato detectado:', isGPTMakerFormat ? 'GPT Maker' : 'WhatsApp Official');
-    console.log('🔵 Body recebido:', JSON.stringify(body, null, 2));
+    console.log('✅ WhatsApp webhook received (verified)');
     
     let from: string | undefined;
     let text: string | undefined;
     let messageId: string | undefined;
-    let isGptAssistant: boolean = false;
-    let forceText: boolean = false;
 
-    if (isGPTMakerFormat) {
-      console.log('🔵 GPT Maker - role:', body.role, 'message:', body.message || body.text);
-      
-      // Always parse and set a flag; we will handle routing after dedup
-      const incomingText = (body.message ?? body.text ?? '').trim();
-      isGptAssistant = body.role === 'assistant' || body.role === 'tool';
-      from = body.contactPhone || body.from || body.phone || body.phoneNumber;
-      text = incomingText;
-      messageId = body.messageId || body.id;
-      console.log('🔵 GPT Maker parsed:', { from, text, messageId, isGptAssistant });
-    } else if (body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
+    if (body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
       const message = body.entry[0].changes[0].value.messages[0];
       from = message.from;
       messageId = message.id;
@@ -920,127 +857,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Handle GPT Maker routing (no WABA calls)
-    if (isGPTMakerFormat) {
-      // Assistant/tool messages from GPT Maker: just acknowledge
-      if (isGptAssistant) {
-        console.log('📥 GPT Maker assistant/tool message acknowledged (no action needed)');
-        return new Response(JSON.stringify({ 
-          success: true, 
-          skipped: true, 
-          reason: 'gpt_maker_assistant' 
-        }), { 
-          status: 200, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
-      }
-      
-      // User messages from GPT Maker: process via whatsapp-agent
-      if (!from || !text) {
-        console.error('❌ GPT Maker user message missing contactPhone or text');
-        return new Response(JSON.stringify({ 
-          success: false, 
-          message: 'Missing contactPhone or message text' 
-        }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-      
-      // Normalize phone number
-      const cleanPhone = String(from).replace(/[^\d+]/g, '');
-      if (!cleanPhone || !/^\+?\d{10,15}$/.test(cleanPhone)) {
-        console.error('❌ Invalid phone number format from GPT Maker:', from);
-        return new Response(JSON.stringify({ 
-          success: false, 
-          message: 'Invalid phone number format' 
-        }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-      
-      console.log('📨 GPT Maker user message - calling whatsapp-agent', {
-        cleanPhone: cleanPhone.substring(0, 8) + '***',
-        hasText: !!text,
-        messageId: messageId || 'unknown'
-      });
-      
-      try {
-        console.log('🔵 Calling whatsapp-agent with messageId:', messageId);
-        const agentResponse = await fetch(`${supabaseUrl}/functions/v1/whatsapp-agent`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${supabaseServiceKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            phone_number: cleanPhone,
-            message: {
-              from: cleanPhone,
-              body: text,
-              id: messageId || `${Date.now()}-${cleanPhone}`,
-              type: 'text'
-            },
-            action: 'process_message'
-          })
-        });
-        
-        if (!agentResponse.ok) {
-          console.error('❌ Agent HTTP error:', agentResponse.status, agentResponse.statusText);
-          throw new Error(`Agent returned ${agentResponse.status}: ${agentResponse.statusText}`);
-        }
-        
-        const agentResult = await agentResponse.json();
-        console.log('✅ Agent response received:', {
-          success: agentResult.success,
-          hasResponse: !!agentResult.response,
-          responseLength: agentResult.response?.length,
-          hasError: !!agentResult.error
-        });
-        
-        // Check if agent returned an error
-        if (!agentResult.success && agentResult.error) {
-          console.error('❌ Agent processing error:', agentResult.error);
-          throw new Error(agentResult.error);
-        }
-        
-        // Ensure we have a response
-        const responseText = agentResult.response || agentResult.message || 'Sem resposta do agente';
-        
-        // Return agent response directly to GPT Maker (no WABA)
-        // CRITICAL: Use 'message' field for GPT Maker compatibility
-        return new Response(JSON.stringify({
-          success: true,
-          message: responseText,
-          role: 'assistant',
-          stop: true,
-          bypass_ai: true,
-          via: 'gpt_maker_webhook'
-        }), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      } catch (agentError) {
-        console.error('❌ Error calling whatsapp-agent for GPT Maker:', {
-          name: agentError.name,
-          message: agentError.message,
-          stack: agentError.stack?.substring(0, 200)
-        });
-        
-        return new Response(JSON.stringify({
-          success: false,
-          message: '❌ Erro ao processar sua mensagem. Tente novamente em alguns instantes.',
-          role: 'assistant',
-          stop: true,
-          error: agentError.message
-        }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-    }
-
+    // Processar mensagem oficial do WhatsApp
     if (from && text) {
       console.log('✅ Mensagem válida recebida de:', from);
       console.log('📝 Conteúdo:', text);
