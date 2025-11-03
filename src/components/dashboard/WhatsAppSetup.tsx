@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Phone, Shield, MessageSquare, BarChart3 } from "lucide-react";
+import { useOrganizationPermissions } from "@/hooks/useOrganizationPermissions";
+import { Phone, Shield, MessageSquare, BarChart3, Link2 } from "lucide-react";
 
 export function WhatsAppSetup() {
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -17,12 +18,16 @@ export function WhatsAppSetup() {
   const [hasRecentWhatsAppActivity, setHasRecentWhatsAppActivity] = useState(false);
   const [loading, setLoading] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
+  const [linkingOrg, setLinkingOrg] = useState(false);
+  const [linkedOrgName, setLinkedOrgName] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
+  const { organization_id, role } = useOrganizationPermissions();
 
   useEffect(() => {
     fetchPhoneNumber();
     checkAuthenticationStatus();
+    fetchLinkedOrganization();
     
     // Setup real-time listener for session changes
     const channel = supabase
@@ -38,6 +43,7 @@ export function WhatsAppSetup() {
         () => {
           // Re-check authentication when session changes
           checkAuthenticationStatus();
+          fetchLinkedOrganization();
         }
       )
       .subscribe();
@@ -246,6 +252,71 @@ export function WhatsAppSetup() {
     }
   };
 
+  const fetchLinkedOrganization = async () => {
+    if (!user) return;
+    
+    try {
+      const { data: session } = await supabase
+        .from('whatsapp_sessions')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .gt('expires_at', new Date().toISOString())
+        .order('last_activity', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (session?.organization_id) {
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('name')
+          .eq('id', session.organization_id)
+          .single();
+        
+        setLinkedOrgName(org?.name || null);
+      } else {
+        setLinkedOrgName(null);
+      }
+    } catch (error) {
+      console.error('Error fetching linked organization:', error);
+    }
+  };
+
+  const handleLinkToCurrentOrg = async () => {
+    if (!organization_id) {
+      toast({
+        title: "Erro",
+        description: "Você não pertence a nenhuma organização",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLinkingOrg(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('whatsapp-session-set-org', {
+        body: { organization_id }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "✅ WhatsApp vinculado!",
+        description: data.message || "WhatsApp vinculado à organização atual com sucesso",
+      });
+      
+      await fetchLinkedOrganization();
+    } catch (error) {
+      console.error('Error linking WhatsApp to organization:', error);
+      toast({
+        title: "Erro ao vincular",
+        description: error instanceof Error ? error.message : "Não foi possível vincular o WhatsApp à organização",
+        variant: "destructive"
+      });
+    } finally {
+      setLinkingOrg(false);
+    }
+  };
+
   const handleCheckStatus = async () => {
     setStatusLoading(true);
     try {
@@ -362,8 +433,15 @@ export function WhatsAppSetup() {
               )}
             </div>
             
+            {/* Linked Organization Display */}
+            {effectiveAuthenticated && linkedOrgName && (
+              <div className="text-xs text-muted-foreground">
+                📍 Vinculado a: <strong>{linkedOrgName}</strong>
+              </div>
+            )}
+            
             {/* FASE 4: Botões de revalidação e teste */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -388,6 +466,17 @@ export function WhatsAppSetup() {
                     Revalidar WhatsApp
                   </Button>
                   
+                  {organization_id && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={handleLinkToCurrentOrg}
+                      disabled={linkingOrg}
+                    >
+                      <Link2 className="h-3 w-3 mr-1" />
+                      {linkingOrg ? "Vinculando..." : "Vincular à org atual"}
+                    </Button>
+                  )}
                 </>
               )}
             </div>

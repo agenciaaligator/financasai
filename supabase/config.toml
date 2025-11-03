@@ -138,3 +138,6 @@ verify_jwt = false
 
 [functions.backfill-whatsapp-transactions]
 verify_jwt = true
+
+[functions.whatsapp-session-set-org]
+verify_jwt = true

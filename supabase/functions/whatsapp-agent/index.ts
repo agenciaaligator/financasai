@@ -3466,40 +3466,60 @@ class WhatsAppAgent {
 
       console.log('✅ saveTransaction: User ID validated');
 
-      // FASE 2: Buscar organization_id do usuário (membership ou owner)
+      // PRIORIZAR organization_id da sessão WhatsApp vinculada
       let organization_id: string | null = null;
+      let organizationSource: 'session' | 'fallback-owner' | 'fallback-member' | 'none' = 'none';
       
-      // Buscar todas memberships e priorizar onde é owner
-      const { data: memberships } = await supabase
-        .from('organization_members')
-        .select('organization_id, role')
+      // 1. Buscar organization_id da sessão ativa do WhatsApp
+      const { data: whatsappSession } = await supabase
+        .from('whatsapp_sessions')
+        .select('organization_id')
         .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+        .gt('expires_at', new Date().toISOString())
+        .order('last_activity', { ascending: false })
+        .limit(1)
+        .maybeSingle();
       
-      const ownerMembership = memberships?.find(m => m.role === 'owner');
-      const fallbackMembership = memberships?.[0];
-      const selectedMembership = ownerMembership ?? fallbackMembership;
-      
-      if (selectedMembership?.organization_id) {
-        organization_id = selectedMembership.organization_id;
-        console.log('✅ Organization ID selecionado:', organization_id, '(role:', selectedMembership.role, ')');
+      if (whatsappSession?.organization_id) {
+        organization_id = whatsappSession.organization_id;
+        organizationSource = 'session';
+        console.log('✅ [saveTransaction] Using organization_id from WhatsApp session:', organization_id);
       } else {
-        // Fallback: se não tem membership, buscar se é owner direto
-        const { data: ownedOrg } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('owner_id', userId)
-          .maybeSingle();
+        // 2. Fallback: Buscar todas memberships e priorizar onde é owner
+        console.log('⚠️ [saveTransaction] No organization_id in WhatsApp session, using fallback');
+        const { data: memberships } = await supabase
+          .from('organization_members')
+          .select('organization_id, role')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false });
         
-        if (ownedOrg?.id) {
-          organization_id = ownedOrg.id;
-          console.log('✅ Organization ID encontrado via ownership direto:', organization_id);
+        const ownerMembership = memberships?.find(m => m.role === 'owner');
+        const fallbackMembership = memberships?.[0];
+        const selectedMembership = ownerMembership ?? fallbackMembership;
+        
+        if (selectedMembership?.organization_id) {
+          organization_id = selectedMembership.organization_id;
+          organizationSource = selectedMembership.role === 'owner' ? 'fallback-owner' : 'fallback-member';
+          console.log('✅ [saveTransaction] Organization ID from membership:', organization_id, '(role:', selectedMembership.role, ')');
         } else {
-          console.log('⚠️ Usuário sem organization_id (nem membership nem owner)');
+          // 3. Último fallback: buscar se é owner direto
+          const { data: ownedOrg } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('owner_id', userId)
+            .maybeSingle();
+          
+          if (ownedOrg?.id) {
+            organization_id = ownedOrg.id;
+            organizationSource = 'fallback-owner';
+            console.log('✅ [saveTransaction] Organization ID via direct ownership:', organization_id);
+          } else {
+            console.log('⚠️ [saveTransaction] User has no organization_id');
+          }
         }
       }
       
-      console.log('🏢 Organization ID for user:', organization_id);
+      console.log(`🏢 [saveTransaction] Selected organization_id: ${organization_id} (source: ${organizationSource})`);
 
       // Buscar melhor categoria automaticamente se não foi especificada
       let categoryInfo = { category_id: null, category_name: 'Sem categoria', suggested: false };
@@ -3513,16 +3533,33 @@ class WhatsAppAgent {
         console.log('Category matched:', categoryInfo);
       }
 
+      // HEURÍSTICA DE DATA: Se data do recibo for muito antiga (>35 dias), usar data atual
+      let finalDate = transaction.date;
+      let dateNote = '';
+      
+      if (transaction.date) {
+        const receiptDate = new Date(transaction.date);
+        const today = new Date();
+        const daysDiff = Math.floor((today.getTime() - receiptDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (daysDiff > 35) {
+          finalDate = today.toISOString().split('T')[0];
+          dateNote = `Data do recibo: ${receiptDate.toLocaleDateString('pt-BR')}`;
+          console.log(`📅 [saveTransaction] Receipt date is ${daysDiff} days old, using today's date instead`);
+          console.log(`📅 [saveTransaction] Original: ${transaction.date}, New: ${finalDate}`);
+        }
+      }
+      
       const transactionData = {
         user_id: userId,
         amount: transaction.amount,
-        title: transaction.title, // Mantém o título original para relatórios fidedignos
+        title: transaction.title,
         type: transaction.type,
-        date: transaction.date,
-        description: transaction.description,
+        date: finalDate || transaction.date,
+        description: dateNote ? `${dateNote}${transaction.description ? '\n' + transaction.description : ''}` : transaction.description,
         category_id: transaction.category_id || categoryInfo.category_id,
         source: 'whatsapp',
-        organization_id: organization_id  // FASE 2: Sempre preencher org_id (membership ou owner)
+        organization_id: organization_id
       };
 
       console.log('🔵 saveTransaction: Calling Supabase insert with:', transactionData);

@@ -899,6 +899,7 @@ export type Database = {
           expires_at: string | null
           id: string
           last_activity: string | null
+          organization_id: string | null
           phone_number: string
           session_data: Json | null
           user_id: string | null
@@ -908,6 +909,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           last_activity?: string | null
+          organization_id?: string | null
           phone_number: string
           session_data?: Json | null
           user_id?: string | null
@@ -917,11 +919,20 @@ export type Database = {
           expires_at?: string | null
           id?: string
           last_activity?: string | null
+          organization_id?: string | null
           phone_number?: string
           session_data?: Json | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_sessions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       work_hours: {
         Row: {
