@@ -87,10 +87,24 @@ export function CommitmentsManager() {
   });
 
   useEffect(() => {
-    if (organization_id) {
-      fetchCommitments();
+    if (!organization_id) {
+      console.log('[Agenda] Aguardando organization_id...');
+      return;
     }
+    fetchCommitments();
   }, [currentPage, titleFilter, dateFromFilter, dateToFilter, categoryFilter, organization_id]);
+
+  // Refetch ao voltar focus na aba
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log('[Agenda] Tab focused - refetching commitments');
+      if (organization_id) {
+        fetchCommitments();
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [organization_id, currentPage, titleFilter, dateFromFilter, dateToFilter, categoryFilter]);
 
   // CORREÇÃO [24/10/2025]: useEffect separado para evitar popup aparecer repetidamente
   useEffect(() => {
@@ -1044,13 +1058,36 @@ export function CommitmentsManager() {
               {isConnected && (
                 <>
                   <Button 
-                    onClick={handleImportFromGoogle} 
+                    onClick={async () => {
+                      setSyncingFromGoogle(true);
+                      try {
+                        const { data, error } = await supabase.functions.invoke('sync-all-google-calendars');
+                        if (error) throw error;
+                        
+                        toast({
+                          title: "✅ Sincronização concluída",
+                          description: "Compromissos do Google Calendar atualizados com sucesso",
+                        });
+                        
+                        // Recarregar lista após sincronização
+                        await fetchCommitments();
+                      } catch (err: any) {
+                        console.error('Erro ao sincronizar:', err);
+                        toast({
+                          title: "Erro ao sincronizar",
+                          description: err.message || "Não foi possível sincronizar com o Google Calendar",
+                          variant: "destructive",
+                        });
+                      } finally {
+                        setSyncingFromGoogle(false);
+                      }
+                    }}
                     disabled={syncingFromGoogle}
                     variant="outline"
                     className="w-full"
                   >
                     <RefreshCw className={`h-4 w-4 mr-2 ${syncingFromGoogle ? 'animate-spin' : ''}`} />
-                    {syncingFromGoogle ? "Sincronizando..." : "Sincronizar do Google agora"}
+                    {syncingFromGoogle ? "Sincronizando..." : "Sincronizar Google agora"}
                   </Button>
                 </>
               )}
@@ -1412,10 +1449,52 @@ export function CommitmentsManager() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {commitments.length === 0 ? (
+              {loading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
-                    Nenhum compromisso cadastrado
+                  <TableCell colSpan={bulkMode ? 5 : 4} className="text-center py-8">
+                    <div className="flex flex-col items-center gap-2">
+                      <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Carregando compromissos...</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : commitments.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={bulkMode ? 5 : 4} className="text-center py-12">
+                    <div className="flex flex-col items-center gap-3">
+                      <Calendar className="h-12 w-12 text-muted-foreground/50" />
+                      <div className="space-y-1">
+                        <p className="text-muted-foreground font-medium">Nenhum compromisso encontrado</p>
+                        <p className="text-sm text-muted-foreground/70">
+                          {isConnected 
+                            ? "Clique em 'Sincronizar Google agora' para importar seus eventos"
+                            : "Adicione um novo compromisso ou conecte ao Google Calendar"}
+                        </p>
+                      </div>
+                      {isConnected && (
+                        <Button 
+                          onClick={async () => {
+                            setSyncingFromGoogle(true);
+                            try {
+                              const { error } = await supabase.functions.invoke('sync-all-google-calendars');
+                              if (error) throw error;
+                              toast({ title: "✅ Sincronização concluída" });
+                              await fetchCommitments();
+                            } catch (err: any) {
+                              toast({ title: "Erro ao sincronizar", description: err.message, variant: "destructive" });
+                            } finally {
+                              setSyncingFromGoogle(false);
+                            }
+                          }}
+                          disabled={syncingFromGoogle}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <RefreshCw className={`h-4 w-4 mr-2 ${syncingFromGoogle ? 'animate-spin' : ''}`} />
+                          Sincronizar agora
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (

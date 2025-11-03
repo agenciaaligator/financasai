@@ -250,7 +250,7 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             success: false, 
-            error: 'Credenciais do WhatsApp ausentes',
+            error: 'missing_whatsapp_secrets',
             remindersSent: 0,
             errors: 1
           }),
@@ -258,6 +258,26 @@ serve(async (req) => {
         );
       }
 
+      // Buscar profile do usuário para criar compromisso sintético
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('phone_number, full_name')
+        .eq('user_id', specificUserId)
+        .single();
+
+      if (profileError || !profile?.phone_number) {
+        console.error('❌ [TEST MODE] User profile missing or no phone number');
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Perfil sem número de telefone configurado',
+            suggestion: 'Configure seu telefone no perfil antes de testar lembretes'
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Tentar buscar compromisso real futuro
       const { data: testCommitment, error: commitmentError } = await supabase
         .from('commitments')
         .select(`
@@ -268,22 +288,32 @@ serve(async (req) => {
         .gte('scheduled_at', new Date().toISOString())
         .order('scheduled_at', { ascending: true })
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      if (commitmentError || !testCommitment) {
-        console.error('❌ [TEST MODE] No future commitment found for test');
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: 'Nenhum compromisso futuro encontrado para teste',
-            suggestion: 'Crie um compromisso antes de testar lembretes'
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+      let commitmentToUse = testCommitment;
+
+      // Se não encontrou compromisso real, criar um sintético para teste
+      if (!testCommitment) {
+        console.log('📝 [TEST MODE] No future commitment found - creating synthetic test commitment');
+        const now = new Date();
+        const testTime = new Date(now.getTime() + 65 * 60000); // 65 minutos no futuro
+        
+        commitmentToUse = {
+          id: 'synthetic-test-' + Date.now(),
+          user_id: specificUserId,
+          title: '🧪 Teste de Lembrete',
+          description: 'Esta é uma mensagem de teste do sistema de lembretes',
+          scheduled_at: testTime.toISOString(),
+          category: 'other',
+          location: null,
+          participants: null,
+          scheduled_reminders: [],
+          profiles: profile
+        };
       }
 
-      console.log(`📤 [TEST MODE] Sending test message for commitment: ${testCommitment.title}`);
-      const result = await sendWhatsAppReminder(testCommitment, 60, true);
+      console.log(`📤 [TEST MODE] Sending test message for commitment: ${commitmentToUse.title}`);
+      const result = await sendWhatsAppReminder(commitmentToUse, 60, true);
 
       return new Response(
         JSON.stringify({ 
@@ -294,9 +324,10 @@ serve(async (req) => {
             ? `Teste enviado (${result.deliverability})` 
             : `Falha: ${result.error}`,
           commitment: {
-            id: testCommitment.id,
-            title: testCommitment.title,
-            scheduled_at: testCommitment.scheduled_at
+            id: commitmentToUse.id,
+            title: commitmentToUse.title,
+            scheduled_at: commitmentToUse.scheduled_at,
+            is_synthetic: !testCommitment
           }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

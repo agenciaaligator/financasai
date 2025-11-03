@@ -274,16 +274,27 @@ export function AgendaMonitoring() {
 
                     const deliveryStatus = data.deliverability;
                     const success = data.success;
+                    const errorCode = data.error;
 
-                    if (success && deliveryStatus === 'sent_with_template') {
+                    if (errorCode === 'missing_whatsapp_secrets') {
+                      toast({
+                        title: "❌ Credenciais WhatsApp ausentes",
+                        description: "Configure WHATSAPP_ACCESS_TOKEN e WHATSAPP_PHONE_NUMBER_ID nos secrets do Supabase Edge Functions.",
+                        variant: "destructive",
+                      });
+                    } else if (success && deliveryStatus === 'sent_with_template') {
                       toast({
                         title: "✅ Mensagem enviada via template",
-                        description: "Lembrete enviado usando template WhatsApp (fora da janela de 24h). Verifique seu WhatsApp.",
+                        description: data.commitment?.is_synthetic 
+                          ? "Teste enviado usando template (compromisso sintético criado). Verifique seu WhatsApp."
+                          : "Lembrete enviado usando template WhatsApp (fora da janela de 24h). Verifique seu WhatsApp.",
                       });
                     } else if (success && deliveryStatus === 'sent_text') {
                       toast({
                         title: "✅ Mensagem enviada como texto",
-                        description: "Lembrete enviado com sucesso. Verifique seu WhatsApp.",
+                        description: data.commitment?.is_synthetic
+                          ? "Teste enviado com sucesso (compromisso sintético criado). Verifique seu WhatsApp."
+                          : "Lembrete enviado com sucesso. Verifique seu WhatsApp.",
                       });
                     } else {
                       toast({
@@ -310,7 +321,7 @@ export function AgendaMonitoring() {
                 Teste Lembrete (Mensagem Agora)
               </Button>
               <p className="text-xs text-muted-foreground px-2">
-                💡 Se houver erro de template, o sistema enviará via WhatsApp template automaticamente
+                💡 Funciona com ou sem compromisso futuro. Fallback automático para template se necessário.
               </p>
             </div>
 
