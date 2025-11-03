@@ -1479,13 +1479,14 @@ class CategoryMatcher {
 class WhatsAppAgent {
   /**
    * Normaliza comandos removendo acentos, pontuação e espaços extras
+   * Usa Unicode para garantir que TODOS os caracteres não alfanuméricos sejam removidos
    */
   static normalizeCommand(text: string): string {
     return text
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '') // Remove acentos
-      .replace(/[?!.,;:]/g, '') // Remove pontuação
+      .replace(/[^\p{L}\p{N}\s]/gu, ' ') // Remove TODOS os caracteres não alfanuméricos (Unicode-aware)
       .trim()
       .replace(/\s+/g, ' '); // Remove espaços extras
   }
@@ -1895,6 +1896,18 @@ class WhatsAppAgent {
     }
     
     // PRIORIDADE 2: Comandos de AGENDA (ANTES de outros comandos genéricos)
+    // ✨ VERIFICAÇÃO EXPLÍCITA ENDURECIDA para "meus compromissos"
+    if (normalizedText.includes('compromiss') && 
+        (normalizedText.includes('meu') || normalizedText.includes('meus') || 
+         normalizedText.includes('ver') || normalizedText.includes('mostrar') || 
+         normalizedText.includes('quais') || normalizedText.includes('hoje') || 
+         normalizedText.includes('amanha') || normalizedText.includes('semana') ||
+         normalizedText.includes('listar') || normalizedText.includes('proximos'))) {
+      console.log('[Agenda Debug][WhatsApp] 🎯 HARD MATCH: "meus compromissos" detected via explicit check');
+      console.log('🗓️ Listando compromissos');
+      return await this.listCommitments(session.user_id!);
+    }
+    
     // Aceita singular/plural e variações sem acento usando normalizedText
     if (/(\b(agendar|agenda|marc)\w*\b|\bcompromiss\w*\b|\breunia\w*\b|\bconsult\w*\b|\bevento\w*\b)/.test(normalizedText)) {
       console.log('[Agenda Debug][WhatsApp] Agenda regex match:', {
@@ -2104,6 +2117,8 @@ class WhatsAppAgent {
       }
     }
 
+    }
+    
     // Detectar cumprimentos
     const greetings = ['oi', 'ola', 'bom dia', 'boa tarde', 'boa noite', 'hey', 'alo'];
     if (greetings.some(greeting => normalizedText === greeting || normalizedText.startsWith(greeting + ' '))) {
@@ -2141,13 +2156,22 @@ class WhatsAppAgent {
     }
 
     // 🤖 PRIORIDADE 2.8: Processar com IA para linguagem natural
-    console.log('🤖 Attempting NLP processing for message:', messageText);
-    const nlpResult = await NaturalLanguageProcessor.processNaturalLanguage(messageText, session.user_id!);
+    // ⚠️ CRITICAL: NÃO processar com NLP se contém termos de agenda
+    const hasAgendaTerms = normalizedText.includes('compromiss') || 
+                           normalizedText.includes('agenda') || 
+                           normalizedText.includes('reunia') || 
+                           normalizedText.includes('evento');
     
-    if (nlpResult && nlpResult.confidence > 0.7) {
-      console.log('🤖 NLP Success:', nlpResult);
+    if (hasAgendaTerms) {
+      console.log('⏭️ Skipping NLP - agenda terms detected in message');
+    } else {
+      console.log('🤖 Attempting NLP processing for message:', messageText);
+      const nlpResult = await NaturalLanguageProcessor.processNaturalLanguage(messageText, session.user_id!);
       
-      // Processar baseado na intenção
+      if (nlpResult && nlpResult.confidence > 0.7) {
+        console.log('🤖 NLP Success:', nlpResult);
+        
+        // Processar baseado na intenção
       switch (nlpResult.intent) {
         case 'add_transaction':
           if (nlpResult.entities.amount && nlpResult.entities.type) {
