@@ -17,8 +17,6 @@ export function WhatsAppSetup() {
   const [hasRecentWhatsAppActivity, setHasRecentWhatsAppActivity] = useState(false);
   const [loading, setLoading] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
-  const [isTestingReminders, setIsTestingReminders] = useState(false);
-  const [isTestingAgenda, setIsTestingAgenda] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -339,83 +337,6 @@ export function WhatsAppSetup() {
     return null;
   };
 
-  const handleTestReminders = async () => {
-    if (!user) return;
-    
-    setIsTestingReminders(true);
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('send-commitment-reminders', {
-        body: { force: true, user_id: user.id }
-      });
-      
-      console.log('[WhatsAppSetup] Test reminders response:', { data, error });
-      
-      if (error) throw error;
-      
-      if (data.success) {
-        toast({
-          title: "✅ Teste de Lembretes",
-          description: `Mensagem enviada! Enviadas: ${data.remindersSent || 1}, Erros: ${data.errors || 0}`,
-        });
-      } else {
-        console.error('[WhatsAppSetup] Test reminders failed:', data);
-        toast({
-          title: "❌ Erro no Teste",
-          description: data.error || "Não foi possível enviar mensagem de teste",
-          variant: "destructive",
-        });
-      }
-    } catch (error: any) {
-      console.error('[WhatsAppSetup] Error testing reminders:', error);
-      toast({
-        title: "Erro",
-        description: error.message || "Falha ao testar lembretes",
-        variant: "destructive",
-      });
-    } finally {
-      setIsTestingReminders(false);
-    }
-  };
-
-  const handleTestAgenda = async () => {
-    if (!user) return;
-    
-    setIsTestingAgenda(true);
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('send-daily-agenda', {
-        body: { user_id: user.id }
-      });
-      
-      console.log('[WhatsAppSetup] Test daily agenda response:', { data, error });
-      
-      if (error) throw error;
-      
-      if (data.success) {
-        toast({
-          title: "✅ Teste de Resumo Diário",
-          description: `Mensagem enviada! Enviadas: ${data.sent || 0}, Erros: ${data.errors || 0}`,
-        });
-      } else {
-        console.error('[WhatsAppSetup] Test daily agenda failed:', data);
-        toast({
-          title: "❌ Erro no Teste",
-          description: data.error || "Não foi possível enviar resumo de teste",
-          variant: "destructive",
-        });
-      }
-    } catch (error: any) {
-      console.error('[WhatsAppSetup] Error testing daily agenda:', error);
-      toast({
-        title: "Erro",
-        description: error.message || "Falha ao testar resumo diário",
-        variant: "destructive",
-      });
-    } finally {
-      setIsTestingAgenda(false);
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -524,33 +445,19 @@ export function WhatsAppSetup() {
             </div>
           )}
 
-          {/* Botões de teste disponíveis para todos */}
+          {/* Informação sobre testes */}
           {phoneNumber && (
-            <div className="space-y-2 pt-4 border-t">
-              <p className="text-sm font-medium mb-2">Testes do Sistema:</p>
-              <p className="text-xs text-muted-foreground mb-3">
-                ⚠️ Os lembretes reais são enviados apenas 24h e 1h antes de cada compromisso
-              </p>
-              
-              <Button 
-                onClick={handleTestReminders}
-                disabled={isTestingReminders}
-                variant="outline"
-                className="w-full"
-                size="sm"
-              >
-                {isTestingReminders ? "Enviando..." : "🔔 Testar Lembretes (meu número)"}
-              </Button>
-              
-              <Button 
-                onClick={handleTestAgenda}
-                disabled={isTestingAgenda}
-                variant="outline"
-                className="w-full"
-                size="sm"
-              >
-                {isTestingAgenda ? "Enviando..." : "📅 Testar Resumo Diário (meu número)"}
-              </Button>
+            <div className="pt-4 border-t">
+              <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+                <p className="text-sm font-medium">🧪 Testes do Sistema</p>
+                <p className="text-xs text-muted-foreground">
+                  Para testar lembretes e resumos diários, acesse:
+                </p>
+                <ul className="text-xs text-muted-foreground list-disc list-inside space-y-1">
+                  <li><strong>Agenda</strong> → Botões de teste de lembretes e resumo</li>
+                  <li><strong>Admin &gt; Monitoramento</strong> (apenas master) → Todos os testes disponíveis</li>
+                </ul>
+              </div>
             </div>
           )}
         </CardContent>

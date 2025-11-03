@@ -1326,25 +1326,40 @@ export function CommitmentsManager() {
 
                   console.log('[Agenda Debug] Response:', { data, error });
 
-                  if (error) {
-                    toast({
-                      title: "❌ Erro ao testar lembretes",
-                      description: error.message || "Erro desconhecido",
-                      variant: "destructive"
-                    });
-                    return;
-                  }
+                  if (error) throw error;
 
-                  if (data.success) {
+                  const { deliverability, success, message_id, status, error: errorMsg, error_type, code } = data;
+
+                  if (code === 'missing_whatsapp_secrets') {
                     toast({
-                      title: "✅ Lembrete enviado!",
-                      description: data.message || `Mensagem enviada para ${data.phone}`,
+                      title: "❌ Credenciais WhatsApp ausentes",
+                      description: "Configure WHATSAPP_ACCESS_TOKEN e WHATSAPP_PHONE_NUMBER_ID nos secrets do Supabase Edge Functions.",
+                      variant: "destructive",
+                    });
+                  } else if (deliverability === 'failed') {
+                    const isTemplateError = error_type?.includes('TEMPLATE') || errorMsg?.toLowerCase().includes('template');
+                    toast({
+                      title: "❌ Falha no envio",
+                      description: isTemplateError 
+                        ? `Erro no template WhatsApp. Verifique se o template "hello_word" (pt_BR) está aprovado no Meta Business. Status: ${status || 'unknown'}`
+                        : `${errorMsg || 'Não foi possível enviar'}. Status: ${status || 'unknown'}`,
+                      variant: "destructive",
+                    });
+                  } else if (success && deliverability === 'sent_template') {
+                    toast({
+                      title: "✅ Mensagem enviada via template",
+                      description: `ID: ${message_id || 'N/A'}. ${data.commitment?.is_synthetic ? 'Compromisso sintético criado. ' : ''}Verifique seu WhatsApp.`,
+                    });
+                  } else if (success && deliverability === 'sent_text') {
+                    toast({
+                      title: "✅ Mensagem enviada como texto",
+                      description: `ID: ${message_id || 'N/A'}. ${data.commitment?.is_synthetic ? 'Compromisso sintético criado. ' : ''}Verifique seu WhatsApp.`,
                     });
                   } else {
                     toast({
-                      title: "⚠️ Erro ao enviar lembrete",
-                      description: data.error || "Erro desconhecido",
-                      variant: "destructive"
+                      title: "❌ Falha no envio",
+                      description: errorMsg || "Não foi possível enviar o lembrete",
+                      variant: "destructive",
                     });
                   }
                 } catch (error: any) {
@@ -1375,25 +1390,40 @@ export function CommitmentsManager() {
 
                   console.log('[Agenda Debug] Response:', { data, error });
 
-                  if (error) {
-                    toast({
-                      title: "❌ Erro ao testar agenda diária",
-                      description: error.message || "Erro desconhecido",
-                      variant: "destructive"
-                    });
-                    return;
-                  }
+                  if (error) throw error;
 
-                  if (data.success) {
+                  const { deliverability, success, message_id, status, error: errorMsg, error_type, code } = data;
+
+                  if (code === 'missing_whatsapp_secrets') {
                     toast({
-                      title: "✅ Agenda diária enviada!",
-                      description: data.message || "Mensagem enviada com sucesso",
+                      title: "❌ Credenciais WhatsApp ausentes",
+                      description: "Configure WHATSAPP_ACCESS_TOKEN e WHATSAPP_PHONE_NUMBER_ID nos secrets do Supabase Edge Functions.",
+                      variant: "destructive",
+                    });
+                  } else if (deliverability === 'failed') {
+                    const isTemplateError = error_type?.includes('TEMPLATE') || errorMsg?.toLowerCase().includes('template');
+                    toast({
+                      title: "❌ Falha no envio",
+                      description: isTemplateError 
+                        ? `Erro no template WhatsApp. Verifique se o template "hello_word" (pt_BR) está aprovado no Meta Business. Status: ${status || 'unknown'}`
+                        : `${errorMsg || 'Não foi possível enviar'}. Status: ${status || 'unknown'}`,
+                      variant: "destructive",
+                    });
+                  } else if (success && deliverability === 'sent_template') {
+                    toast({
+                      title: "✅ Agenda enviada via template",
+                      description: `ID: ${message_id || 'N/A'}. Resumo diário enviado com sucesso!`,
+                    });
+                  } else if (success && deliverability === 'sent_text') {
+                    toast({
+                      title: "✅ Agenda enviada como texto",
+                      description: `ID: ${message_id || 'N/A'}. Resumo diário enviado com sucesso!`,
                     });
                   } else {
                     toast({
-                      title: "⚠️ Erro ao enviar agenda",
-                      description: data.error || "Erro desconhecido",
-                      variant: "destructive"
+                      title: "❌ Falha no envio",
+                      description: errorMsg || "Não foi possível enviar o resumo diário",
+                      variant: "destructive",
                     });
                   }
                 } catch (error: any) {

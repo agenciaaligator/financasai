@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { UsersManagement } from "./UsersManagement";
@@ -11,7 +12,8 @@ import { Shield, Users, CreditCard, BarChart3, Tag, Key, Package, Calendar } fro
 import { AgendaMonitoring } from "./AgendaMonitoring";
 
 export function AdminPanel() {
-  const [activeTab, setActiveTab] = useState("stats");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'stats';
 
   useEffect(() => {
     // SEO: title, description e canonical
@@ -49,7 +51,11 @@ export function AdminPanel() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <Tabs 
+        value={activeTab} 
+        onValueChange={(tab) => setSearchParams({ tab }, { replace: true })} 
+        className="space-y-4"
+      >
         <TabsList className="grid w-full grid-cols-4 lg:grid-cols-7 gap-2">
           <TabsTrigger value="stats" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />

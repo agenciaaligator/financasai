@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMaster } from "@/hooks/useIsMaster";
 
 import {
   Sidebar,
@@ -34,7 +35,6 @@ interface AppSidebarProps {
   onTabChange: (tab: string) => void;
   showForm: boolean;
   onToggleForm: () => void;
-  isAdmin?: boolean;
   isOwner?: boolean;
 }
 
@@ -111,11 +111,11 @@ export function AppSidebar({
   onTabChange, 
   showForm, 
   onToggleForm,
-  isAdmin = false,
   isOwner = false
 }: AppSidebarProps) {
   const { open } = useSidebar();
   const isMobile = useIsMobile();
+  const { isMaster } = useIsMaster();
 
   // Para uso mobile, renderiza apenas o conteúdo sem wrapper Sidebar
   if (isMobile) {
@@ -152,7 +152,7 @@ export function AppSidebar({
 
           {/* Menu de navegação */}
           <div className="space-y-1">
-            {[...sidebarItems.filter(item => item.id !== 'team' || isOwner), ...(isAdmin ? adminItems : [])].map((item) => {
+            {[...sidebarItems.filter(item => item.id !== 'team' || isOwner), ...(isMaster ? adminItems : [])].map((item) => {
               const isActive = currentTab === item.id;
               return (
                 <button
@@ -217,7 +217,7 @@ export function AppSidebar({
             </div>
 
             <SidebarMenu>
-              {[...sidebarItems.filter(item => item.id !== 'team' || isOwner), ...(isAdmin ? adminItems : [])].map((item) => {
+              {[...sidebarItems.filter(item => item.id !== 'team' || isOwner), ...(isMaster ? adminItems : [])].map((item) => {
                 const isActive = currentTab === item.id;
                 return (
                   <SidebarMenuItem key={item.id}>
