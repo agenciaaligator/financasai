@@ -24,6 +24,35 @@ export function WhatsAppSetup() {
   const { toast } = useToast();
   const { organization_id, role } = useOrganizationPermissions();
 
+  const fetchLinkedOrganization = async () => {
+    if (!user) return;
+    
+    try {
+      const { data: session } = await supabase
+        .from('whatsapp_sessions')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .gt('expires_at', new Date().toISOString())
+        .order('last_activity', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (session?.organization_id) {
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('name')
+          .eq('id', session.organization_id)
+          .single();
+        
+        setLinkedOrgName(org?.name || null);
+      } else {
+        setLinkedOrgName(null);
+      }
+    } catch (error) {
+      console.error('Error fetching linked organization:', error);
+    }
+  };
+
   useEffect(() => {
     fetchPhoneNumber();
     checkAuthenticationStatus();
@@ -249,35 +278,6 @@ export function WhatsAppSetup() {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchLinkedOrganization = async () => {
-    if (!user) return;
-    
-    try {
-      const { data: session } = await supabase
-        .from('whatsapp_sessions')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .gt('expires_at', new Date().toISOString())
-        .order('last_activity', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      
-      if (session?.organization_id) {
-        const { data: org } = await supabase
-          .from('organizations')
-          .select('name')
-          .eq('id', session.organization_id)
-          .single();
-        
-        setLinkedOrgName(org?.name || null);
-      } else {
-        setLinkedOrgName(null);
-      }
-    } catch (error) {
-      console.error('Error fetching linked organization:', error);
     }
   };
 
