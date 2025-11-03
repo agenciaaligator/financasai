@@ -682,6 +682,19 @@ const handler = async (req: Request): Promise<Response> => {
         }
       } else if (message.type === 'text') {
         text = message.text?.body;
+        
+        // NORMALIZE: Remove TODOS os caracteres não alfanuméricos e múltiplos espaços
+        if (text) {
+          text = text
+            .replace(/[^\p{L}\p{N}\s]/gu, ' ') // Remove pontuação, emojis, etc (Unicode-aware)
+            .replace(/\s+/g, ' ')                // Remove múltiplos espaços
+            .trim();                             // Remove espaços nas pontas
+          
+          console.log('[WEBHOOK][TEXT_CLEAN]', { 
+            original: message.text?.body?.substring(0, 50),
+            cleaned: text 
+          });
+        }
       } else if (message.type === 'image' && message.image?.id) {
         console.log('📸 Image message detected - will process via agent');
         text = ''; // Vazio, imageData será usado no agent

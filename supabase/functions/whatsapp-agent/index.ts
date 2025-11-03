@@ -2116,8 +2116,6 @@ class WhatsAppAgent {
         };
       }
     }
-
-    }
     
     // Detectar cumprimentos
     const greetings = ['oi', 'ola', 'bom dia', 'boa tarde', 'boa noite', 'hey', 'alo'];
@@ -2250,6 +2248,7 @@ class WhatsAppAgent {
             sessionData: { ...sessionData, conversation_state: 'idle' }
           };
       }
+    }
     }
 
     // PRIORIDADE 3: Tentar processar como transação (fallback tradicional)
