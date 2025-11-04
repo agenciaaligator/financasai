@@ -22,10 +22,12 @@ import {
   Shield,
   Calendar,
   Users,
-  Sparkles
+  Sparkles,
+  Repeat
 } from "lucide-react";
 import { TeamManagement } from "../admin/TeamManagement";
 import { AdminPanel } from "../admin/AdminPanel";
+import { RecurringTransactionsManager } from "../RecurringTransactionsManager";
 import { useUserRole } from "@/hooks/useUserRole";
 import { 
   startOfDay, 
@@ -161,7 +163,7 @@ export function DashboardTabs({
 
   return (
     <Tabs value={currentTab} onValueChange={onTabChange} className="w-full">
-      <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-9' : 'grid-cols-8'} bg-muted/30`}>
+      <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-10' : 'grid-cols-9'} bg-muted/30`}>
         <TabsTrigger value="dashboard" className="flex items-center space-x-2">
           <DollarSign className="h-4 w-4" />
           <span>Dashboard</span>
@@ -169,6 +171,10 @@ export function DashboardTabs({
         <TabsTrigger value="transactions" className="flex items-center space-x-2">
           <TrendingUp className="h-4 w-4" />
           <span>Transações</span>
+        </TabsTrigger>
+        <TabsTrigger value="recurring" className="flex items-center space-x-2">
+          <Repeat className="h-4 w-4" />
+          <span>Contas Fixas</span>
         </TabsTrigger>
         <TabsTrigger value="categories" className="flex items-center space-x-2">
           <Tags className="h-4 w-4" />
@@ -255,6 +261,10 @@ export function DashboardTabs({
             />
           </CardContent>
         </Card>
+      </TabsContent>
+
+      <TabsContent value="recurring">
+        <RecurringTransactionsManager categories={categories} />
       </TabsContent>
 
       <TabsContent value="categories">

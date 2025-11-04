@@ -96,5 +96,31 @@
     "ocr": "Nota Fiscal (OCR)",
     "editDelete": "Editar/Excluir",
     "queries": "Consultas e Relatórios"
+  },
+  "recurring": {
+    "title": "Contas Fixas",
+    "description": "Gerencie suas receitas e despesas recorrentes",
+    "add": "Nova Conta Fixa",
+    "edit": "Editar Conta Fixa",
+    "delete": "Remover Conta Fixa",
+    "payBill": "Dar Baixa",
+    "postpone": "Adiar",
+    "pause": "Pausar",
+    "resume": "Retomar",
+    "frequency": {
+      "daily": "Diária",
+      "weekly": "Semanal",
+      "monthly": "Mensal",
+      "yearly": "Anual",
+      "custom": "Personalizada"
+    },
+    "status": {
+      "active": "Ativa",
+      "paused": "Pausada",
+      "paid": "Pago",
+      "scheduled": "Agendado",
+      "postponed": "Adiado",
+      "overdue": "Vencido"
+    }
   }
 }
