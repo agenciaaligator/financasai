@@ -11,8 +11,6 @@ import { DashboardHeader } from "./dashboard/DashboardHeader";
 import { BalanceAlert } from "./dashboard/BalanceAlert";
 import { SummaryCards } from "./dashboard/SummaryCards";
 import { DashboardContent } from "./dashboard/DashboardContent";
-import { WhatsAppInfo } from "./dashboard/WhatsAppInfo";
-import { WhatsAppSetup } from "./dashboard/WhatsAppSetup";
 import { AppSidebar } from "./AppSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -195,6 +193,7 @@ export function FinancialDashboard() {
                   {currentTab === "reports" && "Relatórios"}
                   {currentTab === "ai-chat" && "IA Reports"}
                   {currentTab === "agenda" && "Agenda"}
+                  {currentTab === "whatsapp" && "WhatsApp"}
                   {currentTab === "team" && "Equipe"}
                   {currentTab === "future" && "Novidades"}
                   {currentTab === "profile" && "Perfil"}
@@ -234,9 +233,6 @@ export function FinancialDashboard() {
               showTransactionForm={showForm}
               onToggleTransactionForm={() => setShowForm(!showForm)}
             />
-
-          <WhatsAppInfo />
-          <WhatsAppSetup />
         </div>
 
         <EditTransactionModal
@@ -274,6 +270,7 @@ export function FinancialDashboard() {
                     {currentTab === "reports" && "Relatórios"}
                     {currentTab === "ai-chat" && "IA Reports"}
                     {currentTab === "agenda" && "Agenda"}
+                    {currentTab === "whatsapp" && "WhatsApp"}
                     {currentTab === "team" && "Equipe"}
                     {currentTab === "future" && "Novidades"}
                     {currentTab === "profile" && "Perfil"}
@@ -317,9 +314,6 @@ export function FinancialDashboard() {
               showTransactionForm={showForm}
               onToggleTransactionForm={() => setShowForm(!showForm)}
             />
-
-            <WhatsAppInfo />
-            <WhatsAppSetup />
           </div>
         </main>
 

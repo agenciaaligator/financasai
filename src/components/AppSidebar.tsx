@@ -11,7 +11,9 @@ import {
   Menu,
   X,
   Calendar,
-  Users
+  Users,
+  MessageSquare,
+  Shield
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -37,8 +39,6 @@ interface AppSidebarProps {
   onToggleForm: () => void;
   isOwner?: boolean;
 }
-
-import { Shield } from "lucide-react";
 
 const sidebarItems = [
   { 
@@ -76,6 +76,12 @@ const sidebarItems = [
     title: "Agenda", 
     icon: Calendar,
     description: "Compromissos e eventos"
+  },
+  { 
+    id: "whatsapp", 
+    title: "WhatsApp", 
+    icon: MessageSquare,
+    description: "Integração WhatsApp"
   },
   { 
     id: "team", 

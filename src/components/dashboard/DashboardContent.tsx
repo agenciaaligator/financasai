@@ -37,6 +37,7 @@ import { toZonedTime } from "date-fns-tz";
 import { ErrorBoundary } from "../ErrorBoundary";
 import { CommitmentsManager } from "../CommitmentsManager";
 import { TeamManagement } from "../admin/TeamManagement";
+import { WhatsAppPage } from "./WhatsAppPage";
 import { useOrganizationPermissions } from "@/hooks/useOrganizationPermissions";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -652,6 +653,10 @@ export function DashboardContent({
         <CommitmentsManager />
       </ErrorBoundary>
     );
+  }
+
+  if (currentTab === "whatsapp") {
+    return <WhatsAppPage />;
   }
 
   if (currentTab === "team") {

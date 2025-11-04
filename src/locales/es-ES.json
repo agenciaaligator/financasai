@@ -81,5 +81,20 @@
       "securityDesc": "Tu información está encriptada y puedes desconectarte en cualquier momento.",
       "dontShowAgain": "No mostrar de nuevo"
     }
+  },
+  "whatsapp": {
+    "title": "WhatsApp",
+    "connect": "Conectar WhatsApp",
+    "disconnect": "Desconectar",
+    "connected": "Conectado",
+    "notConnected": "No conectado",
+    "linkedTo": "Vinculado a",
+    "changeOrg": "Cambiar Organización",
+    "lastActivity": "Última actividad",
+    "quickGuide": "Guía Rápida",
+    "addTransactions": "Agregar Transacciones",
+    "ocr": "Factura (OCR)",
+    "editDelete": "Editar/Eliminar",
+    "queries": "Consultas e Informes"
   }
 }

@@ -81,5 +81,20 @@
       "securityDesc": "Le tue informazioni sono crittografate e puoi disconnetterti in qualsiasi momento.",
       "dontShowAgain": "Non mostrare più"
     }
+  },
+  "whatsapp": {
+    "title": "WhatsApp",
+    "connect": "Connetti WhatsApp",
+    "disconnect": "Disconnetti",
+    "connected": "Connesso",
+    "notConnected": "Non connesso",
+    "linkedTo": "Collegato a",
+    "changeOrg": "Cambia Organizzazione",
+    "lastActivity": "Ultima attività",
+    "quickGuide": "Guida Rapida",
+    "addTransactions": "Aggiungi Transazioni",
+    "ocr": "Ricevuta (OCR)",
+    "editDelete": "Modifica/Elimina",
+    "queries": "Query e Report"
   }
 }
