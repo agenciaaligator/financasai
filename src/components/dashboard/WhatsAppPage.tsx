@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganizationPermissions } from "@/hooks/useOrganizationPermissions";
-import { MessageSquare, Link2, Phone, LogOut } from "lucide-react";
+import { MessageSquare, Phone, LogOut } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -23,7 +23,6 @@ export function WhatsAppPage() {
   const [authCode, setAuthCode] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [linkingOrg, setLinkingOrg] = useState(false);
   const [linkedOrgName, setLinkedOrgName] = useState<string | null>(null);
   const [sessionInfo, setSessionInfo] = useState<{ last_activity?: string; expires_at?: string } | null>(null);
   const { user } = useAuth();
@@ -238,6 +237,14 @@ export function WhatsAppPage() {
       
       if (result.success && result.response.includes('sucesso')) {
         setIsAuthenticated(true);
+        
+        // Vincular automaticamente à organização atual após verificação
+        if (organization_id) {
+          await supabase.functions.invoke('whatsapp-session-set-org', {
+            body: { organization_id }
+          });
+        }
+        
         toast({
           title: "🎉 WhatsApp conectado!",
           description: "Agora você pode gerenciar suas finanças pelo WhatsApp. Envie 'ajuda' para ver os comandos.",
@@ -260,43 +267,6 @@ export function WhatsAppPage() {
     }
   };
 
-  const handleLinkToCurrentOrg = async () => {
-    if (!organization_id) {
-      toast({
-        title: "Erro",
-        description: "Você não pertence a nenhuma organização",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setLinkingOrg(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('whatsapp-session-set-org', {
-        body: { organization_id }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "✅ Organização vinculada!",
-        description: data.message || "WhatsApp vinculado à organização com sucesso",
-      });
-      
-      await fetchLinkedOrganization();
-      window.dispatchEvent(new Event('force-transactions-refetch'));
-
-    } catch (error) {
-      console.error('Error linking WhatsApp to organization:', error);
-      toast({
-        title: "Erro ao vincular",
-        description: error instanceof Error ? error.message : "Não foi possível vincular",
-        variant: "destructive"
-      });
-    } finally {
-      setLinkingOrg(false);
-    }
-  };
 
   const handleDisconnect = async () => {
     if (!user) return;
@@ -469,18 +439,7 @@ export function WhatsAppPage() {
             )}
           </div>
 
-          <div className="flex flex-wrap gap-2 pt-4 border-t">
-            {organization_id && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLinkToCurrentOrg}
-                disabled={linkingOrg}
-              >
-                <Link2 className="h-4 w-4 mr-2" />
-                {linkingOrg ? "Vinculando..." : t('whatsapp.changeOrg')}
-              </Button>
-            )}
+          <div className="pt-4 border-t">
             <Button
               variant="ghost"
               size="sm"
