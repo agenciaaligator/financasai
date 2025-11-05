@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useOrganizationPermissions } from "@/hooks/useOrganizationPermissions";
 
 export interface RecurringTransaction {
   id: string;
@@ -41,6 +42,7 @@ export function useRecurringTransactions() {
   const [instances, setInstances] = useState<RecurringInstance[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { organization_id } = useOrganizationPermissions();
 
   const fetchRecurringTransactions = async () => {
     try {
@@ -49,12 +51,21 @@ export function useRecurringTransactions() {
       
       if (!user) return;
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("recurring_transactions")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .select("*");
+
+      // Filtrar por user_id E organização quando aplicável
+      if (organization_id) {
+        query = query.or(`user_id.eq.${user.id},organization_id.eq.${organization_id}`);
+      } else {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data, error } = await query.order("created_at", { ascending: false });
 
       if (error) throw error;
+      console.log('[useRecurringTransactions] Loaded:', data?.length, 'recurring transactions');
       setRecurringTransactions((data as RecurringTransaction[]) || []);
     } catch (error: any) {
       console.error("Error fetching recurring transactions:", error);
@@ -74,12 +85,26 @@ export function useRecurringTransactions() {
       
       if (!user) return;
 
+      // Buscar instâncias das recurring_transactions permitidas
+      const { data: recurringIds } = await supabase
+        .from("recurring_transactions")
+        .select("id");
+
+      if (!recurringIds || recurringIds.length === 0) {
+        setInstances([]);
+        return;
+      }
+
+      const ids = recurringIds.map(r => r.id);
+
       const { data, error } = await supabase
         .from("recurring_instances")
         .select("*")
+        .in('recurring_transaction_id', ids)
         .order("due_date", { ascending: true });
 
       if (error) throw error;
+      console.log('[useRecurringTransactions] Loaded:', data?.length, 'instances');
       setInstances((data as RecurringInstance[]) || []);
     } catch (error: any) {
       console.error("Error fetching instances:", error);
@@ -91,9 +116,16 @@ export function useRecurringTransactions() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
+      // Incluir organization_id se disponível
+      const payload = {
+        ...transaction,
+        user_id: user.id,
+        ...(organization_id && { organization_id })
+      };
+
       const { data, error } = await supabase
         .from("recurring_transactions")
-        .insert([{ ...transaction, user_id: user.id }])
+        .insert([payload])
         .select()
         .single();
 

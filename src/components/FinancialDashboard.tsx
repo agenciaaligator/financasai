@@ -193,6 +193,7 @@ export function FinancialDashboard() {
                   {currentTab === "reports" && "Relatórios"}
                   {currentTab === "ai-chat" && "IA Reports"}
                   {currentTab === "agenda" && "Agenda"}
+                  {currentTab === "recurring" && "Contas Fixas"}
                   {currentTab === "whatsapp" && "WhatsApp"}
                   {currentTab === "team" && "Equipe"}
                   {currentTab === "future" && "Novidades"}
@@ -270,6 +271,7 @@ export function FinancialDashboard() {
                     {currentTab === "reports" && "Relatórios"}
                     {currentTab === "ai-chat" && "IA Reports"}
                     {currentTab === "agenda" && "Agenda"}
+                    {currentTab === "recurring" && "Contas Fixas"}
                     {currentTab === "whatsapp" && "WhatsApp"}
                     {currentTab === "team" && "Equipe"}
                     {currentTab === "future" && "Novidades"}

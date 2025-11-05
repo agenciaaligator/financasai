@@ -42,6 +42,7 @@ import { useOrganizationPermissions } from "@/hooks/useOrganizationPermissions";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
+import { RecurringTransactionsManager } from "../RecurringTransactionsManager";
 
 const TIMEZONE = 'America/Sao_Paulo';
 const ITEMS_PER_PAGE = 10;
@@ -602,6 +603,14 @@ export function DashboardContent({
             </CardContent>
           </Card>
         </div>
+      </ErrorBoundary>
+    );
+  }
+
+  if (currentTab === "recurring") {
+    return (
+      <ErrorBoundary>
+        <RecurringTransactionsManager categories={categories} />
       </ErrorBoundary>
     );
   }

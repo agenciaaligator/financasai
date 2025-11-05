@@ -13,7 +13,9 @@ import {
   Calendar,
   Users,
   MessageSquare,
-  Shield
+  Shield,
+  Repeat,
+  ChevronDown
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -30,7 +32,11 @@ import {
   SidebarHeader,
   SidebarTrigger,
   useSidebar,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
 } from "@/components/ui/sidebar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface AppSidebarProps {
   currentTab: string;
@@ -122,6 +128,9 @@ export function AppSidebar({
   const { open } = useSidebar();
   const isMobile = useIsMobile();
   const { isMaster } = useIsMaster();
+  const [transactionsOpen, setTransactionsOpen] = useState(
+    currentTab === 'transactions' || currentTab === 'recurring'
+  );
 
   // Para uso mobile, renderiza apenas o conteúdo sem wrapper Sidebar
   if (isMobile) {
@@ -159,6 +168,65 @@ export function AppSidebar({
           {/* Menu de navegação */}
           <div className="space-y-1">
             {[...sidebarItems.filter(item => item.id !== 'team' || isOwner), ...(isMaster ? adminItems : [])].map((item) => {
+              // Para "Transações", criar submenu
+              if (item.id === 'transactions') {
+                const isTransactionsActive = currentTab === 'transactions' || currentTab === 'recurring';
+                return (
+                  <div key={item.id} className="space-y-1">
+                    <button
+                      onClick={() => setTransactionsOpen(!transactionsOpen)}
+                      className={`w-full h-12 transition-all duration-200 rounded-lg flex items-center justify-between px-4 ${
+                        isTransactionsActive 
+                          ? "bg-sidebar-accent text-sidebar-primary font-medium border-l-4 border-primary" 
+                          : "hover:bg-sidebar-accent/50 text-sidebar-foreground"
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        <item.icon className={`h-5 w-5 ${isTransactionsActive ? "text-primary" : ""}`} />
+                        <div className="ml-3 text-left">
+                          <div className="font-medium text-sidebar-foreground">{item.title}</div>
+                        </div>
+                      </div>
+                      <ChevronDown className={`h-4 w-4 transition-transform ${transactionsOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    
+                    {transactionsOpen && (
+                      <div className="ml-4 space-y-1">
+                        <button
+                          onClick={() => {
+                            console.log('Mobile: clicou em Histórico');
+                            onTabChange('transactions');
+                          }}
+                          className={`w-full h-10 transition-all duration-200 rounded-lg flex items-center justify-start px-4 ${
+                            currentTab === 'transactions'
+                              ? "bg-sidebar-accent text-sidebar-primary font-medium"
+                              : "hover:bg-sidebar-accent/50 text-sidebar-foreground"
+                          }`}
+                        >
+                          <TrendingUp className={`h-4 w-4 ${currentTab === 'transactions' ? "text-primary" : ""}`} />
+                          <span className="ml-2 text-sm">Histórico</span>
+                        </button>
+                        
+                        <button
+                          onClick={() => {
+                            console.log('Mobile: clicou em Contas Fixas');
+                            onTabChange('recurring');
+                          }}
+                          className={`w-full h-10 transition-all duration-200 rounded-lg flex items-center justify-start px-4 ${
+                            currentTab === 'recurring'
+                              ? "bg-sidebar-accent text-sidebar-primary font-medium"
+                              : "hover:bg-sidebar-accent/50 text-sidebar-foreground"
+                          }`}
+                        >
+                          <Repeat className={`h-4 w-4 ${currentTab === 'recurring' ? "text-primary" : ""}`} />
+                          <span className="ml-2 text-sm">Contas Fixas</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+              
               const isActive = currentTab === item.id;
               return (
                 <button
@@ -224,6 +292,63 @@ export function AppSidebar({
 
             <SidebarMenu>
               {[...sidebarItems.filter(item => item.id !== 'team' || isOwner), ...(isMaster ? adminItems : [])].map((item) => {
+                // Para "Transações", criar submenu com Collapsible
+                if (item.id === 'transactions') {
+                  const isTransactionsActive = currentTab === 'transactions' || currentTab === 'recurring';
+                  return (
+                    <Collapsible
+                      key={item.id}
+                      open={transactionsOpen}
+                      onOpenChange={setTransactionsOpen}
+                      className="group/collapsible"
+                    >
+                      <SidebarMenuItem>
+                        <CollapsibleTrigger asChild>
+                          <SidebarMenuButton
+                            className={`w-full h-12 transition-all duration-200 ${
+                              isTransactionsActive 
+                                ? "bg-sidebar-accent text-sidebar-primary font-medium border-l-4 border-primary" 
+                                : "hover:bg-sidebar-accent/50 text-sidebar-foreground"
+                            } ${!open ? "justify-center px-2" : "justify-start px-4"}`}
+                          >
+                            <item.icon className={`h-5 w-5 ${isTransactionsActive ? "text-primary" : ""}`} />
+                            {open && (
+                              <>
+                                <div className="ml-3 text-left flex-1">
+                                  <div className="font-medium">{item.title}</div>
+                                </div>
+                                <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                              </>
+                            )}
+                          </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <SidebarMenuSub>
+                            <SidebarMenuSubItem>
+                              <SidebarMenuSubButton
+                                onClick={() => onTabChange('transactions')}
+                                className={currentTab === 'transactions' ? "bg-sidebar-accent text-sidebar-primary" : ""}
+                              >
+                                <TrendingUp className="h-4 w-4" />
+                                {open && <span>Histórico</span>}
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                            <SidebarMenuSubItem>
+                              <SidebarMenuSubButton
+                                onClick={() => onTabChange('recurring')}
+                                className={currentTab === 'recurring' ? "bg-sidebar-accent text-sidebar-primary" : ""}
+                              >
+                                <Repeat className="h-4 w-4" />
+                                {open && <span>Contas Fixas</span>}
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      </SidebarMenuItem>
+                    </Collapsible>
+                  );
+                }
+                
                 const isActive = currentTab === item.id;
                 return (
                   <SidebarMenuItem key={item.id}>
