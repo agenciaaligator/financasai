@@ -182,14 +182,31 @@ Deno.serve(async (req) => {
 
     for (const profile of profiles || []) {
       try {
-        // Buscar compromissos de hoje para este usuário
-        const { data: commitments, error: commitmentsError } = await supabaseClient
+        // ✅ BUG FIX: Buscar organizações do usuário para incluir compromissos organizacionais
+        const { data: orgs } = await supabaseClient
+          .from('organization_members')
+          .select('organization_id')
+          .eq('user_id', profile.user_id);
+
+        const orgIds = orgs?.map(o => o.organization_id) || [];
+
+        // ✅ BUG FIX: Buscar compromissos PESSOAIS + DA ORGANIZAÇÃO
+        let query = supabaseClient
           .from('commitments')
           .select('id, title, scheduled_at, duration_minutes, location')
-          .eq('user_id', profile.user_id)
           .gte('scheduled_at', startOfDay.toISOString())
           .lte('scheduled_at', endOfDay.toISOString())
           .order('scheduled_at', { ascending: true });
+
+        // Se tiver organizações, buscar compromissos pessoais OU da organização
+        if (orgIds.length > 0) {
+          query = query.or(`user_id.eq.${profile.user_id},organization_id.in.(${orgIds.join(',')})`);
+        } else {
+          // Se não tiver organizações, buscar apenas compromissos pessoais
+          query = query.eq('user_id', profile.user_id);
+        }
+
+        const { data: commitments, error: commitmentsError } = await query;
 
         if (commitmentsError) {
           console.error(`[DAILY-AGENDA] Error fetching commitments for user ${profile.user_id}:`, commitmentsError);
@@ -197,7 +214,14 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        console.log(`[DAILY-AGENDA] User ${profile.user_id}: ${commitments?.length || 0} commitments today`);
+        const personalCount = commitments?.filter(c => c.user_id === profile.user_id).length || 0;
+        const orgCount = (commitments?.length || 0) - personalCount;
+
+        console.log(`[DAILY-AGENDA] User ${profile.user_id} (${profile.full_name}):`, {
+          personalCommitments: personalCount,
+          orgCommitments: orgCount,
+          totalToday: commitments?.length || 0
+        });
 
         // Formatar mensagem
         const message = formatCommitments(commitments || []);

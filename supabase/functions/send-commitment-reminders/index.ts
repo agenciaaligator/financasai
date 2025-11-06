@@ -364,7 +364,7 @@ serve(async (req) => {
       );
     }
 
-    // Buscar TODOS os compromissos futuros
+    // ✅ BUG FIX: Buscar TODOS os compromissos futuros com telefone válido
     const { data: commitments, error: fetchError } = await supabase
       .from('commitments')
       .select(`
@@ -372,6 +372,7 @@ serve(async (req) => {
         profiles!inner(phone_number, full_name)
       `)
       .gte('scheduled_at', new Date().toISOString())
+      .not('profiles.phone_number', 'is', null)
       .order('scheduled_at', { ascending: true });
 
     if (fetchError) {
@@ -380,14 +381,14 @@ serve(async (req) => {
     }
 
     if (!commitments || commitments.length === 0) {
-      console.log(`[REMINDER] [${executionId}] No future commitments found`);
+      console.log(`[REMINDER] [${executionId}] No future commitments found with phone numbers`);
       return new Response(
-        JSON.stringify({ success: true, remindersSent: 0, message: 'No commitments to process' }),
+        JSON.stringify({ success: true, remindersSent: 0, message: 'No commitments with phone numbers to process' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`[REMINDER] [${executionId}] Found ${commitments.length} future commitments`);
+    console.log(`[REMINDER] [${executionId}] Found ${commitments.length} future commitments with phone numbers`);
 
     let remindersSent = 0;
     let errors = 0;
@@ -400,14 +401,25 @@ serve(async (req) => {
 
       console.log(`[REMINDER] [${executionId}] Processing commitment ${commitment.id} for user ${commitment.user_id}: "${commitment.title}" in ${Math.floor(minutesUntil)} minutes`);
 
+      // ✅ BUG FIX: Buscar settings do DONO DO TELEFONE, não do criador do compromisso
+      const { data: phoneOwner } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .eq('phone_number', commitment.profiles.phone_number)
+        .maybeSingle();
+
+      const settingsUserId = phoneOwner?.user_id || commitment.user_id;
+
+      console.log(`[REMINDER] [${executionId}] Using settings from user ${settingsUserId} (phone owner of ${commitment.profiles.phone_number})`);
+
       const { data: settings, error: settingsError } = await supabase
         .from('reminder_settings')
         .select('default_reminders, send_via_whatsapp')
-        .eq('user_id', commitment.user_id)
+        .eq('user_id', settingsUserId)
         .maybeSingle();
 
       if (settingsError) {
-        console.error(`[REMINDER] [${executionId}] Error fetching settings for user ${commitment.user_id}:`, settingsError);
+        console.error(`[REMINDER] [${executionId}] Error fetching settings for user ${settingsUserId}:`, settingsError);
         skipped++;
         continue;
       }
