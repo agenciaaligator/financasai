@@ -192,19 +192,41 @@ export function useAuth() {
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    
-    if (error) {
-      toast({
-        title: "Erro ao sair",
-        description: error.message,
-        variant: "destructive"
-      });
-    } else {
-      toast({
-        title: "Logout realizado",
-        description: "Até breve!",
-      });
+    try {
+      const { error } = await supabase.auth.signOut();
+      
+      // Ignorar erros de "sessão não encontrada" - usuário já está deslogado
+      if (error && !error.message.includes('session_not_found') && 
+          !error.message.includes('Session not found') &&
+          !error.message.includes('Auth session missing')) {
+        console.warn('[useAuth] Erro ao fazer logout (não crítico):', error);
+        toast({
+          title: "Aviso",
+          description: "Houve um problema ao desconectar, mas você será redirecionado.",
+          variant: "default"
+        });
+      } else {
+        toast({
+          title: "✅ Logout realizado",
+          description: "Até breve!",
+        });
+      }
+      
+      // SEMPRE limpar o estado local e redirecionar
+      setSession(null);
+      setUser(null);
+      
+      // Garantir redirecionamento para login
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 500);
+      
+    } catch (err) {
+      console.error('[useAuth] Erro inesperado no logout:', err);
+      // Mesmo com erro, limpar tudo
+      setSession(null);
+      setUser(null);
+      window.location.href = '/';
     }
   };
 
