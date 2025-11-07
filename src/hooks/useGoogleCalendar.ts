@@ -6,12 +6,17 @@ interface CalendarConnection {
   calendar_email: string;
   calendar_name: string;
   is_active: boolean;
+  expires_at?: string;
+  updated_at?: string;
 }
+
+type ConnectionStatus = 'connected' | 'expired' | 'inactive' | 'never';
 
 export const useGoogleCalendar = () => {
   const [connection, setConnection] = useState<CalendarConnection | null>(null);
   const [loading, setLoading] = useState(true);
-  const [hadConnectionBefore, setHadConnectionBefore] = useState(false); // Se alguma vez teve conexão (mesmo expirada)
+  const [hadConnectionBefore, setHadConnectionBefore] = useState(false);
+  const [status, setStatus] = useState<ConnectionStatus>('never');
   const { toast } = useToast();
 
   const checkConnection = async () => {
@@ -27,14 +32,13 @@ export const useGoogleCalendar = () => {
 
       const { data, error } = await supabase
         .from('calendar_connections')
-        .select('calendar_email, calendar_name, is_active, expires_at')
+        .select('calendar_email, calendar_name, is_active, expires_at, updated_at')
         .eq('user_id', user.id)
         .eq('provider', 'google')
         .maybeSingle();
 
       if (error) throw error;
       
-      // ✅ Se existe registro (mesmo expirado), marca como "já conectou alguma vez"
       if (data) {
         setHadConnectionBefore(true);
         
@@ -84,24 +88,86 @@ export const useGoogleCalendar = () => {
           }
         }
         
-        if (isExpired || !data.is_active) {
-          console.log('[GC] Connection expired or inactive');
-          setConnection(null); // Desconectado MAS já teve conexão
+        if (isExpired && data.is_active) {
+          setStatus('expired');
+          setConnection({ ...data, expires_at: data.expires_at, updated_at: data.updated_at });
+        } else if (!data.is_active) {
+          console.log('[GC] Connection inactive - reconnect required');
+          setStatus('inactive');
+          setConnection({ ...data, expires_at: data.expires_at, updated_at: data.updated_at });
         } else {
           console.log('[GC] Connection active');
-          setConnection(data); // Conectado e ativo
+          setStatus('connected');
+          setConnection(data);
         }
       } else {
         console.log('[GC] No connection record found');
         setHadConnectionBefore(false);
         setConnection(null);
+        setStatus('never');
       }
     } catch (error) {
       console.error('Error checking calendar connection:', error);
       setHadConnectionBefore(false);
       setConnection(null);
+      setStatus('never');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const syncNow = async () => {
+    try {
+      setLoading(true);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
+      const { data, error } = await supabase.functions.invoke('google-calendar-import', {
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Sincronização concluída!',
+        description: data?.message || 'Compromissos atualizados com sucesso.',
+      });
+
+      checkConnection();
+    } catch (error: any) {
+      console.error('[GC] Sync error:', error);
+      toast({
+        title: 'Erro ao sincronizar',
+        description: error.message || 'Não foi possível sincronizar.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runDiagnostics = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('google-calendar-diagnostics');
+
+      if (error) throw error;
+
+      const statusEmoji = data?.status === 'ready' ? '✅' : '⚠️';
+      toast({
+        title: `${statusEmoji} Diagnóstico`,
+        description: data?.status === 'ready' 
+          ? 'Configuração do backend OK' 
+          : 'Configuração incompleta no backend',
+      });
+
+      return data;
+    } catch (error: any) {
+      console.error('[GC] Diagnostics error:', error);
+      toast({
+        title: 'Erro no diagnóstico',
+        description: error.message,
+        variant: 'destructive',
+      });
     }
   };
 
@@ -471,11 +537,14 @@ export const useGoogleCalendar = () => {
   return {
     connection,
     loading,
-    isConnected: !!connection,
+    isConnected: status === 'connected',
     hadConnectionBefore,
+    status,
     connect,
     disconnect,
     syncEvent,
+    syncNow,
+    runDiagnostics,
     refresh: checkConnection,
   };
 };

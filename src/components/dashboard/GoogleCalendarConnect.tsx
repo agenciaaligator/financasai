@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export const GoogleCalendarConnect = () => {
-  const { connection, loading, isConnected, connect, disconnect } = useGoogleCalendar();
+  const { connection, loading, status, connect, disconnect } = useGoogleCalendar();
 
   if (loading) {
     return (
@@ -26,7 +26,7 @@ export const GoogleCalendarConnect = () => {
     );
   }
 
-  if (isConnected && connection) {
+  if (status === 'connected' && connection) {
     return (
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2 flex-wrap">
@@ -61,6 +61,36 @@ export const GoogleCalendarConnect = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+      </div>
+    );
+  }
+
+  if (status === 'expired' || status === 'inactive') {
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant="destructive" className="gap-1">
+            <Calendar className="h-3 w-3" />
+            {status === 'expired' ? 'Token Expirado' : 'Inativo'}
+          </Badge>
+          {connection?.calendar_email && (
+            <span className="text-sm text-muted-foreground">
+              {connection.calendar_email}
+            </span>
+          )}
+        </div>
+        {connection?.updated_at && (
+          <p className="text-xs text-muted-foreground">
+            Última atualização: {new Date(connection.updated_at).toLocaleString('pt-BR')}
+          </p>
+        )}
+        <p className="text-sm text-muted-foreground">
+          Sua conexão com o Google Calendar precisa ser renovada. Clique em Reconectar para continuar sincronizando seus compromissos.
+        </p>
+        <Button onClick={connect} variant="default" className="gap-2 w-fit">
+          <Calendar className="h-4 w-4" />
+          Reconectar Google Calendar
+        </Button>
       </div>
     );
   }

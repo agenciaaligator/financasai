@@ -8,12 +8,13 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Mail, Lock, Crown, Calendar, Check, X, ExternalLink } from "lucide-react";
+import { User, Mail, Lock, Crown, Calendar, Check, X, ExternalLink, RefreshCw, Bug } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useFeatureLimits } from "@/hooks/useFeatureLimits";
 import { UpgradeModal } from "./UpgradeModal";
 import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
 import { GoogleCalendarConnect } from "./dashboard/GoogleCalendarConnect";
+import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
 
 export function ProfileSettings() {
   const [fullName, setFullName] = useState("");
@@ -29,6 +30,7 @@ export function ProfileSettings() {
   const { currentUsage, getTransactionProgress, getCategoryProgress } = useFeatureLimits();
   const { status: subscriptionStatus } = useSubscriptionStatus();
   const [managingSubscription, setManagingSubscription] = useState(false);
+  const { syncNow, runDiagnostics, loading: gcLoading } = useGoogleCalendar();
 
   useEffect(() => {
     fetchProfile();
@@ -416,6 +418,29 @@ export function ProfileSettings() {
               💡 Conecte sua conta Google para sincronizar automaticamente compromissos criados pelo WhatsApp com seu calendário.
             </p>
             <GoogleCalendarConnect />
+            
+            <div className="flex gap-2 pt-2">
+              <Button 
+                onClick={syncNow} 
+                disabled={gcLoading}
+                variant="outline"
+                size="sm"
+                className="gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${gcLoading ? 'animate-spin' : ''}`} />
+                Sincronizar Agora
+              </Button>
+              <Button 
+                onClick={runDiagnostics} 
+                disabled={gcLoading}
+                variant="outline"
+                size="sm"
+                className="gap-2"
+              >
+                <Bug className="h-4 w-4" />
+                Diagnóstico
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
