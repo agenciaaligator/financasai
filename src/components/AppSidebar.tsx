@@ -84,12 +84,6 @@ const sidebarItems = [
     description: "Compromissos e eventos"
   },
   { 
-    id: "whatsapp", 
-    title: "WhatsApp", 
-    icon: MessageSquare,
-    description: "Integração WhatsApp"
-  },
-  { 
     id: "team", 
     title: "Equipe", 
     icon: Users,
