@@ -661,20 +661,13 @@ export function ProfileSettings() {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="whatsappPhone">Número do WhatsApp</Label>
-                  <Input
-                    id="whatsappPhone"
-                    placeholder="5511999999999"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Formato internacional sem + (ex: 5511999999999)
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg mb-4">
+                  <p className="text-sm text-blue-900 dark:text-blue-100">
+                    ⬆️ <strong>Configure seu número no Card de Perfil acima</strong> antes de solicitar o código
                   </p>
                 </div>
 
-                <Button 
+                <Button
                   onClick={handleRequestCode} 
                   disabled={whatsappLoading || !phoneNumber}
                   className="w-full"
