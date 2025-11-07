@@ -8,7 +8,8 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Mail, Lock, Crown, Calendar, Check, X, ExternalLink, RefreshCw, Bug, Shield } from "lucide-react";
+import { User, Mail, Lock, Crown, Calendar, Check, X, ExternalLink, RefreshCw, Bug, Shield, MessageSquare, LogOut } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useFeatureLimits } from "@/hooks/useFeatureLimits";
 import { UpgradeModal } from "./UpgradeModal";
@@ -33,6 +34,8 @@ export function ProfileSettings() {
   const [managingSubscription, setManagingSubscription] = useState(false);
   const { syncNow, runDiagnostics, loading: gcLoading } = useGoogleCalendar();
   const [isWhatsAppConnected, setIsWhatsAppConnected] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchProfile();
@@ -174,6 +177,39 @@ export function ProfileSettings() {
     }
   };
 
+  const handleDisconnectWhatsApp = async () => {
+    if (!user) return;
+    
+    setDisconnecting(true);
+    try {
+      const { error } = await supabase.functions.invoke('whatsapp-session-set-org', {
+        body: { 
+          userId: user.id,
+          action: 'disconnect'
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "WhatsApp desconectado",
+        description: "Você pode reconectar na aba WhatsApp quando desejar.",
+      });
+      
+      setIsWhatsAppConnected(false);
+      await fetchProfile();
+    } catch (error: any) {
+      console.error('Error disconnecting WhatsApp:', error);
+      toast({
+        title: "Erro ao desconectar",
+        description: error.message || "Tente novamente mais tarde",
+        variant: "destructive",
+      });
+    } finally {
+      setDisconnecting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card className="bg-gradient-card shadow-card border-0">
@@ -211,7 +247,17 @@ export function ProfileSettings() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phoneNumber">WhatsApp</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="phoneNumber">WhatsApp</Label>
+                <Badge variant={isWhatsAppConnected ? "default" : "secondary"} className="text-xs">
+                  {isWhatsAppConnected ? (
+                    <><Check className="h-3 w-3 mr-1" /> Conectado</>
+                  ) : (
+                    <><X className="h-3 w-3 mr-1" /> Desconectado</>
+                  )}
+                </Badge>
+              </div>
+              
               <Input
                 id="phoneNumber"
                 type="text"
@@ -220,18 +266,58 @@ export function ProfileSettings() {
                 placeholder="5511999999999"
                 disabled={isWhatsAppConnected}
               />
-              {isWhatsAppConnected ? (
-                <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded border">
-                  <Shield className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                  <p>
-                    Número em uso no WhatsApp. Para alterar, acesse a aba <strong>WhatsApp</strong>.
-                  </p>
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  Formato internacional sem o + (ex: 5511999999999)
-                </p>
-              )}
+              
+              <div className="flex flex-col gap-2">
+                {isWhatsAppConnected ? (
+                  <>
+                    <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded border">
+                      <Shield className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                      <p>
+                        Número protegido e em uso. Configure ajustes na aba <strong>WhatsApp</strong>.
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate('/?tab=whatsapp')}
+                        className="gap-2"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        Configurar WhatsApp
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleDisconnectWhatsApp}
+                        disabled={disconnecting}
+                        className="gap-2"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        {disconnecting ? 'Desconectando...' : 'Desconectar'}
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      Formato internacional sem o + (ex: 5511999999999)
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate('/?tab=whatsapp')}
+                      className="gap-2 w-fit"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      Configurar no WhatsApp
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
 
             <Button 
