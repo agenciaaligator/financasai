@@ -271,6 +271,12 @@ export function ProfileSettings() {
         // Limpar campos de senha após sucesso
         setNewPassword("");
         setConfirmPassword("");
+        
+        // Fazer logout após mudança de senha (nova sessão será criada no próximo login)
+        setTimeout(async () => {
+          await supabase.auth.signOut();
+          window.location.href = '/';
+        }, 2000);
       }
       
       // Feedback diferenciado
