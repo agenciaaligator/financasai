@@ -11,6 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Plus, Trash2, Palette } from "lucide-react";
 import { useFeatureLimits } from "@/hooks/useFeatureLimits";
 import { UpgradeModal } from "./UpgradeModal";
+import { categorySchema } from "@/lib/validations";
+import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 
 interface Category {
   id: string;
@@ -47,57 +49,61 @@ export function CategoryManager({ categories, onRefresh, showForm, setShowForm }
     
     if (!name.trim() || !user) return;
 
-    // Verificar limite antes de criar
-    const limitCheck = canCreateCategory();
-    if (!limitCheck.allowed) {
-      setUpgradeReason(limitCheck.reason || 'Upgrade necessário para criar mais categorias.');
-      setShowUpgradeModal(true);
-      toast({
-        title: "Limite atingido",
-        description: limitCheck.reason,
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const { error } = await supabase
-      .from('categories')
-      .insert([{
-        name: name.trim(),
+    try {
+      // Validar dados
+      const validated = categorySchema.parse({
+        name,
         type,
-        color,
-        user_id: user.id
-      }]);
+        color
+      });
 
-    if (error) {
+      // Verificar limite antes de criar
+      const limitCheck = canCreateCategory();
+      if (!limitCheck.allowed) {
+        setUpgradeReason(limitCheck.reason || 'Upgrade necessário para criar mais categorias.');
+        setShowUpgradeModal(true);
+        toast({
+          title: "Limite atingido",
+          description: limitCheck.reason,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('categories')
+        .insert([{
+          name: validated.name,
+          type: validated.type,
+          color: validated.color,
+          user_id: user.id
+        }]);
+
+      if (error) throw error;
+
+      toast({
+        title: "Categoria criada!",
+        description: `Categoria "${validated.name}" adicionada com sucesso.`
+      });
+
+      // Atualizar uso após criar
+      await refetchUsage();
+
+      setName("");
+      setType('expense');
+      setColor("#3B82F6");
+      setShowForm(false);
+      onRefresh();
+    } catch (error: any) {
       toast({
         title: "Erro ao criar categoria",
-        description: error.message,
+        description: error.errors?.[0]?.message || error.message || "Erro de validação",
         variant: "destructive"
       });
-      return;
     }
-
-    toast({
-      title: "Categoria criada!",
-      description: `Categoria "${name}" adicionada com sucesso.`
-    });
-
-    // Atualizar uso após criar
-    await refetchUsage();
-
-    setName("");
-    setType('expense');
-    setColor("#3B82F6");
-    setShowForm(false);
-    onRefresh();
   };
 
   const handleDelete = async (id: string, categoryName: string) => {
-    if (!confirm(`Tem certeza que deseja excluir a categoria "${categoryName}"?`)) {
-      return;
-    }
-
     const { error } = await supabase
       .from('categories')
       .delete()
@@ -207,14 +213,19 @@ export function CategoryManager({ categories, onRefresh, showForm, setShowForm }
                       />
                       <span className="text-sm font-medium">{category.name}</span>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(category.id, category.name)}
-                      className="text-destructive hover:text-destructive"
+                    <DeleteConfirmationDialog
+                      itemName={category.name}
+                      itemType="categoria"
+                      onConfirm={() => handleDelete(category.id, category.name)}
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </DeleteConfirmationDialog>
                   </div>
                 ))}
             </div>
@@ -234,14 +245,19 @@ export function CategoryManager({ categories, onRefresh, showForm, setShowForm }
                       />
                       <span className="text-sm font-medium">{category.name}</span>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(category.id, category.name)}
-                      className="text-destructive hover:text-destructive"
+                    <DeleteConfirmationDialog
+                      itemName={category.name}
+                      itemType="categoria"
+                      onConfirm={() => handleDelete(category.id, category.name)}
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </DeleteConfirmationDialog>
                   </div>
                 ))}
             </div>

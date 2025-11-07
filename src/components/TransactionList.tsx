@@ -5,6 +5,7 @@ import { TrendingUp, TrendingDown, Trash2, Edit } from "lucide-react";
 import { Transaction } from '@/hooks/useTransactions';
 import { useOrganizationPermissions } from "@/hooks/useOrganizationPermissions";
 import { useAuth } from "@/hooks/useAuth";
+import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import {
   Pagination,
   PaginationContent,
@@ -189,14 +190,19 @@ export function TransactionList({
                     </Button>
                   )}
                   {onDelete && (transaction.user_id === user?.id || canDeleteOthers) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onDelete(transaction.id)}
-                      className="text-destructive hover:text-destructive h-8 w-8 p-0"
+                    <DeleteConfirmationDialog
+                      itemName={transaction.title}
+                      itemType="transação"
+                      onConfirm={() => onDelete(transaction.id)}
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive h-8 w-8 p-0"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </DeleteConfirmationDialog>
                   )}
                 </div>
               </div>

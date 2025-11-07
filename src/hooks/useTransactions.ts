@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useOrganizationPermissions } from './useOrganizationPermissions';
+import { retryFetch } from '@/lib/retryFetch';
 
 export interface Transaction {
   id: string;
@@ -47,104 +48,109 @@ export function useTransactions() {
     
     setLoading(true);
 
-    // Consulta base com categorias (profiles serão buscados separadamente por causa do RLS)
-    const baseSelect = `
-        *,
-        categories (
-          name,
-          color
-        )
-      `;
+    try {
+      await retryFetch(async () => {
+        // Consulta base com categorias (profiles serão buscados separadamente por causa do RLS)
+        const baseSelect = `
+            *,
+            categories (
+              name,
+              color
+            )
+          `;
 
-    // Sempre buscar minhas transações
-    const myQuery = supabase
-      .from('transactions')
-      .select(baseSelect)
-      .eq('user_id', user.id);
-
-    // Se houver organização ativa, buscar também as da organização
-    const orgQuery = organization_id
-      ? supabase
+        // Sempre buscar minhas transações
+        const myQuery = supabase
           .from('transactions')
           .select(baseSelect)
-          .eq('organization_id', organization_id)
-      : null;
+          .eq('user_id', user.id);
 
-    // Executar em paralelo
-    const [{ data: myData, error: myError }, orgResult] = await Promise.all([
-      myQuery,
-      orgQuery ? orgQuery : Promise.resolve({ data: [], error: null } as any)
-    ]);
+        // Se houver organização ativa, buscar também as da organização
+        const orgQuery = organization_id
+          ? supabase
+              .from('transactions')
+              .select(baseSelect)
+              .eq('organization_id', organization_id)
+          : null;
 
-    const orgData = (orgResult as any)?.data || [];
-    const orgError = (orgResult as any)?.error;
+        // Executar em paralelo
+        const [{ data: myData, error: myError }, orgResult] = await Promise.all([
+          myQuery,
+          orgQuery ? orgQuery : Promise.resolve({ data: [], error: null } as any)
+        ]);
 
-    if (myError || orgError) {
-      const error = myError || orgError;
+        const orgData = (orgResult as any)?.data || [];
+        const orgError = (orgResult as any)?.error;
+
+        if (myError || orgError) {
+          const error = myError || orgError;
+          throw error;
+        }
+
+        // Merge + dedupe
+        const merged = [...(myData || []), ...(orgData || [])];
+        const dedupedMap = new Map<string, any>();
+        merged.forEach((t: any) => {
+          dedupedMap.set(t.id, t);
+        });
+        const mergedDeduped = Array.from(dedupedMap.values());
+
+        // Ordenar por date desc (mantém comportamento atual)
+        mergedDeduped.sort((a: any, b: any) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+
+        // BUSCAR PROFILES SEPARADAMENTE (respeitando RLS)
+        const userIds = [...new Set((mergedDeduped || []).map((t: any) => t.user_id))];
+        let profilesMap: Record<string, { full_name: string | null; email: string | null }> = {};
+
+        if (userIds.length > 0) {
+          const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('user_id, full_name, email')
+            .in('user_id', userIds);
+
+          if (profilesData) {
+            profilesData.forEach((p: any) => {
+              profilesMap[p.user_id] = {
+                full_name: p.full_name,
+                email: p.email
+              };
+            });
+          }
+        }
+
+        // MERGE PROFILES COM TRANSAÇÕES
+        const transactionsWithProfiles = (mergedDeduped || []).map((t: any) => ({
+          ...t,
+          profiles: profilesMap[t.user_id] || null
+        }));
+
+        console.log('✅ Transações carregadas (merge):', {
+          total: transactionsWithProfiles.length,
+          mine: (myData || []).length,
+          org: (orgData || []).length,
+          canViewOthers,
+          organization_id,
+          sampleTransaction: transactionsWithProfiles[0] ? {
+            id: transactionsWithProfiles[0].id,
+            user_id: transactionsWithProfiles[0].user_id,
+            organization_id: transactionsWithProfiles[0].organization_id,
+            title: transactionsWithProfiles[0].title,
+            profiles: transactionsWithProfiles[0].profiles
+          } : null
+        });
+        
+        setTransactions(transactionsWithProfiles);
+      });
+    } catch (error: any) {
       console.error('Erro ao carregar transações:', error);
       toast({
-        title: "Erro ao carregar transações",
-        description: (error as any).message || 'Falha ao buscar transações',
+        title: "Erro de conexão",
+        description: "Não foi possível carregar transações. Verifique sua internet.",
         variant: "destructive"
       });
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // Merge + dedupe
-    const merged = [...(myData || []), ...(orgData || [])];
-    const dedupedMap = new Map<string, any>();
-    merged.forEach((t: any) => {
-      dedupedMap.set(t.id, t);
-    });
-    const mergedDeduped = Array.from(dedupedMap.values());
-
-    // Ordenar por date desc (mantém comportamento atual)
-    mergedDeduped.sort((a: any, b: any) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
-
-    // BUSCAR PROFILES SEPARADAMENTE (respeitando RLS)
-    const userIds = [...new Set((mergedDeduped || []).map((t: any) => t.user_id))];
-    let profilesMap: Record<string, { full_name: string | null; email: string | null }> = {};
-
-    if (userIds.length > 0) {
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('user_id, full_name, email')
-        .in('user_id', userIds);
-
-      if (profilesData) {
-        profilesData.forEach((p: any) => {
-          profilesMap[p.user_id] = {
-            full_name: p.full_name,
-            email: p.email
-          };
-        });
-      }
-    }
-
-    // MERGE PROFILES COM TRANSAÇÕES
-    const transactionsWithProfiles = (mergedDeduped || []).map((t: any) => ({
-      ...t,
-      profiles: profilesMap[t.user_id] || null
-    }));
-
-    console.log('✅ Transações carregadas (merge):', {
-      total: transactionsWithProfiles.length,
-      mine: (myData || []).length,
-      org: (orgData || []).length,
-      canViewOthers,
-      organization_id,
-      sampleTransaction: transactionsWithProfiles[0] ? {
-        id: transactionsWithProfiles[0].id,
-        user_id: transactionsWithProfiles[0].user_id,
-        organization_id: transactionsWithProfiles[0].organization_id,
-        title: transactionsWithProfiles[0].title,
-        profiles: transactionsWithProfiles[0].profiles
-      } : null
-    });
-    
-    setTransactions(transactionsWithProfiles);
-    setLoading(false);
   };
 
   const fetchCategories = async () => {

@@ -10,6 +10,7 @@ import { useTransactions } from "@/hooks/useTransactions";
 import { useFeatureLimits } from "@/hooks/useFeatureLimits";
 import { UpgradeModal } from "./UpgradeModal";
 import { useToast } from "@/hooks/use-toast";
+import { transactionSchema } from "@/lib/validations";
 
 interface TransactionFormProps {
   onSubmit: (transaction: {
@@ -55,39 +56,57 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
       return;
     }
 
-    // Verificar limite antes de criar
-    const limitCheck = canCreateTransaction();
-    if (!limitCheck.allowed) {
-      setUpgradeReason(limitCheck.reason || 'Upgrade necessário para criar mais transações.');
-      setShowUpgradeModal(true);
+    try {
+      // Validar dados
+      const validated = transactionSchema.parse({
+        title,
+        amount: parseFloat(amount),
+        type,
+        category_id: categoryId || undefined,
+        date,
+        description: description || undefined,
+      });
+
+      // Verificar limite antes de criar
+      const limitCheck = canCreateTransaction();
+      if (!limitCheck.allowed) {
+        setUpgradeReason(limitCheck.reason || 'Upgrade necessário para criar mais transações.');
+        setShowUpgradeModal(true);
+        toast({
+          title: "Limite atingido",
+          description: limitCheck.reason,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      onSubmit({
+        title: validated.title,
+        amount: validated.amount,
+        type: validated.type,
+        category_id: validated.category_id,
+        date: validated.date,
+        description: validated.description,
+        source: 'manual'
+      });
+
+      // Atualizar uso após criar
+      await refetchUsage();
+
+      // Reset form
+      setTitle("");
+      setAmount("");
+      setType('expense');
+      setCategoryId("");
+      setDate(getLocalDate());
+      setDescription("");
+    } catch (error: any) {
       toast({
-        title: "Limite atingido",
-        description: limitCheck.reason,
+        title: "Erro de validação",
+        description: error.errors?.[0]?.message || "Dados inválidos",
         variant: "destructive"
       });
-      return;
     }
-
-    onSubmit({
-      title,
-      amount: parseFloat(amount),
-      type,
-      category_id: categoryId || undefined,
-      date,
-      description: description || undefined,
-      source: 'manual'
-    });
-
-    // Atualizar uso após criar
-    await refetchUsage();
-
-    // Reset form
-    setTitle("");
-    setAmount("");
-    setType('expense');
-    setCategoryId("");
-    setDate(getLocalDate());
-    setDescription("");
   };
 
   return (

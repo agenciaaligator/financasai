@@ -8,13 +8,14 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Mail, Lock, Crown, Calendar, Check, X, ExternalLink, RefreshCw, Bug } from "lucide-react";
+import { User, Mail, Lock, Crown, Calendar, Check, X, ExternalLink, RefreshCw, Bug, Shield } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useFeatureLimits } from "@/hooks/useFeatureLimits";
 import { UpgradeModal } from "./UpgradeModal";
 import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
 import { GoogleCalendarConnect } from "./dashboard/GoogleCalendarConnect";
 import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
+import { profileSchema } from "@/lib/validations";
 
 export function ProfileSettings() {
   const [fullName, setFullName] = useState("");
@@ -31,10 +32,22 @@ export function ProfileSettings() {
   const { status: subscriptionStatus } = useSubscriptionStatus();
   const [managingSubscription, setManagingSubscription] = useState(false);
   const { syncNow, runDiagnostics, loading: gcLoading } = useGoogleCalendar();
+  const [isWhatsAppConnected, setIsWhatsAppConnected] = useState(false);
 
   useEffect(() => {
     fetchProfile();
+    checkWhatsAppConnection();
   }, [user]);
+  
+  const checkWhatsAppConnection = async () => {
+    if (!user) return;
+    
+    const { data } = await supabase.rpc('is_whatsapp_authenticated_for_user', {
+      p_user_id: user.id
+    });
+    
+    setIsWhatsAppConnected(data === true);
+  };
 
   const fetchProfile = async () => {
     if (!user) return;
@@ -57,28 +70,36 @@ export function ProfileSettings() {
 
     setLoading(true);
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        full_name: fullName.trim(),
-        phone_number: phoneNumber.trim() || null
-      })
-      .eq('user_id', user.id);
-
-    if (error) {
-      toast({
-        title: "Erro ao atualizar perfil",
-        description: error.message,
-        variant: "destructive"
+    try {
+      // Validar dados
+      const validated = profileSchema.parse({
+        full_name: fullName,
+        phone_number: phoneNumber || ''
       });
-    } else {
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: validated.full_name,
+          phone_number: validated.phone_number || null
+        })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
       toast({
         title: "Perfil atualizado!",
         description: "Suas informações foram salvas com sucesso."
       });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao atualizar perfil",
+        description: error.message || "Erro de validação",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
@@ -197,10 +218,18 @@ export function ProfileSettings() {
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 placeholder="5511999999999"
+                disabled={isWhatsAppConnected}
               />
-              <p className="text-xs text-muted-foreground">
-                Formato internacional sem o + (ex: 5511999999999)
-              </p>
+              {isWhatsAppConnected ? (
+                <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 dark:bg-amber-900/20 p-2 rounded border border-amber-200 dark:border-amber-800">
+                  <Shield className="h-4 w-4 flex-shrink-0" />
+                  <span>Número bloqueado enquanto WhatsApp estiver conectado. Desconecte primeiro para alterar.</span>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Formato internacional sem o + (ex: 5511999999999)
+                </p>
+              )}
             </div>
 
             <Button 
