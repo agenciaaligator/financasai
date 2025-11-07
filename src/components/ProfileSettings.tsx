@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Mail, Lock, Crown, Calendar, Check, X, ExternalLink, RefreshCw, Bug, Shield, MessageSquare, Phone, BarChart3, Link2 } from "lucide-react";
+import { User, Mail, Lock, Crown, Calendar, Check, X, ExternalLink, RefreshCw, Bug, Shield, MessageSquare, Phone, BarChart3, CheckCircle2 } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useFeatureLimits } from "@/hooks/useFeatureLimits";
 import { UpgradeModal } from "./UpgradeModal";
@@ -35,9 +35,6 @@ export function ProfileSettings() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [hasRecentWhatsAppActivity, setHasRecentWhatsAppActivity] = useState(false);
   const [whatsappLoading, setWhatsappLoading] = useState(false);
-  const [statusLoading, setStatusLoading] = useState(false);
-  const [linkingOrg, setLinkingOrg] = useState(false);
-  const [linkedOrgName, setLinkedOrgName] = useState<string | null>(null);
   const [sessionInfo, setSessionInfo] = useState<{ last_activity?: string; expires_at?: string } | null>(null);
   const [commandsOpen, setCommandsOpen] = useState(false);
   
@@ -56,7 +53,6 @@ export function ProfileSettings() {
     fetchProfile();
     if (planLimits?.hasWhatsapp) {
       checkAuthenticationStatus();
-      fetchLinkedOrganization();
       
       // Setup real-time listener para WhatsApp sessions
       const channel = supabase
@@ -71,7 +67,6 @@ export function ProfileSettings() {
           },
           () => {
             checkAuthenticationStatus();
-            fetchLinkedOrganization();
           }
         )
         .subscribe();
@@ -127,34 +122,6 @@ export function ProfileSettings() {
     }
   };
 
-  const fetchLinkedOrganization = async () => {
-    if (!user) return;
-    
-    try {
-      const { data: session } = await supabase
-        .from('whatsapp_sessions')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .gt('expires_at', new Date().toISOString())
-        .order('last_activity', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      
-      if (session?.organization_id) {
-        const { data: org } = await supabase
-          .from('organizations')
-          .select('name')
-          .eq('id', session.organization_id)
-          .single();
-        
-        setLinkedOrgName(org?.name || null);
-      } else {
-        setLinkedOrgName(null);
-      }
-    } catch (error) {
-      console.error('Error fetching linked organization:', error);
-    }
-  };
 
   const checkAuthenticationStatus = async () => {
     if (!user) return;
@@ -450,69 +417,53 @@ export function ProfileSettings() {
     }
   };
 
-  const handleLinkToCurrentOrg = async () => {
-    if (!organization_id) {
-      toast({
-        title: "Erro",
-        description: "Você não pertence a nenhuma organização",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setLinkingOrg(true);
+  const handleDisconnectWhatsApp = async () => {
+    if (!user || !phoneNumber) return;
+    
+    setWhatsappLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('whatsapp-session-set-org', {
-        body: { organization_id }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "✅ WhatsApp vinculado!",
-        description: data.message || "WhatsApp vinculado à organização atual com sucesso",
-      });
+      const { error } = await supabase
+        .from('whatsapp_sessions')
+        .delete()
+        .eq('phone_number', phoneNumber);
       
-      await fetchLinkedOrganization();
-      window.dispatchEvent(new Event('force-transactions-refetch'));
-
-    } catch (error) {
-      console.error('Error linking WhatsApp to organization:', error);
+      if (error) throw error;
+      
+      setIsAuthenticated(false);
+      setHasRecentWhatsAppActivity(false);
+      setSessionInfo(null);
+      setAuthCode("");
+      setCodeSent(false);
+      
       toast({
-        title: "Erro ao vincular",
-        description: error instanceof Error ? error.message : "Não foi possível vincular o WhatsApp à organização",
+        title: "✅ WhatsApp desconectado",
+        description: "Agora você pode alterar o número ou reconectar",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao desconectar",
+        description: error instanceof Error ? error.message : "Tente novamente",
         variant: "destructive"
       });
     } finally {
-      setLinkingOrg(false);
+      setWhatsappLoading(false);
     }
   };
 
-  const handleCheckStatus = async () => {
-    setStatusLoading(true);
-    try {
-      await checkAuthenticationStatus();
-      await checkRecentWhatsAppActivity();
-      await fetchSessionInfo();
-      
-      const effective = isAuthenticated || hasRecentWhatsAppActivity || (sessionInfo?.expires_at && new Date(sessionInfo.expires_at) > new Date());
-      
-      toast({
-        title: effective ? "✅ Conectado" : "❌ Não conectado",
-        description: effective 
-          ? `WhatsApp autenticado${getStatusMessage() ? ' - ' + getStatusMessage() : ''}` 
-          : "WhatsApp não está autenticado. Solicite um novo código.",
-      });
-    } catch (error) {
-      console.error('Erro ao verificar status:', error);
-      toast({
-        title: "Erro",
-        description: error instanceof Error ? error.message : "Não foi possível verificar o status",
-        variant: "destructive"
-      });
-    } finally {
-      setStatusLoading(false);
-    }
+  const getLastActivityMessage = (lastActivity?: string) => {
+    if (!lastActivity) return "Sem atividade recente";
+    
+    const now = new Date();
+    const activityDate = new Date(lastActivity);
+    const diffMs = now.getTime() - activityDate.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffMins < 1) return "Ativo agora";
+    if (diffMins < 60) return `Ativo há ${diffMins} min`;
+    if (diffHours < 24) return `Ativo há ${diffHours}h`;
+    return `Ativo há ${diffDays}d`;
   };
 
   const handleManageSubscription = async () => {
@@ -588,11 +539,20 @@ export function ProfileSettings() {
                 type="text"
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
+                disabled={effectiveAuthenticated}
                 placeholder="5511999999999"
+                className={effectiveAuthenticated ? "bg-muted" : ""}
               />
-              <p className="text-xs text-muted-foreground">
-                Formato internacional sem o + (ex: 5511999999999)
-              </p>
+              {effectiveAuthenticated && (
+                <p className="text-xs text-yellow-600">
+                  ⚠️ Número em uso no WhatsApp. Desconecte na seção abaixo para alterar.
+                </p>
+              )}
+              {!effectiveAuthenticated && (
+                <p className="text-xs text-muted-foreground">
+                  Formato internacional sem + (ex: 5511999999999)
+                </p>
+              )}
             </div>
 
             <Button 
@@ -668,69 +628,38 @@ export function ProfileSettings() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Status */}
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Status:</span>
-                <Badge variant={effectiveAuthenticated ? "default" : "secondary"}>
-                  {effectiveAuthenticated ? "Autenticado" : "Não autenticado"}
-                </Badge>
-                {effectiveAuthenticated && getStatusMessage() && (
-                  <span className="text-xs text-muted-foreground">
-                    {getStatusMessage()}
-                  </span>
-                )}
-              </div>
-              
-              {effectiveAuthenticated && linkedOrgName && (
-                <div className="text-xs text-muted-foreground">
-                  📍 Vinculado a: <strong>{linkedOrgName}</strong>
-                </div>
-              )}
-              
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCheckStatus}
-                  disabled={statusLoading}
-                >
-                  {statusLoading ? "Verificando..." : "Verificar status"}
-                </Button>
-                
-                {effectiveAuthenticated && (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={async () => {
-                        setIsAuthenticated(false);
-                        setCodeSent(false);
-                        setAuthCode("");
-                        await handleRequestCode();
-                      }}
-                    >
-                      Revalidar WhatsApp
-                    </Button>
-                    
-                    {organization_id && (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={handleLinkToCurrentOrg}
-                        disabled={linkingOrg}
-                      >
-                        <Link2 className="h-3 w-3 mr-1" />
-                        {linkingOrg ? "Vinculando..." : "Vincular à org atual"}
-                      </Button>
-                    )}
-                  </>
-                )}
-              </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Status:</span>
+              <Badge variant={effectiveAuthenticated ? "default" : "secondary"}>
+                {effectiveAuthenticated ? "✅ Conectado" : "❌ Desconectado"}
+              </Badge>
             </div>
 
-            {/* Autenticação */}
-            {!isAuthenticated && (
+            {effectiveAuthenticated ? (
+              <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium flex items-center gap-2">
+                    <Check className="h-4 w-4 text-green-600" />
+                    WhatsApp conectado ao número:
+                  </p>
+                  {sessionInfo && (
+                    <span className="text-xs text-muted-foreground">
+                      {getLastActivityMessage(sessionInfo.last_activity)}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm">
+                  <strong>{phoneNumber}</strong>
+                </p>
+                <Button
+                  variant="destructive"
+                  onClick={handleDisconnectWhatsApp}
+                  disabled={whatsappLoading}
+                >
+                  {whatsappLoading ? "Desconectando..." : "Desconectar WhatsApp"}
+                </Button>
+              </div>
+            ) : (
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="whatsappPhone">Número do WhatsApp</Label>
@@ -741,7 +670,7 @@ export function ProfileSettings() {
                     onChange={(e) => setPhoneNumber(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Use o formato internacional (sem +): exemplo 5511999999999
+                    Formato internacional sem + (ex: 5511999999999)
                   </p>
                 </div>
 
@@ -765,15 +694,13 @@ export function ProfileSettings() {
                       maxLength={6}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Insira o código gerado acima na plataforma
+                      Após solicitar o código, insira-o aqui para validar
                     </p>
                     <Button 
                       onClick={handleVerifyCode} 
                       disabled={whatsappLoading || !authCode}
-                      variant="outline"
                       className="w-full"
                     >
-                      <Shield className="h-4 w-4 mr-2" />
                       {whatsappLoading ? "Verificando..." : "Validar Código"}
                     </Button>
                   </div>
@@ -781,36 +708,29 @@ export function ProfileSettings() {
               </div>
             )}
 
-            {/* Orientações */}
-            {phoneNumber && (
-              <div className="pt-4 border-t">
-                <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-                  <p className="text-sm font-medium">💡 Orientações de Uso</p>
-                  <ul className="text-xs text-muted-foreground list-disc list-inside space-y-1">
-                    <li>Certifique-se de que o número informado está correto</li>
-                    <li>O código de verificação é válido por alguns minutos</li>
-                    <li>Após autenticar, você pode começar a usar os comandos</li>
-                    <li>Para testar lembretes, acesse a aba <strong>Agenda</strong></li>
-                  </ul>
-                </div>
+            <div className="border-t pt-4">
+              <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+                <p className="text-sm font-medium">💡 Como usar</p>
+                <ul className="text-xs text-muted-foreground list-disc list-inside space-y-1">
+                  <li>Digite seu número no formato internacional (sem +)</li>
+                  <li>Solicite o código de verificação</li>
+                  <li>Insira o código recebido para validar</li>
+                  <li>Pronto! Use os comandos pelo WhatsApp</li>
+                </ul>
               </div>
-            )}
+            </div>
 
-            {/* Comandos disponíveis - Collapsible */}
-            <Collapsible open={commandsOpen} onOpenChange={setCommandsOpen} className="border-t pt-4">
+            <Collapsible open={commandsOpen} onOpenChange={setCommandsOpen}>
               <CollapsibleTrigger className="flex items-center justify-between w-full text-sm font-medium hover:underline">
-                <span className="flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4" />
-                  Comandos Disponíveis
-                </span>
+                <span>📋 Comandos Disponíveis</span>
                 <span className="text-xs text-muted-foreground">
                   {commandsOpen ? "Ocultar" : "Ver comandos"}
                 </span>
               </CollapsibleTrigger>
               <CollapsibleContent className="pt-4">
-                <div className="grid gap-4">
+                <div className="space-y-4">
                   <div>
-                    <h4 className="font-medium mb-2 text-sm">📝 Adicionar Transações</h4>
+                    <h4 className="font-medium mb-2 text-sm">📝 Transações</h4>
                     <ul className="text-sm text-muted-foreground space-y-1">
                       <li>• "gasto 50 mercado"</li>
                       <li>• "receita 1000 salario"</li>
