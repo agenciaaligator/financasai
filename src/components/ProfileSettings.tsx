@@ -222,19 +222,33 @@ export function ProfileSettings() {
     return null;
   };
 
-  const handleUpdateProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveAll = async () => {
     if (!user) return;
-
+    
     setLoading(true);
-
+    
     try {
+      // Verificar se o usuário quer alterar a senha
+      const isChangingPassword = newPassword.length > 0 || confirmPassword.length > 0;
+      
+      if (isChangingPassword) {
+        // Validar senha
+        if (newPassword.length < 6) {
+          throw new Error("A nova senha deve ter pelo menos 6 caracteres");
+        }
+        
+        if (newPassword !== confirmPassword) {
+          throw new Error("As senhas não coincidem");
+        }
+      }
+      
+      // Salvar perfil (nome + telefone)
       const validated = profileSchema.parse({
         full_name: fullName,
         phone_number: phoneNumber || ''
       });
 
-      const { error } = await supabase
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({
           full_name: validated.full_name,
@@ -242,67 +256,40 @@ export function ProfileSettings() {
         })
         .eq('user_id', user.id);
 
-      if (error) throw error;
-
+      if (profileError) throw profileError;
+      
+      // Salvar senha (se preenchida)
+      let passwordUpdated = false;
+      if (isChangingPassword) {
+        const { error: passwordError } = await supabase.auth.updateUser({
+          password: newPassword
+        });
+        
+        if (passwordError) throw passwordError;
+        
+        passwordUpdated = true;
+        // Limpar campos de senha após sucesso
+        setNewPassword("");
+        setConfirmPassword("");
+      }
+      
+      // Feedback diferenciado
       toast({
-        title: "Perfil atualizado!",
-        description: "Suas informações foram salvas com sucesso."
+        title: "✅ Alterações salvas!",
+        description: passwordUpdated 
+          ? "Perfil e senha atualizados com sucesso" 
+          : "Informações do perfil atualizadas com sucesso"
       });
+      
     } catch (error: any) {
       toast({
-        title: "Erro ao atualizar perfil",
-        description: error.message || "Erro de validação",
+        title: "Erro ao salvar alterações",
+        description: error.message || "Tente novamente",
         variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (newPassword !== confirmPassword) {
-      toast({
-        title: "Erro",
-        description: "As senhas não coincidem.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      toast({
-        title: "Erro",
-        description: "A nova senha deve ter pelo menos 6 caracteres.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword
-    });
-
-    if (error) {
-      toast({
-        title: "Erro ao alterar senha",
-        description: error.message,
-        variant: "destructive"
-      });
-    } else {
-      toast({
-        title: "Senha alterada!",
-        description: "Sua senha foi atualizada com sucesso."
-      });
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-    }
-
-    setLoading(false);
   };
 
   const handleRequestCode = async () => {
@@ -506,7 +493,7 @@ export function ProfileSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleUpdateProfile} className="space-y-4">
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>
               <Input
@@ -554,31 +541,26 @@ export function ProfileSettings() {
                 </p>
               )}
             </div>
-
-            <Button 
-              type="submit" 
-              disabled={loading}
-              className="bg-gradient-primary hover:shadow-primary"
-            >
-              {loading ? "Salvando..." : "Salvar Alterações"}
-            </Button>
-          </form>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Card 2: Alterar Senha */}
+      {/* Card 2: Segurança */}
       <Card className="bg-gradient-card shadow-card border-0">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Lock className="h-5 w-5" />
-            <span>Alterar Senha</span>
+            <span>Segurança</span>
           </CardTitle>
           <CardDescription>
             Atualize sua senha de acesso
           </CardDescription>
+          <p className="text-xs text-muted-foreground mt-2">
+            💡 Deixe os campos de senha em branco se não quiser alterá-la
+          </p>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleChangePassword} className="space-y-4">
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="newPassword">Nova Senha</Label>
               <Input
@@ -587,7 +569,6 @@ export function ProfileSettings() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Digite a nova senha"
-                required
               />
             </div>
 
@@ -599,20 +580,23 @@ export function ProfileSettings() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirme a nova senha"
-                required
               />
             </div>
-
-            <Button 
-              type="submit" 
-              disabled={loading || !newPassword || !confirmPassword}
-              className="bg-gradient-primary hover:shadow-primary"
-            >
-              {loading ? "Alterando..." : "Alterar Senha"}
-            </Button>
-          </form>
+          </div>
         </CardContent>
       </Card>
+
+      {/* Botão Único de Salvamento */}
+      <div className="flex justify-end">
+        <Button 
+          onClick={handleSaveAll} 
+          disabled={loading}
+          size="lg"
+          className="bg-gradient-primary hover:shadow-primary min-w-[200px]"
+        >
+          {loading ? "Salvando..." : "💾 Salvar Alterações"}
+        </Button>
+      </div>
 
       {/* Card 3: Configuração WhatsApp */}
       {planLimits?.hasWhatsapp && (
