@@ -57,7 +57,7 @@ const sidebarItems = [
     id: "transactions", 
     title: "Transações", 
     icon: TrendingUp,
-    description: "Histórico de movimentações"
+    description: "Lançamentos e movimentações"
   },
   { 
     id: "categories", 
@@ -194,7 +194,7 @@ export function AppSidebar({
                       <div className="ml-4 space-y-1">
                         <button
                           onClick={() => {
-                            console.log('Mobile: clicou em Histórico');
+                            console.log('Mobile: clicou em Lançamentos');
                             onTabChange('transactions');
                           }}
                           className={`w-full h-10 transition-all duration-200 rounded-lg flex items-center justify-start px-4 ${
@@ -204,7 +204,7 @@ export function AppSidebar({
                           }`}
                         >
                           <TrendingUp className={`h-4 w-4 ${currentTab === 'transactions' ? "text-primary" : ""}`} />
-                          <span className="ml-2 text-sm">Histórico</span>
+                          <span className="ml-2 text-sm">Lançamentos</span>
                         </button>
                         
                         <button
@@ -330,7 +330,7 @@ export function AppSidebar({
                                 className={currentTab === 'transactions' ? "bg-sidebar-accent text-sidebar-primary" : ""}
                               >
                                 <TrendingUp className="h-4 w-4" />
-                                {open && <span>Histórico</span>}
+                                {open && <span>Lançamentos</span>}
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
                             <SidebarMenuSubItem>
