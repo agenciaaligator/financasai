@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Mail, Lock, Crown, Calendar, Check, X, ExternalLink, RefreshCw, Bug, Shield, LogOut } from "lucide-react";
+import { User, Mail, Lock, Crown, Calendar, Check, X, ExternalLink, RefreshCw, Bug, Shield } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useFeatureLimits } from "@/hooks/useFeatureLimits";
 import { UpgradeModal } from "./UpgradeModal";
@@ -16,7 +16,6 @@ import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
 import { GoogleCalendarConnect } from "./dashboard/GoogleCalendarConnect";
 import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
 import { profileSchema } from "@/lib/validations";
-import { useNavigate } from "react-router-dom";
 
 export function ProfileSettings() {
   const [fullName, setFullName] = useState("");
@@ -34,8 +33,6 @@ export function ProfileSettings() {
   const [managingSubscription, setManagingSubscription] = useState(false);
   const { syncNow, runDiagnostics, loading: gcLoading } = useGoogleCalendar();
   const [isWhatsAppConnected, setIsWhatsAppConnected] = useState(false);
-  const [disconnecting, setDisconnecting] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
     fetchProfile();
@@ -102,35 +99,6 @@ export function ProfileSettings() {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDisconnectWhatsApp = async () => {
-    if (!user) return;
-    
-    setDisconnecting(true);
-    try {
-      const { error } = await supabase
-        .from('whatsapp_sessions')
-        .delete()
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-
-      setIsWhatsAppConnected(false);
-      toast({
-        title: "WhatsApp desconectado",
-        description: "Você pode alterar o número agora.",
-      });
-    } catch (error: any) {
-      console.error('Error disconnecting WhatsApp:', error);
-      toast({
-        title: "Erro ao desconectar",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setDisconnecting(false);
     }
   };
 
@@ -253,44 +221,11 @@ export function ProfileSettings() {
                 disabled={isWhatsAppConnected}
               />
               {isWhatsAppConnected ? (
-                <div className="space-y-3">
-                  {/* Mensagem explicativa */}
-                  <div className="flex items-start gap-2 text-sm text-amber-600 bg-amber-50 dark:bg-amber-900/20 p-3 rounded border border-amber-200 dark:border-amber-800">
-                    <Shield className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                    <div className="space-y-1">
-                      <p className="font-medium">Número protegido</p>
-                      <p className="text-xs">
-                        Para alterar o número, você precisa desconectar o WhatsApp primeiro. 
-                        Isso evita perda de sessão ativa.
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Botões de ação */}
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleDisconnectWhatsApp}
-                      disabled={disconnecting}
-                      className="gap-2"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      {disconnecting ? 'Desconectando...' : 'Desconectar WhatsApp'}
-                    </Button>
-                    
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => navigate('/whatsapp')}
-                      className="gap-2"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      Ver configurações completas
-                    </Button>
-                  </div>
+                <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded border">
+                  <Shield className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                  <p>
+                    Número em uso no WhatsApp. Para alterar, acesse a aba <strong>WhatsApp</strong>.
+                  </p>
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground">

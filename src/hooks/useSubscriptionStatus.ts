@@ -22,9 +22,17 @@ export const useSubscriptionStatus = () => {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       
+      // Não chamar se não tiver token válido
+      if (!sessionData.session?.access_token) {
+        console.log('No valid session token, skipping subscription check');
+        setStatus(null);
+        setLoading(false);
+        return;
+      }
+      
       const { data, error } = await supabase.functions.invoke('check-subscription', {
         headers: {
-          Authorization: `Bearer ${sessionData.session?.access_token}`
+          Authorization: `Bearer ${sessionData.session.access_token}`
         }
       });
 
@@ -33,6 +41,7 @@ export const useSubscriptionStatus = () => {
       setStatus(data);
     } catch (error) {
       console.error('Error checking subscription:', error);
+      setStatus(null);
     } finally {
       setLoading(false);
     }
