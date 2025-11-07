@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { FinancialDashboard } from "@/components/FinancialDashboard";
-import { LoginForm } from "@/components/LoginForm";
+import { LoginForm } from "@/components/auth/LoginForm";
 import { useAuth } from "@/hooks/useAuth";
 
 const Index = () => {
-  const [isSignUp, setIsSignUp] = useState(false);
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -77,10 +76,7 @@ const Index = () => {
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20 flex items-center justify-center p-4">
-        <LoginForm 
-          onToggleMode={() => setIsSignUp(!isSignUp)}
-          isSignUp={isSignUp}
-        />
+        <LoginForm />
       </div>
     );
   }

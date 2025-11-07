@@ -13,6 +13,7 @@ import GCAuthResult from "./pages/GCAuthResult";
 import InviteAccept from "./pages/InviteAccept";
 import { AdminPanel } from "@/components/admin/AdminPanel";
 import { useUserRole } from "@/hooks/useUserRole";
+import { SignUpForm } from "@/components/auth/SignUpForm";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,11 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/signup" element={
+            <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20 flex items-center justify-center p-4">
+              <SignUpForm />
+            </div>
+          } />
           <Route path="/admin" element={<AdminRoute />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
