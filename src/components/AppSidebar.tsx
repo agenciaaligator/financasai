@@ -44,6 +44,7 @@ interface AppSidebarProps {
   showForm: boolean;
   onToggleForm: () => void;
   isOwner?: boolean;
+  isMaster?: boolean;
 }
 
 const sidebarItems = [
@@ -117,14 +118,18 @@ export function AppSidebar({
   onTabChange, 
   showForm, 
   onToggleForm,
-  isOwner = false
+  isOwner = false,
+  isMaster: isMasterProp
 }: AppSidebarProps) {
   const { open } = useSidebar();
   const isMobile = useIsMobile();
-  const { isMaster } = useIsMaster();
+  const { isMaster: isMasterHook } = useIsMaster();
+  const isMaster = isMasterProp ?? isMasterHook;
   const [transactionsOpen, setTransactionsOpen] = useState(
     currentTab === 'transactions' || currentTab === 'recurring'
   );
+
+  console.log('[AppSidebar] isMobile:', isMobile, 'isMaster:', isMaster, 'isMasterProp:', isMasterProp, 'isMasterHook:', isMasterHook, 'isOwner:', isOwner);
 
   // Para uso mobile, renderiza apenas o conteúdo sem wrapper Sidebar
   if (isMobile) {
@@ -161,7 +166,11 @@ export function AppSidebar({
 
           {/* Menu de navegação */}
           <div className="space-y-1">
-            {[...sidebarItems.filter(item => item.id !== 'team' || isOwner), ...(isMaster ? adminItems : [])].map((item) => {
+            {(() => {
+              const allItems = [...sidebarItems.filter(item => item.id !== 'team' || isOwner), ...(isMaster ? adminItems : [])];
+              console.log('[AppSidebar Mobile] Renderizando items:', allItems.map(i => i.id), 'isMaster:', isMaster);
+              return allItems;
+            })().map((item) => {
               // Para "Transações", criar submenu
               if (item.id === 'transactions') {
                 const isTransactionsActive = currentTab === 'transactions' || currentTab === 'recurring';
