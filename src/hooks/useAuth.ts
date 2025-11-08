@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -8,8 +8,49 @@ export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  
+  // Debounce para check-subscription
+  const checkSubscriptionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastCheckTimeRef = useRef<number>(0);
+
+
+  // Função debounced para verificar subscription
+  const checkSubscription = (sessionData: Session | null) => {
+    // Limpar timeout anterior se existir
+    if (checkSubscriptionTimeoutRef.current) {
+      clearTimeout(checkSubscriptionTimeoutRef.current);
+    }
+
+    // Verificar se já checou recentemente (menos de 2 segundos atrás)
+    const now = Date.now();
+    if (now - lastCheckTimeRef.current < 2000) {
+      console.log('[useAuth] Skipping subscription check - too soon since last check');
+      return;
+    }
+
+    if (!sessionData?.user || !sessionData.access_token) {
+      console.log('[useAuth] Skipping subscription check - no valid session');
+      return;
+    }
+
+    // Debounce de 500ms
+    checkSubscriptionTimeoutRef.current = setTimeout(() => {
+      lastCheckTimeRef.current = Date.now();
+      console.log('[useAuth] Checking subscription status');
+      
+      supabase.functions.invoke('check-subscription', {
+        headers: {
+          Authorization: `Bearer ${sessionData.access_token}`
+        }
+      }).catch(error => {
+        console.error('[useAuth] Error checking subscription:', error);
+      });
+    }, 500);
+  };
 
   useEffect(() => {
+    let sessionChecked = false;
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -17,42 +58,36 @@ export function useAuth() {
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Check subscription status after authentication
-        if (session?.user && event === 'SIGNED_IN') {
-          setTimeout(() => {
-            supabase.functions.invoke('check-subscription', {
-              headers: {
-                Authorization: `Bearer ${session.access_token}`
-              }
-            }).catch(error => {
-              console.error('Error checking subscription on login:', error);
-            });
-          }, 0);
+        // Só chama check-subscription em eventos relevantes
+        if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+          console.log(`[useAuth] Auth event: ${event}`);
+          checkSubscription(session);
         }
       }
     );
 
-    // THEN check for existing session
+    // THEN check for existing session (apenas UMA VEZ)
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (sessionChecked) return; // Evitar dupla execução
+      sessionChecked = true;
+      
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
 
-      // Check subscription on initial load
+      // Check subscription apenas na primeira vez
       if (session?.user) {
-        setTimeout(() => {
-          supabase.functions.invoke('check-subscription', {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`
-            }
-          }).catch(error => {
-            console.error('Error checking subscription on load:', error);
-          });
-        }, 0);
+        console.log('[useAuth] Initial session check');
+        checkSubscription(session);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      if (checkSubscriptionTimeoutRef.current) {
+        clearTimeout(checkSubscriptionTimeoutRef.current);
+      }
+    };
   }, []);
 
   const checkEmailExists = async (email: string) => {
