@@ -42,7 +42,7 @@ export function ProfileSettings() {
   const { toast } = useToast();
   const { subscription, planName, isFreePlan, isTrial, isPremium, planLimits } = useSubscription();
   const { currentUsage, getTransactionProgress, getCategoryProgress } = useFeatureLimits();
-  const { status: subscriptionStatus } = useSubscriptionStatus();
+  const { status: subscriptionStatus } = useSubscriptionStatus(null);
   const [managingSubscription, setManagingSubscription] = useState(false);
   const { syncNow, runDiagnostics, loading: gcLoading } = useGoogleCalendar();
   const { organization_id } = useOrganizationPermissions();

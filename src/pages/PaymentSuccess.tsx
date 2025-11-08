@@ -4,22 +4,24 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { CheckCircle, Loader2 } from 'lucide-react';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function PaymentSuccess() {
   const navigate = useNavigate();
-  const { refetch } = useSubscriptionStatus();
+  const { session } = useAuth();
+  const { refreshStatus } = useSubscriptionStatus(session);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     const checkAndUpdate = async () => {
       // Wait a moment for Stripe to process
       await new Promise(resolve => setTimeout(resolve, 2000));
-      await refetch();
+      await refreshStatus();
       setChecking(false);
     };
 
     checkAndUpdate();
-  }, [refetch]);
+  }, [refreshStatus]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background to-muted">
