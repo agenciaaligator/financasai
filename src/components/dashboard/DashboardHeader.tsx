@@ -156,7 +156,11 @@ export function DashboardHeader({ userEmail, onSignOut, minimal = false }: Dashb
           <LanguageSelector />
           
           <Button 
-            onClick={onSignOut}
+            onClick={() => {
+              console.log('[DASHBOARD HEADER] Botão de logout clicado');
+              console.log('[DASHBOARD HEADER] User antes do logout:', userEmail);
+              onSignOut();
+            }}
             variant="outline"
             size="sm"
             className="flex items-center gap-2"

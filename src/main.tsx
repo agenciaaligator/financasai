@@ -30,6 +30,19 @@ if (isMobile) {
   }
 }
 
+// Detectar logout pelos query params
+const urlParams = new URLSearchParams(window.location.search);
+const isLogout = urlParams.get('logout') || urlParams.get('force');
+
+if (isLogout) {
+  console.log('[MAIN] Logout detectado nos params - limpando tudo...');
+  localStorage.clear();
+  sessionStorage.clear();
+  
+  // Remover query params e recarregar limpo
+  window.history.replaceState({}, document.title, '/');
+}
+
 // Limpar Service Workers e caches existentes
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(registrations => {

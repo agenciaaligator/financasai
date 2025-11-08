@@ -183,40 +183,74 @@ export function useAuth() {
 
   const signOut = async () => {
     try {
+      console.log('[LOGOUT MOBILE] Iniciando processo de logout...');
+      
+      // 1. LIMPAR TODOS OS STORAGES ANTES de chamar Supabase
+      console.log('[LOGOUT MOBILE] Limpando localStorage e sessionStorage...');
+      const loginPreferences = localStorage.getItem('i18nextLng'); // Preservar idioma
+      localStorage.clear();
+      sessionStorage.clear();
+      if (loginPreferences) {
+        localStorage.setItem('i18nextLng', loginPreferences);
+      }
+      
+      // 2. LIMPAR CACHES DO BROWSER
+      if ('caches' in window) {
+        try {
+          console.log('[LOGOUT MOBILE] Limpando caches do browser...');
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map(cacheName => caches.delete(cacheName)));
+          console.log('[LOGOUT MOBILE] Caches limpos:', cacheNames.length);
+        } catch (cacheError) {
+          console.warn('[LOGOUT MOBILE] Erro ao limpar caches:', cacheError);
+        }
+      }
+      
+      // 3. LIMPAR ESTADO LOCAL IMEDIATAMENTE
+      setSession(null);
+      setUser(null);
+      
+      // 4. CHAMAR LOGOUT DO SUPABASE
+      console.log('[LOGOUT MOBILE] Chamando supabase.auth.signOut()...');
       const { error } = await supabase.auth.signOut();
       
       // Ignorar erros de "sessão não encontrada" - usuário já está deslogado
       if (error && !error.message.includes('session_not_found') && 
           !error.message.includes('Session not found') &&
           !error.message.includes('Auth session missing')) {
-        console.warn('[useAuth] Erro ao fazer logout (não crítico):', error);
-        toast({
-          title: "Aviso",
-          description: "Houve um problema ao desconectar, mas você será redirecionado.",
-          variant: "default"
-        });
-      } else {
-        toast({
-          title: "✅ Logout realizado",
-          description: "Até breve!",
-        });
+        console.warn('[LOGOUT MOBILE] Erro ao fazer logout (não crítico):', error);
       }
       
-      // SEMPRE limpar o estado local e redirecionar
-      setSession(null);
-      setUser(null);
+      // 5. MARCAR QUE O LOGOUT FOI FORÇADO
+      sessionStorage.setItem('force_logout', Date.now().toString());
       
-      // Garantir redirecionamento para login
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 500);
+      // 6. TOAST DE SUCESSO
+      toast({
+        title: "✅ Logout realizado",
+        description: "Até breve!",
+      });
+      
+      // 7. FORÇAR REDIRECT IMEDIATO COM CACHE BUSTING
+      console.log('[LOGOUT MOBILE] Redirecionando para login...');
+      window.location.href = '/?logout=' + Date.now();
       
     } catch (err) {
-      console.error('[useAuth] Erro inesperado no logout:', err);
-      // Mesmo com erro, limpar tudo
+      console.error('[LOGOUT MOBILE] Erro inesperado no logout:', err);
+      
+      // FALLBACK - Mesmo com erro, forçar limpeza total
+      localStorage.clear();
+      sessionStorage.clear();
       setSession(null);
       setUser(null);
-      window.location.href = '/';
+      
+      toast({
+        title: "⚠️ Logout forçado",
+        description: "Você será redirecionado para o login.",
+        variant: "default"
+      });
+      
+      // Redirect forçado com timestamp
+      window.location.href = '/?force=' + Date.now();
     }
   };
 

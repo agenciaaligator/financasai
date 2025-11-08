@@ -9,6 +9,21 @@ const Index = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
+  // Detectar logout forçado
+  useEffect(() => {
+    const forceLogout = sessionStorage.getItem('force_logout');
+    
+    if (forceLogout && user) {
+      console.log('[INDEX] Logout forçado detectado - limpando estado...');
+      sessionStorage.removeItem('force_logout');
+      
+      // Se ainda há usuário após logout, forçar limpeza
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = '/';
+    }
+  }, [user]);
+
   // Detectar se chegou via link de recovery do Supabase
   useEffect(() => {
     console.log('Index.tsx - URL atual:', window.location.href);
