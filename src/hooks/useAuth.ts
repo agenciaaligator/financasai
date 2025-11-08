@@ -160,26 +160,33 @@ export function useAuth() {
     });
 
     if (error) {
-      if (error.message.includes('Invalid login credentials') || 
-          error.message.includes('Email not confirmed')) {
-        toast({
-          title: "🔑 Erro no login",
-          description: "Email ou senha incorretos. Verifique se você confirmou seu email pelo link enviado.",
-          variant: "destructive"
-        });
-      } else if (error.message.includes('Email not confirmed')) {
+      // Email não confirmado
+      if (error.message.includes('Email not confirmed')) {
         toast({
           title: "📧 Email não confirmado",
-          description: "Verifique seu email e clique no link de confirmação para fazer login.",
+          description: "Verifique seu email e clique no link de confirmação para fazer login. Confira também a pasta de spam.",
           variant: "destructive"
         });
-      } else {
-        toast({
-          title: "❌ Erro no login",
-          description: error.message,
-          variant: "destructive"
-        });
+        return { error };
       }
+      
+      // Credenciais inválidas (senha errada OU email não existe)
+      if (error.message.includes('Invalid login credentials')) {
+        toast({
+          title: "🔑 Email ou senha incorretos",
+          description: "Verifique suas credenciais e tente novamente. Se você não tem uma conta, clique em 'Criar conta' abaixo.",
+          variant: "destructive",
+          duration: 6000,
+        });
+        return { error };
+      }
+      
+      // Erros gerais
+      toast({
+        title: "❌ Erro no login",
+        description: error.message,
+        variant: "destructive"
+      });
       return { error };
     }
 

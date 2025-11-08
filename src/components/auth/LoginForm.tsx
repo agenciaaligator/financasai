@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Eye, EyeOff, LogIn } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Eye, EyeOff, LogIn, AlertCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { ForgotPasswordModal } from "@/components/ForgotPasswordModal";
 
@@ -15,6 +16,7 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { signIn } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,6 +27,7 @@ export function LoginForm() {
     }
 
     setIsLoading(true);
+    setErrorMessage(null);
     
     try {
       const result = await signIn(email, password);
@@ -32,6 +35,12 @@ export function LoginForm() {
       // Se login bem-sucedido, limpar campos de senha
       if (result && !result.error) {
         setPassword('');
+        setErrorMessage(null);
+      } else if (result?.error) {
+        // Capturar tipo de erro para feedback visual adicional
+        if (result.error.message.includes('Invalid login credentials')) {
+          setErrorMessage('invalid_credentials');
+        }
       }
     } finally {
       setIsLoading(false);
@@ -104,6 +113,36 @@ export function LoginForm() {
             </div>
           </div>
 
+          {errorMessage === 'invalid_credentials' && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Email ou senha incorretos</AlertTitle>
+              <AlertDescription className="space-y-2">
+                <p>Verifique se digitou corretamente suas credenciais.</p>
+                <div className="flex flex-col gap-2 mt-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowForgotPassword(true)}
+                    className="w-full"
+                  >
+                    Esqueci minha senha
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate('/signup')}
+                    className="w-full"
+                  >
+                    Não tenho conta - Criar agora
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
           <Button 
             type="submit" 
             className="w-full bg-gradient-primary hover:shadow-primary transition-all duration-200"
@@ -122,14 +161,17 @@ export function LoginForm() {
             )}
           </Button>
 
-          <div className="text-center">
+          <div className="mt-6 pt-6 border-t border-border">
+            <p className="text-sm text-center text-muted-foreground mb-3">
+              Ainda não tem uma conta?
+            </p>
             <Button
               type="button"
-              variant="link"
+              variant="outline"
               onClick={() => navigate('/signup')}
-              className="text-primary hover:text-primary-dark"
+              className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
             >
-              Não tem conta? Crie uma aqui
+              Criar conta grátis
             </Button>
           </div>
         </form>
