@@ -53,6 +53,16 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
+      
+      {import.meta.env.DEV && (
+        <button
+          onClick={() => window.location.reload()}
+          className="fixed bottom-4 right-4 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 text-sm font-medium transition-colors"
+          title="Forçar atualização da página"
+        >
+          🔄 Atualizar
+        </button>
+      )}
     </TooltipProvider>
   </QueryClientProvider>
 );
