@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Shield, Crown, Star, User as UserIcon, Sparkles } from "lucide-react";
+import { Shield, Crown, Star, User as UserIcon, Sparkles, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 interface User {
@@ -187,6 +187,216 @@ export function UsersManagement() {
     }
   };
 
+  const handleDeleteUser = async (userId: string, userEmail: string) => {
+    console.log(`[DELETE USER] Iniciando exclusão de ${userEmail} (${userId})`);
+    
+    // 1. VERIFICAÇÕES DE SEGURANÇA
+    if (userId === currentUser?.id) {
+      toast.error('❌ Você não pode excluir sua própria conta pelo admin panel');
+      return;
+    }
+    
+    // Verificar se é master
+    const { data: isMaster } = await supabase.rpc('is_master_user', { _user_id: userId });
+    if (isMaster) {
+      toast.error('❌ Não é possível excluir o usuário master');
+      return;
+    }
+    
+    // 2. CONFIRMAÇÃO DO USUÁRIO
+    const confirmed = window.confirm(
+      `⚠️ ATENÇÃO: Você está prestes a EXCLUIR permanentemente:\n\n` +
+      `Email: ${userEmail}\n` +
+      `ID: ${userId}\n\n` +
+      `Isso irá APAGAR:\n` +
+      `- Todas as transações\n` +
+      `- Todos os compromissos\n` +
+      `- Todas as categorias\n` +
+      `- Conexões do WhatsApp e Google Calendar\n` +
+      `- Membros de organizações\n` +
+      `- TODOS os dados do usuário\n\n` +
+      `Esta ação é IRREVERSÍVEL!\n\n` +
+      `Deseja continuar?`
+    );
+    
+    if (!confirmed) {
+      console.log('[DELETE USER] Exclusão cancelada pelo usuário');
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      // 3. EXCLUSÃO EM CASCATA (ORDEM INVERSA)
+      
+      // a) Calendar Connections
+      console.log('[DELETE] Removendo calendar connections...');
+      const { error: calendarError } = await supabase
+        .from('calendar_connections')
+        .delete()
+        .eq('user_id', userId);
+      
+      if (calendarError) {
+        console.error('[DELETE] Erro ao remover calendar:', calendarError);
+        throw new Error(`Calendar: ${calendarError.message}`);
+      }
+      
+      // b) WhatsApp Sessions
+      console.log('[DELETE] Removendo whatsapp sessions...');
+      const { error: whatsappError } = await supabase
+        .from('whatsapp_sessions')
+        .delete()
+        .eq('user_id', userId);
+      
+      if (whatsappError) {
+        console.error('[DELETE] Erro ao remover WhatsApp:', whatsappError);
+        throw new Error(`WhatsApp: ${whatsappError.message}`);
+      }
+      
+      // c) WhatsApp Auth Codes
+      console.log('[DELETE] Removendo whatsapp auth codes...');
+      const { error: authCodesError } = await supabase
+        .from('whatsapp_auth_codes')
+        .delete()
+        .eq('user_id', userId);
+      
+      if (authCodesError) {
+        console.error('[DELETE] Erro ao remover auth codes:', authCodesError);
+        // Não é crítico, continuar
+      }
+      
+      // d) Organization Members
+      console.log('[DELETE] Removendo de organizações...');
+      const { error: orgError } = await supabase
+        .from('organization_members')
+        .delete()
+        .eq('user_id', userId);
+      
+      if (orgError) {
+        console.error('[DELETE] Erro ao remover de orgs:', orgError);
+        throw new Error(`Organizations: ${orgError.message}`);
+      }
+      
+      // e) Commitments
+      console.log('[DELETE] Removendo commitments...');
+      const { error: commitmentsError } = await supabase
+        .from('commitments')
+        .delete()
+        .eq('user_id', userId);
+      
+      if (commitmentsError) {
+        console.error('[DELETE] Erro ao remover commitments:', commitmentsError);
+        throw new Error(`Commitments: ${commitmentsError.message}`);
+      }
+      
+      // f) Recurring Transactions (vai limpar instances automaticamente por CASCADE)
+      console.log('[DELETE] Removendo recurring transactions...');
+      const { error: recurringError } = await supabase
+        .from('recurring_transactions')
+        .delete()
+        .eq('user_id', userId);
+      
+      if (recurringError) {
+        console.error('[DELETE] Erro ao remover recurring:', recurringError);
+        throw new Error(`Recurring: ${recurringError.message}`);
+      }
+      
+      // g) Transactions
+      console.log('[DELETE] Removendo transactions...');
+      const { error: transactionsError } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('user_id', userId);
+      
+      if (transactionsError) {
+        console.error('[DELETE] Erro ao remover transactions:', transactionsError);
+        throw new Error(`Transactions: ${transactionsError.message}`);
+      }
+      
+      // h) Categories
+      console.log('[DELETE] Removendo categories...');
+      const { error: categoriesError } = await supabase
+        .from('categories')
+        .delete()
+        .eq('user_id', userId);
+      
+      if (categoriesError) {
+        console.error('[DELETE] Erro ao remover categories:', categoriesError);
+        throw new Error(`Categories: ${categoriesError.message}`);
+      }
+      
+      // i) User Subscriptions
+      console.log('[DELETE] Removendo subscriptions...');
+      const { error: subsError } = await supabase
+        .from('user_subscriptions')
+        .delete()
+        .eq('user_id', userId);
+      
+      if (subsError) {
+        console.error('[DELETE] Erro ao remover subscriptions:', subsError);
+        // Não crítico, continuar
+      }
+      
+      // j) User Coupons
+      console.log('[DELETE] Removendo user coupons...');
+      const { error: couponsError } = await supabase
+        .from('user_coupons')
+        .delete()
+        .eq('user_id', userId);
+      
+      if (couponsError) {
+        console.error('[DELETE] Erro ao remover coupons:', couponsError);
+        // Não crítico, continuar
+      }
+      
+      // k) User Roles
+      console.log('[DELETE] Removendo user roles...');
+      const { error: rolesError } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId);
+      
+      if (rolesError) {
+        console.error('[DELETE] Erro ao remover roles:', rolesError);
+        throw new Error(`Roles: ${rolesError.message}`);
+      }
+      
+      // l) Profile
+      console.log('[DELETE] Removendo profile...');
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('user_id', userId);
+      
+      if (profileError) {
+        console.error('[DELETE] Erro ao remover profile:', profileError);
+        throw new Error(`Profile: ${profileError.message}`);
+      }
+      
+      // m) FINALMENTE: Auth User (usando Admin API)
+      console.log('[DELETE] Removendo auth user...');
+      
+      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+      
+      if (authError) {
+        console.error('[DELETE] Erro ao remover auth user:', authError);
+        throw new Error(`Auth User: ${authError.message}`);
+      }
+      
+      console.log(`[DELETE USER] ✅ Usuário ${userEmail} excluído com sucesso!`);
+      toast.success(`✅ Usuário ${userEmail} excluído permanentemente`);
+      
+      // Recarregar lista
+      fetchUsers();
+      
+    } catch (error: any) {
+      console.error('[DELETE USER] ❌ Erro durante exclusão:', error);
+      toast.error(`❌ Erro ao excluir usuário: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getRoleBadge = (role: string) => {
     const badges = {
       admin: { icon: Shield, color: 'bg-destructive text-destructive-foreground', label: 'Admin' },
@@ -292,6 +502,18 @@ export function UsersManagement() {
                       >
                         <Sparkles className="h-4 w-4 mr-1" />
                         {activatingTrial === user.id ? 'Ativando...' : 'Trial 14d'}
+                      </Button>
+                    )}
+
+                    {!user.isMaster && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleDeleteUser(user.id, user.email)}
+                        disabled={loading}
+                        title="Excluir usuário permanentemente"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     )}
                   </div>
