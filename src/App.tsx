@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,9 +14,6 @@ import InviteAccept from "./pages/InviteAccept";
 import { AdminPanel } from "@/components/admin/AdminPanel";
 import { useUserRole } from "@/hooks/useUserRole";
 import { SignUpForm } from "@/components/auth/SignUpForm";
-import { Button } from "@/components/ui/button";
-import { toast } from "@/hooks/use-toast";
-import { startVersionCheck } from "@/utils/versionCheck";
 
 const queryClient = new QueryClient();
 
@@ -34,35 +30,6 @@ const AdminRoute = () => {
 };
 
 const App = () => {
-  const [updateAvailable, setUpdateAvailable] = useState(false);
-
-  useEffect(() => {
-    // Iniciar verificação de versão
-    const cleanup = startVersionCheck(() => {
-      setUpdateAvailable(true);
-      
-      // Mostrar toast com botão de atualização
-      toast({
-        title: "🎉 Nova versão disponível!",
-        description: "Clique em 'Atualizar' para carregar a versão mais recente.",
-        duration: Infinity, // Não desaparecer automaticamente
-        action: (
-          <Button 
-            onClick={() => {
-              window.location.reload();
-            }}
-            variant="default"
-            size="sm"
-          >
-            Atualizar Agora
-          </Button>
-        ),
-      });
-    });
-
-    return cleanup;
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
