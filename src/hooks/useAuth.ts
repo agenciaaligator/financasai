@@ -20,7 +20,11 @@ export function useAuth() {
         // Check subscription status after authentication
         if (session?.user && event === 'SIGNED_IN') {
           setTimeout(() => {
-            supabase.functions.invoke('check-subscription').catch(error => {
+            supabase.functions.invoke('check-subscription', {
+              headers: {
+                Authorization: `Bearer ${session.access_token}`
+              }
+            }).catch(error => {
               console.error('Error checking subscription on login:', error);
             });
           }, 0);
@@ -37,7 +41,11 @@ export function useAuth() {
       // Check subscription on initial load
       if (session?.user) {
         setTimeout(() => {
-          supabase.functions.invoke('check-subscription').catch(error => {
+          supabase.functions.invoke('check-subscription', {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`
+            }
+          }).catch(error => {
             console.error('Error checking subscription on load:', error);
           });
         }, 0);
