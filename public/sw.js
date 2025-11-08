@@ -1,14 +1,10 @@
 const CACHE_VERSION = 'v1-BUILD_TIME_PLACEHOLDER';
-const ASSETS_TO_CACHE = ['/'];
+const ASSETS_TO_CACHE = [];
 
 self.addEventListener('install', (event) => {
   console.log('[SW] Installing service worker version:', CACHE_VERSION);
   self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_VERSION).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
-  );
+  event.waitUntil(caches.open(CACHE_VERSION));
 });
 
 self.addEventListener('activate', (event) => {
@@ -28,13 +24,21 @@ self.addEventListener('activate', (event) => {
   return self.clients.claim();
 });
 
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') {
+    console.log('[SW] Received SKIP_WAITING message');
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
-  // Sempre buscar index.html e root da rede (network-first)
+  // Sempre buscar index.html e root da rede com cache busting (network-first + no-store)
   if (url.pathname === '/' || url.pathname.endsWith('/index.html') || url.pathname.includes('index.html')) {
+    const bustUrl = url.pathname === '/' ? `/?v=${CACHE_VERSION}` : `/index.html?v=${CACHE_VERSION}`;
     event.respondWith(
-      fetch(event.request)
+      fetch(new Request(bustUrl, { cache: 'no-store' }))
         .then((response) => {
           return caches.open(CACHE_VERSION).then((cache) => {
             cache.put(event.request, response.clone());
@@ -46,10 +50,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // version.json sempre da rede (para detecção de versão)
+  // version.json sempre da rede com no-store (para detecção de versão)
   if (url.pathname.includes('version.json')) {
     event.respondWith(
-      fetch(event.request, { cache: 'no-cache' })
+      fetch(event.request, { cache: 'no-store' })
     );
     return;
   }

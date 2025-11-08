@@ -1,6 +1,12 @@
 # Cache Control Headers
 
-# Root and index.html - nunca cachear
+# Todas as rotas HTML (catch-all para SPA) - nunca cachear
+/*
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+  Expires: 0
+
+# Root e index.html - nunca cachear
 /
   Cache-Control: no-cache, no-store, must-revalidate
   Pragma: no-cache
