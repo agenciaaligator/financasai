@@ -232,13 +232,28 @@ export function ProfileSettings() {
       const isChangingPassword = newPassword.length > 0 || confirmPassword.length > 0;
       
       if (isChangingPassword) {
-        // Validar senha
+        // 🔐 VALIDAÇÃO DE SEGURANÇA: Senha atual é OBRIGATÓRIA
+        if (!currentPassword || currentPassword.trim().length === 0) {
+          throw new Error("Digite sua senha atual para alterar a senha");
+        }
+        
+        // Validar nova senha
         if (newPassword.length < 6) {
           throw new Error("A nova senha deve ter pelo menos 6 caracteres");
         }
         
         if (newPassword !== confirmPassword) {
           throw new Error("As senhas não coincidem");
+        }
+        
+        // 🔐 REAUTENTICAR COM SENHA ATUAL
+        const { error: reauthError } = await supabase.auth.signInWithPassword({
+          email: user.email!,
+          password: currentPassword
+        });
+        
+        if (reauthError) {
+          throw new Error("Senha atual incorreta. Verifique e tente novamente.");
         }
       }
       
@@ -268,7 +283,8 @@ export function ProfileSettings() {
         if (passwordError) throw passwordError;
         
         passwordUpdated = true;
-        // Limpar campos de senha após sucesso
+        // Limpar TODOS os campos de senha após sucesso
+        setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
         
@@ -283,7 +299,7 @@ export function ProfileSettings() {
       toast({
         title: "✅ Alterações salvas!",
         description: passwordUpdated 
-          ? "Perfil e senha atualizados com sucesso" 
+          ? "Perfil e senha atualizados com sucesso. Você será redirecionado para fazer login..." 
           : "Informações do perfil atualizadas com sucesso"
       });
       
@@ -567,6 +583,25 @@ export function ProfileSettings() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
+            {/* Campo de Senha Atual - OBRIGATÓRIO para trocar senha */}
+            <div className="space-y-2">
+              <Label htmlFor="currentPassword">
+                Senha Atual <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="currentPassword"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Digite sua senha atual"
+                className="border-amber-200 focus:border-amber-400"
+              />
+              <p className="text-xs text-amber-600 flex items-center gap-1">
+                <Shield className="h-3 w-3" />
+                Obrigatório para alterar a senha por segurança
+              </p>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="newPassword">Nova Senha</Label>
               <Input
