@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useSubscriptionStatus } from './useSubscriptionStatus';
 import { getPlanLimits, PlanLimits } from '@/lib/featureFlags';
 
 interface SubscriptionPlan {
@@ -33,10 +34,13 @@ interface UserSubscription {
 }
 
 export function useSubscription() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [planLimits, setPlanLimits] = useState<PlanLimits | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Usar o novo hook centralizado para status do Stripe
+  const { status: stripeStatus, loading: stripeLoading, refreshStatus } = useSubscriptionStatus(session);
 
   useEffect(() => {
     if (!user) {
@@ -74,6 +78,14 @@ export function useSubscription() {
     }
   };
 
+  // Função de refresh unificada que atualiza tanto Stripe quanto Supabase
+  const refetch = async () => {
+    await Promise.all([
+      fetchSubscription(),
+      refreshStatus()
+    ]);
+  };
+
   const getPlanDisplayName = async () => {
     if (!user) return 'Gratuito';
 
@@ -104,7 +116,7 @@ export function useSubscription() {
       }
     }
 
-    // NOVO: Verificar se tem plano herdado da organização
+    // Verificar se tem plano herdado da organização
     const { data: orgPlanData } = await supabase
       .rpc('get_org_plan_limits', { _user_id: user.id })
       .maybeSingle();
@@ -143,12 +155,14 @@ export function useSubscription() {
   return { 
     subscription, 
     planLimits: planLimits, 
-    loading: loading || loadingPlanName, 
-    refetch: fetchSubscription,
+    loading: loading || loadingPlanName || stripeLoading,
+    refetch,
     isFreePlan: !subscription || subscription.subscription_plans?.name === 'free',
     isPremium: subscription?.subscription_plans?.name === 'premium',
     isTrial: subscription?.subscription_plans?.name === 'trial',
     planName: planDisplayName,
-    billingCycle: subscription?.billing_cycle || 'monthly'
+    billingCycle: subscription?.billing_cycle || 'monthly',
+    // Expor status do Stripe para componentes que precisam
+    stripeStatus,
   };
 }

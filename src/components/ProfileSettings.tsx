@@ -12,7 +12,6 @@ import { User, Mail, Lock, Crown, Calendar, Check, X, ExternalLink, RefreshCw, B
 import { useSubscription } from "@/hooks/useSubscription";
 import { useFeatureLimits } from "@/hooks/useFeatureLimits";
 import { UpgradeModal } from "./UpgradeModal";
-import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
 import { GoogleCalendarConnect } from "./dashboard/GoogleCalendarConnect";
 import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
 import { useOrganizationPermissions } from "@/hooks/useOrganizationPermissions";
@@ -40,9 +39,8 @@ export function ProfileSettings() {
   
   const { user } = useAuth();
   const { toast } = useToast();
-  const { subscription, planName, isFreePlan, isTrial, isPremium, planLimits } = useSubscription();
+  const { subscription, planName, isFreePlan, isTrial, isPremium, planLimits, stripeStatus } = useSubscription();
   const { currentUsage, getTransactionProgress, getCategoryProgress } = useFeatureLimits();
-  const { status: subscriptionStatus } = useSubscriptionStatus(null);
   const [managingSubscription, setManagingSubscription] = useState(false);
   const { syncNow, runDiagnostics, loading: gcLoading } = useGoogleCalendar();
   const { organization_id } = useOrganizationPermissions();
@@ -943,7 +941,7 @@ export function ProfileSettings() {
               </Button>
             )}
 
-            {isPremium && subscriptionStatus?.stripe_customer_id && (
+            {isPremium && stripeStatus?.stripe_customer_id && (
               <Button 
                 className="w-full"
                 variant="outline"
@@ -955,9 +953,9 @@ export function ProfileSettings() {
               </Button>
             )}
 
-            {subscriptionStatus?.stripe_subscription_id && (
+            {stripeStatus?.stripe_subscription_id && (
               <p className="text-xs text-muted-foreground text-center">
-                ID da Assinatura: {subscriptionStatus.stripe_subscription_id}
+                ID da Assinatura: {stripeStatus.stripe_subscription_id}
               </p>
             )}
           </div>
