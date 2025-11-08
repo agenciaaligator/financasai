@@ -72,7 +72,8 @@ export function FinancialDashboard() {
 
   if (isMobile) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20">
+      <SidebarProvider>
+        <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20">
         {/* Header Mobile */}
         <header className="border-b border-sidebar-border bg-background/80 backdrop-blur-sm sticky top-0 z-40">
           <div className="flex items-center justify-between px-4 py-3">
@@ -163,7 +164,8 @@ export function FinancialDashboard() {
           onClose={() => setEditingTransaction(null)}
           onUpdate={refetch}
         />
-      </div>
+        </div>
+      </SidebarProvider>
     );
   }
 
