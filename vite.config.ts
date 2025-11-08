@@ -4,17 +4,23 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import fs from "fs";
 
-// Plugin para versionar Service Worker e gerar version.json
+// Plugin para adicionar cache busting timestamp no HTML
 function versionPlugin(): Plugin {
+  const buildTime = Date.now().toString();
+  
   return {
     name: 'version-plugin',
+    transformIndexHtml(html) {
+      // Adicionar meta tag com timestamp para forçar CDN a reconhecer mudança
+      const metaTag = `<meta name="build-version" content="${buildTime}">`;
+      return html.replace('</head>', `  ${metaTag}\n  </head>`);
+    },
     generateBundle() {
-      const buildTime = Date.now().toString();
       const buildDate = new Date().toISOString();
       
-      console.log('[Version Plugin] Generating version:', buildTime);
+      console.log('[Version Plugin] Build version:', buildTime);
       
-      // Gerar version.json
+      // Gerar version.json para referência
       this.emitFile({
         type: 'asset',
         fileName: 'version.json',
@@ -23,23 +29,6 @@ function versionPlugin(): Plugin {
           buildDate: buildDate
         }, null, 2)
       });
-      
-      // Ler e versionar sw.js
-      const swPath = path.resolve(__dirname, 'public/sw.js');
-      if (fs.existsSync(swPath)) {
-        let swContent = fs.readFileSync(swPath, 'utf-8');
-        swContent = swContent.replace('BUILD_TIME_PLACEHOLDER', buildTime);
-        
-        this.emitFile({
-          type: 'asset',
-          fileName: 'sw.js',
-          source: swContent
-        });
-        
-        console.log('[Version Plugin] Service Worker versioned');
-      } else {
-        console.warn('[Version Plugin] sw.js not found at', swPath);
-      }
     }
   };
 }
