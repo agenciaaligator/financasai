@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useIsMaster } from "@/hooks/useIsMaster";
 
 import {
   Sidebar,
@@ -44,7 +43,7 @@ interface AppSidebarProps {
   showForm: boolean;
   onToggleForm: () => void;
   isOwner?: boolean;
-  isMaster?: boolean;
+  isAdmin?: boolean;
 }
 
 const sidebarItems = [
@@ -119,27 +118,26 @@ export function AppSidebar({
   showForm, 
   onToggleForm,
   isOwner = false,
-  isMaster: isMasterProp
+  isAdmin: isAdminProp
 }: AppSidebarProps) {
   const { open } = useSidebar();
   const isMobile = useIsMobile();
-  const { isMaster: isMasterHook } = useIsMaster();
-  const isMaster = isMasterProp ?? isMasterHook;
+  const isAdmin = !!isAdminProp;
   const [transactionsOpen, setTransactionsOpen] = useState(
-    currentTab === 'transactions' || currentTab === 'recurring'
+    isMobile ? true : (currentTab === 'transactions' || currentTab === 'recurring')
   );
 
   console.log('[AppSidebar] DEBUG COMPLETO:', {
     isMobile,
-    isMaster,
-    isMasterProp,
-    isMasterHook,
+    isAdmin,
+    isAdminProp,
     isOwner,
     currentTab,
+    transactionsOpen,
     sidebarItems: sidebarItems.map(i => i.id),
     adminItems: adminItems.map(i => i.id),
     filteredSidebar: sidebarItems.filter(item => item.id !== 'team' || isOwner).map(i => i.id),
-    finalItems: [...sidebarItems.filter(item => item.id !== 'team' || isOwner), ...(isMaster ? adminItems : [])].map(i => i.id)
+    finalItems: [...sidebarItems.filter(item => item.id !== 'team' || isOwner), ...(isAdmin ? adminItems : [])].map(i => i.id)
   });
 
   // Para uso mobile, renderiza apenas o conteúdo sem wrapper Sidebar
@@ -178,11 +176,11 @@ export function AppSidebar({
           {/* Menu de navegação */}
           <div className="space-y-1">
             {(() => {
-              const allItems = [...sidebarItems.filter(item => item.id !== 'team' || isOwner), ...(isMaster ? adminItems : [])];
+              const allItems = [...sidebarItems.filter(item => item.id !== 'team' || isOwner), ...(isAdmin ? adminItems : [])];
               console.log('[AppSidebar Mobile] RENDERIZAÇÃO:', {
                 allItemsIds: allItems.map(i => i.id),
                 allItemsTitles: allItems.map(i => i.title),
-                isMaster,
+                isAdmin,
                 isOwner,
                 adminItemsLength: adminItems.length,
                 adminIncluded: allItems.some(i => i.id === 'admin')
@@ -312,7 +310,7 @@ export function AppSidebar({
             </div>
 
             <SidebarMenu>
-              {[...sidebarItems.filter(item => item.id !== 'team' || isOwner), ...(isMaster ? adminItems : [])].map((item) => {
+              {[...sidebarItems.filter(item => item.id !== 'team' || isOwner), ...(isAdmin ? adminItems : [])].map((item) => {
                 // Para "Transações", criar submenu com Collapsible
                 if (item.id === 'transactions') {
                   const isTransactionsActive = currentTab === 'transactions' || currentTab === 'recurring';

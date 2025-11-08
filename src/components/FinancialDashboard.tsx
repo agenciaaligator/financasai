@@ -3,7 +3,7 @@ import { TransactionForm } from "./TransactionForm";
 import { EditTransactionModal } from "./EditTransactionModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useTransactions } from "@/hooks/useTransactions";
-import { useIsMaster } from "@/hooks/useIsMaster";
+import { useUserRole } from "@/hooks/useUserRole";
 import { useOrganizationOwnership } from "@/hooks/useOrganizationOwnership";
 import { useOrganizationPermissions } from "@/hooks/useOrganizationPermissions";
 import { Transaction } from "@/hooks/useTransactions";
@@ -24,7 +24,7 @@ export function FinancialDashboard() {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, signOut } = useAuth();
-  const { isMaster, loading: isMasterLoading } = useIsMaster();
+  const { isAdmin, loading: roleLoading } = useUserRole();
   const { organization_id, role } = useOrganizationPermissions();
   const isOwner = role === 'owner'; // Derivar isOwner da role ativa
   const { transactions, categories, loading, balance, totalIncome, totalExpenses, addTransaction, deleteTransaction, refetch } = useTransactions();
@@ -36,7 +36,7 @@ export function FinancialDashboard() {
   }, [currentTab]);
 
   console.log('[FinancialDashboard] org_id:', organization_id, 'role:', role, 'isOwner:', isOwner);
-  console.log('[FinancialDashboard] isMaster:', isMaster, 'loading:', isMasterLoading);
+  console.log('[FinancialDashboard] isAdmin:', isAdmin, 'roleLoading:', roleLoading);
   console.log('Dashboard renderizado - user:', user?.email);
   console.log('Categories carregadas:', categories?.length);
   console.log('Transactions carregadas:', transactions?.length);
@@ -51,7 +51,7 @@ export function FinancialDashboard() {
     }
   };
 
-  if (loading || isMasterLoading) {
+  if (loading || roleLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -101,7 +101,7 @@ export function FinancialDashboard() {
                       setMobileMenuOpen(false);
                     }}
                     isOwner={isOwner}
-                    isMaster={isMaster}
+                    isAdmin={isAdmin}
                   />
                 </SheetContent>
               </Sheet>
@@ -176,7 +176,7 @@ export function FinancialDashboard() {
           showForm={showForm}
           onToggleForm={() => setShowForm(!showForm)}
           isOwner={isOwner}
-          isMaster={isMaster}
+          isAdmin={isAdmin}
         />
         
         <main className="flex-1 flex flex-col">
