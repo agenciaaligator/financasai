@@ -129,7 +129,18 @@ export function AppSidebar({
     currentTab === 'transactions' || currentTab === 'recurring'
   );
 
-  console.log('[AppSidebar] isMobile:', isMobile, 'isMaster:', isMaster, 'isMasterProp:', isMasterProp, 'isMasterHook:', isMasterHook, 'isOwner:', isOwner);
+  console.log('[AppSidebar] DEBUG COMPLETO:', {
+    isMobile,
+    isMaster,
+    isMasterProp,
+    isMasterHook,
+    isOwner,
+    currentTab,
+    sidebarItems: sidebarItems.map(i => i.id),
+    adminItems: adminItems.map(i => i.id),
+    filteredSidebar: sidebarItems.filter(item => item.id !== 'team' || isOwner).map(i => i.id),
+    finalItems: [...sidebarItems.filter(item => item.id !== 'team' || isOwner), ...(isMaster ? adminItems : [])].map(i => i.id)
+  });
 
   // Para uso mobile, renderiza apenas o conteúdo sem wrapper Sidebar
   if (isMobile) {
@@ -168,7 +179,14 @@ export function AppSidebar({
           <div className="space-y-1">
             {(() => {
               const allItems = [...sidebarItems.filter(item => item.id !== 'team' || isOwner), ...(isMaster ? adminItems : [])];
-              console.log('[AppSidebar Mobile] Renderizando items:', allItems.map(i => i.id), 'isMaster:', isMaster);
+              console.log('[AppSidebar Mobile] RENDERIZAÇÃO:', {
+                allItemsIds: allItems.map(i => i.id),
+                allItemsTitles: allItems.map(i => i.title),
+                isMaster,
+                isOwner,
+                adminItemsLength: adminItems.length,
+                adminIncluded: allItems.some(i => i.id === 'admin')
+              });
               return allItems;
             })().map((item) => {
               // Para "Transações", criar submenu
