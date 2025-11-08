@@ -141,3 +141,6 @@ verify_jwt = true
 
 [functions.whatsapp-session-set-org]
 verify_jwt = true
+
+[functions.delete-user-admin]
+verify_jwt = true

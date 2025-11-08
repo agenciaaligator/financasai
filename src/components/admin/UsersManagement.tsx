@@ -227,160 +227,26 @@ export function UsersManagement() {
     setLoading(true);
     
     try {
-      // 3. EXCLUSÃO EM CASCATA (ORDEM INVERSA)
+      // 3. CHAMAR EDGE FUNCTION (substitui toda a lógica de exclusão manual)
+      console.log('[DELETE USER] Chamando edge function delete-user-admin...');
       
-      // a) Calendar Connections
-      console.log('[DELETE] Removendo calendar connections...');
-      const { error: calendarError } = await supabase
-        .from('calendar_connections')
-        .delete()
-        .eq('user_id', userId);
+      const { data: sessionData } = await supabase.auth.getSession();
       
-      if (calendarError) {
-        console.error('[DELETE] Erro ao remover calendar:', calendarError);
-        throw new Error(`Calendar: ${calendarError.message}`);
+      const { data, error } = await supabase.functions.invoke('delete-user-admin', {
+        headers: {
+          Authorization: `Bearer ${sessionData.session?.access_token}`
+        },
+        body: { user_id: userId }
+      });
+      
+      if (error) {
+        console.error('[DELETE USER] Erro retornado pela edge function:', error);
+        throw new Error(error.message || 'Falha ao excluir usuário');
       }
       
-      // b) WhatsApp Sessions
-      console.log('[DELETE] Removendo whatsapp sessions...');
-      const { error: whatsappError } = await supabase
-        .from('whatsapp_sessions')
-        .delete()
-        .eq('user_id', userId);
-      
-      if (whatsappError) {
-        console.error('[DELETE] Erro ao remover WhatsApp:', whatsappError);
-        throw new Error(`WhatsApp: ${whatsappError.message}`);
-      }
-      
-      // c) WhatsApp Auth Codes
-      console.log('[DELETE] Removendo whatsapp auth codes...');
-      const { error: authCodesError } = await supabase
-        .from('whatsapp_auth_codes')
-        .delete()
-        .eq('user_id', userId);
-      
-      if (authCodesError) {
-        console.error('[DELETE] Erro ao remover auth codes:', authCodesError);
-        // Não é crítico, continuar
-      }
-      
-      // d) Organization Members
-      console.log('[DELETE] Removendo de organizações...');
-      const { error: orgError } = await supabase
-        .from('organization_members')
-        .delete()
-        .eq('user_id', userId);
-      
-      if (orgError) {
-        console.error('[DELETE] Erro ao remover de orgs:', orgError);
-        throw new Error(`Organizations: ${orgError.message}`);
-      }
-      
-      // e) Commitments
-      console.log('[DELETE] Removendo commitments...');
-      const { error: commitmentsError } = await supabase
-        .from('commitments')
-        .delete()
-        .eq('user_id', userId);
-      
-      if (commitmentsError) {
-        console.error('[DELETE] Erro ao remover commitments:', commitmentsError);
-        throw new Error(`Commitments: ${commitmentsError.message}`);
-      }
-      
-      // f) Recurring Transactions (vai limpar instances automaticamente por CASCADE)
-      console.log('[DELETE] Removendo recurring transactions...');
-      const { error: recurringError } = await supabase
-        .from('recurring_transactions')
-        .delete()
-        .eq('user_id', userId);
-      
-      if (recurringError) {
-        console.error('[DELETE] Erro ao remover recurring:', recurringError);
-        throw new Error(`Recurring: ${recurringError.message}`);
-      }
-      
-      // g) Transactions
-      console.log('[DELETE] Removendo transactions...');
-      const { error: transactionsError } = await supabase
-        .from('transactions')
-        .delete()
-        .eq('user_id', userId);
-      
-      if (transactionsError) {
-        console.error('[DELETE] Erro ao remover transactions:', transactionsError);
-        throw new Error(`Transactions: ${transactionsError.message}`);
-      }
-      
-      // h) Categories
-      console.log('[DELETE] Removendo categories...');
-      const { error: categoriesError } = await supabase
-        .from('categories')
-        .delete()
-        .eq('user_id', userId);
-      
-      if (categoriesError) {
-        console.error('[DELETE] Erro ao remover categories:', categoriesError);
-        throw new Error(`Categories: ${categoriesError.message}`);
-      }
-      
-      // i) User Subscriptions
-      console.log('[DELETE] Removendo subscriptions...');
-      const { error: subsError } = await supabase
-        .from('user_subscriptions')
-        .delete()
-        .eq('user_id', userId);
-      
-      if (subsError) {
-        console.error('[DELETE] Erro ao remover subscriptions:', subsError);
-        // Não crítico, continuar
-      }
-      
-      // j) User Coupons
-      console.log('[DELETE] Removendo user coupons...');
-      const { error: couponsError } = await supabase
-        .from('user_coupons')
-        .delete()
-        .eq('user_id', userId);
-      
-      if (couponsError) {
-        console.error('[DELETE] Erro ao remover coupons:', couponsError);
-        // Não crítico, continuar
-      }
-      
-      // k) User Roles
-      console.log('[DELETE] Removendo user roles...');
-      const { error: rolesError } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId);
-      
-      if (rolesError) {
-        console.error('[DELETE] Erro ao remover roles:', rolesError);
-        throw new Error(`Roles: ${rolesError.message}`);
-      }
-      
-      // l) Profile
-      console.log('[DELETE] Removendo profile...');
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('user_id', userId);
-      
-      if (profileError) {
-        console.error('[DELETE] Erro ao remover profile:', profileError);
-        throw new Error(`Profile: ${profileError.message}`);
-      }
-      
-      // m) FINALMENTE: Auth User (usando Admin API)
-      console.log('[DELETE] Removendo auth user...');
-      
-      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
-      
-      if (authError) {
-        console.error('[DELETE] Erro ao remover auth user:', authError);
-        throw new Error(`Auth User: ${authError.message}`);
+      if (!data?.success) {
+        console.error('[DELETE USER] Edge function retornou falha:', data);
+        throw new Error(data?.error || 'Falha ao excluir usuário');
       }
       
       console.log(`[DELETE USER] ✅ Usuário ${userEmail} excluído com sucesso!`);
