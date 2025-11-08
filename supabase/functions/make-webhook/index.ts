@@ -24,6 +24,25 @@ interface MakeWebhookPayload {
   message?: string;
 }
 
+function validatePhoneNumber(phone: string): boolean {
+  // Remove any whitespace
+  const cleaned = phone.trim();
+  
+  // Check format: optional + followed by 10-20 digits
+  const phoneRegex = /^\+?[0-9]{10,20}$/;
+  
+  if (!phoneRegex.test(cleaned)) {
+    return false;
+  }
+  
+  // Additional length validation
+  if (cleaned.length < 10 || cleaned.length > 20) {
+    return false;
+  }
+  
+  return true;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -39,6 +58,14 @@ serve(async (req) => {
     if (!phone_number) {
       throw new Error('Phone number is required');
     }
+
+    // Validate phone number format
+    if (!validatePhoneNumber(phone_number)) {
+      throw new Error('Invalid phone number format. Must be 10-20 digits with optional + prefix');
+    }
+
+    // Sanitize phone number
+    const sanitizedPhone = phone_number.trim().substring(0, 20);
 
     let responseMessage = '';
 
@@ -83,7 +110,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       success: true,
       response_message: responseMessage,
-      phone_number,
+      phone_number: sanitizedPhone,
       action
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

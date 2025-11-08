@@ -80,6 +80,20 @@ Deno.serve(async (req) => {
       throw new Error('Cannot delete master user')
     }
 
+    // Log início da deleção no audit trail
+    await supabaseAdmin.from('audit_logs').insert({
+      event_type: 'USER_DELETION_INITIATED',
+      actor_id: caller.id,
+      target_id: user_id,
+      details: {
+        actor_email: caller.email,
+        actor_role: isAdmin ? 'admin' : 'master',
+        timestamp: new Date().toISOString()
+      },
+      ip_address: req.headers.get('x-forwarded-for'),
+      user_agent: req.headers.get('user-agent')
+    })
+
     // CASCATA DE EXCLUSÃO (usando admin client)
 
     // a) Calendar Connections
@@ -140,6 +154,35 @@ Deno.serve(async (req) => {
     }
 
     console.log(`[DELETE USER] ✅ Usuário ${user_id} excluído com sucesso!`)
+
+    // Log conclusão da deleção no audit trail
+    await supabaseAdmin.from('audit_logs').insert({
+      event_type: 'USER_DELETION_COMPLETED',
+      actor_id: caller.id,
+      target_id: user_id,
+      details: {
+        success: true,
+        actor_email: caller.email,
+        deleted_records: {
+          calendar_connections: true,
+          whatsapp_sessions: true,
+          whatsapp_auth_codes: true,
+          organization_members: true,
+          commitments: true,
+          recurring_transactions: true,
+          transactions: true,
+          categories: true,
+          user_subscriptions: true,
+          user_coupons: true,
+          user_roles: true,
+          profile: true,
+          auth_user: true
+        },
+        timestamp: new Date().toISOString()
+      },
+      ip_address: req.headers.get('x-forwarded-for'),
+      user_agent: req.headers.get('user-agent')
+    })
 
     return new Response(
       JSON.stringify({ 
