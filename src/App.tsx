@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,6 +15,9 @@ import InviteAccept from "./pages/InviteAccept";
 import { AdminPanel } from "@/components/admin/AdminPanel";
 import { useUserRole } from "@/hooks/useUserRole";
 import { SignUpForm } from "@/components/auth/SignUpForm";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
+import { startVersionCheck } from "@/utils/versionCheck";
 
 const queryClient = new QueryClient();
 
@@ -29,42 +33,73 @@ const AdminRoute = () => {
   return isAdmin ? <AdminPanel /> : <Navigate to="/" replace />;
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/signup" element={
-            <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20 flex items-center justify-center p-4">
-              <SignUpForm />
-            </div>
-          } />
-          <Route path="/admin" element={<AdminRoute />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/payment-success" element={<PaymentSuccess />} />
-          <Route path="/payment-cancelled" element={<PaymentCancelled />} />
-          <Route path="/gc-bridge" element={<GCBridge />} />
-          <Route path="/gc-done" element={<GCAuthResult />} />
-          <Route path="/invite/:token" element={<InviteAccept />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+const App = () => {
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+
+  useEffect(() => {
+    // Iniciar verificação de versão
+    const cleanup = startVersionCheck(() => {
+      setUpdateAvailable(true);
       
-      {import.meta.env.DEV && (
-        <button
-          onClick={() => window.location.reload()}
-          className="fixed bottom-4 right-4 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 text-sm font-medium transition-colors"
-          title="Forçar atualização da página"
-        >
-          🔄 Atualizar
-        </button>
-      )}
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+      // Mostrar toast com botão de atualização
+      toast({
+        title: "🎉 Nova versão disponível!",
+        description: "Clique em 'Atualizar' para carregar a versão mais recente.",
+        duration: Infinity, // Não desaparecer automaticamente
+        action: (
+          <Button 
+            onClick={() => {
+              window.location.reload();
+            }}
+            variant="default"
+            size="sm"
+          >
+            Atualizar Agora
+          </Button>
+        ),
+      });
+    });
+
+    return cleanup;
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/signup" element={
+              <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20 flex items-center justify-center p-4">
+                <SignUpForm />
+              </div>
+            } />
+            <Route path="/admin" element={<AdminRoute />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/payment-success" element={<PaymentSuccess />} />
+            <Route path="/payment-cancelled" element={<PaymentCancelled />} />
+            <Route path="/gc-bridge" element={<GCBridge />} />
+            <Route path="/gc-done" element={<GCAuthResult />} />
+            <Route path="/invite/:token" element={<InviteAccept />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+        
+        {import.meta.env.DEV && (
+          <button
+            onClick={() => window.location.reload()}
+            className="fixed bottom-4 right-4 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 text-sm font-medium transition-colors"
+            title="Forçar atualização da página"
+          >
+            🔄 Atualizar
+          </button>
+        )}
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
