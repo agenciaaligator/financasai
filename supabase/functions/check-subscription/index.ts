@@ -27,14 +27,36 @@ serve(async (req) => {
     logStep("Function started");
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
+    if (!stripeKey) {
+      logStep("ERROR: STRIPE_SECRET_KEY not configured");
+      throw new Error("STRIPE_SECRET_KEY is not set");
+    }
     logStep("Stripe key verified");
 
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header provided");
+    if (!authHeader) {
+      logStep("ERROR: No authorization header");
+      return new Response(JSON.stringify({ 
+        error: "Authentication required",
+        subscribed: false 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
     logStep("Authorization header found");
 
     const token = authHeader.replace(/Bearer\s+/i, "");
+    if (!token || token.length < 20) {
+      logStep("ERROR: Invalid token format", { tokenLength: token?.length });
+      return new Response(JSON.stringify({ 
+        error: "Invalid authentication token",
+        subscribed: false 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
     logStep("Authenticating user with token", { tokenPresent: Boolean(token), tokenLength: token?.length });
 
     // Use anon client with forwarded JWT to resolve the user
@@ -48,9 +70,27 @@ serve(async (req) => {
     );
 
     const { data: userData, error: userError } = await authClient.auth.getUser();
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
+    if (userError) {
+      logStep("ERROR: Authentication failed", { error: userError.message });
+      return new Response(JSON.stringify({ 
+        error: `Authentication error: ${userError.message}`,
+        subscribed: false 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
     const user = userData.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
+    if (!user?.email) {
+      logStep("ERROR: User not authenticated or no email");
+      return new Response(JSON.stringify({ 
+        error: "User not authenticated or email not available",
+        subscribed: false 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
     logStep("User authenticated", { userId: user.id, email: user.email });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
@@ -165,10 +205,22 @@ serve(async (req) => {
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR in check-subscription", { message: errorMessage });
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    logStep("ERROR in check-subscription", { 
+      message: errorMessage, 
+      stack: errorStack,
+      type: error?.constructor?.name 
+    });
+    
+    // Return 200 with error details instead of 500 to prevent client errors
+    return new Response(JSON.stringify({ 
+      error: errorMessage,
+      subscribed: false,
+      product_id: null,
+      subscription_end: null 
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
+      status: 200,
     });
   }
 });

@@ -64,7 +64,7 @@ export function useSubscriptionStatus(session: Session | null): UseSubscriptionS
       setError(null);
       lastCheckTimeRef.current = Date.now();
 
-      console.log('[useSubscriptionStatus] Checking subscription status');
+      console.log('[useSubscriptionStatus] Checking subscription status for user:', sessionData.user.id);
 
       const { data, error: invokeError } = await supabase.functions.invoke('check-subscription', {
         headers: {
@@ -73,16 +73,28 @@ export function useSubscriptionStatus(session: Session | null): UseSubscriptionS
       });
 
       if (invokeError) {
-        throw invokeError;
+        console.error('[useSubscriptionStatus] Edge function invoke error:', invokeError);
+        // Set default status instead of throwing
+        setStatus(DEFAULT_STATUS);
+        setError(invokeError.message);
+        return;
       }
 
       console.log('[useSubscriptionStatus] Subscription status received:', data);
+      
+      // Handle error in response data
+      if (data?.error) {
+        console.warn('[useSubscriptionStatus] Response contains error:', data.error);
+        setStatus(DEFAULT_STATUS);
+        setError(data.error);
+        return;
+      }
       
       setStatus(data || DEFAULT_STATUS);
       setError(null);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to check subscription';
-      console.error('[useSubscriptionStatus] Error:', errorMessage);
+      console.error('[useSubscriptionStatus] Unexpected error:', err);
       setError(errorMessage);
       setStatus(DEFAULT_STATUS);
     } finally {
