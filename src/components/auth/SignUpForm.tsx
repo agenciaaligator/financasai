@@ -16,28 +16,9 @@ export function SignUpForm() {
   const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [emailExists, setEmailExists] = useState(false);
-  const [checkingEmail, setCheckingEmail] = useState(false);
-  const { signUp, checkEmailExists } = useAuth();
+  const { signUp } = useAuth();
   const { toast } = useToast();
 
-  // Verificação em tempo real do email
-  const handleEmailChange = async (value: string) => {
-    setEmail(value);
-    setEmailExists(false);
-    
-    if (value && value.includes('@') && value.includes('.')) {
-      setCheckingEmail(true);
-      try {
-        const exists = await checkEmailExists(value);
-        setEmailExists(exists);
-      } catch (err) {
-        console.error('Erro ao verificar email:', err);
-      } finally {
-        setCheckingEmail(false);
-      }
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,35 +93,14 @@ export function SignUpForm() {
           
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <div className="relative">
-              <Input
-                id="email"
-                type="email"
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => handleEmailChange(e.target.value)}
-                className={emailExists ? "border-destructive" : ""}
-                required
-              />
-              {checkingEmail && (
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                </div>
-              )}
-            </div>
-            {emailExists && (
-              <div className="text-sm text-destructive flex items-center gap-2">
-                ⚠️ Este email já possui conta.{" "}
-                <Button
-                  type="button"
-                  variant="link"
-                  className="p-0 h-auto text-destructive underline"
-                  onClick={() => navigate('/')}
-                >
-                  Fazer login
-                </Button>
-              </div>
-            )}
+            <Input
+              id="email"
+              type="email"
+              placeholder="seu@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
           </div>
 
           <div className="space-y-2">
@@ -185,7 +145,7 @@ export function SignUpForm() {
           <Button 
             type="submit" 
             className="w-full bg-gradient-primary hover:shadow-primary transition-all duration-200"
-            disabled={isLoading || emailExists}
+            disabled={isLoading}
           >
             {isLoading ? (
               <div className="flex items-center">

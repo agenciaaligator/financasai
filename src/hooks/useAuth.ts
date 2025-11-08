@@ -30,36 +30,8 @@ export function useAuth() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const checkEmailExists = async (email: string) => {
-    const { data, error } = await supabase.rpc('check_user_exists', {
-      email_to_check: email
-    });
-    
-    if (error) {
-      console.error('Erro ao verificar email:', error);
-      return false;
-    }
-    
-    return data;
-  };
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    // Verificar PRIMEIRO se o email já existe
-    try {
-      const emailExists = await checkEmailExists(email);
-      
-      if (emailExists) {
-        toast({
-          title: "📧 Email já cadastrado",
-          description: "Este email já possui uma conta. Clique em 'Fazer Login' abaixo para acessar sua conta existente.",
-          variant: "destructive"
-        });
-        return { error: { message: 'Email already exists' } };
-      }
-    } catch (err) {
-      console.error('Erro na verificação prévia do email:', err);
-      // Continue com o processo se a verificação falhar
-    }
 
     // Usar URL da aplicação publicada ou localhost se em desenvolvimento
     const redirectUrl = window.location.hostname === 'localhost' 
@@ -79,15 +51,15 @@ export function useAuth() {
       });
 
       if (error) {
-        // Melhor tratamento de erro para email duplicado
+        // Generic error messages to prevent user enumeration
         if (error.message.includes('User already registered') || 
             error.message.includes('already been registered') ||
             error.message.includes('email address is already registered') ||
             error.message.includes('already_registered') ||
             error.message.includes('A user with this email address has already been registered')) {
           toast({
-            title: "📧 Email já cadastrado",
-            description: "Este email já possui uma conta. Clique em 'Fazer Login' abaixo para acessar sua conta existente.",
+            title: "⚠️ Erro no cadastro",
+            description: "Não foi possível completar o cadastro. Verifique seus dados ou tente fazer login se já possui uma conta.",
             variant: "destructive"
           });
         } else if (error.message.includes('Password should be at least')) {
@@ -105,7 +77,7 @@ export function useAuth() {
         } else {
           toast({
             title: "❌ Erro no cadastro",
-            description: error.message,
+            description: "Não foi possível completar o cadastro. Verifique seus dados e tente novamente.",
             variant: "destructive"
           });
         }
@@ -264,19 +236,12 @@ export function useAuth() {
       });
 
       if (error) {
-        if (error.message.includes('User not found')) {
-          toast({
-            title: "📧 Email não encontrado",
-            description: "Não encontramos uma conta com este email. Verifique se está correto ou crie uma nova conta.",
-            variant: "destructive"
-          });
-        } else {
-          toast({
-            title: "❌ Erro ao enviar email",
-            description: error.message,
-            variant: "destructive"
-          });
-        }
+        // Generic error message to prevent user enumeration
+        toast({
+          title: "⚠️ Problema ao processar solicitação",
+          description: "Verifique se o email está correto e tente novamente. Se o email existir em nossa base, você receberá instruções de recuperação.",
+          variant: "destructive"
+        });
         return { error };
       }
 
@@ -334,7 +299,6 @@ export function useAuth() {
     signUp,
     signIn,
     signOut,
-    checkEmailExists,
     resetPassword,
     updatePassword
   };
