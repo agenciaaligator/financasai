@@ -5,29 +5,59 @@ import './i18n'
 
 console.log('[MAIN] App inicializando...');
 
-// Função para buscar versão remota sem cache
-async function fetchRemoteVersion(timeoutMs = 2000): Promise<string | null> {
+// Função AGRESSIVA para buscar versão remota - tenta version.txt primeiro
+async function fetchRemoteVersion(timeoutMs = 1500): Promise<string | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   
   try {
-    const res = await fetch('/version.json?cb=' + Date.now(), {
+    // Tentar version.txt primeiro (texto puro, menos cache)
+    const resTxt = await fetch('/version.txt?cb=' + Date.now(), {
       cache: 'no-store',
-      headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' },
+      headers: { 
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      },
       signal: controller.signal,
     });
     clearTimeout(timer);
     
-    if (!res.ok) {
-      console.warn('[VERSION] HTTP', res.status);
+    if (resTxt.ok) {
+      const txt = await resTxt.text();
+      const version = txt.trim().replace('v-', '');
+      console.log('[VERSION] Versão remota (txt):', version);
+      return version;
+    }
+  } catch (e) {
+    console.warn('[VERSION] Erro ao buscar version.txt, tentando version.json:', e);
+  }
+  
+  // Fallback: tentar version.json
+  clearTimeout(timer);
+  const timer2 = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const resJson = await fetch('/version.json?cb=' + Date.now(), {
+      cache: 'no-store',
+      headers: { 
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timer2);
+    
+    if (!resJson.ok) {
+      console.warn('[VERSION] HTTP', resJson.status);
       return null;
     }
     
-    const json = await res.json();
+    const json = await resJson.json();
+    console.log('[VERSION] Versão remota (json):', json.version);
     return String(json.version || '');
   } catch (e) {
-    clearTimeout(timer);
-    console.warn('[VERSION] Erro ao buscar versão remota:', e);
+    clearTimeout(timer2);
+    console.warn('[VERSION] Erro ao buscar version.json:', e);
     return null;
   }
 }
@@ -89,16 +119,16 @@ if (isLogout) {
     // Renderizar app normalmente
     createRoot(document.getElementById("root")!).render(<App />);
     
-    // Verificação periódica em background (a cada 5 minutos)
+    // Verificação AGRESSIVA periódica em background (a cada 30 segundos)
     setInterval(async () => {
       const local = localStorage.getItem('app_version') || '';
-      const remote = await fetchRemoteVersion(3000);
+      const remote = await fetchRemoteVersion(2000);
       
       if (remote && remote !== local) {
-        console.log('[VERSION] Atualização disponível em background. Remote:', remote, 'Local:', local);
-        // Aqui poderia mostrar um toast, mas por enquanto só loga
-        // Para evitar interromper o usuário sem aviso
+        console.log('[VERSION] NOVA VERSÃO DETECTADA EM BACKGROUND! Remote:', remote, 'Local:', local);
+        console.log('[VERSION] Forçando atualização automática...');
+        await clearAllAndReload(remote);
       }
-    }, 5 * 60 * 1000); // 5 minutos
+    }, 30 * 1000); // 30 segundos
   })();
 }

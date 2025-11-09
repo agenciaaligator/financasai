@@ -14,6 +14,7 @@ import InviteAccept from "./pages/InviteAccept";
 import { AdminPanel } from "@/components/admin/AdminPanel";
 import { useUserRole } from "@/hooks/useUserRole";
 import { SignUpForm } from "@/components/auth/SignUpForm";
+import { ForceUpdateButton } from "@/components/ForceUpdateButton";
 
 const queryClient = new QueryClient();
 
@@ -55,15 +56,8 @@ const App = () => {
           </Routes>
         </BrowserRouter>
         
-        {import.meta.env.DEV && (
-          <button
-            onClick={() => window.location.reload()}
-            className="fixed bottom-4 right-4 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 text-sm font-medium transition-colors"
-            title="Forçar atualização da página"
-          >
-            🔄 Atualizar
-          </button>
-        )}
+        {/* Botão de atualização global - sempre visível */}
+        <ForceUpdateButton />
       </TooltipProvider>
     </QueryClientProvider>
   );

@@ -119,6 +119,13 @@ function versionPlugin(): Plugin {
           buildDate: buildDate
         }, null, 2)
       });
+
+      // Gerar version.txt (mais leve e menos suscetível a cache)
+      this.emitFile({
+        type: 'asset',
+        fileName: 'version.txt',
+        source: `v-${buildTime}`
+      });
     }
   };
 }
