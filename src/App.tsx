@@ -14,7 +14,6 @@ import InviteAccept from "./pages/InviteAccept";
 import { AdminPanel } from "@/components/admin/AdminPanel";
 import { useUserRole } from "@/hooks/useUserRole";
 import { SignUpForm } from "@/components/auth/SignUpForm";
-import { ForceUpdateButton } from "@/components/ForceUpdateButton";
 
 const queryClient = new QueryClient();
 
@@ -55,9 +54,6 @@ const App = () => {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
-        
-        {/* Botão de atualização global - sempre visível */}
-        <ForceUpdateButton />
       </TooltipProvider>
     </QueryClientProvider>
   );

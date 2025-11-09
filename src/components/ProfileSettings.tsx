@@ -499,6 +499,44 @@ export function ProfileSettings() {
     }
   };
 
+  const handleForceUpdate = async () => {
+    console.log('[FORCE UPDATE] Limpando todos os caches...');
+    
+    try {
+      // Limpar storage
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Limpar Cache API
+      if ('caches' in window) {
+        const names = await caches.keys();
+        await Promise.all(names.map(n => caches.delete(n)));
+        console.log('[FORCE UPDATE] Cache API limpo');
+      }
+      
+      // Unregister Service Workers
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map(r => r.unregister()));
+        console.log('[FORCE UPDATE] Service Workers removidos');
+      }
+      
+      toast({
+        title: "🔄 Atualizando app...",
+        description: "Recarregando com versão mais recente",
+      });
+    } catch (e) {
+      console.error('[FORCE UPDATE] Erro ao limpar:', e);
+    }
+    
+    // Hard reload com cache busting
+    setTimeout(() => {
+      const timestamp = Date.now();
+      console.log('[FORCE UPDATE] Forçando reload com timestamp:', timestamp);
+      window.location.replace(window.location.pathname + '?force_update=' + timestamp);
+    }, 500);
+  };
+
   return (
     <div className="space-y-6">
       {/* Card 1: Informações do Perfil */}
@@ -962,7 +1000,47 @@ export function ProfileSettings() {
         </CardContent>
       </Card>
 
-      <UpgradeModal 
+      {/* Manutenção do Sistema */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <RefreshCw className="h-5 w-5" />
+            Manutenção do Sistema
+          </CardTitle>
+          <CardDescription>
+            Ferramentas para resolver problemas de cache e atualização
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
+              <Bug className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Atualizar App</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Limpa todos os caches e força o carregamento da versão mais recente. 
+                  Use se notar comportamento inesperado ou dados desatualizados.
+                </p>
+              </div>
+            </div>
+            
+            <Button
+              onClick={handleForceUpdate}
+              variant="outline"
+              className="w-full"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Forçar Atualização Completa
+            </Button>
+            
+            <p className="text-xs text-muted-foreground text-center">
+              ⚠️ Isso limpará todos os dados armazenados localmente e recarregará a página
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <UpgradeModal
         open={showUpgradeModal} 
         onClose={() => setShowUpgradeModal(false)}
       />
