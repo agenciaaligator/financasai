@@ -271,28 +271,6 @@ export function AppSidebar({
                 </button>
               );
             })}
-            
-            {/* Botão de Forçar Atualização */}
-            <div className="pt-4 mt-4 border-t border-sidebar-border">
-              <button
-                onClick={() => {
-                  console.log('[FORCE UPDATE] Limpando cache e forçando atualização...');
-                  localStorage.clear();
-                  sessionStorage.clear();
-                  if ('caches' in window) {
-                    caches.keys().then(names => names.forEach(n => caches.delete(n)));
-                  }
-                  window.location.replace(window.location.pathname + '?force=' + Date.now());
-                }}
-                className="w-full h-12 transition-all duration-200 rounded-lg flex items-center justify-start px-4 hover:bg-sidebar-accent/50 text-sidebar-foreground"
-              >
-                <RefreshCw className="h-5 w-5" />
-                <div className="ml-3 text-left">
-                  <div className="font-medium text-sidebar-foreground">🔄 Forçar Atualização</div>
-                  <div className="text-xs text-sidebar-foreground/60">Limpar cache e recarregar</div>
-                </div>
-              </button>
-            </div>
           </div>
         </div>
       </div>
