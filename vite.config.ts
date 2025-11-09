@@ -11,21 +11,45 @@ function versionPlugin(): Plugin {
   return {
     name: 'version-plugin',
     transformIndexHtml(html) {
-      // Injetar script inline de version check que executa ANTES de tudo
+      // Script inline REFORÇADO com verificação remota
       const versionCheckScript = `
         <script>
           (function() {
             const DEPLOYED_VERSION = '${buildTime}';
+            
+            console.log('[VERSION INLINE] Versão do build:', DEPLOYED_VERSION);
+            
+            // Função assíncrona para verificar versão remota
+            async function checkRemoteVersion() {
+              try {
+                const res = await fetch('/version.json?cb=' + Date.now(), {
+                  cache: 'no-store',
+                  headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+                });
+                
+                if (!res.ok) {
+                  console.warn('[VERSION INLINE] Não foi possível buscar version.json');
+                  return null;
+                }
+                
+                const json = await res.json();
+                return String(json.version || '');
+              } catch (e) {
+                console.warn('[VERSION INLINE] Erro ao buscar versão remota:', e);
+                return null;
+              }
+            }
+            
+            // Verificar versão local vs inline
             const storedVersion = localStorage.getItem('app_version');
             
             if (storedVersion && storedVersion !== DEPLOYED_VERSION) {
-              console.log('[VERSION CHECK] Nova versão detectada:', DEPLOYED_VERSION, '(anterior:', storedVersion + ')');
+              console.log('[VERSION INLINE] Diferença detectada! Stored:', storedVersion, 'Build:', DEPLOYED_VERSION);
               
-              // Limpar TUDO
+              // Limpar TUDO imediatamente
               localStorage.clear();
               sessionStorage.clear();
               
-              // Deletar todos os caches
               if ('caches' in window) {
                 caches.keys().then(names => names.forEach(n => caches.delete(n)));
               }
@@ -33,30 +57,49 @@ function versionPlugin(): Plugin {
               // Salvar nova versão
               localStorage.setItem('app_version', DEPLOYED_VERSION);
               
-              // Hard reload com query string única
-              window.location.replace(window.location.pathname + '?v=' + DEPLOYED_VERSION);
+              // Hard reload com query string
+              window.location.replace('/?v=' + DEPLOYED_VERSION);
               return;
             }
             
-            // Se não tem versão salva, salvar agora
+            // Se versões locais coincidem, fazer verificação remota em background
+            if (storedVersion === DEPLOYED_VERSION) {
+              checkRemoteVersion().then(remoteVersion => {
+                if (remoteVersion && remoteVersion !== storedVersion) {
+                  console.log('[VERSION INLINE] Versão remota diferente! Remote:', remoteVersion, 'Local:', storedVersion);
+                  
+                  localStorage.clear();
+                  sessionStorage.clear();
+                  
+                  if ('caches' in window) {
+                    caches.keys().then(names => names.forEach(n => caches.delete(n)));
+                  }
+                  
+                  localStorage.setItem('app_version', remoteVersion);
+                  window.location.replace('/?v=' + remoteVersion);
+                }
+              });
+            }
+            
+            // Primeira execução
             if (!storedVersion) {
-              console.log('[VERSION CHECK] Primeira execução, versão:', DEPLOYED_VERSION);
+              console.log('[VERSION INLINE] Primeira execução, salvando versão:', DEPLOYED_VERSION);
               localStorage.setItem('app_version', DEPLOYED_VERSION);
             }
           })();
         </script>
       `;
       
-      // Adicionar meta tag com versão
+      // Meta tag com versão
       const metaTag = `<meta name="build-version" content="${buildTime}">`;
       
-      // Adicionar timestamp no script do main.tsx para forçar reload
+      // Timestamp no script do main.tsx
       html = html.replace(
         '<script type="module" src="/src/main.tsx"></script>',
         `<script type="module" src="/src/main.tsx?v=${buildTime}"></script>`
       );
       
-      // Injetar script e meta tag no head
+      // Injetar no head
       html = html.replace('</head>', `  ${metaTag}\n  ${versionCheckScript}\n  </head>`);
       
       return html;
@@ -65,8 +108,9 @@ function versionPlugin(): Plugin {
       const buildDate = new Date().toISOString();
       
       console.log('[Version Plugin] Build version:', buildTime);
+      console.log('[Version Plugin] Build date:', buildDate);
       
-      // Gerar version.json para referência
+      // Gerar version.json
       this.emitFile({
         type: 'asset',
         fileName: 'version.json',
