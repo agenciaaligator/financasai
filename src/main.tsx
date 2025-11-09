@@ -3,47 +3,29 @@ import App from './App.tsx'
 import './index.css'
 import './i18n'
 
-// Detectar mobile e forçar limpeza completa
-const isMobile = window.innerWidth <= 768;
-const currentVersion = '2024-11-08-v2'; // Incrementar em cada deploy crítico
-
-if (isMobile) {
-  console.log('[MOBILE CACHE BUSTING] Detectado mobile, iniciando limpeza...');
-  
-  // Verificar se é uma nova versão
-  const lastClearVersion = localStorage.getItem('last_cache_clear');
-  
-  if (lastClearVersion !== currentVersion) {
-    console.log('[MOBILE CACHE BUSTING] Nova versão detectada:', currentVersion, 'anterior:', lastClearVersion);
-    
-    // Limpar todos os storages
-    localStorage.clear();
-    sessionStorage.clear();
-    
-    // Salvar nova versão
-    localStorage.setItem('last_cache_clear', currentVersion);
-    
-    console.log('[MOBILE CACHE BUSTING] Caches limpos, recarregando...');
-    
-    // Forçar reload sem cache
-    window.location.reload();
-  }
-}
+// Versão já foi verificada pelo script inline no index.html
+console.log('[MAIN] App inicializando...');
 
 // Detectar logout pelos query params
 const urlParams = new URLSearchParams(window.location.search);
 const isLogout = urlParams.get('logout') || urlParams.get('force');
 
 if (isLogout) {
-  console.log('[MAIN] Logout detectado nos params - limpando tudo...');
+  console.log('[MAIN] Logout/Force detectado nos params - limpando tudo...');
   localStorage.clear();
   sessionStorage.clear();
   
+  // Limpar caches
+  if ('caches' in window) {
+    caches.keys().then(names => names.forEach(n => caches.delete(n)));
+  }
+  
   // Remover query params e recarregar limpo
   window.history.replaceState({}, document.title, '/');
+  window.location.reload();
 }
 
-// Limpar Service Workers e caches existentes
+// Limpar Service Workers residuais (caso existam)
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(registrations => {
     registrations.forEach(registration => {
@@ -51,14 +33,6 @@ if ('serviceWorker' in navigator) {
       registration.unregister();
     });
   });
-  if (window.caches?.keys) {
-    caches.keys().then(cacheNames => {
-      cacheNames.forEach(cacheName => {
-        console.log('[CACHE BUSTING] Deleting cache:', cacheName);
-        caches.delete(cacheName);
-      });
-    });
-  }
 }
 
 createRoot(document.getElementById("root")!).render(<App />);

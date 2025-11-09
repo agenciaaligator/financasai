@@ -11,9 +11,55 @@ function versionPlugin(): Plugin {
   return {
     name: 'version-plugin',
     transformIndexHtml(html) {
-      // Adicionar meta tag com timestamp para forçar CDN a reconhecer mudança
+      // Injetar script inline de version check que executa ANTES de tudo
+      const versionCheckScript = `
+        <script>
+          (function() {
+            const DEPLOYED_VERSION = '${buildTime}';
+            const storedVersion = localStorage.getItem('app_version');
+            
+            if (storedVersion && storedVersion !== DEPLOYED_VERSION) {
+              console.log('[VERSION CHECK] Nova versão detectada:', DEPLOYED_VERSION, '(anterior:', storedVersion + ')');
+              
+              // Limpar TUDO
+              localStorage.clear();
+              sessionStorage.clear();
+              
+              // Deletar todos os caches
+              if ('caches' in window) {
+                caches.keys().then(names => names.forEach(n => caches.delete(n)));
+              }
+              
+              // Salvar nova versão
+              localStorage.setItem('app_version', DEPLOYED_VERSION);
+              
+              // Hard reload com query string única
+              window.location.replace(window.location.pathname + '?v=' + DEPLOYED_VERSION);
+              return;
+            }
+            
+            // Se não tem versão salva, salvar agora
+            if (!storedVersion) {
+              console.log('[VERSION CHECK] Primeira execução, versão:', DEPLOYED_VERSION);
+              localStorage.setItem('app_version', DEPLOYED_VERSION);
+            }
+          })();
+        </script>
+      `;
+      
+      // Adicionar meta tag com versão
       const metaTag = `<meta name="build-version" content="${buildTime}">`;
-      return html.replace('</head>', `  ${metaTag}\n  </head>`);
+      
+      // Adicionar timestamp no script do main.tsx para forçar reload
+      html = html.replace(
+        '<script type="module" src="/src/main.tsx"></script>',
+        `<script type="module" src="/src/main.tsx?v=${buildTime}"></script>`
+      );
+      
+      // Injetar script e meta tag no head
+      html = html.replace('</head>', `  ${metaTag}\n  ${versionCheckScript}\n  </head>`);
+      
+      return html;
     },
     generateBundle() {
       const buildDate = new Date().toISOString();
