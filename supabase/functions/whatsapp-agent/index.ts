@@ -1917,16 +1917,16 @@ class WhatsAppAgent {
       });
 
       // Listar compromissos - variações naturais
-      if (/\b(meus|proximos|listar|ver|mostrar|quais|tenho|tem|hoje|amanha|semana)\b/.test(normalizedText)) {
-        console.log('🗓️ Listando compromissos');
-        return await this.listCommitments(session.user_id!);
+      const isList = /\b(meus?|ver|mostrar?|listar?|quais|tenho|tem|hoje|amanhã|amanha|próximos?|proximos?|semana)\b/i.test(normalizedText);
+      console.log('[Agenda Debug] isList:', isList, 'normalizedText:', normalizedText);
+
+      if (!isList) {
+        console.log('[AGENDA FIX] Criando compromisso por padrão:', normalizedText);
+        return await this.addCommitment(session.user_id!, messageText);
       }
 
-      // Criar novo compromisso (default se não for listagem)
-      const isCreate = /\b(agend\w*|marc\w*|cadastr\w*|cri\w*|add|adicion\w*)/.test(normalizedText);
-      console.log('[Agenda Debug][WhatsApp] Create test:', { isCreate, normalizedText });
-      console.log('🗓️ Criando compromisso (default):', messageText);
-      return await this.addCommitment(session.user_id!, messageText);
+      console.log('🗓️ Listando compromissos (match por isList)');
+      return await this.listCommitments(session.user_id!);
 
     }
     
@@ -6163,6 +6163,9 @@ serve(async (req) => {
   }
 
   try {
+    // Log de versão para tracking de deploys
+    console.log('[WhatsApp Agent] VERSION: 2025-11-10T15:30:00 - AGENDA FIX DEFINITIVO');
+    
     const body = await req.json();
     const { phone_number, message, action } = body;
     
