@@ -1922,21 +1922,12 @@ class WhatsAppAgent {
         return await this.listCommitments(session.user_id!);
       }
 
-      // Criar novo compromisso
-      if (/\b(agend\w*|marc\w*|cadastr\w*|cri\w*|add|adicion\w*)/.test(normalizedText)) {
-        console.log('🗓️ Criando compromisso:', messageText);
-        return await this.addCommitment(session.user_id!, messageText);
-      }
+      // Criar novo compromisso (default se não for listagem)
+      const isCreate = /\b(agend\w*|marc\w*|cadastr\w*|cri\w*|add|adicion\w*)/.test(normalizedText);
+      console.log('[Agenda Debug][WhatsApp] Create test:', { isCreate, normalizedText });
+      console.log('🗓️ Criando compromisso (default):', messageText);
+      return await this.addCommitment(session.user_id!, messageText);
 
-      // Fallback: se mencionou agenda mas não identificou ação
-      return {
-        response: '📅 *Comandos de Agenda:*\n\n' +
-                 '• "agendar [título] para [data/hora]"\n' +
-                 '  Exemplo: agendar dentista amanhã 14h\n\n' +
-                 '• "meus compromissos"\n' +
-                 '  Ver próximos eventos',
-        sessionData
-      };
     }
     
     // PRIORIDADE 3: Comandos gerais (ajuda, cancelar, etc)
