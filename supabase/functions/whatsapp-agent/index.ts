@@ -1923,7 +1923,7 @@ class WhatsAppAgent {
       }
 
       // Criar novo compromisso
-      if (/\b(agend|marc|cadastr|criar|add|adicionar)\b/.test(normalizedText)) {
+      if (/\b(agend\w*|marc\w*|cadastr\w*|cri\w*|add|adicion\w*)/.test(normalizedText)) {
         console.log('🗓️ Criando compromisso:', messageText);
         return await this.addCommitment(session.user_id!, messageText);
       }
