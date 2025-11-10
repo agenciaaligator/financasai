@@ -3960,13 +3960,17 @@ class WhatsAppAgent {
       }
 
       // 2️⃣ DEPOIS: Extrair título limpo (não remover "11/10" acidentalmente)
-      let title = normalized
-        .replace(/^(agendar|marcar|cadastrar|compromisso)\s+/, '')
-        .replace(/\s+(para|pra|em|no|na)\s+/, ' ')
-        .replace(/\b(amanha|hoje|domingo|segunda|terca|terça|quarta|quinta|sexta|sabado|sábado)\b.*/, '')
-        .replace(/\bdia\s+\d{1,2}\b.*/, '')
-        .replace(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?.*/, '')
-        .replace(/\b(\d{1,2})(?:(?::\d{2})|h\d{2}|\s*(?:h|horas?)).*/, '')
+      // Primeiro remover palavras de comando
+      let title = normalized.replace(/^(agendar|marcar|cadastrar|compromisso)\s+/, '');
+      
+      // Remover referências temporais E tudo que vem DEPOIS (data/hora)
+      title = title
+        .replace(/\s+(para|pra|em|no|na)\s+.*/,'') // Remove "para amanhã 14h"
+        .replace(/\b(amanha|hoje)\b.*/,'') // Remove "amanhã 14h" ou "hoje 10h"
+        .replace(/\bdia\s+\d{1,2}\b.*/,'') // Remove "dia 15 às 10h"
+        .replace(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b.*/,'') // Remove "10/11 às 14h"
+        .replace(/\b(?:as|a|às)\s+\d{1,2}(?:(?::\d{2})|h\d{2}|\s*(?:h|horas?)).*/,'') // Remove "às 14h"
+        .replace(/\b(domingo|segunda|terca|terça|quarta|quinta|sexta|sabado|sábado)\b.*/,'') // Remove "sexta 10h"
         .trim();
 
       if (title) {
