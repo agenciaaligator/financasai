@@ -252,8 +252,8 @@ export function UsersManagement() {
       console.log(`[DELETE USER] ✅ Usuário ${userEmail} excluído com sucesso!`);
       toast.success(`✅ Usuário ${userEmail} excluído permanentemente`);
       
-      // Recarregar lista
-      fetchUsers();
+      // Aguardar recarregamento completar ANTES de desativar loading
+      await fetchUsers();
       
     } catch (error: any) {
       console.error('[DELETE USER] ❌ Erro durante exclusão:', error);

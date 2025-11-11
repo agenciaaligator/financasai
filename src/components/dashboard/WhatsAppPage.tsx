@@ -273,18 +273,27 @@ export function WhatsAppPage() {
     
     setLoading(true);
     try {
+      // 1. Remover sessão WhatsApp
       await supabase
         .from('whatsapp_sessions')
         .delete()
         .eq('user_id', user.id);
 
+      // 2. Limpar número do perfil
+      await supabase
+        .from('profiles')
+        .update({ phone_number: null })
+        .eq('user_id', user.id);
+
+      // 3. Atualizar estado local
       setIsAuthenticated(false);
       setLinkedOrgName(null);
       setSessionInfo(null);
+      setPhoneNumber(''); // Limpar input
       
       toast({
         title: "WhatsApp desconectado",
-        description: "Você pode reconectar quando quiser",
+        description: "Você pode reconectar com outro número quando quiser",
       });
     } catch (error) {
       toast({

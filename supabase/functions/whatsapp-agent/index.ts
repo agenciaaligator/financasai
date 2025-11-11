@@ -6286,22 +6286,17 @@ serve(async (req) => {
           session = await SessionManager.createSession(cleanPhone, userId);
           console.log(`✅ Auth code VALIDATED successfully for ${cleanPhone.substring(0, 5)}***`);
           
-          // Mensagem de boas-vindas completa com lista de comandos
+          // Mensagem de boas-vindas completa e amigável
           return new Response(JSON.stringify({
             success: true,
-            response: `✅ *Autenticação realizada com sucesso!*\n\n` +
-                     `🎉 Bem-vindo ao seu Assistente Financeiro!\n\n` +
-                     `*📝 Como usar:*\n` +
-                     `• gasto 50 mercado\n` +
-                     `• receita 1000 salario\n` +
-                     `• +100 freelance\n` +
-                     `• -30 lanche hoje\n\n` +
-                     `*📊 Consultas:*\n` +
-                     `• *saldo* - Ver seu saldo\n` +
-                     `• *relatorio* - Resumo do mês\n` +
-                     `• *ajuda* - Ver todos os comandos\n\n` +
-                     `*✨ Dica:* O sistema identifica categorias automaticamente!\n` +
-                     `Exemplo: "lanche" vai para "Alimentação"`
+            response: `🎉 *Bem-vindo ao FinançasAI!*\n\n` +
+                     `✅ WhatsApp conectado com sucesso!\n\n` +
+                     `📋 *COMO USAR:*\n` +
+                     `💸 *Finanças:* "gastei 50" ou "recebi 2000"\n` +
+                     `📅 *Agenda:* "marcar dentista amanhã 14h"\n` +
+                     `📊 *Relatórios:* "meus gastos este mês"\n\n` +
+                     `💡 *Dica:* Digite *"ajuda"* para ver todos os comandos!\n\n` +
+                     `Estou aqui para facilitar sua vida financeira 🚀`
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });

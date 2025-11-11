@@ -2,12 +2,22 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { FinancialDashboard } from "@/components/FinancialDashboard";
 import { LoginForm } from "@/components/auth/LoginForm";
+import { OnboardingFlow } from "@/components/OnboardingFlow";
 import { useAuth } from "@/hooks/useAuth";
 
 const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
+
+  // Verificar se onboarding foi completado
+  useEffect(() => {
+    if (user) {
+      const completed = localStorage.getItem('onboarding_complete');
+      setOnboardingComplete(completed === 'true');
+    }
+  }, [user]);
 
   // Detectar logout forçado
   useEffect(() => {
@@ -80,7 +90,7 @@ const Index = () => {
     }
   }, [user, loading, navigate, searchParams]);
 
-  if (loading) {
+  if (loading || onboardingComplete === null) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -94,6 +104,11 @@ const Index = () => {
         <LoginForm />
       </div>
     );
+  }
+
+  // Mostrar onboarding se não foi completado
+  if (!onboardingComplete) {
+    return <OnboardingFlow onComplete={() => setOnboardingComplete(true)} />;
   }
 
   return <FinancialDashboard />;
