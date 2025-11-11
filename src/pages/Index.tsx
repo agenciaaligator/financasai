@@ -90,7 +90,7 @@ const Index = () => {
     }
   }, [user, loading, navigate, searchParams]);
 
-  if (loading || onboardingComplete === null) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -106,7 +106,14 @@ const Index = () => {
     );
   }
 
-  // Mostrar onboarding se não foi completado
+  if (onboardingComplete === null) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   if (!onboardingComplete) {
     return <OnboardingFlow onComplete={() => setOnboardingComplete(true)} />;
   }
