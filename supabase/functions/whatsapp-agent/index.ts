@@ -1314,25 +1314,32 @@ class PersonalizedResponses {
     
     let templates: string[] = [];
     
+    // Helper para exibir local apenas se válido
+    const locationLine = (loc: string | undefined) => {
+      return loc && loc !== 'undefined' && loc.trim() && loc !== 'pular' 
+        ? `📍 ${loc}\n` 
+        : '';
+    };
+    
     // Selecionar templates baseado na categoria
     switch (pending.category) {
       case 'appointment':
         templates = [
-          `✅ Pronto, ${firstName}! Sua consulta no *${pending.title}* está agendada para ${formattedDate} às ${formattedTime}! 🩺\n\n${pending.specialty ? `📋 Especialidade: ${pending.specialty}\n` : ''}📍 Local: ${pending.location}\n\n💚 Cuidar da saúde é sempre importante! Vou te lembrar com antecedência. 😉`,
+          `✅ Pronto, ${firstName}! Sua consulta no *${pending.title}* está agendada para ${formattedDate} às ${formattedTime}! 🩺\n\n${pending.specialty ? `📋 Especialidade: ${pending.specialty}\n` : ''}${locationLine(pending.location)}💚 Cuidar da saúde é sempre importante! Vou te lembrar com antecedência. 😉`,
           
-          `🩺 Agendado com sucesso, ${firstName}!\n\n📌 ${pending.title}\n🗓️ ${formattedDate} às ${formattedTime}\n${pending.specialty ? `🏥 ${pending.specialty}\n` : ''}📍 ${pending.location}\n\n💡 *Dica:* Chegue 10 minutos antes para evitar atrasos! ⏰`,
+          `🩺 Agendado com sucesso, ${firstName}!\n\n📌 ${pending.title}\n🗓️ ${formattedDate} às ${formattedTime}\n${pending.specialty ? `🏥 ${pending.specialty}\n` : ''}${locationLine(pending.location)}💡 *Dica:* Chegue 10 minutos antes para evitar atrasos! ⏰`,
           
-          `Feito! ✅ ${firstName}, seu *${pending.title}* está marcado!\n\n📅 ${formattedDate}\n⏰ ${formattedTime}\n📍 ${pending.location}\n\n💪 Saúde em primeiro lugar! Você vai receber um lembrete antes da consulta.`
+          `Feito! ✅ ${firstName}, seu *${pending.title}* está marcado!\n\n📅 ${formattedDate}\n⏰ ${formattedTime}\n${locationLine(pending.location)}💪 Saúde em primeiro lugar! Você vai receber um lembrete antes da consulta.`
         ];
         break;
         
       case 'meeting':
         templates = [
-          `🤝 Reunião agendada, ${firstName}!\n\n📌 ${pending.title}\n${pending.company ? `🏢 ${pending.company}\n` : ''}🗓️ ${formattedDate} às ${formattedTime}\n📍 ${pending.location}\n${pending.contactName ? `👤 Contato: ${pending.contactName}${pending.contactPhone ? ` - ${pending.contactPhone}` : ''}\n` : ''}\n💼 Sucesso na reunião! Vai dar tudo certo! 🚀`,
+          `🤝 Reunião agendada, ${firstName}!\n\n📌 ${pending.title}\n${pending.company ? `🏢 ${pending.company}\n` : ''}🗓️ ${formattedDate} às ${formattedTime}\n${locationLine(pending.location)}${pending.contactName ? `👤 Contato: ${pending.contactName}${pending.contactPhone ? ` - ${pending.contactPhone}` : ''}\n` : ''}💼 Sucesso na reunião! Vai dar tudo certo! 🚀`,
           
-          `✅ Pronto, ${firstName}! Reunião confirmada${pending.company ? ` com ${pending.company}` : ''}!\n\n📅 ${formattedDate}\n⏰ ${formattedTime}\n📍 ${pending.location}\n${pending.contactName ? `👤 ${pending.contactName}${pending.contactPhone ? ` - ${pending.contactPhone}` : ''}\n` : ''}\n💡 Chegue preparado e pontual! 😉`,
+          `✅ Pronto, ${firstName}! Reunião confirmada${pending.company ? ` com ${pending.company}` : ''}!\n\n📅 ${formattedDate}\n⏰ ${formattedTime}\n${locationLine(pending.location)}${pending.contactName ? `👤 ${pending.contactName}${pending.contactPhone ? ` - ${pending.contactPhone}` : ''}\n` : ''}💡 Chegue preparado e pontual! 😉`,
           
-          `🎯 Tudo certo! Sua reunião está agendada, ${firstName}!\n\n${pending.company ? `🏢 ${pending.company}\n` : ''}🗓️ ${formattedDate} às ${formattedTime}\n📍 ${pending.location}\n\n🚀 Bora fechar esse negócio! Boa sorte! 💪`
+          `🎯 Tudo certo! Sua reunião está agendada, ${firstName}!\n\n${pending.company ? `🏢 ${pending.company}\n` : ''}🗓️ ${formattedDate} às ${formattedTime}\n${locationLine(pending.location)}🚀 Bora fechar esse negócio! Boa sorte! 💪`
         ];
         break;
         
@@ -1340,7 +1347,7 @@ class PersonalizedResponses {
         templates = [
           `💳 Lembrete de pagamento agendado, ${firstName}!\n\n📌 ${pending.title}\n🗓️ ${formattedDate} às ${formattedTime}\n\n⚠️ Não esquece de pagar em dia para evitar juros! 💰`,
           
-          `✅ Ok! Vou te lembrar de pagar *${pending.title}* no dia ${formattedDate}! 💳\n\n📍 ${pending.location || 'Pagar online ou no local'}\n\n💡 Organize-se com antecedência! 😉`,
+          `✅ Ok! Vou te lembrar de pagar *${pending.title}* no dia ${formattedDate}! 💳\n\n${locationLine(pending.location || 'Pagar online ou no local')}💡 Organize-se com antecedência! 😉`,
           
           `💰 Compromisso financeiro anotado, ${firstName}!\n\n📌 ${pending.title}\n🗓️ ${formattedDate}\n\n🔔 Você vai receber um lembrete antes do vencimento! Fique tranquilo. ✅`
         ];
@@ -1353,17 +1360,17 @@ class PersonalizedResponses {
         
         if (isSport) {
           templates = [
-            `⚽ Show! ${firstName}, ${pending.title} agendado!\n\n🗓️ ${formattedDate} às ${formattedTime}\n📍 ${pending.location}\n${pending.participants ? `👥 Com: ${pending.participants}\n` : ''}\n🔥 Vai ser massa! Até lá! 🎉`,
+            `⚽ Show! ${firstName}, ${pending.title} agendado!\n\n🗓️ ${formattedDate} às ${formattedTime}\n${locationLine(pending.location)}${pending.participants ? `👥 Com: ${pending.participants}\n` : ''}🔥 Vai ser massa! Até lá! 🎉`,
             
-            `🎉 Beleza! ${pending.title} marcado, ${firstName}!\n\n📅 ${formattedDate}\n⏰ ${formattedTime}\n📍 ${pending.location}\n${pending.participants ? `👥 Galera confirmada: ${pending.participants}\n` : ''}\n💪 Aproveita! Diversão é importante também! 😎`,
+            `🎉 Beleza! ${pending.title} marcado, ${firstName}!\n\n📅 ${formattedDate}\n⏰ ${formattedTime}\n${locationLine(pending.location)}${pending.participants ? `👥 Galera confirmada: ${pending.participants}\n` : ''}💪 Aproveita! Diversão é importante também! 😎`,
             
-            `✅ Tá marcado! ${firstName}, não esquece:\n\n📌 ${pending.title}\n🗓️ ${formattedDate} às ${formattedTime}\n📍 ${pending.location}\n${pending.participants ? `👥 ${pending.participants}\n` : ''}\n🚀 Vai ser dahora! Te vejo lá! 🤙`
+            `✅ Tá marcado! ${firstName}, não esquece:\n\n📌 ${pending.title}\n🗓️ ${formattedDate} às ${formattedTime}\n${locationLine(pending.location)}${pending.participants ? `👥 ${pending.participants}\n` : ''}🚀 Vai ser dahora! Te vejo lá! 🤙`
           ];
         } else {
           templates = [
-            `✅ Agendado, ${firstName}!\n\n📌 ${pending.title}\n🗓️ ${formattedDate} às ${formattedTime}\n📍 ${pending.location}\n\n🔔 Vou te lembrar antes! 😉`,
+            `✅ Agendado, ${firstName}!\n\n📌 ${pending.title}\n🗓️ ${formattedDate} às ${formattedTime}\n${locationLine(pending.location)}🔔 Vou te lembrar antes! 😉`,
             
-            `Pronto! ${firstName}, *${pending.title}* está no seu calendário! 🗓️\n\n📅 ${formattedDate}\n⏰ ${formattedTime}\n📍 ${pending.location}\n\n✅ Tudo certo!`
+            `Pronto! ${firstName}, *${pending.title}* está no seu calendário! 🗓️\n\n📅 ${formattedDate}\n⏰ ${formattedTime}\n${locationLine(pending.location)}✅ Tudo certo!`
           ];
         }
         break;

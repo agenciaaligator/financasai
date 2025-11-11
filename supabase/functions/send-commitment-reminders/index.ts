@@ -401,6 +401,14 @@ serve(async (req) => {
 
       console.log(`[REMINDER] [${executionId}] Processing commitment ${commitment.id} for user ${commitment.user_id}: "${commitment.title}" in ${Math.floor(minutesUntil)} minutes`);
 
+      // 🎯 OTIMIZAÇÃO: Compromissos até 10h recebem apenas resumo diário
+      const commitmentHour = scheduledAt.getHours();
+      if (commitmentHour <= 10) {
+        console.log(`⏭️ [REMINDER] [${executionId}] Compromisso às ${commitmentHour}h - pulando (coberto por resumo diário às 8h)`);
+        skipped++;
+        continue;
+      }
+
       // ✅ BUG FIX: Buscar settings do DONO DO TELEFONE, não do criador do compromisso
       const { data: phoneOwner } = await supabase
         .from('profiles')
@@ -424,11 +432,10 @@ serve(async (req) => {
         continue;
       }
 
+      // 🎯 OTIMIZAÇÃO: Apenas lembrete 1h antes para compromissos após 10h
       const reminderSettings: ReminderSettings = settings || {
         default_reminders: [
-          { time: 1440, enabled: true },
-          { time: 120, enabled: true },
-          { time: 60, enabled: true }
+          { time: 60, enabled: true }  // Apenas 1h antes
         ],
         send_via_whatsapp: true
       };

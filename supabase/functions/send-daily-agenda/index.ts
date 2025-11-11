@@ -81,7 +81,19 @@ Aproveite seu dia livre! 😊`;
   });
 
   if (commitments.length > 0) {
-    message += `💡 Você receberá lembretes antes de cada compromisso!`;
+    // Contar compromissos da manhã (até 10h) e tarde (após 10h)
+    const morningCount = commitments.filter(c => new Date(c.scheduled_at).getHours() <= 10).length;
+    const afternoonCount = commitments.length - morningCount;
+
+    if (morningCount > 0 && afternoonCount > 0) {
+      message += `⏰ *Lembretes configurados:*\n`;
+      message += `   🌅 Compromissos da manhã: avisados neste resumo\n`;
+      message += `   ☀️ Compromissos da tarde: lembrete 1h antes`;
+    } else if (afternoonCount > 0) {
+      message += `💡 Você receberá um lembrete 1h antes de cada compromisso!`;
+    } else {
+      message += `💡 Seus compromissos estão próximos - fique atento! ⏰`;
+    }
   }
 
   return message;
