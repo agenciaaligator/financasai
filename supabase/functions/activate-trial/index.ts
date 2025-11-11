@@ -49,22 +49,50 @@ serve(async (req) => {
       throw new Error(`Error checking existing subscriptions: ${subCheckError.message}`);
     }
 
+    let hasInactiveSubscription = false;
+
     // Check if user already has active subscription
     if (existingSubscriptions && existingSubscriptions.length > 0) {
       const lastSub = existingSubscriptions[0];
       
       if (lastSub.status === "active") {
-        logStep("User already has active subscription", { subscription: lastSub });
-        return new Response(
-          JSON.stringify({ 
-            error: "Plano ativo existente",
-            message: "Você já possui um plano ativo" 
-          }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 400,
+        // Verificar se realmente está ativo ou expirou
+        const { data: subDetails } = await supabaseClient
+          .from("user_subscriptions")
+          .select("current_period_end")
+          .eq("id", lastSub.id)
+          .single();
+        
+        if (subDetails) {
+          const expirationDate = new Date(subDetails.current_period_end);
+          const now = new Date();
+          
+          if (expirationDate > now) {
+            // Subscrição realmente ativa
+            logStep("User already has active subscription", { subscription: lastSub });
+            return new Response(
+              JSON.stringify({ 
+                error: "Plano ativo existente",
+                message: "Você já possui um plano ativo" 
+              }),
+              {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 400,
+              }
+            );
+          } else {
+            // Subscrição expirada, permitir reativar
+            logStep("Subscription expired, allowing reactivation", { 
+              expirationDate, 
+              now 
+            });
+            hasInactiveSubscription = true;
           }
-        );
+        }
+      } else {
+        // If inactive, we'll update it
+        hasInactiveSubscription = true;
+        logStep("User has inactive subscription, will update it");
       }
     }
 
@@ -85,7 +113,7 @@ serve(async (req) => {
     let subscription;
 
     // If user has inactive subscription, update it instead of creating new
-    if (existingSubscriptions && existingSubscriptions.length > 0) {
+    if (hasInactiveSubscription && existingSubscriptions && existingSubscriptions.length > 0) {
       const lastSub = existingSubscriptions[0];
       logStep("Updating existing subscription to trial", { subscriptionId: lastSub.id });
 

@@ -16,11 +16,22 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [step, setStep] = useState<'choose-plan' | 'setup-whatsapp' | 'welcome'>('choose-plan');
   const [phoneNumber, setPhoneNumber] = useState("");
   const [authCode, setAuthCode] = useState("");
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
   const supabaseUrl = "https://fsamlnlabdjoqpiuhgex.supabase.co";
+
+  const handleSkip = () => {
+    localStorage.setItem('onboarding_complete', 'true');
+    onComplete();
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.reload();
+  };
 
   const handleSelectPlan = async (planType: 'trial' | 'premium') => {
     if (!user) return;
@@ -28,16 +39,31 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     setLoading(true);
     try {
       if (planType === 'trial') {
-        // Ativar trial de 3 dias
+        console.log('[TRIAL DEBUG] Ativando trial para:', user.email);
+        
         const { data: sessionData } = await supabase.auth.getSession();
         
-        const { error } = await supabase.functions.invoke('activate-trial', {
+        const { data, error } = await supabase.functions.invoke('activate-trial', {
           headers: {
             Authorization: `Bearer ${sessionData.session?.access_token}`
           }
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error('[TRIAL ERROR]', error);
+          
+          // FALLBACK: Se erro é por subscrição existente, continuar
+          if (error.message?.includes('Plano ativo') || error.message?.includes('subscription')) {
+            toast({
+              title: "Trial já ativado anteriormente",
+              description: "Continue para configurar seu WhatsApp",
+            });
+            setStep('setup-whatsapp');
+            return;
+          }
+          
+          throw error;
+        }
 
         toast({
           title: "Trial ativado!",
@@ -52,11 +78,14 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
       setStep('setup-whatsapp');
     } catch (error) {
+      console.error('[ONBOARDING ERROR]', error);
       toast({
-        title: "Erro",
-        description: "Não foi possível ativar o plano",
+        title: "Erro ao ativar plano",
+        description: "Continue mesmo assim para configurar o WhatsApp",
         variant: "destructive"
       });
+      // Permitir continuar mesmo com erro
+      setStep('setup-whatsapp');
     } finally {
       setLoading(false);
     }
@@ -73,41 +102,64 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     }
 
     setLoading(true);
+    setGeneratedCode(null);
+    
     try {
+      console.log('[WHATSAPP AUTH] Solicitando código para:', phoneNumber);
+      
+      // Normalizar número (adicionar + se não tiver)
+      const normalizedPhone = phoneNumber.startsWith('+') 
+        ? phoneNumber 
+        : `+${phoneNumber}`;
+
       // Salvar número no perfil
       if (user) {
         await supabase
           .from('profiles')
-          .update({ phone_number: phoneNumber.trim() })
+          .update({ phone_number: normalizedPhone })
           .eq('user_id', user.id);
+        
+        console.log('[WHATSAPP AUTH] Número salvo no perfil:', normalizedPhone);
       }
 
-      // Solicitar código
+      // Solicitar código via edge function
+      const { data: sessionData } = await supabase.auth.getSession();
+      
       const response = await fetch(`${supabaseUrl}/functions/v1/whatsapp-agent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionData.session?.access_token}`,
         },
         body: JSON.stringify({
-          phone_number: phoneNumber,
+          phone_number: normalizedPhone,
           action: 'auth'
         })
       });
 
+      console.log('[WHATSAPP AUTH] Response status:', response.status);
       const result = await response.json();
+      console.log('[WHATSAPP AUTH] Response data:', result);
       
-      if (result.success) {
+      if (result.success && result.response) {
+        // Extrair código da resposta (formato: "Seu código: *123456*")
+        const codeMatch = result.response.match(/\*(\d{6})\*/);
+        if (codeMatch) {
+          setGeneratedCode(codeMatch[1]);
+        }
+        
         toast({
-          title: "Código enviado!",
-          description: "Verifique o código gerado e insira abaixo",
+          title: "Código gerado!",
+          description: "Insira o código de 6 dígitos abaixo",
         });
       } else {
-        throw new Error(result.error || 'Falha ao enviar código');
+        throw new Error(result.error || 'Falha ao gerar código');
       }
     } catch (error) {
+      console.error('[WHATSAPP ERROR]', error);
       toast({
-        title: "Erro",
-        description: error instanceof Error ? error.message : "Falha ao conectar",
+        title: "Erro ao solicitar código",
+        description: error instanceof Error ? error.message : "Tente novamente",
         variant: "destructive"
       });
     } finally {
@@ -255,6 +307,16 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               </CardContent>
             </Card>
           </div>
+          
+          <div className="text-center">
+            <Button 
+              variant="ghost" 
+              onClick={handleSkip}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Pular configuração e ir para o dashboard
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -300,6 +362,20 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 </p>
               </div>
 
+              {generatedCode && (
+                <div className="bg-green-50 dark:bg-green-950 border-2 border-green-200 dark:border-green-800 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-green-900 dark:text-green-100 mb-2">
+                    📱 Código gerado com sucesso!
+                  </p>
+                  <p className="text-2xl font-bold text-green-700 dark:text-green-300 text-center mb-2">
+                    {generatedCode}
+                  </p>
+                  <p className="text-xs text-green-600 dark:text-green-400 text-center">
+                    Caso não tenha recebido no WhatsApp, use o código acima
+                  </p>
+                </div>
+              )}
+
               {phoneNumber && (
                 <div className="space-y-2">
                   <Label htmlFor="code">Código de verificação</Label>
@@ -336,6 +412,21 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               </div>
             </div>
           </CardContent>
+          <div className="border-t p-6 flex justify-between items-center">
+            <Button 
+              variant="ghost" 
+              onClick={handleSkip}
+            >
+              Pular configuração
+            </Button>
+            
+            <Button 
+              variant="outline"
+              onClick={handleLogout}
+            >
+              Sair
+            </Button>
+          </div>
         </Card>
       </div>
     );
