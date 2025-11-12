@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Edit } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface Coupon {
   id: string;
@@ -32,6 +33,8 @@ export function CouponsManagement() {
     max_uses: '',
     note: ''
   });
+  const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -147,6 +150,53 @@ export function CouponsManagement() {
     }
   };
 
+  const handleEdit = (coupon: Coupon) => {
+    setEditingCoupon(coupon);
+    setNewCoupon({
+      code: coupon.code,
+      type: coupon.type,
+      value: coupon.value?.toString() || '',
+      max_uses: coupon.max_uses?.toString() || '',
+      note: coupon.note || ''
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateCoupon = async () => {
+    if (!editingCoupon) return;
+
+    try {
+      const { error } = await supabase
+        .from('discount_coupons')
+        .update({
+          code: newCoupon.code.toUpperCase(),
+          type: newCoupon.type,
+          value: newCoupon.value ? parseFloat(newCoupon.value) : null,
+          max_uses: newCoupon.max_uses ? parseInt(newCoupon.max_uses) : null,
+          note: newCoupon.note || null
+        })
+        .eq('id', editingCoupon.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Cupom atualizado',
+        description: `Cupom ${newCoupon.code} atualizado com sucesso.`
+      });
+
+      setEditDialogOpen(false);
+      setEditingCoupon(null);
+      setNewCoupon({ code: '', type: 'discount_percent', value: '', max_uses: '', note: '' });
+      fetchCoupons();
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao atualizar cupom',
+        description: error.message,
+        variant: 'destructive'
+      });
+    }
+  };
+
   if (loading) {
     return <div>Carregando cupons...</div>;
   }
@@ -232,6 +282,14 @@ export function CouponsManagement() {
                   <div className="flex gap-2">
                     <Button
                       size="sm"
+                      variant="outline"
+                      onClick={() => handleEdit(coupon)}
+                    >
+                      <Edit className="w-4 h-4 mr-1" />
+                      Editar
+                    </Button>
+                    <Button
+                      size="sm"
                       variant={coupon.is_active ? 'outline' : 'default'}
                       onClick={() => handleToggleActive(coupon.id, coupon.is_active)}
                     >
@@ -251,6 +309,51 @@ export function CouponsManagement() {
           </TableBody>
         </Table>
       </Card>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Cupom</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              placeholder="Código do cupom"
+              value={newCoupon.code}
+              onChange={(e) => setNewCoupon({ ...newCoupon, code: e.target.value })}
+            />
+            <Select value={newCoupon.type} onValueChange={(value) => setNewCoupon({ ...newCoupon, type: value })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="full_access">Acesso Total</SelectItem>
+                <SelectItem value="discount_percent">Desconto %</SelectItem>
+                <SelectItem value="discount_fixed">Desconto Fixo</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              placeholder="Valor"
+              type="number"
+              value={newCoupon.value}
+              onChange={(e) => setNewCoupon({ ...newCoupon, value: e.target.value })}
+            />
+            <Input
+              placeholder="Máx. usos"
+              type="number"
+              value={newCoupon.max_uses}
+              onChange={(e) => setNewCoupon({ ...newCoupon, max_uses: e.target.value })}
+            />
+            <Input
+              placeholder="Observação"
+              value={newCoupon.note}
+              onChange={(e) => setNewCoupon({ ...newCoupon, note: e.target.value })}
+            />
+            <Button onClick={handleUpdateCoupon} className="w-full">
+              Atualizar Cupom
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

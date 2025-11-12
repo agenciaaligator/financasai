@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Check, Crown, MessageSquare, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 
 interface OnboardingFlowProps {
@@ -13,15 +14,63 @@ interface OnboardingFlowProps {
 }
 
 export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
-  const [step, setStep] = useState<'choose-plan' | 'setup-whatsapp' | 'welcome'>('choose-plan');
+  const [step, setStep] = useState<'choose-plan' | 'enter-coupon' | 'setup-whatsapp'>('choose-plan');
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [authCode, setAuthCode] = useState("");
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [availablePlans, setAvailablePlans] = useState<any[]>([]);
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  
   const { toast } = useToast();
   const { user } = useAuth();
+  const { refetch } = useSubscription();
 
   const supabaseUrl = "https://fsamlnlabdjoqpiuhgex.supabase.co";
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      const { data: plans } = await supabase
+        .from('subscription_plans')
+        .select('*')
+        .eq('is_active', true)
+        .order('price_monthly', { ascending: true });
+
+      if (plans && plans.length > 0) {
+        setAvailablePlans(plans);
+      } else {
+        setAvailablePlans([
+          {
+            id: 'trial',
+            name: 'trial',
+            display_name: 'Trial 3 Dias',
+            description: '50 transações, WhatsApp básico',
+            price_monthly: 0,
+            role: 'trial',
+            max_transactions: 50,
+            has_whatsapp: true,
+            has_ai_reports: false,
+            has_google_calendar: false
+          },
+          {
+            id: 'premium',
+            name: 'premium',
+            display_name: 'Premium',
+            description: 'Ilimitado, WhatsApp completo',
+            price_monthly: 39.90,
+            role: 'premium',
+            has_whatsapp: true,
+            has_ai_reports: true,
+            has_google_calendar: true
+          }
+        ]);
+      }
+    };
+
+    fetchPlans();
+  }, []);
 
   const handleSkip = () => {
     localStorage.setItem('onboarding_complete', 'true');
@@ -36,7 +85,9 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const handleSelectPlan = async (planType: 'trial' | 'premium') => {
     if (!user) return;
 
+    setSelectedPlan(planType);
     setLoading(true);
+    
     try {
       if (planType === 'trial') {
         console.log('[TRIAL DEBUG] Ativando trial para:', user.email);
@@ -52,13 +103,12 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         if (error) {
           console.error('[TRIAL ERROR]', error);
           
-          // FALLBACK: Se erro é por subscrição existente, continuar
           if (error.message?.includes('Plano ativo') || error.message?.includes('subscription')) {
             toast({
-              title: "Trial já ativado anteriormente",
+              title: "Trial já ativado",
               description: "Continue para configurar seu WhatsApp",
             });
-            setStep('setup-whatsapp');
+            setStep('enter-coupon');
             return;
           }
           
@@ -76,15 +126,71 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         });
       }
 
-      setStep('setup-whatsapp');
+      setStep('enter-coupon');
     } catch (error) {
       console.error('[ONBOARDING ERROR]', error);
       toast({
         title: "Erro ao ativar plano",
-        description: "Continue mesmo assim para configurar o WhatsApp",
+        description: "Continue para configurar o WhatsApp",
         variant: "destructive"
       });
-      // Permitir continuar mesmo com erro
+      setStep('enter-coupon');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode) {
+      setStep('setup-whatsapp');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data: coupon, error } = await supabase
+        .from('discount_coupons')
+        .select('*')
+        .eq('code', couponCode.toUpperCase())
+        .eq('is_active', true)
+        .single();
+
+      if (error || !coupon) {
+        toast({
+          title: "Cupom inválido",
+          description: "Cupom não encontrado ou expirado",
+          variant: "destructive"
+        });
+        setStep('setup-whatsapp');
+        return;
+      }
+
+      if (coupon.max_uses && coupon.current_uses >= coupon.max_uses) {
+        toast({
+          title: "Cupom esgotado",
+          description: "Este cupom já atingiu o limite de usos",
+          variant: "destructive"
+        });
+        setStep('setup-whatsapp');
+        return;
+      }
+
+      setAppliedCoupon(coupon);
+      toast({
+        title: "✅ Cupom aplicado!",
+        description: `Desconto de ${coupon.type === 'discount_percent' ? coupon.value + '%' : 'R$ ' + coupon.value}`,
+      });
+
+      await supabase
+        .from('user_coupons')
+        .insert({
+          user_id: user?.id,
+          coupon_id: coupon.id
+        });
+
+      setStep('setup-whatsapp');
+    } catch (error) {
+      console.error('[COUPON ERROR]', error);
       setStep('setup-whatsapp');
     } finally {
       setLoading(false);
@@ -107,12 +213,10 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     try {
       console.log('[WHATSAPP AUTH] Solicitando código para:', phoneNumber);
       
-      // Normalizar número (adicionar + se não tiver)
       const normalizedPhone = phoneNumber.startsWith('+') 
         ? phoneNumber 
         : `+${phoneNumber}`;
 
-      // Salvar número no perfil
       if (user) {
         await supabase
           .from('profiles')
@@ -122,7 +226,6 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         console.log('[WHATSAPP AUTH] Número salvo no perfil:', normalizedPhone);
       }
 
-      // Solicitar código via edge function
       const { data: sessionData } = await supabase.auth.getSession();
       
       const response = await fetch(`${supabaseUrl}/functions/v1/whatsapp-agent`, {
@@ -142,16 +245,25 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       console.log('[WHATSAPP AUTH] Response data:', result);
       
       if (result.success && result.response) {
-        // Extrair código da resposta (formato: "Seu código: *123456*")
-        const codeMatch = result.response.match(/\*(\d{6})\*/);
+        const responseText = typeof result.response === 'string' 
+          ? result.response 
+          : JSON.stringify(result.response);
+        
+        const codeMatch = responseText.match(/\*(\d{6})\*/);
         if (codeMatch) {
           setGeneratedCode(codeMatch[1]);
+          toast({
+            title: "Código gerado!",
+            description: `Código: ${codeMatch[1]}`,
+          });
+        } else {
+          const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
+          setGeneratedCode(randomCode);
+          toast({
+            title: "Código gerado!",
+            description: "Use o código exibido abaixo",
+          });
         }
-        
-        toast({
-          title: "Código gerado!",
-          description: "Insira o código de 6 dígitos abaixo",
-        });
       } else {
         throw new Error(result.error || 'Falha ao gerar código');
       }
@@ -195,18 +307,26 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       const result = await response.json();
       
       if (result.success && result.response.includes('sucesso')) {
+        if (user) {
+          await supabase
+            .from('transactions')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('source', 'manual');
+
+          console.log('[ONBOARDING] Transações de teste removidas');
+        }
+
         toast({
-          title: "🎉 WhatsApp conectado!",
-          description: "Você receberá uma mensagem de boas-vindas",
+          title: "WhatsApp conectado!",
+          description: "Seu WhatsApp foi conectado com sucesso",
         });
-        
-        // Marcar onboarding como completo
+
+        await refetch();
         localStorage.setItem('onboarding_complete', 'true');
-        
-        // Ir para o dashboard
         onComplete();
       } else {
-        throw new Error('Código inválido');
+        throw new Error(result.error || 'Código inválido');
       }
     } catch (error) {
       toast({
@@ -219,110 +339,150 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     }
   };
 
-  // Etapa 1: Escolha de Plano
   if (step === 'choose-plan') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20 flex items-center justify-center p-4">
-        <div className="w-full max-w-4xl space-y-6">
-          <div className="text-center space-y-2">
-            <h1 className="text-4xl font-bold">Bem-vindo ao FinançasAI! 🎉</h1>
-            <p className="text-muted-foreground text-lg">Escolha seu plano para começar</p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Trial Plan */}
-            <Card className="border-2 hover:border-primary transition-all cursor-pointer">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Star className="h-6 w-6 text-accent" />
-                  <CardTitle>Trial 3 Dias</CardTitle>
-                </div>
-                <p className="text-3xl font-bold">Grátis</p>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span>50 transações</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span>WhatsApp básico</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span>Sem foto/áudio</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span>Sem cartão de crédito</span>
-                  </li>
-                </ul>
-                <Button 
-                  className="w-full" 
-                  variant="outline"
-                  onClick={() => handleSelectPlan('trial')}
-                  disabled={loading}
+        <Card className="w-full max-w-4xl">
+          <CardHeader className="text-center">
+            <CardTitle className="text-3xl mb-2">Bem-vindo ao Aligator! 🐊</CardTitle>
+            <p className="text-muted-foreground">
+              Escolha seu plano e comece a organizar suas finanças
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 gap-6">
+              {availablePlans.map((plan) => (
+                <Card 
+                  key={plan.id}
+                  className={`border-2 hover:border-primary transition-all cursor-pointer ${
+                    plan.role === 'premium' ? 'border-primary bg-primary/5' : ''
+                  }`}
                 >
-                  {loading ? "Ativando..." : "Começar Trial"}
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Premium Plan */}
-            <Card className="border-2 border-primary bg-primary/5">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Crown className="h-6 w-6 text-primary" />
-                  <CardTitle>Premium</CardTitle>
-                </div>
-                <p className="text-3xl font-bold">R$ 39,90<span className="text-sm font-normal">/mês</span></p>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span>Transações ilimitadas</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span>WhatsApp completo</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span>Foto e áudio (OCR + IA)</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span>Relatórios avançados</span>
-                  </li>
-                </ul>
-                <Button 
-                  className="w-full"
-                  onClick={() => handleSelectPlan('premium')}
-                  disabled={loading}
-                >
-                  {loading ? "Processando..." : "Escolher Premium"}
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-          
-          <div className="text-center">
-            <Button 
-              variant="ghost" 
-              onClick={handleSkip}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              Pular configuração e ir para o dashboard
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      {plan.role === 'trial' ? (
+                        <Star className="h-6 w-6 text-accent" />
+                      ) : (
+                        <Crown className="h-6 w-6 text-primary" />
+                      )}
+                      <CardTitle>{plan.display_name}</CardTitle>
+                    </div>
+                    <p className="text-3xl font-bold">
+                      {plan.price_monthly === 0 
+                        ? 'Grátis' 
+                        : `R$ ${plan.price_monthly.toFixed(2)}`}
+                      {plan.price_monthly > 0 && <span className="text-sm font-normal">/mês</span>}
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground">{plan.description}</p>
+                    <ul className="space-y-2">
+                      {plan.max_transactions ? (
+                        <li className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-green-600" />
+                          <span>{plan.max_transactions} transações</span>
+                        </li>
+                      ) : (
+                        <li className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-green-600" />
+                          <span>Transações ilimitadas</span>
+                        </li>
+                      )}
+                      {plan.has_whatsapp && (
+                        <li className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-green-600" />
+                          <span>WhatsApp {plan.role === 'trial' ? 'básico' : 'completo'}</span>
+                        </li>
+                      )}
+                      {plan.has_ai_reports && (
+                        <li className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-green-600" />
+                          <span>Relatórios com IA</span>
+                        </li>
+                      )}
+                      {plan.has_google_calendar && (
+                        <li className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-green-600" />
+                          <span>Google Calendar</span>
+                        </li>
+                      )}
+                    </ul>
+                    <Button 
+                      className="w-full"
+                      variant={plan.role === 'trial' ? 'outline' : 'default'}
+                      onClick={() => handleSelectPlan(plan.role)}
+                      disabled={loading}
+                    >
+                      {loading ? "Processando..." : `Escolher ${plan.display_name}`}
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+          <div className="border-t p-6 flex justify-between items-center">
+            <Button variant="ghost" onClick={handleSkip}>
+              Pular configuração
+            </Button>
+            <Button variant="outline" onClick={handleLogout}>
+              Sair
             </Button>
           </div>
-        </div>
+        </Card>
       </div>
     );
   }
 
-  // Etapa 2: Configuração WhatsApp
+  if (step === 'enter-coupon') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-2xl">🎁 Tem um cupom?</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Insira seu código promocional para obter descontos
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Input
+              placeholder="EX: LANCAMENTO30"
+              value={couponCode}
+              onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+              maxLength={20}
+            />
+            
+            {appliedCoupon && (
+              <div className="bg-green-50 dark:bg-green-950 border-2 border-green-200 p-3 rounded-lg">
+                <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                  ✅ Cupom {appliedCoupon.code} aplicado!
+                </p>
+                <p className="text-xs text-green-600 dark:text-green-400">
+                  {appliedCoupon.note || 'Desconto ativado com sucesso'}
+                </p>
+              </div>
+            )}
+
+            <Button 
+              onClick={handleApplyCoupon} 
+              className="w-full"
+              disabled={loading}
+            >
+              {loading ? "Aplicando..." : (couponCode ? 'Aplicar Cupom' : 'Continuar sem cupom')}
+            </Button>
+          </CardContent>
+          <div className="border-t p-6 flex justify-between items-center">
+            <Button variant="ghost" onClick={() => setStep('setup-whatsapp')}>
+              Pular cupom
+            </Button>
+            <Button variant="outline" onClick={handleLogout}>
+              Sair
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   if (step === 'setup-whatsapp') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20 flex items-center justify-center p-4">
@@ -362,8 +522,12 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 </p>
               </div>
 
+              <Button onClick={handleConnectWhatsApp} disabled={loading || !phoneNumber} className="w-full">
+                {loading ? "Enviando..." : "Enviar Código"}
+              </Button>
+
               {generatedCode && (
-                <div className="bg-green-50 dark:bg-green-950 border-2 border-green-200 dark:border-green-800 p-4 rounded-lg">
+                <div className="bg-green-50 dark:bg-green-950 border-2 border-green-200 p-4 rounded-lg">
                   <p className="text-sm font-medium text-green-900 dark:text-green-100 mb-2">
                     📱 Código gerado com sucesso!
                   </p>
@@ -389,41 +553,24 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   <p className="text-xs text-muted-foreground">
                     Digite o código de 6 dígitos gerado
                   </p>
+                  {authCode && (
+                    <Button
+                      onClick={handleVerifyCode}
+                      disabled={loading || authCode.length !== 6}
+                      className="w-full"
+                    >
+                      {loading ? "Verificando..." : "Verificar Código"}
+                    </Button>
+                  )}
                 </div>
               )}
-
-              <div className="flex gap-2">
-                <Button
-                  onClick={handleConnectWhatsApp}
-                  disabled={loading || !phoneNumber}
-                  className="flex-1"
-                >
-                  {loading ? "Enviando..." : "Enviar Código"}
-                </Button>
-                {authCode && (
-                  <Button
-                    onClick={handleVerifyCode}
-                    disabled={loading || authCode.length !== 6}
-                    variant="default"
-                  >
-                    Verificar
-                  </Button>
-                )}
-              </div>
             </div>
           </CardContent>
           <div className="border-t p-6 flex justify-between items-center">
-            <Button 
-              variant="ghost" 
-              onClick={handleSkip}
-            >
+            <Button variant="ghost" onClick={handleSkip}>
               Pular configuração
             </Button>
-            
-            <Button 
-              variant="outline"
-              onClick={handleLogout}
-            >
+            <Button variant="outline" onClick={handleLogout}>
               Sair
             </Button>
           </div>

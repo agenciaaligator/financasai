@@ -20,7 +20,6 @@ const Index = () => {
         return;
       }
 
-      // 1. Verificar se é master user
       const { data: isMaster } = await supabase.rpc('is_master_user', {
         _user_id: user.id
       });
@@ -32,35 +31,26 @@ const Index = () => {
         return;
       }
 
-      // 2. Verificar se já tem subscrição (mesmo expirada)
       const { data: subData } = await supabase
         .from('user_subscriptions')
-        .select('id')
+        .select('id, status, current_period_end')
         .eq('user_id', user.id)
+        .eq('status', 'active')
         .limit(1);
 
       if (subData && subData.length > 0) {
-        console.log('[ONBOARDING] Subscrição existente - pulando onboarding');
-        localStorage.setItem('onboarding_complete', 'true');
-        setOnboardingComplete(true);
-        return;
+        const sub = subData[0];
+        const expirationDate = new Date(sub.current_period_end);
+        const now = new Date();
+
+        if (expirationDate > now) {
+          console.log('[ONBOARDING] Subscrição ativa - pulando onboarding');
+          localStorage.setItem('onboarding_complete', 'true');
+          setOnboardingComplete(true);
+          return;
+        }
       }
 
-      // 3. Verificar se WhatsApp já está conectado
-      const { data: whatsappData } = await supabase
-        .from('whatsapp_sessions')
-        .select('id')
-        .eq('user_id', user.id)
-        .limit(1);
-
-      if (whatsappData && whatsappData.length > 0) {
-        console.log('[ONBOARDING] WhatsApp já conectado - pulando onboarding');
-        localStorage.setItem('onboarding_complete', 'true');
-        setOnboardingComplete(true);
-        return;
-      }
-
-      // 4. Verificar localStorage (padrão)
       const completed = localStorage.getItem('onboarding_complete');
       setOnboardingComplete(completed === 'true');
     };
