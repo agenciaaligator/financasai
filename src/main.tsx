@@ -7,6 +7,12 @@ console.log('[MAIN] App inicializando...');
 
 // Função AGRESSIVA para buscar versão remota - tenta version.txt primeiro
 async function fetchRemoteVersion(timeoutMs = 1500): Promise<string | null> {
+  // Desabilitar em desenvolvimento para evitar loop infinito
+  if (import.meta.env.DEV) {
+    console.log('[VERSION] Modo dev - skip verificação remota');
+    return null;
+  }
+  
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   
