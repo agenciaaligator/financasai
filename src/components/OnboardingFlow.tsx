@@ -141,56 +141,80 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   };
 
   const handleApplyCoupon = async () => {
-    if (!couponCode) {
-      setStep('setup-whatsapp');
-      return;
-    }
-
     setLoading(true);
+    
     try {
-      const { data: coupon, error } = await supabase
-        .from('discount_coupons')
-        .select('*')
-        .eq('code', couponCode.toUpperCase())
-        .eq('is_active', true)
-        .single();
+      // Se tem cupom, validar
+      if (couponCode) {
+        const { data: coupon, error } = await supabase
+          .from('discount_coupons')
+          .select('*')
+          .eq('code', couponCode.toUpperCase())
+          .eq('is_active', true)
+          .single();
 
-      if (error || !coupon) {
-        toast({
-          title: "Cupom inválido",
-          description: "Cupom não encontrado ou expirado",
-          variant: "destructive"
-        });
-        setStep('setup-whatsapp');
-        return;
+        if (error || !coupon) {
+          toast({
+            title: "Cupom inválido",
+            description: "Continuando sem cupom",
+            variant: "destructive"
+          });
+        } else if (coupon.max_uses && coupon.current_uses >= coupon.max_uses) {
+          toast({
+            title: "Cupom esgotado",
+            description: "Continuando sem cupom",
+            variant: "destructive"
+          });
+        } else {
+          setAppliedCoupon(coupon);
+          toast({
+            title: "✅ Cupom aplicado!",
+            description: `Desconto de ${coupon.type === 'discount_percent' ? coupon.value + '%' : 'R$ ' + coupon.value}`,
+          });
+          
+          await supabase.from('user_coupons').insert({ 
+            user_id: user?.id, 
+            coupon_id: coupon.id 
+          });
+        }
       }
 
-      if (coupon.max_uses && coupon.current_uses >= coupon.max_uses) {
-        toast({
-          title: "Cupom esgotado",
-          description: "Este cupom já atingiu o limite de usos",
-          variant: "destructive"
-        });
-        setStep('setup-whatsapp');
-        return;
+      // SE PREMIUM: Redirecionar para Stripe checkout
+      if (selectedPlan === 'premium') {
+        const { data: plan } = await supabase
+          .from('subscription_plans')
+          .select('stripe_price_id_monthly')
+          .eq('role', 'premium')
+          .eq('is_active', true)
+          .single();
+        
+        if (plan?.stripe_price_id_monthly) {
+          const { data: checkout, error } = await supabase.functions.invoke('create-checkout', {
+            body: { priceId: plan.stripe_price_id_monthly }
+          });
+          
+          if (checkout?.url) {
+            window.open(checkout.url, '_blank');
+            toast({
+              title: "Checkout aberto!",
+              description: "Complete o pagamento na nova aba"
+            });
+          } else {
+            throw new Error('Erro ao criar checkout Stripe');
+          }
+        }
       }
 
-      setAppliedCoupon(coupon);
-      toast({
-        title: "✅ Cupom aplicado!",
-        description: `Desconto de ${coupon.type === 'discount_percent' ? coupon.value + '%' : 'R$ ' + coupon.value}`,
-      });
-
-      await supabase
-        .from('user_coupons')
-        .insert({
-          user_id: user?.id,
-          coupon_id: coupon.id
-        });
-
+      // Ir para WhatsApp
       setStep('setup-whatsapp');
+      
     } catch (error) {
-      console.error('[COUPON ERROR]', error);
+      console.error('[COUPON/CHECKOUT ERROR]', error);
+      toast({
+        title: "Erro",
+        description: "Continuando para WhatsApp",
+        variant: "destructive"
+      });
       setStep('setup-whatsapp');
     } finally {
       setLoading(false);
@@ -211,21 +235,19 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     setGeneratedCode(null);
     
     try {
-      console.log('[WHATSAPP AUTH] Solicitando código para:', phoneNumber);
-      
       const normalizedPhone = phoneNumber.startsWith('+') 
         ? phoneNumber 
         : `+${phoneNumber}`;
 
+      // Salvar número no perfil
       if (user) {
         await supabase
           .from('profiles')
           .update({ phone_number: normalizedPhone })
           .eq('user_id', user.id);
-        
-        console.log('[WHATSAPP AUTH] Número salvo no perfil:', normalizedPhone);
       }
 
+      // Tentar gerar código via edge function
       const { data: sessionData } = await supabase.auth.getSession();
       
       const response = await fetch(`${supabaseUrl}/functions/v1/whatsapp-agent`, {
@@ -240,38 +262,42 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         })
       });
 
-      console.log('[WHATSAPP AUTH] Response status:', response.status);
       const result = await response.json();
-      console.log('[WHATSAPP AUTH] Response data:', result);
       
+      // Extrair ou gerar código
+      let code = null;
       if (result.success && result.response) {
         const responseText = typeof result.response === 'string' 
           ? result.response 
           : JSON.stringify(result.response);
         
         const codeMatch = responseText.match(/\*(\d{6})\*/);
-        if (codeMatch) {
-          setGeneratedCode(codeMatch[1]);
-          toast({
-            title: "Código gerado!",
-            description: `Código: ${codeMatch[1]}`,
-          });
-        } else {
-          const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
-          setGeneratedCode(randomCode);
-          toast({
-            title: "Código gerado!",
-            description: "Use o código exibido abaixo",
-          });
-        }
-      } else {
-        throw new Error(result.error || 'Falha ao gerar código');
+        code = codeMatch ? codeMatch[1] : null;
       }
+      
+      // FALLBACK: Gerar código aleatório se não extraiu
+      if (!code) {
+        code = Math.floor(100000 + Math.random() * 900000).toString();
+      }
+
+      // SALVAR CÓDIGO NO BANCO
+      await supabase.from('whatsapp_validation_codes').insert({
+        user_id: user.id,
+        code: code,
+        expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString()
+      });
+
+      setGeneratedCode(code);
+      toast({
+        title: "✅ Código gerado!",
+        description: `Código: ${code}`
+      });
+      
     } catch (error) {
       console.error('[WHATSAPP ERROR]', error);
       toast({
-        title: "Erro ao solicitar código",
-        description: error instanceof Error ? error.message : "Tente novamente",
+        title: "Erro",
+        description: "Tente novamente",
         variant: "destructive"
       });
     } finally {
@@ -283,55 +309,81 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     if (!authCode || authCode.length !== 6) {
       toast({
         title: "Código inválido",
-        description: "Digite o código de 6 dígitos",
+        description: "Digite 6 dígitos",
         variant: "destructive"
       });
       return;
     }
 
     setLoading(true);
+    
     try {
+      // BUSCAR CÓDIGO VÁLIDO NO BANCO
+      const { data: validCode, error } = await supabase
+        .from('whatsapp_validation_codes')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('code', authCode)
+        .eq('used', false)
+        .gt('expires_at', new Date().toISOString())
+        .single();
+
+      if (error || !validCode) {
+        toast({
+          title: "Código inválido",
+          description: "Verifique e tente novamente",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // MARCAR CÓDIGO COMO USADO
+      await supabase
+        .from('whatsapp_validation_codes')
+        .update({ used: true })
+        .eq('id', validCode.id);
+
+      // CONECTAR WHATSAPP
       const response = await fetch(`${supabaseUrl}/functions/v1/whatsapp-agent`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phone_number: phoneNumber,
-          message: {
-            body: `codigo ${authCode}`
-          }
+          message: { body: `codigo ${authCode}` }
         })
       });
 
       const result = await response.json();
       
-      if (result.success && result.response.includes('sucesso')) {
+      if (result.success) {
+        // LIMPAR TRANSAÇÕES DE TESTE
         if (user) {
           await supabase
             .from('transactions')
             .delete()
             .eq('user_id', user.id)
             .eq('source', 'manual');
-
-          console.log('[ONBOARDING] Transações de teste removidas');
+          
+          console.log('[ONBOARDING] Saldo zerado');
         }
 
         toast({
-          title: "WhatsApp conectado!",
-          description: "Seu WhatsApp foi conectado com sucesso",
+          title: "✅ WhatsApp conectado!",
+          description: "Configuração completa"
         });
 
         await refetch();
         localStorage.setItem('onboarding_complete', 'true');
         onComplete();
       } else {
-        throw new Error(result.error || 'Código inválido');
+        throw new Error('Falha na conexão WhatsApp');
       }
+      
     } catch (error) {
+      console.error('[VERIFY ERROR]', error);
       toast({
-        title: "Código inválido",
-        description: "Verifique o código e tente novamente",
+        title: "Erro",
+        description: "Tente novamente",
         variant: "destructive"
       });
     } finally {

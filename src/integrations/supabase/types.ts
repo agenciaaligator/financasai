@@ -1099,6 +1099,33 @@ export type Database = {
           },
         ]
       }
+      whatsapp_validation_codes: {
+        Row: {
+          code: string
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          used: boolean | null
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          used?: boolean | null
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          used?: boolean | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       work_hours: {
         Row: {
           created_at: string | null
@@ -1147,6 +1174,7 @@ export type Database = {
       }
       check_user_exists: { Args: { email_to_check: string }; Returns: boolean }
       clean_duplicate_profiles: { Args: never; Returns: undefined }
+      cleanup_expired_validation_codes: { Args: never; Returns: undefined }
       cleanup_expired_whatsapp_data: { Args: never; Returns: undefined }
       cleanup_old_security_events: { Args: never; Returns: undefined }
       cleanup_rate_limit_events: { Args: never; Returns: undefined }
