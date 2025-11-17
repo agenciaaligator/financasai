@@ -2,22 +2,21 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { FinancialDashboard } from "@/components/FinancialDashboard";
 import { LoginForm } from "@/components/auth/LoginForm";
-import { OnboardingFlow } from "@/components/OnboardingFlow";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { useSubscription } from "@/hooks/useSubscription";
 
 const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
+  const { subscription, loading: loadingSubscription } = useSubscription();
 
-  // Verificar se onboarding foi completado
+  // Redirecionar usuários sem plano para a landing page
   useEffect(() => {
-    const checkOnboarding = async () => {
-      if (!user) {
-        setOnboardingComplete(true);
-        return;
+    if (user && !loadingSubscription && !subscription) {
+      navigate('/plans');
+    }
       }
 
       const { data: isMaster } = await supabase.rpc('is_master_user', {
@@ -56,7 +55,7 @@ const Index = () => {
     };
 
     checkOnboarding();
-  }, [user]);
+  }, [user, loadingSubscription, subscription, navigate]);
 
   // Detectar logout forçado
   useEffect(() => {

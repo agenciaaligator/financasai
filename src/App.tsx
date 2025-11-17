@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
+import Plans from "./pages/Plans";
 import ResetPassword from "./pages/ResetPassword";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
@@ -38,7 +39,8 @@ const App = () => {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/signup" element={
+            <Route path="/plans" element={<Plans />} />
+            <Route path="/cadastro" element={
               <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20 flex items-center justify-center p-4">
                 <SignUpForm />
               </div>
@@ -50,7 +52,6 @@ const App = () => {
             <Route path="/gc-bridge" element={<GCBridge />} />
             <Route path="/gc-done" element={<GCAuthResult />} />
             <Route path="/invite/:token" element={<InviteAccept />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
