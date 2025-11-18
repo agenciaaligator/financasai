@@ -121,7 +121,6 @@ export function SignUpForm() {
       const result = await signUp(email, password, fullName);
 
       if (result.error) throw new Error('Erro ao criar conta');
-      if (!result.data?.user) throw new Error('Erro ao criar conta');
 
       await supabase
         .from('profiles')
@@ -362,10 +361,10 @@ export function SignUpForm() {
 
         {step === 'creating-account' && (
           <div className="text-center py-8">
-            <Loader2 className="h-12 w-12 mx-auto text-primary mb-4 animate-spin" />
+            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
             <h3 className="font-semibold mb-2">Criando sua conta...</h3>
             <p className="text-sm text-muted-foreground">
-              Aguarde enquanto configuramos tudo para você
+              Aguarde enquanto preparamos tudo para você
             </p>
           </div>
         )}
