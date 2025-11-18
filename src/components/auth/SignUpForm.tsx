@@ -40,7 +40,6 @@ export function SignUpForm() {
       return;
     }
 
-    // Validar formato do telefone
     const cleanPhone = phoneNumber.replace(/\D/g, '');
     if (cleanPhone.length < 10) {
       toast({
@@ -56,7 +55,6 @@ export function SignUpForm() {
     try {
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       
-      // Enviar código via WhatsApp
       const { data, error } = await supabase.functions.invoke('whatsapp-agent', {
         body: { 
           action: 'send-validation-code',
@@ -102,7 +100,6 @@ export function SignUpForm() {
     try {
       const cleanPhone = phoneNumber.replace(/\D/g, '');
       
-      // 1. Validar código WhatsApp
       const { data: codes } = await supabase
         .from('whatsapp_validation_codes')
         .select('*')
@@ -116,78 +113,49 @@ export function SignUpForm() {
         throw new Error('Código inválido ou expirado');
       }
 
-      // Marcar código como usado
       await supabase
         .from('whatsapp_validation_codes')
         .update({ used: true })
         .eq('id', validCode.id);
 
-      // 2. Criar conta
       const result = await signUp(email, password, fullName);
-      
-      if (result && result.error) {
-        throw new Error(result.error.message);
-      }
 
-      // 3. Obter user ID recém-criado
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('Erro ao obter dados do usuário');
-      }
+      if (result.error) throw new Error('Erro ao criar conta');
+      if (!result.data?.user) throw new Error('Erro ao criar conta');
 
-      // 4. Atualizar profile com telefone
       await supabase
         .from('profiles')
-        .update({ phone_number: `+55${cleanPhone}` })
-        .eq('user_id', user.id);
+        .update({ 
+          full_name: fullName,
+          phone_number: `+55${cleanPhone}`
+        })
+        .eq('user_id', result.data.user.id);
 
-      // 5. Limpar transações de teste (se houver)
-      await supabase
-        .from('transactions')
-        .delete()
-        .eq('user_id', user.id);
-
-      // 6. Ativar plano escolhido
       if (planId) {
-        const { data: plan } = await supabase
+        const { data: planData } = await supabase
           .from('subscription_plans')
-          .select('*')
+          .select('role, name')
           .eq('id', planId)
           .single();
 
-        if (plan) {
-          if (plan.role === 'trial') {
-            // Ativar trial
-            await supabase.functions.invoke('activate-trial');
-          } else if (plan.role === 'premium') {
-            // Redirecionar para Stripe checkout
-            const priceId = plan.stripe_price_id_monthly;
-            if (priceId) {
-              const { data: checkout } = await supabase.functions.invoke('create-checkout', {
-                body: { priceId }
-              });
-              
-              if (checkout?.url) {
-                window.open(checkout.url, '_blank');
-              }
-            }
-          }
+        if (planData && planData.role === 'trial') {
+          await supabase.functions.invoke('activate-trial', {
+            body: { user_id: result.data.user.id }
+          });
         }
       }
 
       toast({
-        title: "Conta criada com sucesso! ✅",
-        description: "Verifique seu email para confirmar a conta",
+        title: "Conta criada!",
+        description: "Bem-vindo à plataforma",
       });
-      
-      // Redirecionar para dashboard
+
       navigate('/');
-    } catch (error: any) {
-      console.error('Error creating account:', error);
+    } catch (error) {
+      console.error('Error during signup:', error);
       toast({
         title: "Erro ao criar conta",
-        description: error.message || "Tente novamente mais tarde",
+        description: error instanceof Error ? error.message : "Tente novamente",
         variant: "destructive"
       });
       setStep('verify-whatsapp');
@@ -198,9 +166,8 @@ export function SignUpForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validações básicas
-    if (!email || !password || !fullName || !phoneNumber) {
+
+    if (!email || !password || !confirmPassword || !fullName || !phoneNumber) {
       toast({
         title: "Campos obrigatórios",
         description: "Preencha todos os campos",
@@ -227,143 +194,117 @@ export function SignUpForm() {
       return;
     }
 
-    // Enviar código WhatsApp
     await handleSendWhatsAppCode();
   };
 
   return (
-    <Card className="w-full max-w-md bg-gradient-card shadow-primary border-0">
-      <CardHeader className="space-y-1 text-center">
-        <div className="flex justify-center mb-4">
-          <div className="p-3 bg-gradient-primary rounded-full">
-            {step === 'creating-account' ? (
-              <CheckCircle2 className="h-8 w-8 text-white" />
-            ) : step === 'verify-whatsapp' ? (
-              <Phone className="h-8 w-8 text-white" />
-            ) : (
-              <UserPlus className="h-8 w-8 text-white" />
-            )}
-          </div>
-        </div>
-        <CardTitle className="text-2xl font-bold">
-          {step === 'creating-account' ? 'Criando sua conta...' :
-           step === 'verify-whatsapp' ? 'Verificar WhatsApp' :
-           'Criar Conta'}
+    <Card className="w-full max-w-md">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <UserPlus className="h-6 w-6" />
+          Criar Conta
         </CardTitle>
-        <p className="text-muted-foreground">
-          {step === 'creating-account' ? 'Aguarde enquanto configuramos tudo para você' :
-           step === 'verify-whatsapp' ? `Código enviado para ${phoneNumber}` :
-           'Preencha seus dados para começar'}
-        </p>
       </CardHeader>
-      
       <CardContent>
         {step === 'form' && (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
+            <div>
               <Label htmlFor="fullName">Nome Completo</Label>
               <Input
                 id="fullName"
                 type="text"
-                placeholder="Seu nome completo"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
+                placeholder="João Silva"
                 required
               />
             </div>
-            
-            <div className="space-y-2">
+
+            <div>
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="seu@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                placeholder="seu@email.com"
                 required
               />
             </div>
 
-            <div className="space-y-2">
+            <div>
               <Label htmlFor="phoneNumber">WhatsApp</Label>
-              <Input
-                id="phoneNumber"
-                type="tel"
-                placeholder="(11) 99999-9999"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                required
-              />
-              <p className="text-xs text-muted-foreground">
-                Digite com DDD. Enviaremos um código de verificação.
+              <div className="flex gap-2">
+                <Input
+                  id="phoneNumber"
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder="(11) 98765-4321"
+                  required
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Enviaremos um código de verificação
               </p>
             </div>
 
-            <div className="space-y-2">
+            <div>
               <Label htmlFor="password">Senha</Label>
               <div className="relative">
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
                   required
                 />
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </Button>
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div>
               <Label htmlFor="confirmPassword">Confirmar Senha</Label>
               <Input
                 id="confirmPassword"
-                type="password"
-                placeholder="••••••••"
+                type={showPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Digite a senha novamente"
                 required
               />
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full bg-gradient-primary hover:shadow-primary transition-all duration-200"
-              disabled={isLoading}
-            >
+            <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Enviando código...
-                </div>
+                </>
               ) : (
-                <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4" />
-                  Enviar código WhatsApp
-                </div>
+                <>
+                  <Phone className="mr-2 h-4 w-4" />
+                  Continuar
+                </>
               )}
             </Button>
 
-            <div className="text-center">
+            <div className="text-center text-sm text-muted-foreground">
+              Já tem uma conta?{" "}
               <Button
                 type="button"
                 variant="link"
+                className="p-0 h-auto"
                 onClick={() => navigate('/')}
-                className="text-primary hover:text-primary-dark"
               >
-                Já tem uma conta? Entre aqui
+                Fazer login
               </Button>
             </div>
           </form>
@@ -371,69 +312,60 @@ export function SignUpForm() {
 
         {step === 'verify-whatsapp' && (
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="verificationCode">Código de Verificação</Label>
-              <Input
-                id="verificationCode"
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                placeholder="000000"
-                value={verificationCode}
-                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
-                className="text-center text-2xl tracking-widest"
-                autoFocus
-              />
-              <p className="text-xs text-muted-foreground text-center">
-                Digite o código de 6 dígitos enviado para seu WhatsApp
+            <div className="text-center mb-4">
+              <Phone className="h-12 w-12 mx-auto text-primary mb-2" />
+              <h3 className="font-semibold">Verifique seu WhatsApp</h3>
+              <p className="text-sm text-muted-foreground">
+                Enviamos um código de 6 dígitos para<br />
+                <strong>{phoneNumber}</strong>
               </p>
             </div>
 
+            <div>
+              <Label htmlFor="code">Código de Verificação</Label>
+              <Input
+                id="code"
+                type="text"
+                maxLength={6}
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                placeholder="000000"
+                className="text-center text-2xl tracking-widest"
+              />
+            </div>
+
             <Button 
-              onClick={handleVerifyAndSignUp}
-              className="w-full bg-gradient-primary hover:shadow-primary"
+              onClick={handleVerifyAndSignUp} 
+              className="w-full"
               disabled={isLoading || verificationCode.length !== 6}
             >
               {isLoading ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Verificando...
-                </div>
+                </>
               ) : (
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4" />
-                  Verificar e Criar Conta
-                </div>
+                'Verificar e Criar Conta'
               )}
             </Button>
 
             <Button
-              type="button"
               variant="ghost"
-              className="w-full"
-              onClick={() => setStep('form')}
-              disabled={isLoading}
-            >
-              Voltar
-            </Button>
-
-            <Button
-              type="button"
-              variant="link"
-              className="w-full text-sm"
               onClick={handleSendWhatsAppCode}
+              className="w-full"
               disabled={isLoading}
             >
-              Não recebeu? Reenviar código
+              Reenviar código
             </Button>
           </div>
         )}
 
         {step === 'creating-account' && (
-          <div className="flex flex-col items-center justify-center py-8 space-y-4">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="text-center text-muted-foreground">
-              Criando sua conta e configurando seu plano...
+          <div className="text-center py-8">
+            <Loader2 className="h-12 w-12 mx-auto text-primary mb-4 animate-spin" />
+            <h3 className="font-semibold mb-2">Criando sua conta...</h3>
+            <p className="text-sm text-muted-foreground">
+              Aguarde enquanto configuramos tudo para você
             </p>
           </div>
         )}

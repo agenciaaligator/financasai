@@ -115,104 +115,107 @@ export const Plans = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5 py-12 px-4">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-primary bg-clip-text text-transparent">
-            Escolha seu Plano
+          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
+            Escolha seu plano
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Comece grátis e faça upgrade quando precisar de mais recursos
           </p>
         </div>
 
-        {/* Cycle Toggle - Only show if premium plan exists */}
         {plans.some(p => p.role === 'premium') && (
           <div className="flex justify-center mb-8">
-            <div className="inline-flex rounded-lg border border-border bg-background p-1">
-              <Button
-                variant={selectedCycle === 'monthly' ? 'default' : 'ghost'}
-                size="sm"
+            <div className="inline-flex rounded-lg border border-border p-1 bg-background">
+              <button
                 onClick={() => setSelectedCycle('monthly')}
-                className="rounded-md"
+                className={`px-4 py-2 rounded-md transition-colors ${
+                  selectedCycle === 'monthly'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
               >
                 Mensal
-              </Button>
-              <Button
-                variant={selectedCycle === 'yearly' ? 'default' : 'ghost'}
-                size="sm"
+              </button>
+              <button
                 onClick={() => setSelectedCycle('yearly')}
-                className="rounded-md"
+                className={`px-4 py-2 rounded-md transition-colors ${
+                  selectedCycle === 'yearly'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
               >
                 Anual
-                <span className="ml-2 text-xs bg-green-500/20 text-green-600 px-2 py-0.5 rounded">
-                  -50%
-                </span>
-              </Button>
+                <span className="ml-2 text-xs">(-40%)</span>
+              </button>
             </div>
           </div>
         )}
 
-        {/* Plans Grid */}
-        <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-8 mb-12">
           {plans.map((plan) => {
             const Icon = getPlanIcon(plan.role);
             const features = getPlanFeatures(plan);
-            const price = getPlanPrice(plan);
-            const isPremium = plan.role === 'premium';
+            const isPopular = plan.role === 'premium';
 
             return (
               <Card 
                 key={plan.id}
-                className={`relative overflow-hidden transition-all duration-300 hover:shadow-lg ${
-                  isPremium ? 'border-primary shadow-primary/20 scale-105' : ''
+                className={`relative ${
+                  isPopular 
+                    ? 'border-primary shadow-lg scale-105' 
+                    : 'border-border'
                 }`}
               >
-                {isPremium && (
-                  <div className="absolute top-0 right-0 bg-gradient-primary text-white px-3 py-1 text-xs font-semibold rounded-bl-lg">
-                    POPULAR
+                {isPopular && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                    <span className="bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-medium">
+                      Mais Popular
+                    </span>
                   </div>
                 )}
                 
                 <CardHeader>
                   <div className="flex items-center gap-3 mb-2">
-                    <div className={`p-2 rounded-lg ${
-                      isPremium ? 'bg-gradient-primary' : 'bg-primary/10'
-                    }`}>
-                      <Icon className={`h-6 w-6 ${isPremium ? 'text-white' : 'text-primary'}`} />
-                    </div>
-                    <CardTitle className="text-xl">{plan.display_name}</CardTitle>
+                    <Icon className="h-6 w-6 text-primary" />
+                    <CardTitle className="text-2xl">{plan.display_name}</CardTitle>
                   </div>
-                  <CardDescription>{plan.description || 'Plano completo'}</CardDescription>
+                  {plan.description && (
+                    <CardDescription>{plan.description}</CardDescription>
+                  )}
                   <div className="mt-4">
-                    <div className="text-3xl font-bold">{price}</div>
-                    {plan.role === 'trial' && (
-                      <p className="text-sm text-muted-foreground">por 14 dias</p>
-                    )}
-                    {selectedCycle === 'yearly' && plan.price_yearly && (
-                      <p className="text-sm text-muted-foreground">
-                        Cobrado R$ {plan.price_yearly.toFixed(2).replace('.', ',')} anualmente
-                      </p>
-                    )}
+                    <span className="text-4xl font-bold text-foreground">
+                      {getPlanPrice(plan)}
+                    </span>
                   </div>
                 </CardHeader>
 
-                <CardContent className="space-y-4">
-                  <ul className="space-y-2">
+                <CardContent>
+                  <ul className="space-y-3 mb-6">
                     {features.map((feature, idx) => (
                       <li key={idx} className="flex items-start gap-2">
-                        <Check className={`h-5 w-5 mt-0.5 flex-shrink-0 ${
-                          feature.available ? 'text-green-600' : 'text-muted-foreground/30'
-                        }`} />
-                        <span className={feature.available ? '' : 'text-muted-foreground/50'}>
+                        <Check 
+                          className={`h-5 w-5 mt-0.5 flex-shrink-0 ${
+                            feature.available 
+                              ? 'text-primary' 
+                              : 'text-muted-foreground'
+                          }`}
+                        />
+                        <span className={
+                          feature.available 
+                            ? 'text-foreground' 
+                            : 'text-muted-foreground'
+                        }>
                           {feature.name}
                         </span>
                       </li>
                     ))}
                   </ul>
 
-                  <Button 
-                    className={`w-full ${isPremium ? 'bg-gradient-primary hover:shadow-primary' : ''}`}
+                  <Button
                     onClick={() => handleSelectPlan(plan)}
+                    className="w-full"
+                    variant={isPopular ? 'default' : 'outline'}
                   >
                     Começar
                   </Button>
@@ -222,18 +225,17 @@ export const Plans = () => {
           })}
         </div>
 
-        {/* Footer */}
-        <div className="text-center mt-12">
-          <p className="text-sm text-muted-foreground mb-4">
-            Já tem uma conta?{" "}
-            <Button 
-              variant="link" 
-              className="p-0 h-auto font-semibold text-primary"
-              onClick={() => navigate('/')}
-            >
-              Faça login
-            </Button>
+        <div className="text-center">
+          <p className="text-muted-foreground mb-2">
+            Já tem uma conta?
           </p>
+          <Button
+            variant="link"
+            onClick={() => navigate('/')}
+            className="text-primary"
+          >
+            Fazer login
+          </Button>
         </div>
       </div>
     </div>
