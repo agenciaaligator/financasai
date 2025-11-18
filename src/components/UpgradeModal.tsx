@@ -20,6 +20,29 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
   const { createCheckoutSession, loading } = useCheckout();
   const [selectedCycle, setSelectedCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [activatingTrial, setActivatingTrial] = useState(false);
+  const [dbPlans, setDbPlans] = useState<any[]>([]);
+  const [loadingPlans, setLoadingPlans] = useState(true);
+
+  // Buscar planos do banco de dados
+  useState(() => {
+    const fetchPlans = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('subscription_plans')
+          .select('*')
+          .eq('is_active', true)
+          .order('price_monthly', { ascending: true });
+        
+        if (error) throw error;
+        setDbPlans(data || []);
+      } catch (error) {
+        console.error('Error fetching plans:', error);
+      } finally {
+        setLoadingPlans(false);
+      }
+    };
+    fetchPlans();
+  });
 
   const handleStartTrial = async () => {
     setActivatingTrial(true);

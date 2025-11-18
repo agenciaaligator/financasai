@@ -17,44 +17,6 @@ const Index = () => {
     if (user && !loadingSubscription && !subscription) {
       navigate('/plans');
     }
-      }
-
-      const { data: isMaster } = await supabase.rpc('is_master_user', {
-        _user_id: user.id
-      });
-
-      if (isMaster) {
-        console.log('[ONBOARDING] Master user detectado - pulando onboarding');
-        localStorage.setItem('onboarding_complete', 'true');
-        setOnboardingComplete(true);
-        return;
-      }
-
-      const { data: subData } = await supabase
-        .from('user_subscriptions')
-        .select('id, status, current_period_end')
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .limit(1);
-
-      if (subData && subData.length > 0) {
-        const sub = subData[0];
-        const expirationDate = new Date(sub.current_period_end);
-        const now = new Date();
-
-        if (expirationDate > now) {
-          console.log('[ONBOARDING] Subscrição ativa - pulando onboarding');
-          localStorage.setItem('onboarding_complete', 'true');
-          setOnboardingComplete(true);
-          return;
-        }
-      }
-
-      const completed = localStorage.getItem('onboarding_complete');
-      setOnboardingComplete(completed === 'true');
-    };
-
-    checkOnboarding();
   }, [user, loadingSubscription, subscription, navigate]);
 
   // Detectar logout forçado
@@ -142,18 +104,6 @@ const Index = () => {
         <LoginForm />
       </div>
     );
-  }
-
-  if (onboardingComplete === null) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  if (!onboardingComplete) {
-    return <OnboardingFlow onComplete={() => setOnboardingComplete(true)} />;
   }
 
   return <FinancialDashboard />;
