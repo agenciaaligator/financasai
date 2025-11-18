@@ -6179,8 +6179,74 @@ serve(async (req) => {
     console.log('📥 Request body:', { 
       hasPhoneNumber: !!phone_number, 
       hasMessage: !!message,
+      action,
       bodyKeys: Object.keys(body)
     });
+
+    // ✨ FASE 5: Handle send-validation-code action
+    if (action === 'send-validation-code') {
+      console.log('[SEND-VALIDATION-CODE] Processing validation code request');
+      
+      if (!phone_number || typeof phone_number !== 'string') {
+        throw new Error('Phone number is required');
+      }
+
+      // Normalizar telefone
+      let cleanPhone = phone_number.replace(/[\s\-()]/g, '');
+      if (/^\d{11,15}$/.test(cleanPhone)) {
+        cleanPhone = '+' + cleanPhone;
+      }
+
+      // Gerar código de 6 dígitos
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // Enviar via WhatsApp Business API
+      const WHATSAPP_API_URL = `https://graph.facebook.com/v17.0/${Deno.env.get('WHATSAPP_PHONE_NUMBER_ID')}/messages`;
+      const WHATSAPP_ACCESS_TOKEN = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
+
+      const response = await fetch(WHATSAPP_API_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          to: cleanPhone,
+          type: 'text',
+          text: {
+            body: `🔐 *Código de Verificação Aligator*\n\nSeu código: *${code}*\n\nVálido por 10 minutos.\n\n_Não compartilhe este código._`
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[SEND-VALIDATION-CODE] WhatsApp API error:', errorText);
+        throw new Error(`WhatsApp API error: ${response.status}`);
+      }
+
+      // Salvar no banco de dados
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      const { error: dbError } = await supabase
+        .from('whatsapp_validation_codes')
+        .insert({
+          phone_number: cleanPhone,
+          code,
+          expires_at: expiresAt.toISOString(),
+          used: false
+        });
+
+      if (dbError) {
+        console.error('[SEND-VALIDATION-CODE] DB Error:', dbError);
+        throw dbError;
+      }
+
+      console.log('[SEND-VALIDATION-CODE] Code sent and saved successfully');
+      return new Response(JSON.stringify({ success: true, code_sent: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
     
     // Security: Input validation
     if (!phone_number || typeof phone_number !== 'string') {
