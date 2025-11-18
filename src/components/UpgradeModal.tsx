@@ -23,7 +23,6 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
   const [dbPlans, setDbPlans] = useState<any[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
 
-  // Buscar planos do banco de dados
   useEffect(() => {
     const fetchPlans = async () => {
       try {
@@ -71,7 +70,6 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
     }
   };
 
-  // Construir planos dinamicamente do banco de dados
   const plans = loadingPlans ? [] : dbPlans.map(plan => {
     const isPlanActive = planName === plan.name;
     const isTrialPlan = plan.role === 'trial';
@@ -93,16 +91,16 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
         { name: 'WhatsApp', available: plan.has_whatsapp || false },
         { name: 'IA Reports', available: plan.has_ai_reports || false },
         { name: 'Google Calendar', available: plan.has_google_calendar || false },
-        { name: 'Integração bancária', available: plan.has_bank_integration || false },
-        { name: 'Multi-usuário', available: plan.has_multi_user || false },
-        { name: 'Suporte prioritário', available: plan.has_priority_support || false }
+        { name: 'Suporte prioritário', available: isPremiumPlan },
       ],
-      buttonText: isPlanActive ? 'Plano Atual' : isTrialPlan ? 'Começar Trial Grátis' : 'Assinar Agora',
-      variant: isFreePlanRole ? 'outline' as const : isTrialPlan ? 'secondary' as const : 'default' as const,
-      highlight: isPremiumPlan,
-      disabled: isPlanActive,
-      current: isPlanActive,
-      onButtonClick: isTrialPlan ? handleStartTrial : isPremiumPlan ? async () => await createCheckoutSession(selectedCycle) : undefined
+      buttonText: isPlanActive ? 'Plano Atual' : isTrialPlan && (isFreePlan || !isTrial) ? 'Começar Trial' : 'Assinar',
+      buttonAction: isPlanActive 
+        ? undefined 
+        : isTrialPlan && (isFreePlan || !isTrial)
+          ? handleStartTrial
+          : () => createCheckoutSession(selectedCycle),
+      disabled: isPlanActive || (isTrialPlan && isTrial),
+      planData: plan,
     };
   });
 
@@ -110,164 +108,118 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-primary" />
-            Escolha seu Plano
-          </DialogTitle>
-          {reason && (
-            <DialogDescription className="text-base">
-              {reason}
-            </DialogDescription>
-          )}
+          <DialogTitle>Escolha seu Plano</DialogTitle>
+          <DialogDescription>
+            {reason || "Desbloqueie todos os recursos e maximize seu potencial"}
+          </DialogDescription>
         </DialogHeader>
 
-        {/* Competitive Advantages Section */}
-        <div className="bg-gradient-to-r from-primary/10 to-purple-500/10 p-4 rounded-lg mb-4">
-          <h3 className="font-semibold text-lg mb-3">🚀 Por que escolher FinançasAI?</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-            <div className="flex items-center gap-2">
-              <span className="text-green-500 text-lg">✓</span>
-              <span>WhatsApp com IA integrada</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-green-500 text-lg">✓</span>
-              <span>Relatórios Inteligentes (GPT-4)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-green-500 text-lg">✓</span>
-              <span>Integração bancária automática</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-green-500 text-lg">✓</span>
-              <span>Multi-usuário</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-green-500 text-lg">✓</span>
-              <span>14 dias de trial grátis</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-green-500 text-lg">✓</span>
-              <span>Suporte prioritário</span>
-            </div>
+        <div className="space-y-6">
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+            <h3 className="font-semibold mb-2">Por que escolher nosso sistema?</h3>
+            <ul className="space-y-1 text-sm text-muted-foreground">
+              <li>✓ Gestão financeira completa e intuitiva</li>
+              <li>✓ Integração com WhatsApp para facilitar seu dia a dia</li>
+              <li>✓ Relatórios inteligentes com IA</li>
+              <li>✓ Sincronização com Google Calendar</li>
+            </ul>
           </div>
-        </div>
 
-        {/* Billing Cycle Toggle */}
-        <div className="flex justify-center mb-6">
-          <div className="inline-flex items-center gap-4 p-1 bg-muted rounded-lg">
-            <button
-              onClick={() => setSelectedCycle('monthly')}
-              className={`px-6 py-2 rounded-md transition-colors font-medium ${
-                selectedCycle === 'monthly'
-                  ? 'bg-background shadow-sm'
-                  : 'hover:bg-background/50'
-              }`}
-            >
-              Mensal
-            </button>
-            <button
-              onClick={() => setSelectedCycle('yearly')}
-              className={`px-6 py-2 rounded-md transition-colors font-medium relative ${
-                selectedCycle === 'yearly'
-                  ? 'bg-background shadow-sm'
-                  : 'hover:bg-background/50'
-              }`}
-            >
-              Anual
-              <span className="absolute -top-2 -right-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">
-                -40%
-              </span>
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-          {plans.map((plan) => {
-            const Icon = plan.icon;
-            return (
-              <Card 
-                key={plan.name} 
-                className={`relative p-6 ${
-                  plan.highlight 
-                    ? 'border-2 border-primary shadow-lg shadow-primary/20' 
-                    : 'border'
-                } ${plan.current ? 'bg-muted/50' : ''}`}
-              >
-                {plan.badge && (
-                  <Badge 
-                    className="absolute -top-3 left-1/2 -translate-x-1/2"
-                    variant={plan.highlight ? "default" : "secondary"}
-                  >
-                    {plan.badge}
-                  </Badge>
-                )}
-
-                <div className="text-center mb-6">
-                  <Icon className={`h-12 w-12 mx-auto mb-3 ${
-                    plan.highlight ? 'text-primary' : 'text-muted-foreground'
-                  }`} />
-                  <h3 className="text-xl font-bold mb-2">{plan.displayName}</h3>
-                  <div className="mb-1">
-                    <span className="text-3xl font-bold">{plan.price}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{plan.period}</p>
-                  {plan.yearlyPrice && (
-                    <div className="mt-2">
-                      <p className="text-sm font-medium">{plan.yearlyPrice}</p>
-                      <p className="text-xs text-success">{plan.yearlySavings}</p>
-                    </div>
-                  )}
-                </div>
-
-                <ul className="space-y-3 mb-6">
-                  {plan.features.map((feature, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      {feature.available ? (
-                        <Check className="h-5 w-5 text-success shrink-0 mt-0.5" />
-                      ) : (
-                        <X className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-                      )}
-                      <span className={`text-sm ${
-                        feature.available ? '' : 'text-muted-foreground line-through'
-                      }`}>
-                        {feature.name}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-
-                <Button
-                  className="w-full"
-                  variant={plan.variant}
-                  disabled={plan.disabled || loading || (plan.name === 'trial' && activatingTrial)}
-                  onClick={async () => {
-                    if (plan.name === 'premium' && !isPremium) {
-                      const priceId = selectedCycle === 'monthly' 
-                        ? 'price_1SFTZoJH1fRNsXz1EJc3R0yl'  // R$ 49,90/mês
-                        : 'price_1SFTaPJH1fRNsXz1pn1ZpzSW'; // R$ 358,80/ano
-                      await createCheckoutSession(priceId);
-                    } else if (plan.name === 'trial' && plan.onButtonClick) {
-                      await plan.onButtonClick();
-                    }
-                  }}
+          {plans.some(p => p.planData.role === 'premium') && (
+            <div className="flex justify-center">
+              <div className="inline-flex rounded-lg border border-border p-1 bg-background">
+                <button
+                  onClick={() => setSelectedCycle('monthly')}
+                  className={`px-4 py-2 rounded-md transition-colors ${
+                    selectedCycle === 'monthly'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
                 >
-                  {plan.name === 'trial' && activatingTrial ? 'Ativando...' : 
-                   loading ? 'Processando...' : 
-                   plan.buttonText}
-                </Button>
+                  Mensal
+                </button>
+                <button
+                  onClick={() => setSelectedCycle('yearly')}
+                  className={`px-4 py-2 rounded-md transition-colors ${
+                    selectedCycle === 'yearly'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Anual
+                  <span className="ml-2 text-xs">(-40%)</span>
+                </button>
+              </div>
+            </div>
+          )}
 
-                {plan.current && (
-                  <p className="text-xs text-center text-muted-foreground mt-2">
-                    Seu plano atual
-                  </p>
-                )}
-              </Card>
-            );
-          })}
-        </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {plans.map((plan) => {
+              const Icon = plan.icon;
+              return (
+                <Card 
+                  key={plan.name}
+                  className={`relative ${
+                    plan.badge?.includes('Popular')
+                      ? 'border-primary shadow-lg'
+                      : 'border-border'
+                  }`}
+                >
+                  {plan.badge && (
+                    <Badge className="absolute -top-2 left-1/2 -translate-x-1/2 bg-primary">
+                      {plan.badge}
+                    </Badge>
+                  )}
 
-        <div className="text-center text-sm text-muted-foreground mt-4">
-          <p>Pagamento seguro • Cancele quando quiser • Sem compromisso</p>
+                  <div className="p-6 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Icon className="h-6 w-6 text-primary" />
+                      <h3 className="text-xl font-semibold">{plan.displayName}</h3>
+                    </div>
+
+                    <div>
+                      <div className="text-3xl font-bold">{plan.price}</div>
+                      <div className="text-sm text-muted-foreground">{plan.period}</div>
+                      {plan.yearlyPrice && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {plan.yearlyPrice}
+                        </div>
+                      )}
+                      {plan.yearlySavings && (
+                        <Badge variant="secondary" className="mt-2">
+                          {plan.yearlySavings}
+                        </Badge>
+                      )}
+                    </div>
+
+                    <ul className="space-y-2">
+                      {plan.features.map((feature, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-sm">
+                          {feature.available ? (
+                            <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                          ) : (
+                            <X className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                          )}
+                          <span className={feature.available ? 'text-foreground' : 'text-muted-foreground'}>
+                            {feature.name}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <Button
+                      onClick={plan.buttonAction}
+                      disabled={plan.disabled || loading || activatingTrial}
+                      className="w-full"
+                      variant={plan.badge?.includes('Popular') ? 'default' : 'outline'}
+                    >
+                      {plan.buttonText}
+                    </Button>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
