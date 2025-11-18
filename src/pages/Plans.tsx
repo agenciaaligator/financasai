@@ -119,7 +119,7 @@ export const Plans = () => {
           <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
             Escolha seu plano
           </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-lg text-muted-foreground">
             Comece grátis e faça upgrade quando precisar de mais recursos
           </p>
         </div>
