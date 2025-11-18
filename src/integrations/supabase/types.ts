@@ -1099,6 +1099,30 @@ export type Database = {
           },
         ]
       }
+      whatsapp_settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          require_confirmation: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          require_confirmation?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          require_confirmation?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       whatsapp_validation_codes: {
         Row: {
           code: string

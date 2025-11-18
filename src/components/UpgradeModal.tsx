@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Check, X, Sparkles, Crown, Gift } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useCheckout } from "@/hooks/useCheckout";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -24,7 +24,7 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
   const [loadingPlans, setLoadingPlans] = useState(true);
 
   // Buscar planos do banco de dados
-  useState(() => {
+  useEffect(() => {
     const fetchPlans = async () => {
       try {
         const { data, error } = await supabase
@@ -42,7 +42,7 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
       }
     };
     fetchPlans();
-  });
+  }, []);
 
   const handleStartTrial = async () => {
     setActivatingTrial(true);
@@ -71,77 +71,40 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
     }
   };
 
-  const plans = [
-    {
-      name: 'free',
-      displayName: 'Gratuito',
-      icon: Gift,
-      price: 'R$ 0',
-      period: 'para sempre',
+  // Construir planos dinamicamente do banco de dados
+  const plans = loadingPlans ? [] : dbPlans.map(plan => {
+    const isPlanActive = planName === plan.name;
+    const isTrialPlan = plan.role === 'trial';
+    const isFreePlanRole = plan.role === 'free';
+    const isPremiumPlan = plan.role === 'premium';
+    
+    return {
+      name: plan.name,
+      displayName: plan.display_name,
+      icon: isFreePlanRole ? Gift : isTrialPlan ? Sparkles : Crown,
+      price: isFreePlanRole ? 'R$ 0' : isTrialPlan ? 'Grátis' : `R$ ${(selectedCycle === 'monthly' ? plan.price_monthly : (plan.price_yearly || 0) / 12)?.toFixed(2)}`,
+      period: isFreePlanRole ? 'para sempre' : isTrialPlan ? '14 dias' : selectedCycle === 'monthly' ? 'por mês' : 'por mês',
+      yearlyPrice: isPremiumPlan && selectedCycle === 'yearly' ? `R$ ${plan.price_yearly?.toFixed(2)}/ano` : undefined,
+      yearlySavings: isPremiumPlan && selectedCycle === 'yearly' ? '💰 Economize 40%' : undefined,
+      badge: isTrialPlan ? '🎁 Teste Grátis' : isPremiumPlan ? '⭐ Mais Popular' : undefined,
       features: [
-        { name: '10 transações/mês', available: true },
-        { name: '5 categorias', available: true },
-        { name: 'Dashboard básico', available: true },
-        { name: 'WhatsApp', available: false },
-        { name: 'IA Reports', available: false },
-        { name: 'Integração bancária', available: false },
-        { name: 'Multi-usuário', available: false },
-        { name: 'Suporte prioritário', available: false }
+        { name: plan.max_transactions ? `${plan.max_transactions} transações` : '✨ Transações ilimitadas', available: true },
+        { name: plan.max_categories ? `${plan.max_categories} categorias` : '✨ Categorias ilimitadas', available: true },
+        { name: 'WhatsApp', available: plan.has_whatsapp || false },
+        { name: 'IA Reports', available: plan.has_ai_reports || false },
+        { name: 'Google Calendar', available: plan.has_google_calendar || false },
+        { name: 'Integração bancária', available: plan.has_bank_integration || false },
+        { name: 'Multi-usuário', available: plan.has_multi_user || false },
+        { name: 'Suporte prioritário', available: plan.has_priority_support || false }
       ],
-      buttonText: 'Plano Atual',
-      variant: 'outline' as const,
-      disabled: true,
-      current: isFreePlan
-    },
-    {
-      name: 'trial',
-      displayName: 'Trial Premium',
-      icon: Sparkles,
-      price: 'Grátis',
-      period: '14 dias',
-      badge: '🎁 Teste Grátis',
-      features: [
-        { name: '100 transações durante trial', available: true },
-        { name: '20 categorias', available: true },
-        { name: 'WhatsApp básico', available: true },
-        { name: 'IA Reports limitado', available: true },
-        { name: 'Todos recursos Premium', available: true },
-        { name: 'Sem cartão de crédito', available: true },
-        { name: 'Cancele quando quiser', available: true },
-        { name: 'Suporte prioritário', available: false }
-      ],
-      buttonText: isTrial ? 'Plano Atual' : 'Começar Trial Grátis',
-      variant: 'secondary' as const,
-      disabled: isTrial,
-      current: isTrial,
-      onButtonClick: handleStartTrial
-    },
-    {
-      name: 'premium',
-      displayName: 'Premium',
-      icon: Crown,
-      price: selectedCycle === 'monthly' ? 'R$ 49,90' : 'R$ 29,90',
-      period: selectedCycle === 'monthly' ? 'por mês' : 'por mês',
-      yearlyPrice: selectedCycle === 'yearly' ? 'R$ 358,80/ano' : undefined,
-      yearlySavings: selectedCycle === 'yearly' ? '💰 Economize 40%' : undefined,
-      badge: '⭐ Mais Popular',
-      features: [
-        { name: '✨ Transações ilimitadas', available: true },
-        { name: '✨ Categorias ilimitadas', available: true },
-        { name: '🤖 WhatsApp com IA integrada', available: true },
-        { name: '📊 Relatórios com GPT-4', available: true },
-        { name: '📅 Integração Google Calendar', available: true },
-        { name: '🏦 Integração bancária automática', available: true },
-        { name: '👥 Multi-usuário (compartilhe)', available: true },
-        { name: '⚡ Suporte prioritário', available: true }
-      ],
-      buttonText: isPremium ? 'Plano Atual' : 'Assinar Agora',
-      variant: 'default' as const,
-      highlight: true,
-      disabled: isPremium,
-      current: isPremium
-    }
-  ];
+      buttonText: isPlanActive ? 'Plano Atual' : isTrialPlan ? 'Começar Trial Grátis' : 'Assinar Agora',
+      variant: isFreePlanRole ? 'outline' as const : isTrialPlan ? 'secondary' as const : 'default' as const,
+      highlight: isPremiumPlan,
+      disabled: isPlanActive,
+      current: isPlanActive,
+      onButtonClick: isTrialPlan ? handleStartTrial : isPremiumPlan ? async () => await createCheckoutSession(selectedCycle) : undefined
+    };
+  });
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
