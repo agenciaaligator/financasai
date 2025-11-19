@@ -32,12 +32,10 @@ export function LoginForm() {
     try {
       const result = await signIn(email, password);
       
-      // Se login bem-sucedido, limpar campos de senha
       if (result && !result.error) {
         setPassword('');
         setErrorMessage(null);
       } else if (result?.error) {
-        // Capturar tipo de erro para feedback visual adicional
         if (result.error.message.includes('Invalid login credentials')) {
           setErrorMessage('invalid_credentials');
         }

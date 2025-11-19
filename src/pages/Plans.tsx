@@ -119,8 +119,8 @@ export const Plans = () => {
           <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
             Escolha seu plano
           </h1>
-          <p className="text-lg text-muted-foreground">
-            Comece grátis e faça upgrade quando precisar de mais recursos
+          <p className="text-xl text-muted-foreground">
+            Selecione o plano ideal para suas necessidades
           </p>
         </div>
 
@@ -128,31 +128,30 @@ export const Plans = () => {
           <div className="flex justify-center mb-8">
             <div className="inline-flex rounded-lg border border-border p-1 bg-background">
               <button
-                onClick={() => setSelectedCycle('monthly')}
-                className={`px-4 py-2 rounded-md transition-colors ${
+                className={`px-6 py-2 rounded-md font-medium transition-colors ${
                   selectedCycle === 'monthly'
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
+                onClick={() => setSelectedCycle('monthly')}
               >
                 Mensal
               </button>
               <button
-                onClick={() => setSelectedCycle('yearly')}
-                className={`px-4 py-2 rounded-md transition-colors ${
+                className={`px-6 py-2 rounded-md font-medium transition-colors ${
                   selectedCycle === 'yearly'
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
+                onClick={() => setSelectedCycle('yearly')}
               >
-                Anual
-                <span className="ml-2 text-xs">(-40%)</span>
+                Anual <span className="text-xs ml-1">(Economize até 20%)</span>
               </button>
             </div>
           </div>
         )}
 
-        <div className="grid md:grid-cols-3 gap-8 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
           {plans.map((plan) => {
             const Icon = getPlanIcon(plan.role);
             const features = getPlanFeatures(plan);
@@ -160,7 +159,7 @@ export const Plans = () => {
 
             return (
               <Card 
-                key={plan.id}
+                key={plan.id} 
                 className={`relative ${
                   isPopular 
                     ? 'border-primary shadow-lg scale-105' 
@@ -168,44 +167,44 @@ export const Plans = () => {
                 }`}
               >
                 {isPopular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <span className="bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-medium">
-                      Mais Popular
-                    </span>
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-medium">
+                    Mais Popular
                   </div>
                 )}
                 
-                <CardHeader>
-                  <div className="flex items-center gap-3 mb-2">
+                <CardHeader className="text-center">
+                  <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                     <Icon className="h-6 w-6 text-primary" />
-                    <CardTitle className="text-2xl">{plan.display_name}</CardTitle>
                   </div>
-                  {plan.description && (
-                    <CardDescription>{plan.description}</CardDescription>
-                  )}
-                  <div className="mt-4">
-                    <span className="text-4xl font-bold text-foreground">
-                      {getPlanPrice(plan)}
-                    </span>
-                  </div>
+                  <CardTitle className="text-2xl">{plan.display_name}</CardTitle>
+                  <CardDescription className="mt-2">
+                    {plan.description || 'Plano completo para suas necessidades'}
+                  </CardDescription>
                 </CardHeader>
 
                 <CardContent>
+                  <div className="text-center mb-6">
+                    <div className="text-4xl font-bold text-foreground">
+                      {getPlanPrice(plan)}
+                    </div>
+                    {plan.role !== 'free' && plan.role !== 'trial' && selectedCycle === 'yearly' && (
+                      <div className="text-sm text-muted-foreground mt-1">
+                        Cobrado anualmente
+                      </div>
+                    )}
+                  </div>
+
                   <ul className="space-y-3 mb-6">
-                    {features.map((feature, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
+                    {features.map((feature, index) => (
+                      <li key={index} className="flex items-start">
                         <Check 
-                          className={`h-5 w-5 mt-0.5 flex-shrink-0 ${
+                          className={`h-5 w-5 mr-2 mt-0.5 flex-shrink-0 ${
                             feature.available 
                               ? 'text-primary' 
-                              : 'text-muted-foreground'
-                          }`}
+                              : 'text-muted-foreground/30'
+                          }`} 
                         />
-                        <span className={
-                          feature.available 
-                            ? 'text-foreground' 
-                            : 'text-muted-foreground'
-                        }>
+                        <span className={feature.available ? 'text-foreground' : 'text-muted-foreground/50'}>
                           {feature.name}
                         </span>
                       </li>
@@ -214,10 +213,13 @@ export const Plans = () => {
 
                   <Button
                     onClick={() => handleSelectPlan(plan)}
-                    className="w-full"
-                    variant={isPopular ? 'default' : 'outline'}
+                    className={`w-full ${
+                      isPopular
+                        ? 'bg-primary hover:bg-primary/90'
+                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                    }`}
                   >
-                    Começar
+                    Escolher {plan.display_name}
                   </Button>
                 </CardContent>
               </Card>
@@ -226,13 +228,13 @@ export const Plans = () => {
         </div>
 
         <div className="text-center">
-          <p className="text-muted-foreground mb-2">
+          <p className="text-sm text-muted-foreground mb-4">
             Já tem uma conta?
           </p>
           <Button
-            variant="link"
+            variant="outline"
             onClick={() => navigate('/')}
-            className="text-primary"
+            className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
           >
             Fazer login
           </Button>
