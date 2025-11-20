@@ -2,13 +2,15 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, DollarSign, Bell, Shield, Smartphone, Zap, RefreshCw, BarChart3, Brain, Menu } from "lucide-react";
+import { Calendar, DollarSign, Bell, Shield, Smartphone, Zap, RefreshCw, BarChart3, Brain, Menu, Users, FolderOpen, Clock } from "lucide-react";
 import { FinancialDashboard } from "@/components/FinancialDashboard";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { PlansSection } from "@/components/PlansSection";
 import { TestimonialsSection } from "@/components/TestimonialsSection";
 import { FAQSection } from "@/components/FAQSection";
+import { FeatureBlock } from "@/components/FeatureBlock";
+import { InteractionExamplesSection } from "@/components/InteractionExamplesSection";
+import { StatsSection } from "@/components/StatsSection";
 import { Loader2 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
@@ -133,119 +135,150 @@ const LandingPage = () => {
         </div>
       </section>
 
-      <section id="como-funciona" className="container mx-auto px-4 py-16">
-        <h2 className="text-3xl font-bold text-center mb-3">Como funciona</h2>
-        <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
-          Simplifique sua vida com tecnologia que trabalha por você
-        </p>
-        
-        <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-          <Card className="border-2 hover:border-primary/50 transition-colors">
-            <CardHeader>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-3 bg-primary/10 rounded-lg">
-                  <Calendar className="h-8 w-8 text-primary" />
-                </div>
-                <CardTitle className="text-2xl">Gestão de Compromissos</CardTitle>
-              </div>
-              <CardDescription>
-                Nunca mais perca um compromisso importante
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-4">
-                <li className="flex items-start gap-3">
-                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg mt-0.5">
-                    <Smartphone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold mb-1">WhatsApp Integrado</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Adicione e receba lembretes diretamente no seu WhatsApp
-                    </p>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg mt-0.5">
-                    <Bell className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold mb-1">Lembretes Inteligentes</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Notificações automáticas no horário ideal para você
-                    </p>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg mt-0.5">
-                    <RefreshCw className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold mb-1">Sincronização Google Calendar</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Conecte sua agenda e mantenha tudo sincronizado em tempo real
-                    </p>
-                  </div>
-                </li>
-              </ul>
-            </CardContent>
-          </Card>
+      <section id="como-funciona" className="container mx-auto px-4 py-20">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl md:text-5xl font-bold mb-4">Como funciona</h2>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Simplifique sua vida com tecnologia que trabalha por você
+          </p>
+        </div>
 
-          <Card className="border-2 hover:border-primary/50 transition-colors">
-            <CardHeader>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-3 bg-primary/10 rounded-lg">
-                  <DollarSign className="h-8 w-8 text-primary" />
-                </div>
-                <CardTitle className="text-2xl">Controle Financeiro</CardTitle>
-              </div>
-              <CardDescription>
-                Tenha visão completa das suas finanças
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-4">
-                <li className="flex items-start gap-3">
-                  <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg mt-0.5">
-                    <BarChart3 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold mb-1">Painel Completo</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Visualize receitas, despesas e saldo em tempo real
-                    </p>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="p-2 bg-pink-100 dark:bg-pink-900/30 rounded-lg mt-0.5">
-                    <Brain className="h-5 w-5 text-pink-600 dark:text-pink-400" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold mb-1">Relatórios com IA</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Análises inteligentes dos seus padrões de gastos
-                    </p>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="p-2 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg mt-0.5">
-                    <Shield className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold mb-1">100% Seguro</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Seus dados protegidos com criptografia de ponta
-                    </p>
-                  </div>
-                </li>
-              </ul>
-            </CardContent>
-          </Card>
+        <div className="max-w-7xl mx-auto">
+          {/* Bloco 1: Controle Financeiro no WhatsApp */}
+          <FeatureBlock
+            title="FINANCEIRO"
+            subtitle="Controle Financeiro no WhatsApp"
+            description="Registre receitas e despesas com mensagens como 'gastei 50 reais no mercado' ou 'recebi 2 mil de salário' direto no WhatsApp. A IA entende, categoriza e registra tudo automaticamente."
+            highlights={[
+              "Categorização inteligente com IA",
+              "Relatórios por categoria",
+              "Integração com o painel web"
+            ]}
+            imageSrc="/images/landing/whatsapp-financeiro.png"
+            imageAlt="WhatsApp processando transação financeira"
+            imagePosition="left"
+            icon={<DollarSign className="h-6 w-6 text-primary" />}
+          />
+
+          {/* Bloco 2: Gestão de Compromissos */}
+          <FeatureBlock
+            title="COMPROMISSOS"
+            subtitle="Gestão de Compromissos por mensagem"
+            description="Agende reuniões, consultas ou lembretes apenas digitando mensagens como 'reunião amanhã às 14h'. A agenda será criada automaticamente e sincronizada com o painel e Google Calendar."
+            highlights={[
+              "Agendamento por texto ou áudio",
+              "Sincronização com Google Agenda",
+              "Receba lembretes automáticos"
+            ]}
+            imageSrc="/images/landing/whatsapp-compromissos.png"
+            imageAlt="WhatsApp mostrando compromissos do dia"
+            imagePosition="right"
+            icon={<Calendar className="h-6 w-6 text-primary" />}
+          />
+
+          {/* Bloco 3: Registre tudo no WhatsApp */}
+          <FeatureBlock
+            title="REGISTROS"
+            subtitle="Registre tudo no WhatsApp"
+            description="Envie uma mensagem e nosso assistente lança tudo automaticamente."
+            highlights={[
+              "Texto ou áudio, você escolhe",
+              "Categorização inteligente",
+              "Rápido, prático e sem complicação"
+            ]}
+            imageSrc="/images/landing/whatsapp-registros.png"
+            imageAlt="Interface do WhatsApp"
+            imagePosition="left"
+            icon={<Smartphone className="h-6 w-6 text-primary" />}
+          />
+
+          {/* Bloco 4: Painel Profissional */}
+          <FeatureBlock
+            title="PAINEL"
+            subtitle="Painel Profissional"
+            description="Visualize relatórios, gráficos e detalhes de suas transações com poucos cliques. Tudo organizado automaticamente, sem cadastro manual."
+            highlights={[
+              "Gráficos de fluxo de caixa",
+              "Visão por categoria",
+              "Detalhamento por período",
+              "Prático e acessível"
+            ]}
+            imageSrc="/images/landing/dashboard-painel.png"
+            imageAlt="Dashboard financeiro"
+            imagePosition="right"
+            icon={<BarChart3 className="h-6 w-6 text-primary" />}
+          />
+
+          {/* Bloco 5: Compartilhe sua conta */}
+          <FeatureBlock
+            title="COMPARTILHAMENTO"
+            subtitle="Compartilhe sua conta com quem quiser"
+            description="Família ou empresa. Todos podem registrar com você."
+            highlights={[
+              "Usuários ilimitados",
+              "Controle compartilhado"
+            ]}
+            imageSrc="/images/landing/compartilhamento.png"
+            imageAlt="Gestão de membros"
+            imagePosition="left"
+            icon={<Users className="h-6 w-6 text-primary" />}
+          />
+
+          {/* Bloco 6: Categorias Personalizadas */}
+          <FeatureBlock
+            title="CATEGORIAS"
+            subtitle="Categorias Personalizadas"
+            description="Use as que já vêm prontas ou crie quantas quiser."
+            highlights={[
+              "Ilimitadas categorias",
+              "Relatórios com IA",
+              "Cadastro automático no WhatsApp"
+            ]}
+            imageSrc="/images/landing/categorias.png"
+            imageAlt="Categorias personalizadas"
+            imagePosition="right"
+            icon={<FolderOpen className="h-6 w-6 text-primary" />}
+          />
+
+          {/* Bloco 7: Lembretes Diários */}
+          <FeatureBlock
+            title="LEMBRETES"
+            subtitle="Lembretes Diários via WhatsApp"
+            description="Seu assessor te avisa sobre contas a pagar e compromissos — todo dia à manhã e 30 minutos antes de cada evento."
+            highlights={[
+              "Avisos diários e antecipados",
+              "Ideal para cobranças, metas, aniversários",
+              "Contas a pagar e receber"
+            ]}
+            imageSrc="/images/landing/lembretes.png"
+            imageAlt="Lembretes no WhatsApp"
+            imagePosition="left"
+            icon={<Bell className="h-6 w-6 text-primary" />}
+          />
+
+          {/* Bloco 8: Integração Google Agenda */}
+          <FeatureBlock
+            title="INTEGRAÇÃO"
+            subtitle="Integração com Google Agenda"
+            description="Agora você pode integrar seus compromissos automaticamente com o Google Agenda. A Dona Wilma será sincronizada em tempo real com sua agenda pessoal ou profissional."
+            highlights={[
+              "Sincronização automática dos compromissos",
+              "Receba lembretes automáticos no WhatsApp",
+              "Organização e produtividade no seu dia a dia"
+            ]}
+            imageSrc="/images/landing/google-calendar-integration.png"
+            imageAlt="Integração com Google Calendar"
+            imagePosition="right"
+            icon={<RefreshCw className="h-6 w-6 text-primary" />}
+          />
         </div>
       </section>
 
-      <section id="depoimentos" className="container mx-auto px-4 py-16 bg-muted/30">
-        <h2 className="text-3xl font-bold text-center mb-3">
+      {/* Interaja 24h com IA */}
+      <InteractionExamplesSection />
+
+      <section id="depoimentos" className="container mx-auto px-4 py-20 bg-muted/30">
+        <h2 className="text-3xl md:text-4xl font-bold text-center mb-3">
           O que nossos clientes dizem
         </h2>
         <p className="text-center text-muted-foreground mb-12">
@@ -253,6 +286,9 @@ const LandingPage = () => {
         </p>
         <TestimonialsSection />
       </section>
+
+      {/* Stats Section */}
+      <StatsSection />
 
       <section id="planos" className="container mx-auto px-4 py-16">
         <h2 className="text-3xl font-bold text-center mb-4">Escolha seu plano</h2>
