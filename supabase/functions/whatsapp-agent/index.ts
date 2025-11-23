@@ -6185,7 +6185,10 @@ serve(async (req) => {
 
     // ✨ FASE 5: Handle send-validation-code action
     if (action === 'send-validation-code') {
-      console.log('[SEND-VALIDATION-CODE] Processing validation code request');
+      const debug = body.debug || false; // ✅ Captura flag de debug
+      
+      console.log('[SEND-VALIDATION-CODE] 📱 Processing validation code request');
+      console.log('[SEND-VALIDATION-CODE] 🐛 Debug mode:', debug);
       
       if (!phone_number || typeof phone_number !== 'string') {
         throw new Error('Phone number is required');
@@ -6197,13 +6200,17 @@ serve(async (req) => {
         cleanPhone = '+' + cleanPhone;
       }
 
+      console.log('[SEND-VALIDATION-CODE] 📞 Clean phone:', cleanPhone);
+
       // Gerar código de 6 dígitos
       const code = Math.floor(100000 + Math.random() * 900000).toString();
+      console.log('[SEND-VALIDATION-CODE] 🔐 Generated code:', code);
       
       // Enviar via WhatsApp Business API
       const WHATSAPP_API_URL = `https://graph.facebook.com/v17.0/${Deno.env.get('WHATSAPP_PHONE_NUMBER_ID')}/messages`;
       const WHATSAPP_ACCESS_TOKEN = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
 
+      console.log('[SEND-VALIDATION-CODE] 📤 Calling WhatsApp API...');
       const response = await fetch(WHATSAPP_API_URL, {
         method: 'POST',
         headers: {
@@ -6220,14 +6227,20 @@ serve(async (req) => {
         })
       });
 
+      console.log('[SEND-VALIDATION-CODE] 📥 WhatsApp API response status:', response.status);
+
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[SEND-VALIDATION-CODE] WhatsApp API error:', errorText);
+        console.error('[SEND-VALIDATION-CODE] ❌ WhatsApp API error:', errorText);
         throw new Error(`WhatsApp API error: ${response.status}`);
       }
 
+      const responseData = await response.json();
+      console.log('[SEND-VALIDATION-CODE] ✅ WhatsApp API response:', responseData);
+
       // Salvar no banco de dados
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      console.log('[SEND-VALIDATION-CODE] 💾 Salvando no banco de dados...');
       const { error: dbError } = await supabase
         .from('whatsapp_validation_codes')
         .insert({
@@ -6238,12 +6251,19 @@ serve(async (req) => {
         });
 
       if (dbError) {
-        console.error('[SEND-VALIDATION-CODE] DB Error:', dbError);
+        console.error('[SEND-VALIDATION-CODE] ❌ DB Error:', dbError);
         throw dbError;
       }
 
-      console.log('[SEND-VALIDATION-CODE] Code sent and saved successfully');
-      return new Response(JSON.stringify({ success: true, code_sent: true }), {
+      console.log('[SEND-VALIDATION-CODE] ✅ Code sent and saved successfully');
+      
+      // Se debug mode, retorna o código na resposta
+      return new Response(JSON.stringify({ 
+        success: true, 
+        code_sent: true,
+        debug_mode: debug,
+        code: debug ? code : undefined // Só retorna código em debug mode
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }

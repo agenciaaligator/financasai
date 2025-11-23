@@ -81,15 +81,43 @@ export function SignUpForm() {
     try {
       await checkExistingUser(email, phoneNumber);
       
+      console.log('[SIGNUP] 📱 Iniciando envio de código WhatsApp');
       const cleanPhone = phoneNumber.replace(/\D/g, '');
+      console.log('[SIGNUP] 📞 Telefone limpo:', cleanPhone);
+      console.log('[SIGNUP] 📧 Email:', email);
+
+      console.log('[SIGNUP] 🚀 Chamando edge function whatsapp-agent');
       const { data, error } = await supabase.functions.invoke('whatsapp-agent', {
         body: { 
           action: 'send-validation-code',
           phone_number: `+55${cleanPhone}`,
+          debug: true // ✅ MODO DEBUG ATIVADO
         }
       });
       
-      if (error) throw error;
+      console.log('[SIGNUP] 📥 Resposta da edge function:', { data, error });
+      
+      if (error) {
+        console.error('[SIGNUP] ❌ Erro na edge function:', error);
+        throw error;
+      }
+
+      if (!data?.success) {
+        console.error('[SIGNUP] ❌ Edge function retornou sucesso=false:', data);
+        throw new Error(data?.message || 'Falha ao enviar código');
+      }
+
+      console.log('[SIGNUP] ✅ Código enviado com sucesso!');
+
+      // 🔐 FALLBACK VISUAL: Se estiver em modo debug, mostra o código
+      if (data?.debug_mode && data?.code) {
+        console.log('[SIGNUP] 🐛 DEBUG MODE: Mostrando código na tela');
+        toast({
+          title: "🔐 Código de Verificação (DEBUG)",
+          description: `Seu código: ${data.code}\n\nEste código também foi enviado para seu WhatsApp.`,
+          duration: 30000, // 30 segundos
+        });
+      }
       
       setSentCode(true);
       setStep('verify-whatsapp');
@@ -98,6 +126,7 @@ export function SignUpForm() {
         description: "Verifique seu WhatsApp"
       });
     } catch (error: any) {
+      console.error('[SIGNUP] ❌ Erro geral:', error);
       toast({
         title: "Erro",
         description: error.message || "Erro ao enviar código",
