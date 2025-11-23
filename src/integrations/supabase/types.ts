@@ -1129,6 +1129,7 @@ export type Database = {
           created_at: string | null
           expires_at: string | null
           id: string
+          phone_number: string | null
           used: boolean | null
           user_id: string
         }
@@ -1137,6 +1138,7 @@ export type Database = {
           created_at?: string | null
           expires_at?: string | null
           id?: string
+          phone_number?: string | null
           used?: boolean | null
           user_id: string
         }
@@ -1145,6 +1147,7 @@ export type Database = {
           created_at?: string | null
           expires_at?: string | null
           id?: string
+          phone_number?: string | null
           used?: boolean | null
           user_id?: string
         }
