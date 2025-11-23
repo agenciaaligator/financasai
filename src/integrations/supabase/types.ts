@@ -1131,7 +1131,7 @@ export type Database = {
           id: string
           phone_number: string | null
           used: boolean | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           code: string
@@ -1140,7 +1140,7 @@ export type Database = {
           id?: string
           phone_number?: string | null
           used?: boolean | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           code?: string
@@ -1149,7 +1149,7 @@ export type Database = {
           id?: string
           phone_number?: string | null
           used?: boolean | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
