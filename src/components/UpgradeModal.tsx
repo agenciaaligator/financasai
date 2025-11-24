@@ -2,7 +2,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, Sparkles, Crown, Gift } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Check, X, Sparkles, Crown, Gift, Loader2 } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useCheckout } from "@/hooks/useCheckout";
 import { useState, useEffect } from "react";
@@ -22,6 +24,10 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
   const [activatingTrial, setActivatingTrial] = useState(false);
   const [dbPlans, setDbPlans] = useState<any[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponData, setCouponData] = useState<any>(null);
+  const [couponError, setCouponError] = useState('');
+  const [loadingCoupon, setLoadingCoupon] = useState(false);
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -70,6 +76,51 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
     }
   };
 
+  const handleValidateCoupon = async () => {
+    setLoadingCoupon(true);
+    setCouponError('');
+    try {
+      const { data, error } = await supabase
+        .from('discount_coupons')
+        .select('*')
+        .eq('code', couponCode)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (error || !data) {
+        setCouponError('Cupom inválido ou expirado');
+        setCouponData(null);
+        return;
+      }
+
+      // Verificar expiração
+      if (data.expires_at && new Date(data.expires_at) < new Date()) {
+        setCouponError('Cupom expirado');
+        setCouponData(null);
+        return;
+      }
+
+      // Verificar limite de uso
+      if (data.max_uses && data.current_uses >= data.max_uses) {
+        setCouponError('Cupom atingiu limite de uso');
+        setCouponData(null);
+        return;
+      }
+
+      setCouponData(data);
+      sessionStorage.setItem('coupon_code', couponCode);
+      toast({
+        title: "✅ Cupom aplicado!",
+        description: `Desconto de ${data.type === 'percentage' ? `${data.value}%` : `R$ ${data.value}`}`,
+      });
+    } catch (error) {
+      console.error('Error validating coupon:', error);
+      setCouponError('Erro ao validar cupom');
+    } finally {
+      setLoadingCoupon(false);
+    }
+  };
+
   const plans = loadingPlans ? [] : dbPlans.map(plan => {
     const isPlanActive = planName === plan.name;
     const isTrialPlan = plan.role === 'trial';
@@ -98,7 +149,22 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
         ? undefined 
         : isTrialPlan && (isFreePlan || !isTrial)
           ? handleStartTrial
-          : () => createCheckoutSession(selectedCycle),
+          : () => {
+              const priceId = selectedCycle === 'monthly' 
+                ? plan.stripe_price_id_monthly 
+                : plan.stripe_price_id_yearly;
+              
+              if (!priceId) {
+                toast({
+                  title: "❌ Erro",
+                  description: "Plano não configurado. Contate o suporte.",
+                  variant: "destructive"
+                });
+                return;
+              }
+              
+              createCheckoutSession(priceId);
+            },
       disabled: isPlanActive || (isTrialPlan && isTrial),
       planData: plan,
     };
@@ -124,6 +190,38 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
               <li>✓ Sincronização com Google Calendar</li>
             </ul>
           </div>
+
+          <Card className="border-dashed">
+            <div className="p-4">
+              <Label htmlFor="coupon">Tem um cupom de desconto?</Label>
+              <div className="flex gap-2 mt-2">
+                <Input
+                  id="coupon"
+                  placeholder="Digite o código"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                  maxLength={20}
+                />
+                <Button
+                  variant="outline"
+                  onClick={handleValidateCoupon}
+                  disabled={loadingCoupon || !couponCode}
+                >
+                  {loadingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : "Aplicar"}
+                </Button>
+              </div>
+              {couponError && (
+                <p className="text-sm text-destructive mt-2">{couponError}</p>
+              )}
+              {couponData && (
+                <p className="text-sm text-green-600 mt-2">
+                  ✅ Cupom aplicado: {couponData.type === 'percentage' 
+                    ? `${couponData.value}% de desconto` 
+                    : `R$ ${couponData.value} de desconto`}
+                </p>
+              )}
+            </div>
+          </Card>
 
           {plans.some(p => p.planData.role === 'premium') && (
             <div className="flex justify-center">

@@ -19,7 +19,7 @@ import { GoogleCalendarOnboarding } from "./GoogleCalendarOnboarding";
 import { WorkHoursSettings } from "./WorkHoursSettings";
 import { useTranslation } from "react-i18next";
 import { useUserRole } from "@/hooks/useUserRole";
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { useOrganizationPermissions } from "@/hooks/useOrganizationPermissions";
 
 interface Commitment {
@@ -1573,7 +1573,43 @@ export function CommitmentsManager() {
                     />
                   </PaginationItem>
                   
-                  {Array.from({ length: Math.ceil(totalCount / itemsPerPage) }, (_, i) => i + 1).map((page) => (
+              {(() => {
+                const totalPages = Math.ceil(totalCount / itemsPerPage);
+                const pages: (number | 'ellipsis')[] = [];
+                
+                if (totalPages <= 7) {
+                  pages.push(...Array.from({ length: totalPages }, (_, i) => i + 1));
+                } else {
+                  pages.push(1);
+                  
+                  if (currentPage > 3) {
+                    pages.push('ellipsis');
+                  }
+                  
+                  const start = Math.max(2, currentPage - 1);
+                  const end = Math.min(totalPages - 1, currentPage + 1);
+                  
+                  for (let i = start; i <= end; i++) {
+                    pages.push(i);
+                  }
+                  
+                  if (currentPage < totalPages - 2) {
+                    pages.push('ellipsis');
+                  }
+                  
+                  pages.push(totalPages);
+                }
+                
+                return pages.map((page, idx) => {
+                  if (page === 'ellipsis') {
+                    return (
+                      <PaginationItem key={`ellipsis-${idx}`}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    );
+                  }
+                  
+                  return (
                     <PaginationItem key={page}>
                       <PaginationLink
                         onClick={() => {
@@ -1586,7 +1622,9 @@ export function CommitmentsManager() {
                         {page}
                       </PaginationLink>
                     </PaginationItem>
-                  ))}
+                  );
+                });
+              })()}
                   
                   <PaginationItem>
                     <PaginationNext 

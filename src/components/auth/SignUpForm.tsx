@@ -27,24 +27,50 @@ export function SignUpForm() {
   const selectedPlanId = searchParams.get('plano');
 
   const checkExistingUser = async (email: string, phone: string) => {
+    const cleanPhone = phone.replace(/\D/g, '');
+    
+    // 1. Verificar email na tabela profiles
     const { data: existingEmail } = await supabase
       .from('profiles')
-      .select('id')
+      .select('id, email')
       .eq('email', email)
-      .single();
-
-    const cleanPhone = phone.replace(/\D/g, '');
-    const { data: existingPhone } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('phone_number', cleanPhone)
-      .single();
+      .maybeSingle();
 
     if (existingEmail) {
-      throw new Error('Este e-mail já está cadastrado');
+      throw new Error('Este e-mail já está cadastrado. Faça login ou recupere sua senha.');
     }
+
+    // 2. Verificar telefone na tabela profiles
+    const { data: existingPhone } = await supabase
+      .from('profiles')
+      .select('id, email')
+      .eq('phone_number', cleanPhone)
+      .maybeSingle();
+
     if (existingPhone) {
-      throw new Error('Este telefone já está cadastrado');
+      throw new Error(`Este WhatsApp já está cadastrado no email ${existingPhone.email}. Use outro número.`);
+    }
+
+    // 3. Verificar se WhatsApp está em sessão ativa
+    const { data: activeSession } = await supabase
+      .from('whatsapp_sessions')
+      .select('user_id, phone_number')
+      .or(`phone_number.eq.+55${cleanPhone},phone_number.eq.${cleanPhone}`)
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle();
+
+    if (activeSession) {
+      // Buscar email do dono da sessão
+      const { data: sessionOwner } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('user_id', activeSession.user_id)
+        .single();
+
+      throw new Error(
+        `Este WhatsApp já está vinculado à conta ${sessionOwner?.email || 'existente'}. ` +
+        `Desconecte o WhatsApp antes de usar em outra conta.`
+      );
     }
   };
 
@@ -150,14 +176,35 @@ export function SignUpForm() {
     setLoading(true);
 
     try {
+      // 1. VALIDAR CÓDIGO ANTES DE CRIAR CONTA
+      const cleanPhone = phoneNumber.replace(/\D/g, '');
+      const { data: codeValidation } = await supabase
+        .from('whatsapp_validation_codes')
+        .select('*')
+        .eq('phone_number', `+55${cleanPhone}`)
+        .eq('code', whatsappCode)
+        .eq('used', false)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle();
+
+      if (!codeValidation) {
+        throw new Error('Código inválido ou expirado. Solicite um novo código.');
+      }
+
+      // 2. Marcar código como usado
+      await supabase
+        .from('whatsapp_validation_codes')
+        .update({ used: true })
+        .eq('id', codeValidation.id);
+
+      // 3. AGORA SIM criar a conta
       const { data: { user }, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             full_name: fullName,
-            phone_number: phoneNumber.replace(/\D/g, ''),
-            whatsapp_code: whatsappCode
+            phone_number: cleanPhone,
           },
           emailRedirectTo: `${window.location.origin}/`
         }
@@ -167,17 +214,22 @@ export function SignUpForm() {
 
       if (user) {
         toast({
-          title: "Conta criada com sucesso!",
-          description: "Você será redirecionado em instantes..."
+          title: "✅ Conta criada com sucesso!",
+          description: "Redirecionando para escolha de plano...",
         });
 
+        // 4. Redirecionar para escolha de plano
         setTimeout(() => {
-          navigate('/');
+          if (selectedPlanId) {
+            navigate(`/?tab=plans&selected=${selectedPlanId}`);
+          } else {
+            navigate('/?tab=plans');
+          }
         }, 2000);
       }
     } catch (error: any) {
       toast({
-        title: "Erro ao criar conta",
+        title: "❌ Erro ao criar conta",
         description: error.message,
         variant: "destructive"
       });
