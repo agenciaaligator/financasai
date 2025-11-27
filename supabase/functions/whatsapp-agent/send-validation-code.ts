@@ -25,7 +25,7 @@ export async function sendValidationCode(phoneNumber: string, supabase: any, deb
         to: phoneNumber,
         type: 'text',
         text: {
-          body: `🔐 *Código de Verificação Aligator*\n\nSeu código: *${code}*\n\nVálido por 10 minutos.\n\n_Não compartilhe este código._`
+          body: `🔐 *Código de Verificação Aligator*\n\nSeu código: *${code}*\n\nVálido por 30 minutos.\n\n_Não compartilhe este código._`
         }
       })
     });
@@ -42,7 +42,7 @@ export async function sendValidationCode(phoneNumber: string, supabase: any, deb
     console.log(`[SEND-VALIDATION-CODE] ✅ WhatsApp API response:`, responseData);
 
     // Salvar no banco de dados
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutos
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutos
     console.log(`[SEND-VALIDATION-CODE] 💾 Salvando no banco de dados...`);
     const { error: dbError } = await supabase
       .from('whatsapp_validation_codes')
