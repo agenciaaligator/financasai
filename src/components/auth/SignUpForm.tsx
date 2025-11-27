@@ -214,8 +214,12 @@ export function SignUpForm() {
 
     try {
       // 1. VALIDAR CÓDIGO ANTES DE CRIAR CONTA
-      const cleanPhone = formData.phoneNumber.replace(/\D/g, '');
-      console.log('[SIGNUP] Validando código WhatsApp');
+      let cleanPhone = formData.phoneNumber.replace(/\D/g, '');
+      // Adicionar + para corresponder ao formato salvo pelo backend
+      if (/^\d{11,15}$/.test(cleanPhone)) {
+        cleanPhone = '+' + cleanPhone;
+      }
+      console.log('[SIGNUP] Validando código WhatsApp para:', cleanPhone);
       
       const { data: codeValidation, error: validationError } = await supabase
         .from('whatsapp_validation_codes')
