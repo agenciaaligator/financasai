@@ -169,8 +169,8 @@ export function SignUpForm() {
       
       const { data, error } = await supabase.functions.invoke('whatsapp-agent', {
         body: { 
-          action: 'send_validation_code',
-          phoneNumber: cleanPhone,
+          action: 'send-validation-code',
+          phone_number: cleanPhone,
         },
       });
 
