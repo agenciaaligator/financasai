@@ -96,5 +96,18 @@
     "ocr": "Receipt (OCR)",
     "editDelete": "Edit/Delete",
     "queries": "Queries and Reports"
+  },
+  "phone": {
+    "label": "WhatsApp",
+    "placeholder": "Enter your number",
+    "selectCountry": "Select country",
+    "searchCountry": "Search country...",
+    "noCountryFound": "Country not found",
+    "error": {
+      "invalid": "It seems some digits are missing. Check your area code and number",
+      "required": "Please provide your WhatsApp number",
+      "wrongCountry": "Check if you selected the correct country"
+    },
+    "helper": "Select your country and enter your full phone number"
   }
 }

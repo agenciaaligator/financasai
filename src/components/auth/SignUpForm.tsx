@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Loader2 } from "lucide-react";
+import { isValidPhoneNumber } from "react-phone-number-input";
 
 export function SignUpForm() {
   const navigate = useNavigate();
@@ -21,18 +23,31 @@ export function SignUpForm() {
   const [step, setStep] = useState<'form' | 'verify-whatsapp'>('form');
   const [whatsappCode, setWhatsappCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [phoneError, setPhoneError] = useState('');
   
   // Capturar query params do fluxo de escolha de plano
   const searchParams = new URLSearchParams(window.location.search);
   const selectedCycle = searchParams.get('cycle') || 'monthly';
   const couponCode = searchParams.get('coupon') || '';
 
+  // Validação em tempo real do telefone
+  useEffect(() => {
+    if (formData.phoneNumber && formData.phoneNumber.length > 3) {
+      if (!isValidPhoneNumber(formData.phoneNumber)) {
+        setPhoneError('Parece que faltam alguns dígitos. Um celular no Brasil tem 11 números (2 do DDD + 9 do celular)');
+      } else {
+        setPhoneError('');
+      }
+    } else {
+      setPhoneError('');
+    }
+  }, [formData.phoneNumber]);
+
   // Função para verificar se usuário já existe
   const checkExistingUser = async (email: string, phone: string) => {
     try {
-      // Limpar e padronizar o telefone (remover +55 se existir)
-      const cleanPhone = phone.replace(/^\+55/, '').replace(/\D/g, '');
-      console.log('[SIGNUP] Verificando usuário existente:', { email, phone: cleanPhone });
+      // Phone já vem no formato E.164 (+5511999999999)
+      console.log('[SIGNUP] Verificando usuário existente:', { email, phone });
       
       // 1. Verificar email na tabela profiles
       const { data: profileByEmail, error: emailError } = await supabase
@@ -56,11 +71,11 @@ export function SignUpForm() {
         return false;
       }
 
-      // 2. Verificar telefone na tabela profiles (com e sem +55)
+      // 2. Verificar telefone na tabela profiles (formato E.164)
       const { data: profilesWithPhone, error: phoneError } = await supabase
         .from('profiles')
         .select('email, phone_number, user_id')
-        .or(`phone_number.eq.${cleanPhone},phone_number.eq.+55${cleanPhone}`);
+        .eq('phone_number', phone);
 
       if (phoneError) {
         console.error('[SIGNUP] Erro ao verificar telefone:', phoneError);
@@ -78,11 +93,11 @@ export function SignUpForm() {
         return false;
       }
 
-      // 3. Verificar sessão ativa no WhatsApp (com e sem +55)
+      // 3. Verificar sessão ativa no WhatsApp (formato E.164)
       const { data: activeSessions, error: sessionError } = await supabase
         .from('whatsapp_sessions')
         .select('phone_number, user_id')
-        .or(`phone_number.eq.${cleanPhone},phone_number.eq.+55${cleanPhone}`)
+        .eq('phone_number', phone)
         .gt('expires_at', new Date().toISOString());
 
       if (sessionError) {
@@ -101,7 +116,7 @@ export function SignUpForm() {
           .maybeSingle();
         
         const linkedEmail = sessionOwner?.email || 'uma conta';
-        console.log('[SIGNUP] ❌ WhatsApp com sessão ativa:', cleanPhone, 'vinculado a', linkedEmail);
+        console.log('[SIGNUP] ❌ WhatsApp com sessão ativa:', phone, 'vinculado a', linkedEmail);
         toast({
           title: "❌ WhatsApp em uso",
           description: `Este WhatsApp está ativo em ${linkedEmail}. Desconecte-o antes de usar em outra conta.`,
@@ -144,11 +159,11 @@ export function SignUpForm() {
       return;
     }
 
-    const cleanPhone = formData.phoneNumber.replace(/\D/g, '');
-    if (cleanPhone.length < 10) {
+    // Validar telefone com biblioteca internacional
+    if (!isValidPhoneNumber(formData.phoneNumber)) {
       toast({
         title: "Telefone inválido",
-        description: "Digite um número válido com DDD (ex: 11999999999)",
+        description: "Verifique se o país está correto e se digitou o número completo com DDD",
         variant: "destructive",
       });
       return;
@@ -156,8 +171,8 @@ export function SignUpForm() {
 
     setLoading(true);
 
-    // CRÍTICO: Verificar duplicatas ANTES de enviar código
-    const isAvailable = await checkExistingUser(formData.email, cleanPhone);
+    // CRÍTICO: Verificar duplicatas ANTES de enviar código (phone já vem no formato E.164)
+    const isAvailable = await checkExistingUser(formData.email, formData.phoneNumber);
     if (!isAvailable) {
       setLoading(false);
       // PARAR completamente se houver duplicata
@@ -165,12 +180,12 @@ export function SignUpForm() {
     }
 
     try {
-      console.log('[SIGNUP] Enviando código WhatsApp para:', cleanPhone);
+      console.log('[SIGNUP] Enviando código WhatsApp para:', formData.phoneNumber);
       
       const { data, error } = await supabase.functions.invoke('whatsapp-agent', {
         body: { 
           action: 'send-validation-code',
-          phone_number: cleanPhone,
+          phone_number: formData.phoneNumber,
         },
       });
 
@@ -213,14 +228,13 @@ export function SignUpForm() {
     setLoading(true);
 
     try {
-      // 1. VALIDAR CÓDIGO VIA EDGE FUNCTION (usa service_role, ignora RLS)
-      const cleanPhone = formData.phoneNumber.replace(/\D/g, '');
-      console.log('[SIGNUP] Validando código WhatsApp para:', cleanPhone);
+      // 1. VALIDAR CÓDIGO VIA EDGE FUNCTION (phone já no formato E.164)
+      console.log('[SIGNUP] Validando código WhatsApp para:', formData.phoneNumber);
       
       const { data: validationResult, error: validationError } = await supabase.functions.invoke('whatsapp-agent', {
         body: { 
           action: 'validate-code',
-          phone_number: cleanPhone,
+          phone_number: formData.phoneNumber,
           code: whatsappCode,
         },
       });
@@ -247,16 +261,15 @@ export function SignUpForm() {
         console.error('[SIGNUP] Erro ao marcar código como usado:', updateError);
       }
 
-      // 3. Criar conta no Supabase Auth (usar formato +55XXXXXXXXXXX)
-      const phoneWithPlus = cleanPhone.startsWith('+') ? cleanPhone : `+${cleanPhone}`;
-      console.log('[SIGNUP] Criando conta no Supabase Auth com phone:', phoneWithPlus);
+      // 3. Criar conta no Supabase Auth (phone já no formato E.164)
+      console.log('[SIGNUP] Criando conta no Supabase Auth com phone:', formData.phoneNumber);
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
           data: {
             full_name: formData.fullName,
-            phone_number: phoneWithPlus,
+            phone_number: formData.phoneNumber,
           },
           emailRedirectTo: `${window.location.origin}/`,
         },
@@ -267,13 +280,13 @@ export function SignUpForm() {
 
       console.log('[SIGNUP] ✅ Conta criada com sucesso!', signUpData);
 
-      // 4. Criar sessão WhatsApp automaticamente (usar mesmo formato +55XXXXXXXXXXX)
-      console.log('[SIGNUP] Criando sessão WhatsApp com phone:', phoneWithPlus);
+      // 4. Criar sessão WhatsApp automaticamente (phone já no formato E.164)
+      console.log('[SIGNUP] Criando sessão WhatsApp com phone:', formData.phoneNumber);
       const { error: sessionError } = await supabase
         .from('whatsapp_sessions')
         .insert({
           user_id: signUpData.user.id,
-          phone_number: phoneWithPlus,
+          phone_number: formData.phoneNumber,
           expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 dias
         });
 
@@ -371,20 +384,17 @@ export function SignUpForm() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="phone">WhatsApp</Label>
-              <Input
-                id="phone"
-                type="tel"
-                placeholder="11999999999"
-                maxLength={11}
-                value={formData.phoneNumber}
-                onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Digite apenas números com DDD (ex: 11999999999)
-              </p>
-            </div>
+            <PhoneInput
+              id="phone"
+              label="WhatsApp"
+              value={formData.phoneNumber}
+              onChange={(value) => setFormData({ ...formData, phoneNumber: value })}
+              defaultCountry="BR"
+              error={phoneError}
+              helperText="Selecione seu país e digite o número completo com DDD"
+              placeholder="Digite seu número"
+              required
+            />
 
             <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>

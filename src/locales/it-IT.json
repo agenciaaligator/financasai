@@ -96,5 +96,18 @@
     "ocr": "Ricevuta (OCR)",
     "editDelete": "Modifica/Elimina",
     "queries": "Query e Report"
+  },
+  "phone": {
+    "label": "WhatsApp",
+    "placeholder": "Inserisci il tuo numero",
+    "selectCountry": "Seleziona il paese",
+    "searchCountry": "Cerca paese...",
+    "noCountryFound": "Paese non trovato",
+    "error": {
+      "invalid": "Sembra mancare qualche cifra. Controlla il prefisso e il numero",
+      "required": "Si prega di fornire il proprio WhatsApp",
+      "wrongCountry": "Verifica di aver selezionato il paese corretto"
+    },
+    "helper": "Seleziona il tuo paese e inserisci il numero completo"
   }
 }
