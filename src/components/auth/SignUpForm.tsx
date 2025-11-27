@@ -213,29 +213,24 @@ export function SignUpForm() {
     setLoading(true);
 
     try {
-      // 1. VALIDAR CÓDIGO ANTES DE CRIAR CONTA
-      let cleanPhone = formData.phoneNumber.replace(/\D/g, '');
-      // Adicionar + para corresponder ao formato salvo pelo backend
-      if (/^\d{11,15}$/.test(cleanPhone)) {
-        cleanPhone = '+' + cleanPhone;
-      }
+      // 1. VALIDAR CÓDIGO VIA EDGE FUNCTION (usa service_role, ignora RLS)
+      const cleanPhone = formData.phoneNumber.replace(/\D/g, '');
       console.log('[SIGNUP] Validando código WhatsApp para:', cleanPhone);
       
-      const { data: codeValidation, error: validationError } = await supabase
-        .from('whatsapp_validation_codes')
-        .select('*')
-        .eq('phone_number', cleanPhone)
-        .eq('code', whatsappCode)
-        .eq('used', false)
-        .gt('expires_at', new Date().toISOString())
-        .maybeSingle();
+      const { data: validationResult, error: validationError } = await supabase.functions.invoke('whatsapp-agent', {
+        body: { 
+          action: 'validate-code',
+          phone_number: cleanPhone,
+          code: whatsappCode,
+        },
+      });
 
       if (validationError) {
         console.error('[SIGNUP] Erro ao validar código:', validationError);
         throw validationError;
       }
 
-      if (!codeValidation) {
+      if (!validationResult?.valid) {
         console.log('[SIGNUP] ❌ Código inválido ou expirado');
         throw new Error('Código inválido ou expirado. Solicite um novo código.');
       }
@@ -246,21 +241,22 @@ export function SignUpForm() {
       const { error: updateError } = await supabase
         .from('whatsapp_validation_codes')
         .update({ used: true })
-        .eq('id', codeValidation.id);
+        .eq('id', validationResult.code_id);
 
       if (updateError) {
         console.error('[SIGNUP] Erro ao marcar código como usado:', updateError);
       }
 
-      // 3. Criar conta no Supabase Auth
-      console.log('[SIGNUP] Criando conta no Supabase Auth');
+      // 3. Criar conta no Supabase Auth (usar formato +55XXXXXXXXXXX)
+      const phoneWithPlus = cleanPhone.startsWith('+') ? cleanPhone : `+${cleanPhone}`;
+      console.log('[SIGNUP] Criando conta no Supabase Auth com phone:', phoneWithPlus);
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
           data: {
             full_name: formData.fullName,
-            phone_number: cleanPhone,
+            phone_number: phoneWithPlus,
           },
           emailRedirectTo: `${window.location.origin}/`,
         },
@@ -271,13 +267,13 @@ export function SignUpForm() {
 
       console.log('[SIGNUP] ✅ Conta criada com sucesso!', signUpData);
 
-      // 4. Criar sessão WhatsApp automaticamente
-      console.log('[SIGNUP] Criando sessão WhatsApp');
+      // 4. Criar sessão WhatsApp automaticamente (usar mesmo formato +55XXXXXXXXXXX)
+      console.log('[SIGNUP] Criando sessão WhatsApp com phone:', phoneWithPlus);
       const { error: sessionError } = await supabase
         .from('whatsapp_sessions')
         .insert({
           user_id: signUpData.user.id,
-          phone_number: cleanPhone,
+          phone_number: phoneWithPlus,
           expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 dias
         });
 

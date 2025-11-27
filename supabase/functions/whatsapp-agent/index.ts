@@ -6267,6 +6267,63 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
+
+    // ✨ Handle validate-code action
+    if (action === 'validate-code') {
+      console.log('[VALIDATE-CODE] 📱 Processing code validation request');
+      
+      if (!phone_number || typeof phone_number !== 'string') {
+        throw new Error('Phone number is required');
+      }
+      
+      if (!body.code || typeof body.code !== 'string') {
+        throw new Error('Code is required');
+      }
+
+      // Limpar e padronizar o telefone
+      let cleanPhone = phone_number.replace(/\D/g, '');
+      if (!/^\+/.test(cleanPhone) && /^\d{11,15}$/.test(cleanPhone)) {
+        cleanPhone = '+' + cleanPhone;
+      }
+
+      console.log('[VALIDATE-CODE] 📞 Clean phone:', cleanPhone);
+      console.log('[VALIDATE-CODE] 🔐 Code to validate:', body.code);
+
+      // Validar código usando service_role (ignora RLS)
+      const { data: codeValidation, error: validationError } = await supabase
+        .from('whatsapp_validation_codes')
+        .select('*')
+        .eq('phone_number', cleanPhone)
+        .eq('code', body.code)
+        .eq('used', false)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle();
+
+      if (validationError) {
+        console.error('[VALIDATE-CODE] ❌ Validation error:', validationError);
+        throw validationError;
+      }
+
+      if (!codeValidation) {
+        console.log('[VALIDATE-CODE] ❌ Code invalid or expired');
+        return new Response(JSON.stringify({
+          valid: false,
+          message: 'Código inválido ou expirado'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      console.log('[VALIDATE-CODE] ✅ Code is valid');
+
+      return new Response(JSON.stringify({
+        valid: true,
+        code_id: codeValidation.id,
+        message: 'Código válido'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
     
     // Security: Input validation
     if (!phone_number || typeof phone_number !== 'string') {

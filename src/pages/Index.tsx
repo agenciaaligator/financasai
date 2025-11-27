@@ -51,9 +51,6 @@ const LandingPage = () => {
             <Button variant="outline" onClick={() => setShowLogin(true)} className="hidden sm:flex">
               Entrar
             </Button>
-            <Button onClick={() => navigate('/cadastro')} className="hidden sm:flex">
-              Criar conta
-            </Button>
             
             <Sheet>
               <SheetTrigger asChild className="md:hidden">
@@ -70,9 +67,6 @@ const LandingPage = () => {
                   <div className="flex flex-col gap-2 mt-4">
                     <Button variant="outline" onClick={() => setShowLogin(true)} className="w-full">
                       Entrar
-                    </Button>
-                    <Button onClick={() => navigate('/cadastro')} className="w-full">
-                      Criar conta
                     </Button>
                   </div>
                 </nav>
