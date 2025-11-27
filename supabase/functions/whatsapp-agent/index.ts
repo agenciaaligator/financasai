@@ -6344,6 +6344,36 @@ serve(async (req) => {
 
       console.log('[VALIDATE-CODE] ✅ Code is valid');
 
+      // 🔥 CRIAR SESSÃO WHATSAPP AUTOMATICAMENTE (se tiver user_id no código)
+      if (codeValidation.user_id) {
+        console.log('[VALIDATE-CODE] 🔐 Creating WhatsApp session for user:', codeValidation.user_id);
+        
+        // Limpar sessões antigas para este número (evitar duplicatas)
+        const phoneVariants = cleanPhone.startsWith('+')
+          ? [cleanPhone, cleanPhone.substring(1)]
+          : [cleanPhone, '+' + cleanPhone];
+
+        await supabase
+          .from('whatsapp_sessions')
+          .delete()
+          .or(`phone_number.in.(${phoneVariants.map(p => `"${p}"`).join(',')})`);
+
+        // Criar nova sessão
+        const { error: sessionError } = await supabase
+          .from('whatsapp_sessions')
+          .insert({
+            user_id: codeValidation.user_id,
+            phone_number: cleanPhone,
+            expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 dias
+          });
+
+        if (sessionError) {
+          console.error('[VALIDATE-CODE] ⚠️ Failed to create WhatsApp session:', sessionError);
+        } else {
+          console.log('[VALIDATE-CODE] ✅ WhatsApp session created successfully');
+        }
+      }
+
       return new Response(JSON.stringify({
         valid: true,
         code_id: codeValidation.id,

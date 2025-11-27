@@ -589,8 +589,8 @@ export function ProfileSettings() {
                 className={effectiveAuthenticated ? "bg-muted" : ""}
               />
               {effectiveAuthenticated && (
-                <p className="text-xs text-yellow-600">
-                  ⚠️ Número em uso no WhatsApp. Desconecte na seção abaixo para alterar.
+                <p className="text-xs text-muted-foreground mt-1">
+                  🔒 Para alterar o número, desconecte o WhatsApp primeiro na seção abaixo
                 </p>
               )}
               {!effectiveAuthenticated && (

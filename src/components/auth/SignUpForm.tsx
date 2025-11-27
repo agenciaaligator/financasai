@@ -271,71 +271,21 @@ export function SignUpForm() {
             full_name: formData.fullName,
             phone_number: formData.phoneNumber,
           },
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: `${window.location.origin}/?pending_checkout=true&cycle=${selectedCycle}${couponCode ? `&coupon=${couponCode}` : ''}`,
         },
       });
 
       if (signUpError) throw signUpError;
       if (!signUpData.user) throw new Error('Usuário não criado');
 
-      console.log('[SIGNUP] ✅ Conta criada com sucesso!', signUpData);
-
-      // 4. Criar sessão WhatsApp automaticamente (phone já no formato E.164)
-      console.log('[SIGNUP] Criando sessão WhatsApp com phone:', formData.phoneNumber);
-      const { error: sessionError } = await supabase
-        .from('whatsapp_sessions')
-        .insert({
-          user_id: signUpData.user.id,
-          phone_number: formData.phoneNumber,
-          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 dias
-        });
-
-      if (sessionError) {
-        console.error('[SIGNUP] Erro ao criar sessão WhatsApp:', sessionError);
-      } else {
-        console.log('[SIGNUP] ✅ WhatsApp conectado automaticamente');
-      }
+      console.log('[SIGNUP] ✅ Conta criada com sucesso! WhatsApp será conectado automaticamente após validação do email.', signUpData);
 
       toast({
-        title: "✅ Conta criada com sucesso!",
-        description: "Verificando cupom e redirecionando...",
+        title: "✅ Conta criada!",
+        description: "Verifique seu email para confirmar e acessar o sistema.",
       });
 
-      // 5. Verificar se tem cupom para ativar trial OU redirecionar para checkout
-      if (couponCode) {
-        console.log('[SIGNUP] Ativando cupom:', couponCode);
-        
-        const { data: couponData, error: couponError } = await supabase.functions.invoke('activate-trial-coupon', {
-          body: { couponCode },
-        });
-
-        if (couponError || !couponData?.success) {
-          console.error('[SIGNUP] Erro ao ativar cupom:', couponError);
-          toast({
-            title: "Aviso",
-            description: "Não foi possível ativar o cupom. Redirecionando para checkout...",
-            variant: "destructive",
-          });
-          // Redirecionar para checkout mesmo assim
-          setTimeout(() => {
-            navigate(`/?tab=subscription&cycle=${selectedCycle}`);
-          }, 2000);
-        } else {
-          // Cupom ativado com sucesso - trial iniciado
-          toast({
-            title: "🎉 Trial ativado!",
-            description: "30 dias grátis ativados! Redirecionando...",
-          });
-          setTimeout(() => {
-            navigate('/?tab=dashboard');
-          }, 2000);
-        }
-      } else {
-        // Sem cupom - redirecionar para checkout
-        setTimeout(() => {
-          navigate(`/?tab=subscription&cycle=${selectedCycle}`);
-        }, 2000);
-      }
+      // Aguardar confirmação de email (não redirecionar aqui)
     } catch (error: any) {
       console.error('[SIGNUP] Erro ao criar conta:', error);
       toast({

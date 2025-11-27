@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Calendar, DollarSign, Bell, Shield, Smartphone, Zap, RefreshCw, BarChart3, Brain, Menu, Users, FolderOpen, Clock } from "lucide-react";
@@ -353,6 +353,33 @@ const LandingPage = () => {
 
 const Index = () => {
   const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  
+  // 🔥 DETECTAR PENDING CHECKOUT APÓS CONFIRMAÇÃO DE EMAIL
+  useEffect(() => {
+    if (user) {
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.get('pending_checkout') === 'true') {
+        const cycle = searchParams.get('cycle') || 'monthly';
+        const coupon = searchParams.get('coupon') || '';
+        
+        console.log('[INDEX] Checkout pendente detectado:', { cycle, coupon, user: user.id });
+        
+        // Remover params da URL
+        searchParams.delete('pending_checkout');
+        window.history.replaceState({}, '', `${window.location.pathname}?${searchParams.toString()}`);
+        
+        // Redirecionar para checkout
+        if (coupon) {
+          // Ativar trial via cupom
+          navigate(`/?coupon=${coupon}`);
+        } else {
+          // Ir para página de checkout
+          navigate(`/?tab=subscription&cycle=${cycle}`);
+        }
+      }
+    }
+  }, [user, navigate]);
   
   if (loading) {
     return (
