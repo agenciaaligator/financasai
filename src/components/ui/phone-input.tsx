@@ -20,6 +20,22 @@ export interface PhoneInputProps {
   required?: boolean;
 }
 
+// Criar o inputComponent fora do render para evitar recriação
+const CustomPhoneInput = React.forwardRef<HTMLInputElement, any>(
+  (props, ref) => (
+    <Input
+      {...props}
+      ref={ref}
+      className={cn(
+        "pl-14 text-base min-h-[44px]",
+        props.className
+      )}
+      style={{ fontSize: "16px" }}
+    />
+  )
+);
+CustomPhoneInput.displayName = "CustomPhoneInput";
+
 export const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
   (
     {
@@ -50,7 +66,7 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
           </Label>
         )}
 
-        <div className="relative">
+        <div className={cn("relative", showError && "phone-input-error", showSuccess && "phone-input-success")}>
           <PhoneInputWithCountry
             flags={flags}
             defaultCountry={defaultCountry}
@@ -61,27 +77,16 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
             }}
             onBlur={() => setTouched(true)}
             disabled={disabled}
-            inputComponent={React.forwardRef((props: any, inputRef) => (
-              <Input
-                {...props}
-                ref={inputRef}
-                id={id}
-                placeholder={placeholder}
-                className={cn(
-                  "pl-14 text-base min-h-[44px]", // Área de toque mínima + fonte legível
-                  showError && "border-destructive focus-visible:ring-destructive",
-                  showSuccess && "border-green-600 focus-visible:ring-green-600"
-                )}
-                aria-invalid={!!showError}
-                aria-describedby={showError ? `${id}-error` : helperText ? `${id}-helper` : undefined}
-                style={{ fontSize: "16px" }} // Previne zoom no iOS
-              />
-            ))}
+            inputComponent={CustomPhoneInput}
+            id={id}
+            placeholder={placeholder}
+            aria-invalid={!!showError}
+            aria-describedby={showError ? `${id}-error` : helperText ? `${id}-helper` : undefined}
             countrySelectProps={{
               "aria-label": "Selecione o país",
               className: cn(
                 "absolute left-3 top-1/2 -translate-y-1/2 z-10",
-                "min-w-[44px] min-h-[44px]", // Área de toque adequada
+                "min-w-[44px] min-h-[44px]",
                 "border-0 bg-transparent",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               ),

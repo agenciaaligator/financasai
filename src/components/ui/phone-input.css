@@ -75,3 +75,20 @@
 .PhoneInputInput {
   padding-left: 3.5rem !important;
 }
+
+/* Estilos de erro e sucesso aplicados via classes no container */
+.phone-input-error .PhoneInputInput {
+  border-color: hsl(var(--destructive));
+}
+
+.phone-input-error .PhoneInputInput:focus-visible {
+  ring-color: hsl(var(--destructive));
+}
+
+.phone-input-success .PhoneInputInput {
+  border-color: hsl(142, 76%, 36%);
+}
+
+.phone-input-success .PhoneInputInput:focus-visible {
+  ring-color: hsl(142, 76%, 36%);
+}
