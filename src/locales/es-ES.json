@@ -96,5 +96,18 @@
     "ocr": "Factura (OCR)",
     "editDelete": "Editar/Eliminar",
     "queries": "Consultas e Informes"
+  },
+  "phone": {
+    "label": "WhatsApp",
+    "placeholder": "Ingrese su número",
+    "selectCountry": "Seleccione el país",
+    "searchCountry": "Buscar país...",
+    "noCountryFound": "País no encontrado",
+    "error": {
+      "invalid": "Parece que faltan algunos dígitos. Verifique su código de área y número",
+      "required": "Por favor, proporcione su WhatsApp",
+      "wrongCountry": "Verifique si seleccionó el país correcto"
+    },
+    "helper": "Seleccione su país e ingrese su número completo"
   }
 }

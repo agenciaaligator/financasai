@@ -97,6 +97,19 @@
     "editDelete": "Editar/Excluir",
     "queries": "Consultas e Relatórios"
   },
+  "phone": {
+    "label": "WhatsApp",
+    "placeholder": "Digite seu número",
+    "selectCountry": "Selecione o país",
+    "searchCountry": "Buscar país...",
+    "noCountryFound": "País não encontrado",
+    "error": {
+      "invalid": "Parece que faltam alguns dígitos. Um celular no Brasil tem 11 números (2 do DDD + 9 do celular)",
+      "required": "Por favor, informe seu WhatsApp",
+      "wrongCountry": "Verifique se selecionou o país correto (🇧🇷 Brasil tem código +55)"
+    },
+    "helper": "Selecione seu país e digite o número completo com DDD"
+  },
   "recurring": {
     "title": "Contas Fixas",
     "description": "Gerencie suas receitas e despesas recorrentes",

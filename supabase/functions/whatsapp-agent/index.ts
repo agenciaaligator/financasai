@@ -6194,9 +6194,23 @@ serve(async (req) => {
         throw new Error('Phone number is required');
       }
 
-      // Normalizar telefone
+      // Normalizar telefone para formato E.164
       let cleanPhone = phone_number.replace(/[\s\-()]/g, '');
-      if (/^\d{11,15}$/.test(cleanPhone)) {
+      
+      // Se tem 11 dígitos (DDD + 9 dígitos Brasil), adicionar +55
+      if (/^\d{11}$/.test(cleanPhone)) {
+        cleanPhone = '+55' + cleanPhone;
+      }
+      // Se tem 13 dígitos começando com 55, adicionar +
+      else if (/^\d{13}$/.test(cleanPhone) && cleanPhone.startsWith('55')) {
+        cleanPhone = '+' + cleanPhone;
+      }
+      // Se já tem + no começo, manter
+      else if (cleanPhone.startsWith('+')) {
+        // OK
+      }
+      // Outros formatos internacionais
+      else if (/^\d{10,15}$/.test(cleanPhone)) {
         cleanPhone = '+' + cleanPhone;
       }
 
@@ -6222,7 +6236,7 @@ serve(async (req) => {
           to: cleanPhone,
           type: 'text',
           text: {
-            body: `🔐 *Código de Verificação Aligator*\n\nSeu código: *${code}*\n\nVálido por 10 minutos.\n\n_Não compartilhe este código._`
+            body: `🔐 *Código de Verificação Aligator*\n\nSeu código: *${code}*\n\nVálido por 30 minutos.\n\n_Não compartilhe este código._`
           }
         })
       });
@@ -6239,7 +6253,7 @@ serve(async (req) => {
       console.log('[SEND-VALIDATION-CODE] ✅ WhatsApp API response:', responseData);
 
       // Salvar no banco de dados
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutos
       console.log('[SEND-VALIDATION-CODE] 💾 Salvando no banco de dados...');
       const { error: dbError } = await supabase
         .from('whatsapp_validation_codes')
@@ -6280,9 +6294,23 @@ serve(async (req) => {
         throw new Error('Code is required');
       }
 
-      // Limpar e padronizar o telefone
-      let cleanPhone = phone_number.replace(/\D/g, '');
-      if (!/^\+/.test(cleanPhone) && /^\d{11,15}$/.test(cleanPhone)) {
+      // Normalizar telefone para formato E.164 (mesmo formato usado no save)
+      let cleanPhone = phone_number.replace(/[\s\-()]/g, '');
+      
+      // Se tem 11 dígitos (DDD + 9 dígitos Brasil), adicionar +55
+      if (/^\d{11}$/.test(cleanPhone)) {
+        cleanPhone = '+55' + cleanPhone;
+      }
+      // Se tem 13 dígitos começando com 55, adicionar +
+      else if (/^\d{13}$/.test(cleanPhone) && cleanPhone.startsWith('55')) {
+        cleanPhone = '+' + cleanPhone;
+      }
+      // Se já tem + no começo, manter
+      else if (cleanPhone.startsWith('+')) {
+        // OK
+      }
+      // Outros formatos internacionais
+      else if (/^\d{10,15}$/.test(cleanPhone)) {
         cleanPhone = '+' + cleanPhone;
       }
 
