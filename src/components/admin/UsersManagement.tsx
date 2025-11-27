@@ -303,8 +303,7 @@ export function UsersManagement() {
             <TableRow>
               <TableHead>Nome</TableHead>
               <TableHead>Email</TableHead>
-              <TableHead>Role Atual</TableHead>
-              <TableHead>Plano Ativo</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Cadastro</TableHead>
               <TableHead>Ações</TableHead>
             </TableRow>
@@ -329,15 +328,12 @@ export function UsersManagement() {
                         Expira: {new Date(user.trialExpiresAt).toLocaleDateString('pt-BR')}
                       </span>
                     )}
+                    {user.subscriptionStatus === 'active' && (
+                      <Badge variant="outline" className="ml-2 bg-success/10 text-success text-xs">
+                        {user.planName}
+                      </Badge>
+                    )}
                   </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline">{user.planName}</Badge>
-                  {user.subscriptionStatus === 'active' && (
-                    <Badge variant="outline" className="ml-2 bg-success/10 text-success">
-                      Ativo
-                    </Badge>
-                  )}
                 </TableCell>
                 <TableCell>
                   {new Date(user.created_at).toLocaleDateString('pt-BR')}
@@ -358,18 +354,6 @@ export function UsersManagement() {
                         <SelectItem value="admin">Admin</SelectItem>
                       </SelectContent>
                     </Select>
-                    
-                    {user.role !== 'trial' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleActivateTrial(user.id)}
-                        disabled={activatingTrial === user.id}
-                      >
-                        <Sparkles className="h-4 w-4 mr-1" />
-                        {activatingTrial === user.id ? 'Ativando...' : 'Trial 14d'}
-                      </Button>
-                    )}
 
                     {!user.isMaster && (
                       <Button
