@@ -5,13 +5,10 @@ import { toast } from '@/hooks/use-toast';
 export const useCheckout = () => {
   const [loading, setLoading] = useState(false);
 
-  const createCheckoutSession = async (priceId: string) => {
+  const createCheckoutSession = async (priceId: string, cycle?: string) => {
     setLoading(true);
     try {
-      console.log('[CHECKOUT] Creating session with priceId:', priceId);
-      
-      // Validar cupom antes de criar checkout (se existir)
-      const couponCode = sessionStorage.getItem('coupon_code');
+      console.log('[CHECKOUT] Creating session with priceId:', priceId, 'cycle:', cycle);
       
       toast({
         title: "🔄 Redirecionando para checkout...",
@@ -21,7 +18,7 @@ export const useCheckout = () => {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { 
           priceId,
-          couponCode: couponCode || undefined
+          cycle: cycle || 'monthly'
         },
       });
 
@@ -53,9 +50,6 @@ export const useCheckout = () => {
         description: "Complete o pagamento na nova aba. Esta janela pode ficar aberta.",
         duration: 10000
       });
-
-      // Limpar cupom após usar
-      sessionStorage.removeItem('coupon_code');
       
     } catch (error) {
       console.error('[CHECKOUT] Error:', error);

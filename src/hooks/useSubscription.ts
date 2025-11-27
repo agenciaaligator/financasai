@@ -100,19 +100,27 @@ export function useSubscription() {
       return 'Admin (Acesso Total)';
     }
 
-    // Verificar se tem cupom FULLACCESS
-    const { data: couponData } = await supabase
-      .from('user_coupons')
-      .select('discount_coupons(type, is_active, expires_at)')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (couponData?.discount_coupons) {
-      const coupon = couponData.discount_coupons;
-      const isActive = coupon.is_active && (!coupon.expires_at || new Date(coupon.expires_at) > new Date());
-      if (coupon.type === 'full_access' && isActive) {
-        console.log('[useSubscription] ✅ Usuário tem cupom FULLACCESS');
-        return 'Acesso Total (Cupom)';
+    // Priorizar user_subscriptions como fonte da verdade
+    if (subscription && subscription.status === 'active') {
+      const billingCycle = subscription.billing_cycle;
+      
+      if (billingCycle === 'trial') {
+        // Calcular dias restantes
+        const endDate = new Date(subscription.current_period_end);
+        const today = new Date();
+        const daysRemaining = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        console.log('[useSubscription] ✅ Trial ativo:', daysRemaining, 'dias restantes');
+        return `Trial (${daysRemaining} dias restantes)`;
+      }
+      
+      if (billingCycle === 'monthly') {
+        console.log('[useSubscription] ✅ Premium Mensal');
+        return 'Premium Mensal';
+      }
+      
+      if (billingCycle === 'yearly') {
+        console.log('[useSubscription] ✅ Premium Anual');
+        return 'Premium Anual';
       }
     }
 
@@ -131,9 +139,8 @@ export function useSubscription() {
       return `${displayName} (herdado)`;
     }
 
-    const planName = subscription?.subscription_plans?.display_name || 'Gratuito';
-    console.log('[useSubscription] ✅ Plano final:', planName);
-    return planName;
+    console.log('[useSubscription] ✅ Plano Gratuito');
+    return 'Gratuito';
   };
 
   const [planDisplayName, setPlanDisplayName] = useState<string>('Carregando...');

@@ -40,9 +40,9 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    const { priceId } = await req.json();
+    const { priceId, cycle } = await req.json();
     if (!priceId) throw new Error("priceId is required");
-    logStep("Received priceId", { priceId });
+    logStep("Received priceId and cycle", { priceId, cycle });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     

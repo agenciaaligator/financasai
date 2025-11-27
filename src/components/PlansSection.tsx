@@ -94,7 +94,11 @@ export function PlansSection() {
   };
 
   const handleSelectPlan = (plan: SubscriptionPlan) => {
-    navigate(`/cadastro?plano=${plan.id}`);
+    if (plan.role === 'free') {
+      navigate('/cadastro');
+    } else {
+      navigate('/choose-plan');
+    }
   };
 
   if (loading) {
