@@ -35,9 +35,9 @@ serve(async (req) => {
     if (!user) throw new Error("User not authenticated");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    const { couponCode } = await req.json();
+    const { couponCode, selectedCycle } = await req.json();
     if (!couponCode) throw new Error("couponCode is required");
-    logStep("Received couponCode", { couponCode });
+    logStep("Received request", { couponCode, selectedCycle });
 
     // 1. Validar cupom
     const { data: coupon, error: couponError } = await supabaseClient
@@ -73,18 +73,20 @@ serve(async (req) => {
     if (planError || !premiumPlan) throw new Error("Plano premium não encontrado");
     logStep("Premium plan found", { planId: premiumPlan.id });
 
-    // 3. Calcular data de expiração (30 dias)
+    // 3. Calcular data de expiração baseado no cupom (duração variável)
+    const trialDays = coupon.value || 30; // value = dias de trial
     const trialEnd = new Date();
-    trialEnd.setDate(trialEnd.getDate() + 30);
+    trialEnd.setDate(trialEnd.getDate() + trialDays);
+    logStep("Trial duration calculated", { trialDays, trialEnd: trialEnd.toISOString() });
 
-    // 4. Criar subscription
+    // 4. Criar subscription com status trial e ciclo escolhido
     const { error: subError } = await supabaseClient
       .from('user_subscriptions')
       .insert({
         user_id: user.id,
         plan_id: premiumPlan.id,
-        status: 'active',
-        billing_cycle: 'trial',
+        status: 'trial',
+        billing_cycle: selectedCycle || 'monthly',
         current_period_start: new Date().toISOString(),
         current_period_end: trialEnd.toISOString(),
         payment_gateway: 'coupon',
@@ -135,16 +137,39 @@ serve(async (req) => {
       logStep("Error incrementing coupon usage", { error: updateCouponError });
     }
 
+    // 8. Criar sessão WhatsApp automaticamente
+    const { data: profileData } = await supabaseClient
+      .from('profiles')
+      .select('phone_number')
+      .eq('user_id', user.id)
+      .single();
+
+    if (profileData?.phone_number) {
+      const whatsappExpiry = new Date();
+      whatsappExpiry.setDate(whatsappExpiry.getDate() + 30);
+      
+      await supabaseClient.from('whatsapp_sessions').insert({
+        user_id: user.id,
+        phone_number: profileData.phone_number,
+        expires_at: whatsappExpiry.toISOString(),
+      });
+      
+      logStep("WhatsApp session created automatically");
+    }
+
     logStep("Trial activated successfully", { 
       userId: user.id, 
       couponCode,
+      selectedCycle: selectedCycle || 'monthly',
+      trialDays,
       expiresAt: trialEnd.toISOString()
     });
 
     return new Response(JSON.stringify({ 
       success: true,
-      message: "Trial de 30 dias ativado com sucesso!",
+      message: `Trial de ${trialDays} dias ativado com sucesso!`,
       expires_at: trialEnd.toISOString(),
+      trial_days: trialDays,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

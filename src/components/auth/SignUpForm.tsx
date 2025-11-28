@@ -12,11 +12,14 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Loader2, AlertTriangle, HelpCircle } from "lucide-react";
 import { isValidPhoneNumber } from "react-phone-number-input";
 import { useTranslation } from "react-i18next";
+import { useCheckout } from "@/hooks/useCheckout";
+import { WelcomeScreen } from "@/components/WelcomeScreen";
 
 export function SignUpForm() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useTranslation();
+  const { createCheckoutSession } = useCheckout();
   
   const [formData, setFormData] = useState({
     fullName: '',
@@ -28,6 +31,7 @@ export function SignUpForm() {
   const [whatsappCode, setWhatsappCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [phoneError, setPhoneError] = useState('');
+  const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
   
   // Capturar query params do fluxo de escolha de plano
   const searchParams = new URLSearchParams(window.location.search);
@@ -292,14 +296,15 @@ export function SignUpForm() {
       if (signUpError) throw signUpError;
       if (!signUpData.user) throw new Error('Usuário não criado');
 
-      console.log('[SIGNUP] ✅ Conta criada com sucesso! WhatsApp será conectado automaticamente após validação do email.', signUpData);
+      console.log('[SIGNUP] ✅ Conta criada com sucesso! Mostrando boas-vindas...', signUpData);
 
       toast({
         title: "✅ Conta criada!",
         description: "Verifique seu email para confirmar e acessar o sistema.",
       });
 
-      // Aguardar confirmação de email (não redirecionar aqui)
+      // Mostrar tela de boas-vindas imediatamente
+      setShowWelcomeScreen(true);
     } catch (error: any) {
       console.error('[SIGNUP] Erro ao criar conta:', error);
       toast({
@@ -310,6 +315,69 @@ export function SignUpForm() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleWelcomeContinue = async (action: 'trial' | 'checkout') => {
+    if (action === 'trial') {
+      // Ativar trial via cupom
+      console.log('[WELCOME] Ativando trial com cupom:', couponCode);
+      try {
+        const { data, error } = await supabase.functions.invoke('activate-trial-coupon', {
+          body: { 
+            couponCode: couponCode,
+            selectedCycle: selectedCycle
+          }
+        });
+        
+        if (error) throw error;
+        
+        toast({
+          title: "✅ Trial ativado!",
+          description: `Aproveite seu período de teste!`,
+        });
+        
+        navigate('/');
+      } catch (error: any) {
+        console.error('[WELCOME] Erro ao ativar trial:', error);
+        toast({
+          title: "❌ Erro ao ativar trial",
+          description: error.message || "Tente novamente",
+          variant: "destructive"
+        });
+      }
+    } else {
+      // Buscar priceId e ir para checkout
+      console.log('[WELCOME] Redirecionando para checkout, ciclo:', selectedCycle);
+      try {
+        const { data: plans, error } = await supabase
+          .from('subscription_plans')
+          .select('stripe_price_id_monthly, stripe_price_id_yearly')
+          .eq('name', 'premium')
+          .eq('is_active', true)
+          .single();
+        
+        if (error || !plans) throw new Error('Plano não encontrado');
+        
+        const priceId = selectedCycle === 'yearly' 
+          ? plans.stripe_price_id_yearly 
+          : plans.stripe_price_id_monthly;
+        
+        console.log('[WELCOME] Iniciando checkout com priceId:', priceId);
+        await createCheckoutSession(priceId, selectedCycle);
+      } catch (error: any) {
+        console.error('[WELCOME] Erro ao iniciar checkout:', error);
+        toast({
+          title: "❌ Erro ao abrir checkout",
+          description: error.message || "Tente novamente",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
+  const handleWelcomeSkip = () => {
+    console.log('[WELCOME] Usuário pulou boas-vindas');
+    navigate('/');
   };
 
   return (
@@ -446,6 +514,16 @@ export function SignUpForm() {
           </Button>
         </div>
       </CardContent>
+      
+      {showWelcomeScreen && (
+        <WelcomeScreen
+          userName={formData.fullName}
+          selectedCycle={selectedCycle as 'monthly' | 'yearly'}
+          couponCode={couponCode}
+          onContinue={handleWelcomeContinue}
+          onSkip={handleWelcomeSkip}
+        />
+      )}
     </Card>
   );
 }
