@@ -99,10 +99,16 @@
   },
   "phone": {
     "label": "WhatsApp",
-    "placeholder": "Digite seu número",
+    "placeholder": "Digite seu número com DDD",
     "selectCountry": "Selecione o país",
     "searchCountry": "Buscar país...",
     "noCountryFound": "País não encontrado",
+    "errorInvalid": "Número de telefone inválido. Verifique o formato.",
+    "errorTooShort": "Número incompleto. Para Brasil: DDD + 9 dígitos (ex: 11 91234-5678)",
+    "errorRequired": "WhatsApp é obrigatório para receber o código de verificação",
+    "errorAlreadyLinked": "Este WhatsApp já está vinculado a outra conta",
+    "wrongCountryWarning": "Você selecionou um país diferente do Brasil. Verifique se está correto.",
+    "tooltipHelp": "Digite apenas números com DDD brasileiro (11 dígitos no total). Exemplo: 11 91234-5678",
     "error": {
       "invalid": "Parece que faltam alguns dígitos. Um celular no Brasil tem 11 números (2 do DDD + 9 do celular)",
       "required": "Por favor, informe seu WhatsApp",

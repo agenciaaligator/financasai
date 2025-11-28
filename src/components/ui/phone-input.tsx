@@ -53,9 +53,54 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
     ref
   ) => {
     const [touched, setTouched] = React.useState(false);
+    const [selectedCountry, setSelectedCountry] = React.useState<Country>(defaultCountry);
+    
     const isValid = value && isValidPhoneNumber(value);
     const showError = touched && error;
     const showSuccess = touched && isValid && !error;
+
+    // Placeholders dinâmicos por país
+    const getPlaceholderByCountry = (country: Country): string => {
+      const placeholders: Record<string, string> = {
+        BR: "(11) 91234-5678",
+        US: "(555) 123-4567",
+        ES: "612 34 56 78",
+        IT: "312 345 6789",
+        AR: "11 2345-6789",
+        PT: "912 345 678",
+      };
+      return placeholders[country] || placeholder;
+    };
+
+    // Helper text dinâmico por país
+    const getHelperTextByCountry = (country: Country): string => {
+      const helpers: Record<string, string> = {
+        BR: "Digite DDD + 9 números do celular (ex: 11 91234-5678)",
+        US: "Digite código de área + número (ex: 555 123-4567)",
+        ES: "Digite 9 dígitos (ex: 612 34 56 78)",
+        IT: "Digite 9-10 dígitos (ex: 312 345 6789)",
+        AR: "Digite código de área + número (ex: 11 2345-6789)",
+        PT: "Digite 9 dígitos (ex: 912 345 678)",
+      };
+      return helpers[country] || helperText || "";
+    };
+
+    // Contador de dígitos por país
+    const getExpectedDigits = (country: Country): number => {
+      const digits: Record<string, number> = {
+        BR: 11,
+        US: 10,
+        ES: 9,
+        IT: 10,
+        AR: 10,
+        PT: 9,
+      };
+      return digits[country] || 11;
+    };
+
+    const currentDigits = value ? value.replace(/\D/g, '').length : 0;
+    const expectedDigits = getExpectedDigits(selectedCountry);
+    const digitCounterText = value ? `${currentDigits} de ${expectedDigits} dígitos` : "";
 
     return (
       <div className="space-y-2">
@@ -75,11 +120,14 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
               onChange(val || "");
               if (!touched) setTouched(true);
             }}
+            onCountryChange={(country) => {
+              if (country) setSelectedCountry(country);
+            }}
             onBlur={() => setTouched(true)}
             disabled={disabled}
             inputComponent={CustomPhoneInput}
             id={id}
-            placeholder={placeholder}
+            placeholder={getPlaceholderByCountry(selectedCountry)}
             aria-invalid={!!showError}
             aria-describedby={showError ? `${id}-error` : helperText ? `${id}-helper` : undefined}
             countrySelectProps={{
@@ -109,15 +157,22 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
           )}
         </div>
 
-        {/* Mensagens de ajuda e erro */}
-        {helperText && !showError && (
-          <p
-            id={`${id}-helper`}
-            className="text-sm text-muted-foreground"
-            role="note"
-          >
-            {helperText}
-          </p>
+        {/* Contador de dígitos e helper text */}
+        {!showError && (
+          <div className="flex items-center justify-between gap-2">
+            <p
+              id={`${id}-helper`}
+              className="text-sm text-muted-foreground flex-1"
+              role="note"
+            >
+              {getHelperTextByCountry(selectedCountry)}
+            </p>
+            {digitCounterText && (
+              <span className="text-xs text-muted-foreground font-medium">
+                {digitCounterText}
+              </span>
+            )}
+          </div>
         )}
 
         {showError && (

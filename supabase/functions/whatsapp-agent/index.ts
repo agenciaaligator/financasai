@@ -6197,6 +6197,17 @@ serve(async (req) => {
       // Normalizar telefone para formato E.164
       let cleanPhone = phone_number.replace(/[\s\-()]/g, '');
       
+      // 🔥 CORREÇÃO: Detectar padrão brasileiro com +1 (erro comum de seleção de país)
+      // Se +1 seguido de 11 dígitos começando com DDDs brasileiros (11-99)
+      if (/^\+1(\d{11})$/.test(cleanPhone)) {
+        const digits = cleanPhone.substring(2); // Remove +1
+        // DDDs brasileiros: 11-19, 21-28, 31-35, 41-49, 51-55, 61-69, 71-79, 81-89, 91-99
+        if (/^(1[1-9]|2[1-8]|3[1-5]|4[1-9]|5[1-5]|6[1-9]|7[1-9]|8[1-9]|9[1-9])/.test(digits)) {
+          cleanPhone = '+55' + digits;
+          console.log('[SEND-VALIDATION-CODE] 🔄 Detected Brazilian number with +1, converted to:', cleanPhone);
+        }
+      }
+      
       // Se tem 11 dígitos (DDD + 9 dígitos Brasil), adicionar +55
       if (/^\d{11}$/.test(cleanPhone)) {
         cleanPhone = '+55' + cleanPhone;
@@ -6296,6 +6307,17 @@ serve(async (req) => {
 
       // Normalizar telefone para formato E.164 (mesmo formato usado no save)
       let cleanPhone = phone_number.replace(/[\s\-()]/g, '');
+      
+      // 🔥 CORREÇÃO: Detectar padrão brasileiro com +1 (erro comum de seleção de país)
+      // Se +1 seguido de 11 dígitos começando com DDDs brasileiros (11-99)
+      if (/^\+1(\d{11})$/.test(cleanPhone)) {
+        const digits = cleanPhone.substring(2); // Remove +1
+        // DDDs brasileiros: 11-19, 21-28, 31-35, 41-49, 51-55, 61-69, 71-79, 81-89, 91-99
+        if (/^(1[1-9]|2[1-8]|3[1-5]|4[1-9]|5[1-5]|6[1-9]|7[1-9]|8[1-9]|9[1-9])/.test(digits)) {
+          cleanPhone = '+55' + digits;
+          console.log('[VALIDATE-CODE] 🔄 Detected Brazilian number with +1, converted to:', cleanPhone);
+        }
+      }
       
       // Se tem 11 dígitos (DDD + 9 dígitos Brasil), adicionar +55
       if (/^\d{11}$/.test(cleanPhone)) {

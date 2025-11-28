@@ -99,10 +99,16 @@
   },
   "phone": {
     "label": "WhatsApp",
-    "placeholder": "Ingrese su número",
-    "selectCountry": "Seleccione el país",
+    "placeholder": "Ingresa tu número con código de área",
+    "selectCountry": "Seleccionar país",
     "searchCountry": "Buscar país...",
     "noCountryFound": "País no encontrado",
+    "errorInvalid": "Número de teléfono inválido. Verifica el formato.",
+    "errorTooShort": "Número incompleto. Para Brasil: código de área + 9 dígitos (ej: 11 91234-5678)",
+    "errorRequired": "WhatsApp es obligatorio para recibir el código de verificación",
+    "errorAlreadyLinked": "Este WhatsApp ya está vinculado a otra cuenta",
+    "wrongCountryWarning": "Seleccionaste un país diferente a Brasil. Verifica si es correcto.",
+    "tooltipHelp": "Ingresa solo números con código de área brasileño (11 dígitos en total). Ejemplo: 11 91234-5678",
     "error": {
       "invalid": "Parece que faltan algunos dígitos. Verifique su código de área y número",
       "required": "Por favor, proporcione su WhatsApp",
