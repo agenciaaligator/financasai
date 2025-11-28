@@ -7,12 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PhoneInput } from "@/components/ui/phone-input";
-import { Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Loader2, AlertTriangle, HelpCircle } from "lucide-react";
 import { isValidPhoneNumber } from "react-phone-number-input";
+import { useTranslation } from "react-i18next";
 
 export function SignUpForm() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useTranslation();
   
   const [formData, setFormData] = useState({
     fullName: '',
@@ -30,18 +34,21 @@ export function SignUpForm() {
   const selectedCycle = searchParams.get('cycle') || 'monthly';
   const couponCode = searchParams.get('coupon') || '';
 
+  // Detectar se país selecionado não é Brasil
+  const isNonBrazilianNumber = formData.phoneNumber && !formData.phoneNumber.startsWith('+55');
+
   // Validação em tempo real do telefone
   useEffect(() => {
     if (formData.phoneNumber && formData.phoneNumber.length > 3) {
       if (!isValidPhoneNumber(formData.phoneNumber)) {
-        setPhoneError('Parece que faltam alguns dígitos. Um celular no Brasil tem 11 números (2 do DDD + 9 do celular)');
+        setPhoneError(t('phone.errorTooShort'));
       } else {
         setPhoneError('');
       }
     } else {
       setPhoneError('');
     }
-  }, [formData.phoneNumber]);
+  }, [formData.phoneNumber, t]);
 
   // Função para verificar se usuário já existe
   const checkExistingUser = async (email: string, phone: string) => {
@@ -163,7 +170,7 @@ export function SignUpForm() {
     if (!isValidPhoneNumber(formData.phoneNumber)) {
       toast({
         title: "Telefone inválido",
-        description: "Verifique se o país está correto e se digitou o número completo com DDD",
+        description: t('phone.errorInvalid'),
         variant: "destructive",
       });
       return;
@@ -341,17 +348,40 @@ export function SignUpForm() {
               />
             </div>
 
-            <PhoneInput
-              id="phone"
-              label="WhatsApp"
-              value={formData.phoneNumber}
-              onChange={(value) => setFormData({ ...formData, phoneNumber: value })}
-              defaultCountry="BR"
-              error={phoneError}
-              helperText="Selecione seu país e digite o número completo com DDD"
-              placeholder="Digite seu número"
-              required
-            />
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="phone">{t('phone.label')}</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p className="text-sm">{t('phone.tooltipHelp')}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              
+              <PhoneInput
+                id="phone"
+                value={formData.phoneNumber}
+                onChange={(value) => setFormData({ ...formData, phoneNumber: value })}
+                defaultCountry="BR"
+                error={phoneError}
+                required
+              />
+
+              {/* Aviso quando país não é Brasil */}
+              {isNonBrazilianNumber && (
+                <Alert variant="default" className="border-amber-500/50 bg-amber-500/10">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <AlertDescription className="text-sm text-amber-800 dark:text-amber-200">
+                    {t('phone.wrongCountryWarning')}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>

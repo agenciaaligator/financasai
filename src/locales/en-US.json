@@ -99,10 +99,16 @@
   },
   "phone": {
     "label": "WhatsApp",
-    "placeholder": "Enter your number",
+    "placeholder": "Enter your number with area code",
     "selectCountry": "Select country",
     "searchCountry": "Search country...",
     "noCountryFound": "Country not found",
+    "errorInvalid": "Invalid phone number. Check the format.",
+    "errorTooShort": "Incomplete number. For Brazil: area code + 9 digits (ex: 11 91234-5678)",
+    "errorRequired": "WhatsApp is required to receive the verification code",
+    "errorAlreadyLinked": "This WhatsApp is already linked to another account",
+    "wrongCountryWarning": "You selected a country other than Brazil. Please verify if this is correct.",
+    "tooltipHelp": "Enter numbers only with Brazilian area code (11 digits total). Example: 11 91234-5678",
     "error": {
       "invalid": "It seems some digits are missing. Check your area code and number",
       "required": "Please provide your WhatsApp number",

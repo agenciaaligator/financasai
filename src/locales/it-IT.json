@@ -99,10 +99,16 @@
   },
   "phone": {
     "label": "WhatsApp",
-    "placeholder": "Inserisci il tuo numero",
-    "selectCountry": "Seleziona il paese",
+    "placeholder": "Inserisci il tuo numero con prefisso",
+    "selectCountry": "Seleziona paese",
     "searchCountry": "Cerca paese...",
     "noCountryFound": "Paese non trovato",
+    "errorInvalid": "Numero di telefono non valido. Verifica il formato.",
+    "errorTooShort": "Numero incompleto. Per il Brasile: prefisso + 9 cifre (es: 11 91234-5678)",
+    "errorRequired": "WhatsApp è obbligatorio per ricevere il codice di verifica",
+    "errorAlreadyLinked": "Questo WhatsApp è già collegato a un altro account",
+    "wrongCountryWarning": "Hai selezionato un paese diverso dal Brasile. Verifica se è corretto.",
+    "tooltipHelp": "Inserisci solo numeri con prefisso brasiliano (11 cifre in totale). Esempio: 11 91234-5678",
     "error": {
       "invalid": "Sembra mancare qualche cifra. Controlla il prefisso e il numero",
       "required": "Si prega di fornire il proprio WhatsApp",
