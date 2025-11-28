@@ -169,24 +169,26 @@ export function ProfileSettings() {
   };
 
   const fetchSessionInfo = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('phone_number')
-      .eq('user_id', user.id)
-      .single();
+    // Usar RPC ao invés de SELECT direto (RLS bloqueia SELECT sem service_role)
+    const { data, error } = await supabase
+      .rpc('get_whatsapp_session_info', { p_user_id: user.id });
 
-    if (!profile?.phone_number) return;
+    if (error) {
+      console.error('[PROFILE] Error fetching session info:', error);
+      setSessionInfo(null);
+      return;
+    }
 
-    const { data: session } = await supabase
-      .from('whatsapp_sessions')
-      .select('last_activity, expires_at')
-      .eq('phone_number', profile.phone_number)
-      .maybeSingle();
-
-    setSessionInfo(session);
+    if (data && data.length > 0) {
+      setSessionInfo({
+        last_activity: data[0].last_activity,
+        expires_at: data[0].expires_at
+      });
+    } else {
+      setSessionInfo(null);
+    }
   };
 
   const effectiveAuthenticated = isAuthenticated || 

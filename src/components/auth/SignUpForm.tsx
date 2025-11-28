@@ -261,7 +261,14 @@ export function SignUpForm() {
         console.error('[SIGNUP] Erro ao marcar código como usado:', updateError);
       }
 
-      // 3. Criar conta no Supabase Auth (phone já no formato E.164)
+      // 3. Backup params em sessionStorage antes do signup
+      sessionStorage.setItem('pending_checkout', 'true');
+      sessionStorage.setItem('checkout_cycle', selectedCycle);
+      if (couponCode) {
+        sessionStorage.setItem('checkout_coupon', couponCode);
+      }
+      
+      // 4. Criar conta no Supabase Auth (phone já no formato E.164)
       console.log('[SIGNUP] Criando conta no Supabase Auth com phone:', formData.phoneNumber);
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,

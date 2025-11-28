@@ -357,26 +357,41 @@ const Index = () => {
   
   // 🔥 DETECTAR PENDING CHECKOUT APÓS CONFIRMAÇÃO DE EMAIL
   useEffect(() => {
-    if (user) {
-      const searchParams = new URLSearchParams(window.location.search);
-      if (searchParams.get('pending_checkout') === 'true') {
-        const cycle = searchParams.get('cycle') || 'monthly';
-        const coupon = searchParams.get('coupon') || '';
-        
-        console.log('[INDEX] Checkout pendente detectado:', { cycle, coupon, user: user.id });
-        
-        // Remover params da URL
-        searchParams.delete('pending_checkout');
-        window.history.replaceState({}, '', `${window.location.pathname}?${searchParams.toString()}`);
-        
-        // Redirecionar para checkout
-        if (coupon) {
-          // Ativar trial via cupom
-          navigate(`/?coupon=${coupon}`);
-        } else {
-          // Ir para página de checkout
-          navigate(`/?tab=subscription&cycle=${cycle}`);
-        }
+    if (!user) return;
+    
+    const params = new URLSearchParams(window.location.search);
+    const pendingCheckout = params.get('pending_checkout') === 'true';
+    const storedPending = sessionStorage.getItem('pending_checkout') === 'true';
+    
+    if (pendingCheckout || storedPending) {
+      console.log('[CHECKOUT] Detectado pending_checkout após confirmação de email', {
+        fromUrl: pendingCheckout,
+        fromStorage: storedPending,
+        user: user.id
+      });
+      
+      // Pegar cycle e coupon (priorizar URL, depois sessionStorage)
+      const cycle = params.get('cycle') || sessionStorage.getItem('checkout_cycle') || 'monthly';
+      const coupon = params.get('coupon') || sessionStorage.getItem('checkout_coupon');
+      
+      // Limpar flags
+      sessionStorage.removeItem('pending_checkout');
+      sessionStorage.removeItem('checkout_cycle');
+      sessionStorage.removeItem('checkout_coupon');
+      
+      // Limpar pending_checkout da URL
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, '', cleanUrl);
+      
+      // Redirecionar para checkout
+      if (coupon && coupon.toUpperCase() === 'FULLACCESS') {
+        console.log('[CHECKOUT] Cupom FULLACCESS detectado, ativando trial...');
+        // Ativar trial via cupom (implementar edge function activate-trial-coupon)
+        navigate('/?tab=profile');
+      } else {
+        // Ir para checkout do Stripe
+        console.log('[CHECKOUT] Redirecionando para página de subscription com cycle:', cycle);
+        navigate(`/?tab=subscription&cycle=${cycle}`);
       }
     }
   }, [user, navigate]);
