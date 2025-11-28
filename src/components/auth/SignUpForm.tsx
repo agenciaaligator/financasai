@@ -296,7 +296,23 @@ export function SignUpForm() {
       if (signUpError) throw signUpError;
       if (!signUpData.user) throw new Error('Usuário não criado');
 
-      console.log('[SIGNUP] ✅ Conta criada com sucesso! Mostrando boas-vindas...', signUpData);
+      console.log('[SIGNUP] ✅ Conta criada com sucesso!', signUpData.user.id);
+
+      // 5. Criar sessão WhatsApp automaticamente
+      const { error: sessionError } = await supabase
+        .from('whatsapp_sessions')
+        .insert({
+          user_id: signUpData.user.id,
+          phone_number: formData.phoneNumber,
+          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        });
+
+      if (sessionError) {
+        console.error('[SIGNUP] ⚠️ Erro ao criar sessão WhatsApp:', sessionError);
+        // Não bloquear fluxo
+      } else {
+        console.log('[SIGNUP] ✅ Sessão WhatsApp criada automaticamente');
+      }
 
       toast({
         title: "✅ Conta criada!",

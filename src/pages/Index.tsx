@@ -357,7 +357,7 @@ const Index = () => {
   
   // 🔥 DETECTAR PENDING CHECKOUT APÓS CONFIRMAÇÃO DE EMAIL
   useEffect(() => {
-    if (!user) return;
+    if (!user || loading) return;
     
     const params = new URLSearchParams(window.location.search);
     const pendingCheckout = params.get('pending_checkout') === 'true';
@@ -372,29 +372,25 @@ const Index = () => {
       
       // Pegar cycle e coupon (priorizar URL, depois sessionStorage)
       const cycle = params.get('cycle') || sessionStorage.getItem('checkout_cycle') || 'monthly';
-      const coupon = params.get('coupon') || sessionStorage.getItem('checkout_coupon');
+      const coupon = params.get('coupon') || sessionStorage.getItem('checkout_coupon') || '';
       
-      // Limpar flags
+      // Limpar flags e URL
       sessionStorage.removeItem('pending_checkout');
       sessionStorage.removeItem('checkout_cycle');
       sessionStorage.removeItem('checkout_coupon');
+      window.history.replaceState({}, '', window.location.pathname);
       
-      // Limpar pending_checkout da URL
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, '', cleanUrl);
-      
-      // Redirecionar para checkout
-      if (coupon && coupon.toUpperCase() === 'FULLACCESS') {
-        console.log('[CHECKOUT] Cupom FULLACCESS detectado, ativando trial...');
-        // Ativar trial via cupom (implementar edge function activate-trial-coupon)
+      // Processar baseado no cupom
+      if (coupon && (coupon.toUpperCase() === 'FULLACCESS' || coupon.toUpperCase().startsWith('TESTE'))) {
+        console.log('[CHECKOUT] Cupom válido detectado, redirecionando para perfil...');
         navigate('/?tab=profile');
       } else {
-        // Ir para checkout do Stripe
-        console.log('[CHECKOUT] Redirecionando para página de subscription com cycle:', cycle);
-        navigate(`/?tab=subscription&cycle=${cycle}`);
+        // Ir para aba de subscription com cycle correto
+        console.log('[CHECKOUT] Redirecionando para subscription com cycle:', cycle);
+        navigate(`/?tab=subscription&auto_checkout=true&cycle=${cycle}`);
       }
     }
-  }, [user, navigate]);
+  }, [user, loading, navigate]);
   
   if (loading) {
     return (
