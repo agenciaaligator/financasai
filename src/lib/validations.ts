@@ -69,7 +69,7 @@ export const profileSchema = z.object({
     .max(100, "Nome deve ter no máximo 100 caracteres")
     .regex(/^[a-zA-ZÀ-ÿ\s]+$/, "Nome deve conter apenas letras"),
   phone_number: z.string()
-    .regex(/^[0-9]{10,15}$/, "Telefone deve conter apenas números (10-15 dígitos)")
+    .regex(/^\+?[0-9]{10,15}$/, "Telefone deve estar no formato internacional (ex: +5511999999999)")
     .optional()
     .or(z.literal('')),
 });

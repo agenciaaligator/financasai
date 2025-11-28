@@ -1248,6 +1248,14 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      get_whatsapp_session_info: {
+        Args: { p_user_id: string }
+        Returns: {
+          expires_at: string
+          last_activity: string
+          phone_number: string
+        }[]
+      }
       has_org_permission: {
         Args: { _org_id: string; _permission_key: string; _user_id: string }
         Returns: boolean
