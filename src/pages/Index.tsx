@@ -13,6 +13,8 @@ import { InteractionExamplesSection } from "@/components/InteractionExamplesSect
 import { StatsSection } from "@/components/StatsSection";
 import { Loader2 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -354,6 +356,7 @@ const LandingPage = () => {
 const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   // 🔥 DETECTAR PENDING CHECKOUT APÓS CONFIRMAÇÃO DE EMAIL
   useEffect(() => {
@@ -382,8 +385,37 @@ const Index = () => {
       
       // Processar baseado no cupom
       if (coupon && (coupon.toUpperCase() === 'FULLACCESS' || coupon.toUpperCase().startsWith('TESTE'))) {
-        console.log('[CHECKOUT] Cupom válido detectado, redirecionando para perfil...');
-        navigate('/?tab=profile');
+        console.log('[CHECKOUT] Cupom válido detectado, ativando trial...', coupon);
+        
+        // Ativar trial via edge function
+        (async () => {
+          try {
+            const { data, error } = await supabase.functions.invoke('activate-trial-coupon', {
+              body: { 
+                couponCode: coupon,
+                selectedCycle: cycle
+              }
+            });
+            
+            if (error) throw error;
+            
+            console.log('[CHECKOUT] Trial ativado com sucesso!', data);
+            toast({
+              title: "✅ Trial ativado!",
+              description: `Aproveite seu período de teste de ${data?.trial_days || 30} dias!`,
+            });
+            
+            // Redirecionar para dashboard após ativação
+            navigate('/');
+          } catch (error: any) {
+            console.error('[CHECKOUT] Erro ao ativar trial:', error);
+            toast({
+              title: "❌ Erro ao ativar trial",
+              description: error.message || "Tente novamente",
+              variant: "destructive"
+            });
+          }
+        })();
       } else {
         // Ir para aba de subscription com cycle correto
         console.log('[CHECKOUT] Redirecionando para subscription com cycle:', cycle);
