@@ -2626,8 +2626,17 @@ class WhatsAppAgent {
         };
       }
       
-      // Converter para base64
-      const base64Image = btoa(String.fromCharCode(...imageData));
+      // Converter para base64 em chunks (evita stack overflow em imagens grandes)
+      function arrayBufferToBase64(buffer: Uint8Array): string {
+        let binary = '';
+        const chunkSize = 8192; // 8KB chunks
+        for (let i = 0; i < buffer.length; i += chunkSize) {
+          const chunk = buffer.subarray(i, i + chunkSize);
+          binary += String.fromCharCode.apply(null, Array.from(chunk));
+        }
+        return btoa(binary);
+      }
+      const base64Image = arrayBufferToBase64(imageData);
       console.log('🔄 Base64 gerado:', {
         base64Length: base64Image.length,
         estimatedKB: (base64Image.length / 1024).toFixed(2)

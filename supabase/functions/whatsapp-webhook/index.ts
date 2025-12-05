@@ -717,7 +717,18 @@ const handler = async (req: Request): Promise<Response> => {
           });
           
           const videoBlob = await videoResponse.arrayBuffer();
-          const base64Video = btoa(String.fromCharCode(...new Uint8Array(videoBlob)));
+          
+          // Converter para base64 em chunks (evita stack overflow em arquivos grandes)
+          function arrayBufferToBase64(buffer: Uint8Array): string {
+            let binary = '';
+            const chunkSize = 8192; // 8KB chunks
+            for (let i = 0; i < buffer.length; i += chunkSize) {
+              const chunk = buffer.subarray(i, i + chunkSize);
+              binary += String.fromCharCode.apply(null, Array.from(chunk));
+            }
+            return btoa(binary);
+          }
+          const base64Video = arrayBufferToBase64(new Uint8Array(videoBlob));
           
           console.log('✅ Vídeo baixado, enviando para agente processar (size:', videoBlob.byteLength, 'bytes)');
           
