@@ -1,23 +1,19 @@
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle, MessageCircle, DollarSign, BarChart3, Mail } from "lucide-react";
+import { MessageCircle, DollarSign, BarChart3 } from "lucide-react";
 
 interface WelcomeScreenProps {
   userName: string;
   selectedCycle: 'monthly' | 'yearly';
-  couponCode?: string;
-  onContinue: (action: 'trial' | 'checkout') => void;
+  onContinue: () => void;
   onSkip: () => void;
 }
 
 export const WelcomeScreen = ({
   userName,
   selectedCycle,
-  couponCode,
   onContinue,
   onSkip
 }: WelcomeScreenProps) => {
-  const hasValidCoupon = couponCode?.toUpperCase() === 'FULLACCESS' || couponCode?.toUpperCase()?.startsWith('TESTE');
   const planPrice = selectedCycle === 'monthly' ? 'R$ 29,90' : 'R$ 299,00';
   const planPeriod = selectedCycle === 'monthly' ? 'mês' : 'ano';
   const cycleName = selectedCycle === 'monthly' ? 'Mensal' : 'Anual';
@@ -31,31 +27,18 @@ export const WelcomeScreen = ({
             <span className="text-2xl">🎉</span>
           </div>
           <h1 className="text-2xl font-bold text-foreground">Bem-vindo, {userName}!</h1>
-          <p className="text-muted-foreground mt-2">Sua conta Dona Wilma está quase pronta</p>
+          <p className="text-muted-foreground mt-2">Sua conta Dona Wilma está pronta</p>
         </div>
 
         {/* Status do Plano */}
         <div className="bg-muted/50 rounded-lg p-4 mb-6">
-          {hasValidCoupon ? (
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-2 text-green-600 dark:text-green-400 mb-2">
-                <CheckCircle className="w-5 h-5" />
-                <span className="font-semibold">Trial ativado!</span>
-              </div>
-              <p className="text-sm text-foreground">
-                <strong>Plano:</strong> Premium {cycleName}<br/>
-                <strong>Após o trial:</strong> {planPrice}/{planPeriod}
-              </p>
-            </div>
-          ) : (
-            <div className="text-center">
-              <h3 className="font-semibold text-foreground mb-2">📝 Resumo do pedido</h3>
-              <p className="text-sm text-foreground">
-                <strong>Plano:</strong> Premium {cycleName}<br/>
-                <strong>Valor:</strong> {planPrice}/{planPeriod}
-              </p>
-            </div>
-          )}
+          <div className="text-center">
+            <h3 className="font-semibold text-foreground mb-2">📝 Resumo do pedido</h3>
+            <p className="text-sm text-foreground">
+              <strong>Plano:</strong> Premium {cycleName}<br/>
+              <strong>Valor:</strong> {planPrice}/{planPeriod}
+            </p>
+          </div>
         </div>
 
         {/* Próximos Passos */}
@@ -79,41 +62,20 @@ export const WelcomeScreen = ({
 
         {/* Ações */}
         <div className="space-y-3">
-          {hasValidCoupon ? (
-            <>
-              <Button 
-                onClick={() => onContinue('trial')}
-                className="w-full"
-                size="lg"
-              >
-                🚀 Explorar Sistema Gratuitamente
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={onSkip}
-                className="w-full"
-              >
-                Pular e ir para o Dashboard
-              </Button>
-            </>
-          ) : (
-            <>
-              <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800">
-                <Mail className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>Próximo passo:</strong> Verifique seu email para confirmar a conta. 
-                  O checkout será iniciado automaticamente após a confirmação.
-                </AlertDescription>
-              </Alert>
-              <Button 
-                onClick={onSkip}
-                className="w-full"
-                size="lg"
-              >
-                📧 Entendi, vou verificar meu email
-              </Button>
-            </>
-          )}
+          <Button 
+            onClick={onContinue}
+            className="w-full"
+            size="lg"
+          >
+            🚀 Ir para o Dashboard
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={onSkip}
+            className="w-full"
+          >
+            Ver minha assinatura
+          </Button>
         </div>
       </div>
     </div>

@@ -14,79 +14,12 @@ export default function ChoosePlan() {
   const { toast } = useToast();
   const [cycle, setCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [couponCode, setCouponCode] = useState('');
-  const [validatingCoupon, setValidatingCoupon] = useState(false);
-  const [couponValid, setCouponValid] = useState(false);
-  const [couponError, setCouponError] = useState('');
-  const [couponData, setCouponData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const monthlyPrice = 29.90;
   const yearlyPrice = 238.80;
   const yearlyMonthlyEquivalent = yearlyPrice / 12;
   const savings = Math.round(((monthlyPrice - yearlyMonthlyEquivalent) / monthlyPrice) * 100);
-
-  const handleValidateCoupon = async () => {
-    if (!couponCode.trim()) {
-      setCouponError('Digite um código de cupom');
-      return;
-    }
-
-    setValidatingCoupon(true);
-    setCouponError('');
-
-    try {
-      const { data, error } = await supabase
-        .from('discount_coupons')
-        .select('*')
-        .eq('code', couponCode.toUpperCase())
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (error) throw error;
-
-      if (!data) {
-        setCouponError('Cupom inválido ou expirado');
-        setCouponValid(false);
-        setCouponData(null);
-        return;
-      }
-
-      // Verificar expiração
-      if (data.expires_at && new Date(data.expires_at) < new Date()) {
-        setCouponError('Este cupom expirou');
-        setCouponValid(false);
-        setCouponData(null);
-        return;
-      }
-
-      // Verificar limite de uso
-      if (data.max_uses && data.current_uses && data.current_uses >= data.max_uses) {
-        setCouponError('Este cupom atingiu o limite de uso');
-        setCouponValid(false);
-        setCouponData(null);
-        return;
-      }
-
-      setCouponValid(true);
-      setCouponData(data);
-      
-      const message = data.type === 'trial' || data.type === 'full_access'
-        ? `${data.value || 30} dias grátis serão aplicados!`
-        : `Desconto de ${data.value}${data.type === 'percentage' ? '%' : ' reais'} será aplicado`;
-      
-      toast({
-        title: "✅ Cupom válido!",
-        description: message,
-      });
-    } catch (error) {
-      console.error('Error validating coupon:', error);
-      setCouponError('Erro ao validar cupom');
-      setCouponValid(false);
-      setCouponData(null);
-    } finally {
-      setValidatingCoupon(false);
-    }
-  };
 
   const handleCheckout = async () => {
     setIsLoading(true);
@@ -100,7 +33,7 @@ export default function ChoosePlan() {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { 
           cycle,
-          couponCode: couponValid ? couponCode.toUpperCase() : undefined,
+          couponCode: couponCode.trim() || undefined,
         },
       });
 
@@ -114,8 +47,6 @@ export default function ChoosePlan() {
       }
 
       console.log('[CHECKOUT] Redirecting to:', data.url);
-      
-      // Redirecionar para o Stripe Checkout
       window.location.href = data.url;
       
     } catch (error) {
@@ -129,24 +60,7 @@ export default function ChoosePlan() {
     }
   };
 
-  // Calcular preço com desconto se aplicável
-  const getDisplayPrice = () => {
-    const basePrice = cycle === 'monthly' ? monthlyPrice : yearlyMonthlyEquivalent;
-    
-    if (couponValid && couponData) {
-      if (couponData.type === 'trial' || couponData.type === 'full_access') {
-        return { price: basePrice, trial: couponData.value || 30 };
-      }
-      if (couponData.type === 'percentage') {
-        const discount = basePrice * (couponData.value / 100);
-        return { price: basePrice - discount, originalPrice: basePrice };
-      }
-    }
-    
-    return { price: basePrice };
-  };
-
-  const displayPrice = getDisplayPrice();
+  const displayPrice = cycle === 'monthly' ? monthlyPrice : yearlyMonthlyEquivalent;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20">
@@ -209,24 +123,13 @@ export default function ChoosePlan() {
 
           <CardContent className="space-y-6">
             <div className="flex items-baseline gap-2">
-              {displayPrice.originalPrice && (
-                <span className="text-2xl text-muted-foreground line-through">
-                  R$ {displayPrice.originalPrice.toFixed(2).replace('.', ',')}
-                </span>
-              )}
               <span className="text-5xl font-bold">
-                R$ {displayPrice.price.toFixed(2).replace('.', ',')}
+                R$ {displayPrice.toFixed(2).replace('.', ',')}
               </span>
               <span className="text-muted-foreground">/mês</span>
             </div>
 
-            {displayPrice.trial && (
-              <Badge variant="secondary" className="text-base px-4 py-2">
-                🎁 {displayPrice.trial} dias grátis!
-              </Badge>
-            )}
-
-            {cycle === 'yearly' && !displayPrice.trial && (
+            {cycle === 'yearly' && (
               <p className="text-sm text-muted-foreground">
                 Cobrado anualmente: R$ {yearlyPrice.toFixed(2).replace('.', ',')}
               </p>
@@ -249,47 +152,22 @@ export default function ChoosePlan() {
               ))}
             </ul>
 
-            {/* Input de Cupom */}
+            {/* Input de Cupom - Validado via Stripe */}
             <div className="pt-4 border-t">
               <Label htmlFor="coupon" className="flex items-center gap-2 mb-2">
                 <Tag className="h-4 w-4" />
                 Tem um cupom de desconto?
               </Label>
-              <div className="flex gap-2">
-                <Input
-                  id="coupon"
-                  placeholder="Digite o código"
-                  value={couponCode}
-                  onChange={(e) => {
-                    setCouponCode(e.target.value.toUpperCase());
-                    setCouponError('');
-                    setCouponValid(false);
-                    setCouponData(null);
-                  }}
-                  className={couponValid ? 'border-green-500' : couponError ? 'border-red-500' : ''}
-                  disabled={isLoading}
-                />
-                <Button
-                  variant="outline"
-                  onClick={handleValidateCoupon}
-                  disabled={validatingCoupon || !couponCode.trim() || isLoading}
-                >
-                  {validatingCoupon ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    'Validar'
-                  )}
-                </Button>
-              </div>
-              {couponError && (
-                <p className="text-sm text-red-500 mt-2">{couponError}</p>
-              )}
-              {couponValid && (
-                <p className="text-sm text-green-500 mt-2 flex items-center gap-1">
-                  <Check className="h-4 w-4" />
-                  Cupom aplicado!
-                </p>
-              )}
+              <Input
+                id="coupon"
+                placeholder="Digite o código (aplicado no checkout)"
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                disabled={isLoading}
+              />
+              <p className="text-xs text-muted-foreground mt-2">
+                O cupom será validado automaticamente no checkout do Stripe
+              </p>
             </div>
 
             <Button
@@ -306,10 +184,7 @@ export default function ChoosePlan() {
               ) : (
                 <>
                   <CreditCard className="mr-2 h-5 w-5" />
-                  {displayPrice.trial 
-                    ? `Iniciar ${displayPrice.trial} dias grátis`
-                    : 'Ir para pagamento'
-                  }
+                  Ir para pagamento
                 </>
               )}
             </Button>

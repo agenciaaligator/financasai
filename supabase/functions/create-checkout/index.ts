@@ -95,54 +95,15 @@ serve(async (req) => {
       mode: "subscription",
       success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/payment-cancelled`,
-      allow_promotion_codes: true, // Permitir códigos promocionais do Stripe
+      allow_promotion_codes: true, // Cupons gerenciados pelo Stripe
       billing_address_collection: 'required',
       customer_creation: customerId ? undefined : 'always',
     };
 
-    // Aplicar cupom se fornecido
+    // Se couponCode foi passado, tentar aplicar como código promocional do Stripe
     if (couponCode) {
-      try {
-        // Verificar cupom no banco local primeiro
-        const { data: localCoupon } = await supabaseClient
-          .from('discount_coupons')
-          .select('*')
-          .eq('code', couponCode.toUpperCase())
-          .eq('is_active', true)
-          .maybeSingle();
-
-        if (localCoupon) {
-          logStep("Local coupon found", { type: localCoupon.type, value: localCoupon.value });
-          
-          if (localCoupon.type === 'trial' || localCoupon.type === 'full_access') {
-            // Cupom de trial - adicionar período de teste
-            const trialDays = localCoupon.value || 30;
-            checkoutConfig.subscription_data = {
-              trial_period_days: trialDays,
-              metadata: {
-                coupon_code: couponCode.toUpperCase(),
-                coupon_type: 'trial',
-              }
-            };
-            logStep("Trial period added", { trialDays });
-          } else if (localCoupon.type === 'percentage') {
-            // Tentar encontrar ou criar cupom no Stripe
-            try {
-              const stripeCoupon = await stripe.coupons.create({
-                percent_off: localCoupon.value,
-                duration: 'once',
-                name: `${couponCode.toUpperCase()} - ${localCoupon.value}% off`,
-              });
-              checkoutConfig.discounts = [{ coupon: stripeCoupon.id }];
-              logStep("Stripe percentage coupon created", { couponId: stripeCoupon.id });
-            } catch (e) {
-              logStep("Could not create Stripe coupon, using promotion codes", { error: e.message });
-            }
-          }
-        }
-      } catch (couponError) {
-        logStep("Error processing coupon, continuing without discount", { error: couponError.message });
-      }
+      logStep("Coupon code provided, will be validated by Stripe", { couponCode });
+      // O Stripe validará o código promocional automaticamente via allow_promotion_codes
     }
 
     const session = await stripe.checkout.sessions.create(checkoutConfig);
