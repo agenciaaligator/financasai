@@ -535,8 +535,7 @@ export function SignUpForm() {
         <WelcomeScreen
           userName={formData.fullName}
           selectedCycle={selectedCycle as 'monthly' | 'yearly'}
-          couponCode={couponCode}
-          onContinue={handleWelcomeContinue}
+          onContinue={() => handleWelcomeContinue('checkout')}
           onSkip={handleWelcomeSkip}
         />
       )}
