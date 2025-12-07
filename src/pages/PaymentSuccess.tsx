@@ -35,7 +35,7 @@ export default function PaymentSuccess() {
     checkAndUpdate();
   }, [refreshStatus, session]);
 
-  // Se for novo usuário (sem sessão), mostrar tela de boas-vindas
+  // Se for novo usuário (sem sessão), mostrar tela para verificar email
   if (isNewUser || !session) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-background">
@@ -69,7 +69,7 @@ export default function PaymentSuccess() {
               <div>
                 <p className="font-medium">Conecte seu WhatsApp</p>
                 <p className="text-sm text-muted-foreground">
-                  Após fazer login, conecte seu WhatsApp para usar todos os recursos.
+                  Após fazer login, conecte seu WhatsApp na tela de boas-vindas.
                 </p>
               </div>
             </div>
@@ -77,7 +77,7 @@ export default function PaymentSuccess() {
 
           <div className="space-y-3 pt-4">
             <Button 
-              onClick={() => navigate('/login')} 
+              onClick={() => navigate('/')} 
               className="w-full group"
               size="lg"
             >
@@ -96,7 +96,7 @@ export default function PaymentSuccess() {
     );
   }
 
-  // Usuário já logado
+  // Usuário já logado - redirecionar para boas-vindas para configurar WhatsApp
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-background">
       <Card className="max-w-md w-full p-8 text-center space-y-6 shadow-xl">
@@ -109,7 +109,7 @@ export default function PaymentSuccess() {
         <div className="space-y-2">
           <h1 className="text-3xl font-bold text-foreground">🎉 Pagamento Confirmado!</h1>
           <p className="text-muted-foreground">
-            Sua assinatura foi ativada com sucesso. Agora você tem acesso a todos os recursos premium!
+            Sua assinatura foi ativada com sucesso. Vamos configurar seu WhatsApp?
           </p>
         </div>
 
@@ -122,22 +122,22 @@ export default function PaymentSuccess() {
 
         <div className="space-y-3 pt-4">
           <Button 
-            onClick={() => navigate('/')} 
+            onClick={() => navigate('/boas-vindas')} 
             className="w-full group"
             size="lg"
             disabled={checking}
           >
-            Ir para o Dashboard
+            Configurar WhatsApp
             <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Button>
           
           <Button 
-            onClick={() => navigate('/?tab=plans')} 
+            onClick={() => navigate('/')} 
             variant="outline"
             className="w-full"
             disabled={checking}
           >
-            Ver Minha Assinatura
+            Pular e ir para o Dashboard
           </Button>
         </div>
 
