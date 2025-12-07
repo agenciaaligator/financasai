@@ -9,10 +9,10 @@ import { Calendar, Check, Tag, Loader2, CreditCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-// Stripe Price IDs (hardcoded - managed in Stripe Dashboard)
+// Stripe Price IDs - TESTE (trocar por reais depois de validar)
 const STRIPE_PRICES = {
-  monthly: 'price_1SFTA4JH1fRNsXz1VdkYkfEg', // R$ 29,90/mês
-  yearly: 'price_1SFTBQJH1fRNsXz1MXPjabkC',  // R$ 299,00/ano
+  monthly: 'price_1SbmlUJH1fRNsXz1xV238gzq', // R$ 1,00/mês (TESTE)
+  yearly: 'price_1SbqsUJH1fRNsXz1DEQjETOw',  // R$ 10,00/ano (TESTE)
 } as const;
 
 export default function ChoosePlan() {
@@ -22,9 +22,9 @@ export default function ChoosePlan() {
   const [couponCode, setCouponCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Preços fixos (gerenciados no Stripe)
-  const monthlyPrice = 29.90;
-  const yearlyPrice = 299.00;
+  // Preços fixos - TESTE (trocar por reais depois de validar)
+  const monthlyPrice = 1.00;
+  const yearlyPrice = 10.00;
   const yearlyMonthlyEquivalent = yearlyPrice / 12;
   const savings = Math.round(((monthlyPrice - yearlyMonthlyEquivalent) / monthlyPrice) * 100);
 
@@ -169,7 +169,7 @@ export default function ChoosePlan() {
               </Label>
               <Input
                 id="coupon"
-                placeholder="Digite o código (ex: AMIGOS2025)"
+                placeholder="Digite o código (ex: AMIGOS2026)"
                 value={couponCode}
                 onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                 disabled={isLoading}
