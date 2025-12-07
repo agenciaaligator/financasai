@@ -60,7 +60,7 @@ enable_confirmations = true
 secure_password_change = true
 
 [auth.email.otp]
-expiry_duration = 600  # 10 minutes for better security
+expiry_duration = 600
 
 [auth.email.smtp]
 enabled = false
@@ -92,7 +92,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.create-checkout]
-verify_jwt = true
+verify_jwt = false
 
 [functions.check-subscription]
 verify_jwt = true
@@ -143,4 +143,10 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.delete-user-admin]
+verify_jwt = true
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.activate-trial-coupon]
 verify_jwt = true
