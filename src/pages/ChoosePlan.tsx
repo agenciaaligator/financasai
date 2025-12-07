@@ -9,6 +9,12 @@ import { Calendar, Check, Tag, Loader2, CreditCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+// Stripe Price IDs (hardcoded - managed in Stripe Dashboard)
+const STRIPE_PRICES = {
+  monthly: 'price_1SFTA4JH1fRNsXz1VdkYkfEg', // R$ 29,90/mês
+  yearly: 'price_1SFTBQJH1fRNsXz1MXPjabkC',  // R$ 299,00/ano
+} as const;
+
 export default function ChoosePlan() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -16,8 +22,9 @@ export default function ChoosePlan() {
   const [couponCode, setCouponCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Preços fixos (gerenciados no Stripe)
   const monthlyPrice = 29.90;
-  const yearlyPrice = 238.80;
+  const yearlyPrice = 299.00;
   const yearlyMonthlyEquivalent = yearlyPrice / 12;
   const savings = Math.round(((monthlyPrice - yearlyMonthlyEquivalent) / monthlyPrice) * 100);
 
@@ -30,9 +37,11 @@ export default function ChoosePlan() {
         description: "Aguarde enquanto preparamos seu pagamento",
       });
 
+      const priceId = STRIPE_PRICES[cycle];
+      
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { 
-          cycle,
+          priceId,
           couponCode: couponCode.trim() || undefined,
         },
       });
@@ -160,7 +169,7 @@ export default function ChoosePlan() {
               </Label>
               <Input
                 id="coupon"
-                placeholder="Digite o código (aplicado no checkout)"
+                placeholder="Digite o código (ex: AMIGOS2025)"
                 value={couponCode}
                 onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                 disabled={isLoading}

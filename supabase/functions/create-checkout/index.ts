@@ -30,11 +30,13 @@ serve(async (req) => {
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
     logStep("Stripe key verified");
 
-    // Extrair dados do body
-    const { priceId, cycle, email: providedEmail, couponCode } = await req.json();
-    logStep("Received request", { priceId, cycle, providedEmail: !!providedEmail, couponCode });
+    // Extrair dados do body - priceId vem direto do frontend
+    const { priceId, email: providedEmail, couponCode } = await req.json();
+    logStep("Received request", { priceId, providedEmail: !!providedEmail, couponCode });
 
-    // Tentar obter usuário autenticado (opcional agora)
+    if (!priceId) throw new Error("priceId is required");
+
+    // Tentar obter usuário autenticado (opcional - suporta checkout sem conta)
     let userEmail = providedEmail;
     let userId: string | undefined;
     
@@ -49,24 +51,6 @@ serve(async (req) => {
       }
     }
 
-    // Buscar priceId do banco se não fornecido diretamente
-    let finalPriceId = priceId;
-    if (!finalPriceId && cycle) {
-      const { data: plan } = await supabaseClient
-        .from('subscription_plans')
-        .select('stripe_price_id_monthly, stripe_price_id_yearly')
-        .eq('name', 'premium')
-        .single();
-      
-      if (plan) {
-        finalPriceId = cycle === 'yearly' ? plan.stripe_price_id_yearly : plan.stripe_price_id_monthly;
-        logStep("Price ID fetched from database", { finalPriceId, cycle });
-      }
-    }
-
-    if (!finalPriceId) throw new Error("priceId is required");
-    logStep("Final price ID", { finalPriceId });
-
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     
     // Verificar se cliente já existe no Stripe
@@ -80,30 +64,29 @@ serve(async (req) => {
     }
 
     const origin = req.headers.get("origin") || "https://financasai.lovable.app";
-    logStep("Creating checkout session", { origin });
+    logStep("Creating checkout session", { origin, priceId });
 
-    // Configurar opções do checkout
+    // Configurar opções do checkout - simples e direto
     const checkoutConfig: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       customer_email: customerId ? undefined : userEmail,
       line_items: [
         {
-          price: finalPriceId,
+          price: priceId,
           quantity: 1,
         },
       ],
       mode: "subscription",
       success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/payment-cancelled`,
-      allow_promotion_codes: true, // Cupons gerenciados pelo Stripe
+      allow_promotion_codes: true, // Cupons gerenciados 100% via Stripe Dashboard
       billing_address_collection: 'required',
       customer_creation: customerId ? undefined : 'always',
     };
 
-    // Se couponCode foi passado, tentar aplicar como código promocional do Stripe
+    // Log coupon code para debugging (validação feita pelo Stripe)
     if (couponCode) {
-      logStep("Coupon code provided, will be validated by Stripe", { couponCode });
-      // O Stripe validará o código promocional automaticamente via allow_promotion_codes
+      logStep("Coupon code provided - will be validated by Stripe", { couponCode });
     }
 
     const session = await stripe.checkout.sessions.create(checkoutConfig);

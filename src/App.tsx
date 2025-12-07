@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Plans from "./pages/Plans";
 import ChoosePlan from "./pages/ChoosePlan";
+import Welcome from "./pages/Welcome";
 import ResetPassword from "./pages/ResetPassword";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
@@ -42,6 +43,7 @@ const App = () => {
             <Route path="/" element={<Index />} />
             <Route path="/plans" element={<Plans />} />
             <Route path="/choose-plan" element={<ChoosePlan />} />
+            <Route path="/boas-vindas" element={<Welcome />} />
             <Route path="/signup" element={<Navigate to="/choose-plan" replace />} />
             <Route path="/cadastro" element={
               <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20 flex items-center justify-center p-4">
