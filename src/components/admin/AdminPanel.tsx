@@ -1,14 +1,11 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { UsersManagement } from "./UsersManagement";
 import { SubscriptionsManagement } from "./SubscriptionsManagement";
 import { AdminStats } from "./AdminStats";
-import { CouponsManagement } from "./CouponsManagement";
-import { AccessManagement } from "./AccessManagement";
 import { PlansManagement } from "./PlansManagement";
-import { Shield, Users, CreditCard, BarChart3, Tag, Key, Package, Calendar } from "lucide-react";
+import { Shield, Users, CreditCard, BarChart3, Package, Calendar } from "lucide-react";
 import { AgendaMonitoring } from "./AgendaMonitoring";
 
 export function AdminPanel() {
@@ -16,7 +13,6 @@ export function AdminPanel() {
   const activeTab = searchParams.get('tab') || 'stats';
 
   useEffect(() => {
-    // SEO: title, description e canonical
     document.title = "Painel Administrativo | Finanças AI";
 
     const setMeta = (name: string, content: string) => {
@@ -39,6 +35,7 @@ export function AdminPanel() {
     }
     canonical.setAttribute("href", `${window.location.origin}/admin`);
   }, []);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3 mb-6">
@@ -56,7 +53,7 @@ export function AdminPanel() {
         onValueChange={(tab) => setSearchParams({ tab }, { replace: true })} 
         className="space-y-4"
       >
-        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-7 gap-2">
+        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-5 gap-2">
           <TabsTrigger value="stats" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             <span className="hidden sm:inline">Estatísticas</span>
@@ -72,14 +69,6 @@ export function AdminPanel() {
           <TabsTrigger value="plans" className="flex items-center gap-2">
             <Package className="h-4 w-4" />
             <span className="hidden sm:inline">Planos</span>
-          </TabsTrigger>
-          <TabsTrigger value="coupons" className="flex items-center gap-2">
-            <Tag className="h-4 w-4" />
-            <span className="hidden sm:inline">Cupons</span>
-          </TabsTrigger>
-          <TabsTrigger value="access" className="flex items-center gap-2">
-            <Key className="h-4 w-4" />
-            <span className="hidden sm:inline">Acessos</span>
           </TabsTrigger>
           <TabsTrigger value="monitoring" className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
@@ -101,14 +90,6 @@ export function AdminPanel() {
 
         <TabsContent value="plans" className="space-y-4">
           <PlansManagement />
-        </TabsContent>
-
-        <TabsContent value="coupons" className="space-y-4">
-          <CouponsManagement />
-        </TabsContent>
-
-        <TabsContent value="access" className="space-y-4">
-          <AccessManagement />
         </TabsContent>
 
         <TabsContent value="monitoring" className="space-y-4">
