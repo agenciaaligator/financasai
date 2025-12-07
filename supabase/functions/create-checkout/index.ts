@@ -79,9 +79,8 @@ serve(async (req) => {
       mode: "subscription",
       success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/payment-cancelled`,
-      allow_promotion_codes: true, // Cupons gerenciados 100% via Stripe Dashboard
+      allow_promotion_codes: true,
       billing_address_collection: 'required',
-      customer_creation: customerId ? undefined : 'always',
     };
 
     // Log coupon code para debugging (validação feita pelo Stripe)
