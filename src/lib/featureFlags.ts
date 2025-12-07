@@ -30,36 +30,7 @@ export async function getPlanLimits(userId: string): Promise<PlanLimits> {
     };
   }
 
-  // Verificar se o usuário tem cupom FULLACCESS ativo
-  const { data: couponData } = await supabase
-    .from('user_coupons')
-    .select(`
-      discount_coupons (
-        type,
-        is_active,
-        expires_at
-      )
-    `)
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (couponData?.discount_coupons) {
-    const coupon = couponData.discount_coupons as any;
-    const isActive = coupon.is_active && (!coupon.expires_at || new Date(coupon.expires_at) > new Date());
-    if (coupon.type === 'full_access' && isActive) {
-      return {
-        maxTransactions: null,
-        maxCategories: null,
-        hasWhatsapp: true,
-        hasAiReports: true,
-        hasGoogleCalendar: true,
-        hasBankIntegration: true,
-        hasMultiUser: true,
-        hasPrioritySupport: true,
-      };
-    }
-  }
-
+  // Check active subscription (coupons now managed via Stripe)
   const { data: subscription } = await supabase
     .from('user_subscriptions')
     .select('plan_id, subscription_plans(*)')
