@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Check, Tag, Loader2 } from "lucide-react";
+import { Calendar, Check, Tag, Loader2, CreditCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -17,6 +17,8 @@ export default function ChoosePlan() {
   const [validatingCoupon, setValidatingCoupon] = useState(false);
   const [couponValid, setCouponValid] = useState(false);
   const [couponError, setCouponError] = useState('');
+  const [couponData, setCouponData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const monthlyPrice = 29.90;
   const yearlyPrice = 238.80;
@@ -45,6 +47,7 @@ export default function ChoosePlan() {
       if (!data) {
         setCouponError('Cupom inválido ou expirado');
         setCouponValid(false);
+        setCouponData(null);
         return;
       }
 
@@ -52,6 +55,7 @@ export default function ChoosePlan() {
       if (data.expires_at && new Date(data.expires_at) < new Date()) {
         setCouponError('Este cupom expirou');
         setCouponValid(false);
+        setCouponData(null);
         return;
       }
 
@@ -59,37 +63,90 @@ export default function ChoosePlan() {
       if (data.max_uses && data.current_uses && data.current_uses >= data.max_uses) {
         setCouponError('Este cupom atingiu o limite de uso');
         setCouponValid(false);
+        setCouponData(null);
         return;
       }
 
       setCouponValid(true);
+      setCouponData(data);
+      
+      const message = data.type === 'trial' || data.type === 'full_access'
+        ? `${data.value || 30} dias grátis serão aplicados!`
+        : `Desconto de ${data.value}${data.type === 'percentage' ? '%' : ' reais'} será aplicado`;
+      
       toast({
         title: "✅ Cupom válido!",
-        description: data.type === 'full_access' 
-          ? "30 dias grátis serão aplicados após criar sua conta" 
-          : `Desconto de ${data.value}${data.type === 'percentage' ? '%' : ' reais'} será aplicado`,
+        description: message,
       });
     } catch (error) {
       console.error('Error validating coupon:', error);
       setCouponError('Erro ao validar cupom');
       setCouponValid(false);
+      setCouponData(null);
     } finally {
       setValidatingCoupon(false);
     }
   };
 
-  const handleContinue = () => {
-    const params = new URLSearchParams({
-      plan: 'premium',
-      cycle,
-    });
+  const handleCheckout = async () => {
+    setIsLoading(true);
+    
+    try {
+      toast({
+        title: "🔄 Redirecionando para checkout...",
+        description: "Aguarde enquanto preparamos seu pagamento",
+      });
 
-    if (couponValid && couponCode) {
-      params.append('coupon', couponCode.toUpperCase());
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { 
+          cycle,
+          couponCode: couponValid ? couponCode.toUpperCase() : undefined,
+        },
+      });
+
+      if (error) {
+        console.error('[CHECKOUT] Error:', error);
+        throw error;
+      }
+
+      if (!data?.url) {
+        throw new Error('URL de checkout não retornada');
+      }
+
+      console.log('[CHECKOUT] Redirecting to:', data.url);
+      
+      // Redirecionar para o Stripe Checkout
+      window.location.href = data.url;
+      
+    } catch (error) {
+      console.error('[CHECKOUT] Error:', error);
+      toast({
+        title: "❌ Erro ao criar checkout",
+        description: error instanceof Error ? error.message : "Tente novamente mais tarde",
+        variant: "destructive",
+      });
+      setIsLoading(false);
     }
-
-    navigate(`/cadastro?${params.toString()}`);
   };
+
+  // Calcular preço com desconto se aplicável
+  const getDisplayPrice = () => {
+    const basePrice = cycle === 'monthly' ? monthlyPrice : yearlyMonthlyEquivalent;
+    
+    if (couponValid && couponData) {
+      if (couponData.type === 'trial' || couponData.type === 'full_access') {
+        return { price: basePrice, trial: couponData.value || 30 };
+      }
+      if (couponData.type === 'percentage') {
+        const discount = basePrice * (couponData.value / 100);
+        return { price: basePrice - discount, originalPrice: basePrice };
+      }
+    }
+    
+    return { price: basePrice };
+  };
+
+  const displayPrice = getDisplayPrice();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20">
@@ -152,15 +209,24 @@ export default function ChoosePlan() {
 
           <CardContent className="space-y-6">
             <div className="flex items-baseline gap-2">
+              {displayPrice.originalPrice && (
+                <span className="text-2xl text-muted-foreground line-through">
+                  R$ {displayPrice.originalPrice.toFixed(2).replace('.', ',')}
+                </span>
+              )}
               <span className="text-5xl font-bold">
-                R$ {cycle === 'monthly' 
-                  ? monthlyPrice.toFixed(2).replace('.', ',')
-                  : yearlyMonthlyEquivalent.toFixed(2).replace('.', ',')}
+                R$ {displayPrice.price.toFixed(2).replace('.', ',')}
               </span>
               <span className="text-muted-foreground">/mês</span>
             </div>
 
-            {cycle === 'yearly' && (
+            {displayPrice.trial && (
+              <Badge variant="secondary" className="text-base px-4 py-2">
+                🎁 {displayPrice.trial} dias grátis!
+              </Badge>
+            )}
+
+            {cycle === 'yearly' && !displayPrice.trial && (
               <p className="text-sm text-muted-foreground">
                 Cobrado anualmente: R$ {yearlyPrice.toFixed(2).replace('.', ',')}
               </p>
@@ -198,13 +264,15 @@ export default function ChoosePlan() {
                     setCouponCode(e.target.value.toUpperCase());
                     setCouponError('');
                     setCouponValid(false);
+                    setCouponData(null);
                   }}
                   className={couponValid ? 'border-green-500' : couponError ? 'border-red-500' : ''}
+                  disabled={isLoading}
                 />
                 <Button
                   variant="outline"
                   onClick={handleValidateCoupon}
-                  disabled={validatingCoupon || !couponCode.trim()}
+                  disabled={validatingCoupon || !couponCode.trim() || isLoading}
                 >
                   {validatingCoupon ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -219,7 +287,7 @@ export default function ChoosePlan() {
               {couponValid && (
                 <p className="text-sm text-green-500 mt-2 flex items-center gap-1">
                   <Check className="h-4 w-4" />
-                  Cupom válido!
+                  Cupom aplicado!
                 </p>
               )}
             </div>
@@ -227,10 +295,28 @@ export default function ChoosePlan() {
             <Button
               className="w-full"
               size="lg"
-              onClick={handleContinue}
+              onClick={handleCheckout}
+              disabled={isLoading}
             >
-              Continuar para criar conta
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Redirecionando...
+                </>
+              ) : (
+                <>
+                  <CreditCard className="mr-2 h-5 w-5" />
+                  {displayPrice.trial 
+                    ? `Iniciar ${displayPrice.trial} dias grátis`
+                    : 'Ir para pagamento'
+                  }
+                </>
+              )}
             </Button>
+
+            <p className="text-center text-xs text-muted-foreground">
+              Pagamento seguro via Stripe. Cancele quando quiser.
+            </p>
           </CardContent>
         </Card>
 
