@@ -900,16 +900,30 @@ const handler = async (req: Request): Promise<Response> => {
       }
       
       if (!existingSession) {
-        console.log('⚠️ [SECURITY] Número sem sessão WhatsApp validada - IGNORANDO mensagem:', {
+        console.log('ℹ️ [INFO] Número sem sessão WhatsApp validada - enviando orientação:', {
           phone: from.substring(0, 8) + '***',
           reason: 'no_validated_session'
         });
         
-        // Não criar sessão automática, não processar mensagem
-        // Apenas logar e retornar sucesso para o WhatsApp não reenviar
+        // Enviar mensagem de orientação para criar conta
+        try {
+          await sendWhatsAppMessage(
+            from,
+            `👋 Olá! Ainda não encontramos uma conta associada a este número.\n\n` +
+            `Para usar o FinançasAI, você precisa:\n` +
+            `1️⃣ Acesse nosso site: financasai.lovable.app\n` +
+            `2️⃣ Escolha seu plano e complete o cadastro\n` +
+            `3️⃣ Conecte seu WhatsApp no sistema\n\n` +
+            `💡 Após conectar, você poderá registrar despesas, consultar saldos e muito mais - tudo pelo WhatsApp!`
+          );
+          console.log('✅ Orientação enviada com sucesso para número não cadastrado');
+        } catch (sendError) {
+          console.error('❌ Erro ao enviar orientação:', sendError);
+        }
+        
         return new Response(JSON.stringify({ 
           success: true, 
-          skipped: true,
+          orientation_sent: true,
           reason: 'no_validated_whatsapp_session'
         }), {
           status: 200,
