@@ -880,6 +880,49 @@ const handler = async (req: Request): Promise<Response> => {
       console.log('✅ Mensagem válida recebida de:', from);
       console.log('📝 Conteúdo:', text);
 
+      // CRITICAL FIX: Verificar se o número tem sessão WhatsApp VALIDADA antes de processar
+      // Isso evita criar sessões automáticas ou processar mensagens de números não validados
+      const phoneVariationsCheck = from.startsWith('+') 
+        ? [from, from.substring(1)] 
+        : [from, '+' + from];
+      
+      const { data: existingSession, error: sessionError } = await supabase
+        .from('whatsapp_sessions')
+        .select('user_id, phone_number, expires_at')
+        .or(`phone_number.in.(${phoneVariationsCheck.map(p => `"${p}"`).join(',')})`)
+        .gt('expires_at', new Date().toISOString())
+        .order('last_activity', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (sessionError) {
+        console.error('❌ Erro ao verificar sessão WhatsApp:', sessionError.message);
+      }
+      
+      if (!existingSession) {
+        console.log('⚠️ [SECURITY] Número sem sessão WhatsApp validada - IGNORANDO mensagem:', {
+          phone: from.substring(0, 8) + '***',
+          reason: 'no_validated_session'
+        });
+        
+        // Não criar sessão automática, não processar mensagem
+        // Apenas logar e retornar sucesso para o WhatsApp não reenviar
+        return new Response(JSON.stringify({ 
+          success: true, 
+          skipped: true,
+          reason: 'no_validated_whatsapp_session'
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      console.log('✅ Sessão WhatsApp validada encontrada:', {
+        userId: existingSession.user_id,
+        phone: existingSession.phone_number?.substring(0, 8) + '***',
+        expiresAt: existingSession.expires_at
+      });
+
       // ✅ whatsappMessage já foi declarado anteriormente (linha 632)
       const messageType = whatsappMessage?.type || 'text';
       const imageData = whatsappMessage?.image;
