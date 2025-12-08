@@ -79,7 +79,7 @@ export default function Welcome() {
       const { data, error } = await supabase.functions.invoke('whatsapp-agent', {
         body: {
           action: 'send-validation-code',
-          phoneNumber,
+          phone_number: phoneNumber,
           userId: user?.id,
         },
       });
@@ -133,7 +133,7 @@ export default function Welcome() {
       const { data, error } = await supabase.functions.invoke('whatsapp-agent', {
         body: {
           action: 'validate-code',
-          phoneNumber,
+          phone_number: phoneNumber,
           code: verificationCode,
           userId: user?.id,
         },
