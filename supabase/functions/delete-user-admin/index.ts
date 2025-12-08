@@ -94,6 +94,15 @@ Deno.serve(async (req) => {
       user_agent: req.headers.get('user-agent')
     })
 
+    // Buscar phone_number do usuário para limpar validation codes
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('phone_number')
+      .eq('user_id', user_id)
+      .single()
+    
+    const userPhone = profile?.phone_number
+
     // CASCATA DE EXCLUSÃO (usando admin client)
 
     // a) Calendar Connections
@@ -108,39 +117,69 @@ Deno.serve(async (req) => {
     console.log('[DELETE] Removendo whatsapp auth codes...')
     await supabaseAdmin.from('whatsapp_auth_codes').delete().eq('user_id', user_id)
 
-    // d) Organization Members
+    // d) WhatsApp Validation Codes (by user_id AND phone_number)
+    console.log('[DELETE] Removendo whatsapp validation codes...')
+    await supabaseAdmin.from('whatsapp_validation_codes').delete().eq('user_id', user_id)
+    if (userPhone) {
+      await supabaseAdmin.from('whatsapp_validation_codes').delete().eq('phone_number', userPhone)
+    }
+
+    // e) Organization Members (remove from all orgs)
     console.log('[DELETE] Removendo de organizações...')
     await supabaseAdmin.from('organization_members').delete().eq('user_id', user_id)
 
-    // e) Commitments
+    // f) Organizations owned by user (IMPORTANT: delete orgs where user is owner)
+    console.log('[DELETE] Removendo organizações do owner...')
+    await supabaseAdmin.from('organizations').delete().eq('owner_id', user_id)
+
+    // g) Commitments
     console.log('[DELETE] Removendo commitments...')
     await supabaseAdmin.from('commitments').delete().eq('user_id', user_id)
 
-    // f) Recurring Transactions
+    // h) Recurring Instances (via recurring_transactions)
+    console.log('[DELETE] Removendo recurring instances...')
+    const { data: recurringTxs } = await supabaseAdmin
+      .from('recurring_transactions')
+      .select('id')
+      .eq('user_id', user_id)
+    if (recurringTxs && recurringTxs.length > 0) {
+      const recurringIds = recurringTxs.map(r => r.id)
+      await supabaseAdmin.from('recurring_instances').delete().in('recurring_transaction_id', recurringIds)
+    }
+
+    // i) Recurring Transactions
     console.log('[DELETE] Removendo recurring transactions...')
     await supabaseAdmin.from('recurring_transactions').delete().eq('user_id', user_id)
 
-    // g) Transactions
+    // j) Transactions
     console.log('[DELETE] Removendo transactions...')
     await supabaseAdmin.from('transactions').delete().eq('user_id', user_id)
 
-    // h) Categories
+    // k) Categories
     console.log('[DELETE] Removendo categories...')
     await supabaseAdmin.from('categories').delete().eq('user_id', user_id)
 
-    // i) User Subscriptions
+    // l) User Subscriptions
     console.log('[DELETE] Removendo subscriptions...')
     await supabaseAdmin.from('user_subscriptions').delete().eq('user_id', user_id)
 
-    // j) User Coupons
-    console.log('[DELETE] Removendo user coupons...')
-    await supabaseAdmin.from('user_coupons').delete().eq('user_id', user_id)
-
-    // k) User Roles
+    // m) User Roles
     console.log('[DELETE] Removendo user roles...')
     await supabaseAdmin.from('user_roles').delete().eq('user_id', user_id)
 
-    // l) Profile
+    // n) Reminder Settings
+    console.log('[DELETE] Removendo reminder settings...')
+    await supabaseAdmin.from('reminder_settings').delete().eq('user_id', user_id)
+
+    // o) Work Hours
+    console.log('[DELETE] Removendo work hours...')
+    await supabaseAdmin.from('work_hours').delete().eq('user_id', user_id)
+
+    // p) WhatsApp Settings
+    console.log('[DELETE] Removendo whatsapp settings...')
+    await supabaseAdmin.from('whatsapp_settings').delete().eq('user_id', user_id)
+
+    // q) Profile (LAST before auth)
     console.log('[DELETE] Removendo profile...')
     await supabaseAdmin.from('profiles').delete().eq('user_id', user_id)
 
@@ -167,14 +206,19 @@ Deno.serve(async (req) => {
           calendar_connections: true,
           whatsapp_sessions: true,
           whatsapp_auth_codes: true,
+          whatsapp_validation_codes: true,
+          whatsapp_settings: true,
           organization_members: true,
+          organizations_owned: true,
           commitments: true,
+          recurring_instances: true,
           recurring_transactions: true,
           transactions: true,
           categories: true,
           user_subscriptions: true,
-          user_coupons: true,
           user_roles: true,
+          reminder_settings: true,
+          work_hours: true,
           profile: true,
           auth_user: true
         },
