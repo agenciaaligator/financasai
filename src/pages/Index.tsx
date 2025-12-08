@@ -383,44 +383,12 @@ const Index = () => {
       sessionStorage.removeItem('checkout_coupon');
       window.history.replaceState({}, '', window.location.pathname);
       
-      // Processar baseado no cupom
-      if (coupon && (coupon.toUpperCase() === 'FULLACCESS' || coupon.toUpperCase().startsWith('TESTE'))) {
-        console.log('[CHECKOUT] Cupom válido detectado, ativando trial...', coupon);
-        
-        // Ativar trial via edge function
-        (async () => {
-          try {
-            const { data, error } = await supabase.functions.invoke('activate-trial-coupon', {
-              body: { 
-                couponCode: coupon,
-                selectedCycle: cycle
-              }
-            });
-            
-            if (error) throw error;
-            
-            console.log('[CHECKOUT] Trial ativado com sucesso!', data);
-            toast({
-              title: "✅ Trial ativado!",
-              description: `Aproveite seu período de teste de ${data?.trial_days || 30} dias!`,
-            });
-            
-            // Redirecionar para dashboard após ativação
-            navigate('/');
-          } catch (error: any) {
-            console.error('[CHECKOUT] Erro ao ativar trial:', error);
-            toast({
-              title: "❌ Erro ao ativar trial",
-              description: error.message || "Tente novamente",
-              variant: "destructive"
-            });
-          }
-        })();
-      } else {
-        // Ir para aba de subscription com cycle correto
-        console.log('[CHECKOUT] Redirecionando para subscription com cycle:', cycle);
-        navigate(`/?tab=subscription&auto_checkout=true&cycle=${cycle}`);
-      }
+      // Conta confirmada - cupons são gerenciados pelo Stripe
+      console.log('[CHECKOUT] Conta confirmada, bem-vindo ao sistema!');
+      toast({
+        title: "✅ Conta confirmada!",
+        description: "Bem-vindo ao Dona Wilma!",
+      });
     }
   }, [user, loading, navigate]);
   
