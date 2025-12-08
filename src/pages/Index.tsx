@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Calendar, DollarSign, Bell, Shield, Smartphone, Zap, RefreshCw, BarChart3, Brain, Menu, Users, FolderOpen, Clock } from "lucide-react";
@@ -358,10 +358,16 @@ const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [checkingFirstLogin, setCheckingFirstLogin] = useState(true);
-  const [hasChecked, setHasChecked] = useState(false); // Flag para evitar múltiplas execuções
+  const hasCheckedRef = useRef(false); // useRef persiste entre re-renders sem causar loops
   
   // 🔥 DETECTAR PENDING CHECKOUT E VERIFICAR PRIMEIRO LOGIN
   useEffect(() => {
+    // PRIMEIRO: Verificar se estamos na rota correta
+    if (window.location.pathname !== '/') {
+      setCheckingFirstLogin(false);
+      return;
+    }
+    
     // Se ainda está carregando auth, aguardar
     if (loading) return;
     
@@ -371,22 +377,24 @@ const Index = () => {
       return;
     }
     
-    // Evitar múltiplas execuções
-    if (hasChecked) return;
-    
-    // VERIFICAÇÃO SÍNCRONA PRIMEIRO - se já completou onboarding, não fazer nada
-    const onboardingCompleted = sessionStorage.getItem('onboarding_completed') === 'true';
-    const currentPath = window.location.pathname;
-    const allowedPaths = ['/boas-vindas', '/reset-password', '/payment-success', '/payment-cancelled'];
-    
-    if (onboardingCompleted || allowedPaths.includes(currentPath)) {
+    // Evitar múltiplas execuções usando useRef (persiste entre re-mounts)
+    if (hasCheckedRef.current) {
       setCheckingFirstLogin(false);
-      setHasChecked(true);
+      return;
+    }
+    
+    // VERIFICAÇÃO SÍNCRONA - se já completou onboarding OU já foi redirecionado
+    const onboardingCompleted = sessionStorage.getItem('onboarding_completed') === 'true';
+    const alreadyRedirected = sessionStorage.getItem('redirected_to_welcome') === 'true';
+    
+    if (onboardingCompleted || alreadyRedirected) {
+      hasCheckedRef.current = true;
+      setCheckingFirstLogin(false);
       return;
     }
     
     const checkUserStatus = async () => {
-      setHasChecked(true); // Marcar que já iniciou verificação
+      hasCheckedRef.current = true; // Marcar ANTES de qualquer async
       
       const params = new URLSearchParams(window.location.search);
       const pendingCheckout = params.get('pending_checkout') === 'true';
@@ -416,6 +424,7 @@ const Index = () => {
       
       if (!whatsappSession) {
         console.log('[FIRST LOGIN] Usuário sem WhatsApp, redirecionando para /boas-vindas');
+        sessionStorage.setItem('redirected_to_welcome', 'true'); // Marcar ANTES de redirecionar
         navigate('/boas-vindas', { replace: true });
         return;
       }
@@ -424,7 +433,7 @@ const Index = () => {
     };
     
     checkUserStatus();
-  }, [user, loading]); // Removido navigate e toast das dependências
+  }, [user, loading, navigate, toast]);
   
   if (loading || (user && checkingFirstLogin)) {
     return (

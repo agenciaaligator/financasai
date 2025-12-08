@@ -167,8 +167,9 @@ export default function Welcome() {
         title: "✅ WhatsApp conectado!",
         description: "Você já pode usar comandos pelo WhatsApp",
       });
-      // Limpar flag de onboarding se WhatsApp foi conectado
+      // Limpar TODOS os flags de onboarding quando WhatsApp é conectado
       sessionStorage.removeItem('onboarding_completed');
+      sessionStorage.removeItem('redirected_to_welcome');
       setStep('connected');
     } catch (error) {
       console.error('Error verifying code:', error);
@@ -185,6 +186,7 @@ export default function Welcome() {
   const handleGoToDashboard = () => {
     // Marcar que usuário completou/pulou o onboarding para evitar loop
     sessionStorage.setItem('onboarding_completed', 'true');
+    sessionStorage.removeItem('redirected_to_welcome'); // Limpar flag de redirecionamento
     navigate('/', { replace: true }); // replace para evitar loop com botão voltar
   };
 
