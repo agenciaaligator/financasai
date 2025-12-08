@@ -227,10 +227,14 @@ serve(async (req) => {
 
       // Se for novo usuário, enviar email com link de configuração de senha
       if (isNewUser) {
-        // Gerar link de reset de senha
+        // Gerar link de reset de senha com redirectTo correto
+        const siteUrl = Deno.env.get("SITE_URL") || "https://financasai.lovable.app";
         const { data: resetData, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
           type: 'recovery',
           email: customerEmail,
+          options: {
+            redirectTo: `${siteUrl}/reset-password`
+          }
         });
 
         if (resetError) {

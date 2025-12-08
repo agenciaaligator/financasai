@@ -71,8 +71,11 @@ export default function Welcome() {
       return;
     }
 
+    console.log('[Welcome] Iniciando envio de código para:', phoneNumber);
     setIsLoading(true);
+    
     try {
+      console.log('[Welcome] Chamando whatsapp-agent com action: send-validation-code');
       const { data, error } = await supabase.functions.invoke('whatsapp-agent', {
         body: {
           action: 'send-validation-code',
@@ -81,15 +84,30 @@ export default function Welcome() {
         },
       });
 
-      if (error) throw error;
+      console.log('[Welcome] Resposta do whatsapp-agent:', { data, error });
 
+      if (error) {
+        console.error('[Welcome] Erro da edge function:', error);
+        throw error;
+      }
+
+      if (!data?.success) {
+        console.error('[Welcome] Edge function retornou falha:', data);
+        throw new Error(data?.error || 'Falha ao enviar código');
+      }
+
+      console.log('[Welcome] Código enviado com sucesso, mudando para step: code');
       toast({
         title: "📱 Código enviado!",
-        description: "Verifique seu WhatsApp para o código de verificação",
+        description: `Verifique seu WhatsApp (${phoneNumber}) para o código de verificação`,
       });
+      
+      // GARANTIR que setStep é chamado
       setStep('code');
+      console.log('[Welcome] Step atualizado para: code');
+      
     } catch (error) {
-      console.error('Error sending code:', error);
+      console.error('[Welcome] Erro ao enviar código:', error);
       toast({
         title: "Erro ao enviar código",
         description: error instanceof Error ? error.message : "Tente novamente",
