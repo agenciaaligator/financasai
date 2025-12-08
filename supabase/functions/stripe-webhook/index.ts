@@ -225,55 +225,23 @@ serve(async (req) => {
         logStep("User role updated to premium");
       }
 
-      // Se for novo usuário, enviar email com link de configuração de senha
+      // Se for novo usuário, enviar email de reset de senha via Supabase Auth nativo
+      // Isso usa o sistema de emails nativo do Supabase (gratuito)
       if (isNewUser) {
-        // Gerar link de reset de senha com redirectTo correto
         const siteUrl = Deno.env.get("SITE_URL") || "https://financasai.lovable.app";
-        const { data: resetData, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
-          type: 'recovery',
-          email: customerEmail,
-          options: {
+        
+        // Usar resetPasswordForEmail que envia email via Supabase Auth nativo
+        const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(
+          customerEmail,
+          {
             redirectTo: `${siteUrl}/reset-password`
           }
-        });
+        );
 
         if (resetError) {
-          logStep("Error generating password reset link", { error: resetError.message });
+          logStep("Error sending password reset email", { error: resetError.message });
         } else {
-          logStep("Password reset link generated", { link: resetData.properties?.action_link });
-          
-          // Enviar email via Resend (se configurado)
-          const resendKey = Deno.env.get("RESEND_API_KEY");
-          if (resendKey) {
-            try {
-              const resetLink = resetData.properties?.action_link;
-              await fetch("https://api.resend.com/emails", {
-                method: "POST",
-                headers: {
-                  "Authorization": `Bearer ${resendKey}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  from: "Dona Wilma <noreply@donawilma.com.br>",
-                  to: [customerEmail],
-                  subject: "🎉 Bem-vindo ao Dona Wilma! Configure sua senha",
-                  html: `
-                    <h1>Bem-vindo ao Dona Wilma!</h1>
-                    <p>Sua assinatura foi ativada com sucesso!</p>
-                    <p>Para acessar sua conta, clique no botão abaixo para definir sua senha:</p>
-                    <a href="${resetLink}" style="display:inline-block;padding:12px 24px;background:#10b981;color:white;text-decoration:none;border-radius:8px;margin:20px 0;">
-                      Definir Minha Senha
-                    </a>
-                    <p>Após definir sua senha, você poderá acessar o sistema e conectar seu WhatsApp.</p>
-                    <p>Qualquer dúvida, estamos à disposição!</p>
-                  `,
-                }),
-              });
-              logStep("Welcome email sent");
-            } catch (emailError) {
-              logStep("Error sending welcome email", { error: emailError.message });
-            }
-          }
+          logStep("Password reset email sent via Supabase Auth native", { email: customerEmail });
         }
       }
 
@@ -447,37 +415,19 @@ serve(async (req) => {
         isNewUser = true;
         logStep("Created new user", { userId });
 
-        // Enviar email de boas-vindas com link de reset
-        const resendKey = Deno.env.get("RESEND_API_KEY");
-        if (resendKey) {
-          const { data: resetData } = await supabaseAdmin.auth.admin.generateLink({
-            type: 'recovery',
-            email: customerEmail,
-          });
-          
-          if (resetData?.properties?.action_link) {
-            await fetch("https://api.resend.com/emails", {
-              method: "POST",
-              headers: {
-                "Authorization": `Bearer ${resendKey}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                from: "Dona Wilma <noreply@donawilma.com.br>",
-                to: [customerEmail],
-                subject: "🎉 Bem-vindo ao Dona Wilma! Configure sua senha",
-                html: `
-                  <h1>Bem-vindo ao Dona Wilma!</h1>
-                  <p>Sua assinatura foi ativada com sucesso!</p>
-                  <p>Clique no botão abaixo para definir sua senha:</p>
-                  <a href="${resetData.properties.action_link}" style="display:inline-block;padding:12px 24px;background:#10b981;color:white;text-decoration:none;border-radius:8px;margin:20px 0;">
-                    Definir Minha Senha
-                  </a>
-                `,
-              }),
-            });
-            logStep("Welcome email sent");
+        // Enviar email de reset de senha via Supabase Auth nativo
+        const siteUrl = Deno.env.get("SITE_URL") || "https://financasai.lovable.app";
+        const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(
+          customerEmail,
+          {
+            redirectTo: `${siteUrl}/reset-password`
           }
+        );
+
+        if (resetError) {
+          logStep("Error sending password reset email", { error: resetError.message });
+        } else {
+          logStep("Password reset email sent via Supabase Auth native", { email: customerEmail });
         }
       }
 
