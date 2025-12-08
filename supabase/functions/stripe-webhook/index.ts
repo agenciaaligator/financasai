@@ -62,6 +62,37 @@ serve(async (req) => {
     // Processar checkout.session.completed
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
+      const subscriptionId = session.subscription as string;
+      
+      // ========== IDEMPOTENCY CHECK ==========
+      // Verificar se esta subscription já foi processada para evitar erros em eventos duplicados
+      if (subscriptionId) {
+        const { data: existingSub } = await supabaseAdmin
+          .from('user_subscriptions')
+          .select('id, user_id')
+          .eq('stripe_subscription_id', subscriptionId)
+          .maybeSingle();
+
+        if (existingSub) {
+          logStep("IDEMPOTENT: Subscription already processed, skipping duplicate event", { 
+            subscriptionId, 
+            existingUserId: existingSub.user_id 
+          });
+          
+          // Mesmo pulando, garantir que o email de boas-vindas foi enviado para o usuário
+          // (em caso de falha parcial anterior onde usuário foi criado mas email não enviado)
+          return new Response(JSON.stringify({ 
+            success: true, 
+            skipped: true,
+            reason: "subscription_already_processed",
+            userId: existingSub.user_id
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+      // ========== END IDEMPOTENCY CHECK ==========
       
       // CRITICAL FIX: No Stripe-first flow, o email está em customer_details.email, não em customer_email
       const customerEmail = session.customer_email || session.customer_details?.email;
@@ -119,7 +150,6 @@ serve(async (req) => {
       }
 
       // Buscar detalhes da assinatura
-      const subscriptionId = session.subscription as string;
       const subscription = await stripe.subscriptions.retrieve(subscriptionId);
       
       const priceId = subscription.items.data[0]?.price.id;
@@ -335,6 +365,30 @@ serve(async (req) => {
         customerId,
         status: subscription.status 
       });
+
+      // ========== IDEMPOTENCY CHECK ==========
+      const { data: existingSub } = await supabaseAdmin
+        .from('user_subscriptions')
+        .select('id, user_id')
+        .eq('stripe_subscription_id', subscription.id)
+        .maybeSingle();
+
+      if (existingSub) {
+        logStep("IDEMPOTENT: Subscription already processed, skipping duplicate event", { 
+          subscriptionId: subscription.id, 
+          existingUserId: existingSub.user_id 
+        });
+        return new Response(JSON.stringify({ 
+          success: true, 
+          skipped: true,
+          reason: "subscription_already_processed",
+          userId: existingSub.user_id
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // ========== END IDEMPOTENCY CHECK ==========
 
       // Buscar email do cliente no Stripe
       const customer = await stripe.customers.retrieve(customerId);
