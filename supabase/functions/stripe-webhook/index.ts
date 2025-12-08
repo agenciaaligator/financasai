@@ -154,8 +154,12 @@ serve(async (req) => {
           stripe_price_id: priceId,
           status: subscription.status === 'active' || subscription.status === 'trialing' ? 'active' : subscription.status,
           billing_cycle: billingCycle,
-          current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          current_period_start: subscription.current_period_start 
+            ? new Date(subscription.current_period_start * 1000).toISOString() 
+            : new Date().toISOString(),
+          current_period_end: subscription.current_period_end 
+            ? new Date(subscription.current_period_end * 1000).toISOString() 
+            : null,
           payment_gateway: 'stripe',
         }, {
           onConflict: 'user_id',
@@ -252,8 +256,12 @@ serve(async (req) => {
         .from('user_subscriptions')
         .update({
           status: subscription.status === 'active' || subscription.status === 'trialing' ? 'active' : subscription.status,
-          current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          current_period_start: subscription.current_period_start 
+            ? new Date(subscription.current_period_start * 1000).toISOString() 
+            : new Date().toISOString(),
+          current_period_end: subscription.current_period_end 
+            ? new Date(subscription.current_period_end * 1000).toISOString() 
+            : null,
           cancel_at_period_end: subscription.cancel_at_period_end,
         })
         .eq('stripe_subscription_id', subscription.id);
@@ -430,8 +438,12 @@ serve(async (req) => {
           stripe_price_id: priceId,
           status: subscription.status === 'active' || subscription.status === 'trialing' ? 'active' : subscription.status,
           billing_cycle: billingCycle,
-          current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          current_period_start: subscription.current_period_start 
+            ? new Date(subscription.current_period_start * 1000).toISOString() 
+            : new Date().toISOString(),
+          current_period_end: subscription.current_period_end 
+            ? new Date(subscription.current_period_end * 1000).toISOString() 
+            : null,
           payment_gateway: 'stripe',
         }, { onConflict: 'user_id' });
 
