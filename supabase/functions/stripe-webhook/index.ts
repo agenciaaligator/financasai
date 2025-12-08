@@ -41,7 +41,8 @@ serve(async (req) => {
     // Verificar assinatura se webhook secret estiver configurado
     if (webhookSecret && signature) {
       try {
-        event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+        // IMPORTANTE: Usar método assíncrono para Deno
+        event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
         logStep("Webhook signature verified");
       } catch (err) {
         logStep("Webhook signature verification failed", { error: err.message });
@@ -292,6 +293,204 @@ serve(async (req) => {
           .eq('user_id', sub.user_id);
         
         logStep("User role reverted to free");
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Processar customer.subscription.created (quando criado via Dashboard ou API diretamente)
+    if (event.type === "customer.subscription.created") {
+      const subscription = event.data.object as Stripe.Subscription;
+      const customerId = subscription.customer as string;
+      
+      logStep("Processing subscription created", { 
+        subscriptionId: subscription.id, 
+        customerId,
+        status: subscription.status 
+      });
+
+      // Buscar email do cliente no Stripe
+      const customer = await stripe.customers.retrieve(customerId);
+      if (customer.deleted) {
+        logStep("Customer was deleted, skipping");
+        return new Response(JSON.stringify({ success: true, skipped: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const customerEmail = customer.email;
+      if (!customerEmail) {
+        logStep("No email found for customer, skipping");
+        return new Response(JSON.stringify({ success: true, skipped: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      logStep("Customer email found", { email: customerEmail });
+
+      // Verificar se usuário já existe no Supabase
+      const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+      const user = existingUsers?.users?.find(u => u.email === customerEmail);
+
+      let userId: string;
+      let isNewUser = false;
+
+      if (user) {
+        userId = user.id;
+        logStep("User exists", { userId });
+      } else {
+        // Criar novo usuário
+        const tempPassword = crypto.randomUUID().slice(0, 12);
+        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+          email: customerEmail,
+          password: tempPassword,
+          email_confirm: true,
+          user_metadata: {
+            created_via: 'stripe_subscription_created',
+            stripe_customer_id: customerId,
+          }
+        });
+
+        if (createError) {
+          logStep("Error creating user", { error: createError.message });
+          throw createError;
+        }
+
+        userId = newUser.user.id;
+        isNewUser = true;
+        logStep("Created new user", { userId });
+
+        // Enviar email de boas-vindas com link de reset
+        const resendKey = Deno.env.get("RESEND_API_KEY");
+        if (resendKey) {
+          const { data: resetData } = await supabaseAdmin.auth.admin.generateLink({
+            type: 'recovery',
+            email: customerEmail,
+          });
+          
+          if (resetData?.properties?.action_link) {
+            await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${resendKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                from: "Dona Wilma <noreply@donawilma.com.br>",
+                to: [customerEmail],
+                subject: "🎉 Bem-vindo ao Dona Wilma! Configure sua senha",
+                html: `
+                  <h1>Bem-vindo ao Dona Wilma!</h1>
+                  <p>Sua assinatura foi ativada com sucesso!</p>
+                  <p>Clique no botão abaixo para definir sua senha:</p>
+                  <a href="${resetData.properties.action_link}" style="display:inline-block;padding:12px 24px;background:#10b981;color:white;text-decoration:none;border-radius:8px;margin:20px 0;">
+                    Definir Minha Senha
+                  </a>
+                `,
+              }),
+            });
+            logStep("Welcome email sent");
+          }
+        }
+      }
+
+      // Processar detalhes da assinatura
+      const priceId = subscription.items.data[0]?.price.id;
+      const billingCycle = subscription.items.data[0]?.price.recurring?.interval === 'year' ? 'yearly' : 'monthly';
+
+      // Buscar plano correspondente
+      const { data: plan } = await supabaseAdmin
+        .from('subscription_plans')
+        .select('*')
+        .or(`stripe_price_id_monthly.eq.${priceId},stripe_price_id_yearly.eq.${priceId}`)
+        .maybeSingle();
+
+      // Criar/atualizar subscription
+      await supabaseAdmin
+        .from('user_subscriptions')
+        .upsert({
+          user_id: userId,
+          plan_id: plan?.id || null,
+          stripe_subscription_id: subscription.id,
+          stripe_customer_id: customerId,
+          stripe_price_id: priceId,
+          status: subscription.status === 'active' || subscription.status === 'trialing' ? 'active' : subscription.status,
+          billing_cycle: billingCycle,
+          current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          payment_gateway: 'stripe',
+        }, { onConflict: 'user_id' });
+
+      // Atualizar role para premium
+      await supabaseAdmin
+        .from('user_roles')
+        .upsert({
+          user_id: userId,
+          role: 'premium',
+          expires_at: null,
+        }, { onConflict: 'user_id' });
+
+      logStep("Subscription and role created/updated", { userId, isNewUser });
+
+      return new Response(JSON.stringify({ success: true, userId, isNewUser }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Processar invoice.paid (confirma pagamento bem-sucedido)
+    if (event.type === "invoice.paid") {
+      const invoice = event.data.object as Stripe.Invoice;
+      const subscriptionId = invoice.subscription as string;
+      
+      logStep("Processing invoice paid", { 
+        invoiceId: invoice.id, 
+        subscriptionId,
+        amountPaid: invoice.amount_paid 
+      });
+
+      if (subscriptionId) {
+        // Garantir que status está ativo após pagamento
+        const { error } = await supabaseAdmin
+          .from('user_subscriptions')
+          .update({ status: 'active' })
+          .eq('stripe_subscription_id', subscriptionId);
+
+        if (error) {
+          logStep("Error updating subscription status", { error: error.message });
+        } else {
+          logStep("Subscription confirmed as active after payment");
+        }
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Processar invoice.payment_failed (falha no pagamento)
+    if (event.type === "invoice.payment_failed") {
+      const invoice = event.data.object as Stripe.Invoice;
+      const subscriptionId = invoice.subscription as string;
+      
+      logStep("Processing invoice payment failed", { 
+        invoiceId: invoice.id, 
+        subscriptionId 
+      });
+
+      if (subscriptionId) {
+        await supabaseAdmin
+          .from('user_subscriptions')
+          .update({ status: 'past_due' })
+          .eq('stripe_subscription_id', subscriptionId);
+
+        logStep("Subscription marked as past_due");
       }
 
       return new Response(JSON.stringify({ success: true }), {
