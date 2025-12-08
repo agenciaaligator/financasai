@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { CheckCircle, Loader2, ArrowRight, MessageCircle, Mail } from 'lucide-react';
+import { CheckCircle, Loader2, ArrowRight, MessageCircle, Mail, KeyRound } from 'lucide-react';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -35,7 +35,7 @@ export default function PaymentSuccess() {
     checkAndUpdate();
   }, [refreshStatus, session]);
 
-  // Se for novo usuário (sem sessão), mostrar tela para verificar email
+  // Se for novo usuário (sem sessão), mostrar tela para definir senha
   if (isNewUser || !session) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-background">
@@ -47,48 +47,77 @@ export default function PaymentSuccess() {
           </div>
           
           <div className="space-y-2">
-            <h1 className="text-3xl font-bold text-foreground">🎉 Pagamento Confirmado!</h1>
+            <h1 className="text-3xl font-bold text-foreground">Pagamento Confirmado!</h1>
             <p className="text-muted-foreground">
               Sua assinatura foi ativada com sucesso!
             </p>
           </div>
 
-          <div className="bg-muted/50 rounded-lg p-4 text-left space-y-3">
+          <div className="bg-muted/50 rounded-lg p-4 text-left space-y-4">
             <div className="flex items-start gap-3">
-              <Mail className="h-5 w-5 text-primary mt-0.5" />
+              <div className="rounded-full bg-primary/10 p-2">
+                <KeyRound className="h-5 w-5 text-primary" />
+              </div>
               <div>
-                <p className="font-medium">Verifique seu email</p>
+                <p className="font-semibold text-foreground">Próximo passo: Defina sua senha</p>
                 <p className="text-sm text-muted-foreground">
-                  Enviamos um link para você definir sua senha e acessar o sistema.
+                  Enviamos um email com um link para você criar sua senha de acesso.
                 </p>
               </div>
             </div>
             
             <div className="flex items-start gap-3">
-              <MessageCircle className="h-5 w-5 text-primary mt-0.5" />
+              <div className="rounded-full bg-primary/10 p-2">
+                <Mail className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium">Verifique sua caixa de entrada</p>
+                <p className="text-sm text-muted-foreground">
+                  Procure pelo email "Bem-vindo ao Dona Wilma" e clique no botão para definir sua senha.
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-start gap-3">
+              <div className="rounded-full bg-primary/10 p-2">
+                <MessageCircle className="h-5 w-5 text-primary" />
+              </div>
               <div>
                 <p className="font-medium">Conecte seu WhatsApp</p>
                 <p className="text-sm text-muted-foreground">
-                  Após fazer login, conecte seu WhatsApp na tela de boas-vindas.
+                  Após fazer login, você poderá conectar seu WhatsApp na tela de boas-vindas.
                 </p>
               </div>
             </div>
           </div>
 
           <div className="space-y-3 pt-4">
+            <p className="text-sm text-muted-foreground">
+              Não recebeu o email? Use o botão abaixo para solicitar novamente.
+            </p>
+            
             <Button 
-              onClick={() => navigate('/')} 
+              onClick={() => navigate('/reset-password')} 
               className="w-full group"
               size="lg"
             >
-              Fazer Login
+              <KeyRound className="mr-2 h-4 w-4" />
+              Definir Minha Senha
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Button>
+            
+            <Button 
+              onClick={() => navigate('/')} 
+              variant="outline"
+              className="w-full"
+            >
+              Já tenho senha - Fazer Login
             </Button>
           </div>
 
           <div className="pt-4 border-t">
             <p className="text-xs text-muted-foreground">
-              ✉️ Se não receber o email em alguns minutos, verifique sua caixa de spam.
+              Se não receber o email em alguns minutos, verifique sua caixa de spam ou clique em "Definir Minha Senha" acima.
             </p>
           </div>
         </Card>
@@ -107,7 +136,7 @@ export default function PaymentSuccess() {
         </div>
         
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-foreground">🎉 Pagamento Confirmado!</h1>
+          <h1 className="text-3xl font-bold text-foreground">Pagamento Confirmado!</h1>
           <p className="text-muted-foreground">
             Sua assinatura foi ativada com sucesso. Vamos configurar seu WhatsApp?
           </p>
@@ -143,7 +172,7 @@ export default function PaymentSuccess() {
 
         <div className="pt-4 border-t">
           <p className="text-xs text-muted-foreground">
-            ✉️ Você receberá um email de confirmação em breve com todos os detalhes da sua assinatura.
+            Você receberá um email de confirmação em breve com todos os detalhes da sua assinatura.
           </p>
         </div>
       </Card>

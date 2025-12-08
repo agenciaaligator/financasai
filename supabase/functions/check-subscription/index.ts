@@ -134,8 +134,24 @@ serve(async (req) => {
     if (hasActiveSub) {
       const subscription = subscriptions.data[0];
       subscriptionId = subscription.id;
-      subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-      logStep("Active subscription found", { subscriptionId: subscription.id, endDate: subscriptionEnd });
+      
+      // CRITICAL FIX: Validar datas antes de converter para evitar "Invalid time value"
+      const periodEndTimestamp = subscription.current_period_end;
+      const periodStartTimestamp = subscription.current_period_start;
+      
+      if (periodEndTimestamp && typeof periodEndTimestamp === 'number' && periodEndTimestamp > 0) {
+        subscriptionEnd = new Date(periodEndTimestamp * 1000).toISOString();
+      } else {
+        logStep("WARNING: Invalid period_end timestamp", { periodEndTimestamp });
+        subscriptionEnd = null;
+      }
+      
+      let periodStart: string | null = null;
+      if (periodStartTimestamp && typeof periodStartTimestamp === 'number' && periodStartTimestamp > 0) {
+        periodStart = new Date(periodStartTimestamp * 1000).toISOString();
+      }
+      
+      logStep("Active subscription found", { subscriptionId: subscription.id, endDate: subscriptionEnd, startDate: periodStart });
       productId = subscription.items.data[0].price.product;
       logStep("Determined subscription tier", { productId });
 
@@ -146,7 +162,7 @@ serve(async (req) => {
         .eq('name', 'premium')
         .single();
 
-      // Update user subscription
+      // Update user subscription with validated dates
       const { error: upsertError } = await supabaseClient
         .from('user_subscriptions')
         .upsert({
@@ -155,7 +171,7 @@ serve(async (req) => {
           status: 'active',
           stripe_customer_id: customerId,
           stripe_subscription_id: subscriptionId,
-          current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+          current_period_start: periodStart,
           current_period_end: subscriptionEnd,
         }, { onConflict: 'user_id' });
 

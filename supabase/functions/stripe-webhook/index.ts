@@ -62,15 +62,24 @@ serve(async (req) => {
     // Processar checkout.session.completed
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
+      
+      // CRITICAL FIX: No Stripe-first flow, o email está em customer_details.email, não em customer_email
+      const customerEmail = session.customer_email || session.customer_details?.email;
+      
       logStep("Processing checkout session", { 
         sessionId: session.id, 
-        customerEmail: session.customer_email,
+        customer_email: session.customer_email,
+        customer_details_email: session.customer_details?.email,
+        resolved_email: customerEmail,
         customerId: session.customer
       });
 
-      const customerEmail = session.customer_email;
       if (!customerEmail) {
-        throw new Error("No customer email in checkout session");
+        logStep("ERROR: No customer email found in session", {
+          customer_email: session.customer_email,
+          customer_details: session.customer_details
+        });
+        throw new Error("No customer email in checkout session - check customer_email and customer_details.email");
       }
 
       // Verificar se usuário já existe
