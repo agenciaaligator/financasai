@@ -2,9 +2,12 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { CheckCircle, Loader2, ArrowRight, MessageCircle, Mail, KeyRound } from 'lucide-react';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 export default function PaymentSuccess() {
   const navigate = useNavigate();
@@ -13,6 +16,10 @@ export default function PaymentSuccess() {
   const { refreshStatus } = useSubscriptionStatus(session);
   const [checking, setChecking] = useState(true);
   const [isNewUser, setIsNewUser] = useState(false);
+  const [email, setEmail] = useState('');
+  const [sendingReset, setSendingReset] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const { toast } = useToast();
 
   const sessionId = searchParams.get('session_id');
 
@@ -34,6 +41,40 @@ export default function PaymentSuccess() {
 
     checkAndUpdate();
   }, [refreshStatus, session]);
+
+  const handleRequestPasswordReset = async () => {
+    if (!email || !email.includes('@')) {
+      toast({
+        title: "Email inválido",
+        description: "Por favor, insira um email válido.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSendingReset(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) throw error;
+
+      setResetSent(true);
+      toast({
+        title: "Email enviado!",
+        description: "Verifique sua caixa de entrada para definir sua senha.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao enviar email",
+        description: error.message || "Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingReset(false);
+    }
+  };
 
   // Se for novo usuário (sem sessão), mostrar tela para definir senha
   if (isNewUser || !session) {
@@ -93,18 +134,41 @@ export default function PaymentSuccess() {
 
           <div className="space-y-3 pt-4">
             <p className="text-sm text-muted-foreground">
-              Não recebeu o email? Use o botão abaixo para solicitar novamente.
+              Não recebeu o email? Insira seu email abaixo para solicitar novamente.
             </p>
             
-            <Button 
-              onClick={() => navigate('/reset-password')} 
-              className="w-full group"
-              size="lg"
-            >
-              <KeyRound className="mr-2 h-4 w-4" />
-              Definir Minha Senha
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Button>
+            {resetSent ? (
+              <div className="bg-green-100 dark:bg-green-900/30 p-4 rounded-lg text-center">
+                <p className="text-green-700 dark:text-green-300 font-medium">
+                  Email enviado! Verifique sua caixa de entrada.
+                </p>
+              </div>
+            ) : (
+              <>
+                <Input
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full"
+                />
+                
+                <Button 
+                  onClick={handleRequestPasswordReset}
+                  className="w-full group"
+                  size="lg"
+                  disabled={sendingReset || !email}
+                >
+                  {sendingReset ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <KeyRound className="mr-2 h-4 w-4" />
+                  )}
+                  Enviar Link para Definir Senha
+                  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </>
+            )}
             
             <Button 
               onClick={() => navigate('/')} 
