@@ -357,37 +357,66 @@ const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [checkingFirstLogin, setCheckingFirstLogin] = useState(true);
   
-  // 🔥 DETECTAR PENDING CHECKOUT APÓS CONFIRMAÇÃO DE EMAIL
+  // 🔥 DETECTAR PENDING CHECKOUT E VERIFICAR PRIMEIRO LOGIN
   useEffect(() => {
-    if (!user || loading) return;
-    
-    const params = new URLSearchParams(window.location.search);
-    const pendingCheckout = params.get('pending_checkout') === 'true';
-    const storedPending = sessionStorage.getItem('pending_checkout') === 'true';
-    
-    if (pendingCheckout || storedPending) {
-      console.log('[CHECKOUT] Detectado pending_checkout após confirmação de email', {
-        fromUrl: pendingCheckout,
-        fromStorage: storedPending,
-        user: user.id
-      });
-      
-      // Limpar flags e URL
-      sessionStorage.removeItem('pending_checkout');
-      sessionStorage.removeItem('checkout_cycle');
-      window.history.replaceState({}, '', window.location.pathname);
-      
-      // Conta confirmada - cupons são gerenciados pelo Stripe
-      console.log('[CHECKOUT] Conta confirmada, bem-vindo ao sistema!');
-      toast({
-        title: "✅ Conta confirmada!",
-        description: "Bem-vindo ao Dona Wilma!",
-      });
+    if (!user || loading) {
+      setCheckingFirstLogin(false);
+      return;
     }
-  }, [user, loading, navigate]);
+    
+    const checkUserStatus = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const pendingCheckout = params.get('pending_checkout') === 'true';
+      const storedPending = sessionStorage.getItem('pending_checkout') === 'true';
+      
+      if (pendingCheckout || storedPending) {
+        console.log('[CHECKOUT] Detectado pending_checkout após confirmação de email', {
+          fromUrl: pendingCheckout,
+          fromStorage: storedPending,
+          user: user.id
+        });
+        
+        // Limpar flags e URL
+        sessionStorage.removeItem('pending_checkout');
+        sessionStorage.removeItem('checkout_cycle');
+        window.history.replaceState({}, '', window.location.pathname);
+        
+        // Conta confirmada - cupons são gerenciados pelo Stripe
+        console.log('[CHECKOUT] Conta confirmada, bem-vindo ao sistema!');
+        toast({
+          title: "✅ Conta confirmada!",
+          description: "Bem-vindo ao Dona Wilma!",
+        });
+      }
+      
+      // 🔥 VERIFICAR SE É PRIMEIRO LOGIN (SEM WHATSAPP CONECTADO)
+      // Verificar se já existe sessão WhatsApp válida
+      const { data: whatsappSession } = await supabase
+        .from('whatsapp_sessions')
+        .select('id')
+        .eq('user_id', user.id)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle();
+      
+      // Se não tem WhatsApp conectado E não está em uma rota específica, redirecionar para boas-vindas
+      const currentPath = window.location.pathname;
+      const allowedPaths = ['/boas-vindas', '/reset-password', '/payment-success', '/payment-cancelled'];
+      
+      if (!whatsappSession && !allowedPaths.includes(currentPath)) {
+        console.log('[FIRST LOGIN] Usuário sem WhatsApp conectado, redirecionando para /boas-vindas');
+        navigate('/boas-vindas');
+        return;
+      }
+      
+      setCheckingFirstLogin(false);
+    };
+    
+    checkUserStatus();
+  }, [user, loading, navigate, toast]);
   
-  if (loading) {
+  if (loading || (user && checkingFirstLogin)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

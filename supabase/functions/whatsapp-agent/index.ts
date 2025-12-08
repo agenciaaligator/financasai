@@ -6491,11 +6491,28 @@ serve(async (req) => {
     // TERCEIRO: Buscar sessão existente (usando cleanPhone)
     let session = await SessionManager.getSession(cleanPhone);
 
-    // CRITICAL: Se profile existe mas não há sessão autenticada, criar automaticamente
+    // CRITICAL: Se profile existe mas não há sessão validada, NÃO criar automaticamente
+    // Usuário DEVE validar pelo site /boas-vindas com código numérico
     if (!session || !session.user_id) {
-      console.log('⚡ Profile exists but no authenticated session - creating automatically');
-      session = await SessionManager.createSession(cleanPhone, profile.user_id);
-      console.log('✅ Session auto-created with user_id:', profile.user_id.substring(0, 8) + '***');
+      console.log('⚠️ Profile exists but no validated session - user must validate via /boas-vindas');
+      
+      // Enviar mensagem orientando o usuário a validar pelo site
+      const welcomeMessage = `👋 Olá! Seu número está cadastrado mas ainda não foi validado.\n\n` +
+        `Para começar a usar o sistema:\n` +
+        `1️⃣ Acesse: https://financasai.lovable.app/boas-vindas\n` +
+        `2️⃣ Digite seu número e clique em "Enviar código"\n` +
+        `3️⃣ Digite aqui o código de 6 dígitos que você vai receber\n\n` +
+        `Após validar, você poderá usar todos os comandos! 🎉`;
+      
+      await sendWhatsAppMessage(cleanPhone, welcomeMessage);
+      
+      return new Response(JSON.stringify({
+        success: true,
+        response: welcomeMessage,
+        requiresValidation: true
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     // Se ainda não há sessão ou não está autenticada (não deveria acontecer)
