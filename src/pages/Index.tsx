@@ -403,8 +403,9 @@ const Index = () => {
       // Se não tem WhatsApp conectado E não está em uma rota específica, redirecionar para boas-vindas
       const currentPath = window.location.pathname;
       const allowedPaths = ['/boas-vindas', '/reset-password', '/payment-success', '/payment-cancelled'];
+      const onboardingCompleted = sessionStorage.getItem('onboarding_completed') === 'true';
       
-      if (!whatsappSession && !allowedPaths.includes(currentPath)) {
+      if (!whatsappSession && !onboardingCompleted && !allowedPaths.includes(currentPath)) {
         console.log('[FIRST LOGIN] Usuário sem WhatsApp conectado, redirecionando para /boas-vindas');
         navigate('/boas-vindas');
         return;
