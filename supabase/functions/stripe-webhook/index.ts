@@ -171,19 +171,26 @@ serve(async (req) => {
         logStep("Subscription created/updated successfully");
       }
 
-      // Atualizar role do usuário para premium
-      const { error: roleError } = await supabaseAdmin
+      // Atualizar role do usuário para premium (DELETE + INSERT para evitar conflito com constraint user_id+role)
+      const { error: deleteRoleError } = await supabaseAdmin
         .from('user_roles')
-        .upsert({
+        .delete()
+        .eq('user_id', userId);
+      
+      if (deleteRoleError) {
+        logStep("Error deleting old roles", { error: deleteRoleError.message });
+      }
+      
+      const { error: insertRoleError } = await supabaseAdmin
+        .from('user_roles')
+        .insert({
           user_id: userId,
           role: 'premium',
           expires_at: null,
-        }, {
-          onConflict: 'user_id',
         });
 
-      if (roleError) {
-        logStep("Error upserting role", { error: roleError.message });
+      if (insertRoleError) {
+        logStep("Error inserting role", { error: insertRoleError.message });
       } else {
         logStep("User role updated to premium");
       }
@@ -447,14 +454,19 @@ serve(async (req) => {
           payment_gateway: 'stripe',
         }, { onConflict: 'user_id' });
 
-      // Atualizar role para premium
+      // Atualizar role para premium (DELETE + INSERT para evitar conflito)
       await supabaseAdmin
         .from('user_roles')
-        .upsert({
+        .delete()
+        .eq('user_id', userId);
+      
+      await supabaseAdmin
+        .from('user_roles')
+        .insert({
           user_id: userId,
           role: 'premium',
           expires_at: null,
-        }, { onConflict: 'user_id' });
+        });
 
       logStep("Subscription and role created/updated", { userId, isNewUser });
 
