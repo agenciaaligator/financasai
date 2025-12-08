@@ -373,14 +373,9 @@ const Index = () => {
         user: user.id
       });
       
-      // Pegar cycle e coupon (priorizar URL, depois sessionStorage)
-      const cycle = params.get('cycle') || sessionStorage.getItem('checkout_cycle') || 'monthly';
-      const coupon = params.get('coupon') || sessionStorage.getItem('checkout_coupon') || '';
-      
       // Limpar flags e URL
       sessionStorage.removeItem('pending_checkout');
       sessionStorage.removeItem('checkout_cycle');
-      sessionStorage.removeItem('checkout_coupon');
       window.history.replaceState({}, '', window.location.pathname);
       
       // Conta confirmada - cupons são gerenciados pelo Stripe
