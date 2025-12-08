@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { MessageCircle, DollarSign, BarChart3 } from "lucide-react";
+import { DISPLAY_PRICES, formatPrice } from "@/config/pricing";
 
 interface WelcomeScreenProps {
   userName: string;
@@ -14,7 +15,9 @@ export const WelcomeScreen = ({
   onContinue,
   onSkip
 }: WelcomeScreenProps) => {
-  const planPrice = selectedCycle === 'monthly' ? 'R$ 29,90' : 'R$ 299,00';
+  const planPrice = selectedCycle === 'monthly' 
+    ? formatPrice(DISPLAY_PRICES.monthly) 
+    : formatPrice(DISPLAY_PRICES.yearly);
   const planPeriod = selectedCycle === 'monthly' ? 'mês' : 'ano';
   const cycleName = selectedCycle === 'monthly' ? 'Mensal' : 'Anual';
 

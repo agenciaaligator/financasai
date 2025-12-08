@@ -8,12 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, Check, Tag, Loader2, CreditCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
-// Stripe Price IDs - TESTE (trocar por reais depois de validar)
-const STRIPE_PRICES = {
-  monthly: 'price_1SbmlUJH1fRNsXz1xV238gzq', // R$ 1,00/mês (TESTE)
-  yearly: 'price_1SbqsUJH1fRNsXz1DEQjETOw',  // R$ 10,00/ano (TESTE)
-} as const;
+import { 
+  STRIPE_PRICES, 
+  DISPLAY_PRICES, 
+  formatPrice, 
+  calculateYearlySavings 
+} from "@/config/pricing";
 
 export default function ChoosePlan() {
   const navigate = useNavigate();
@@ -22,11 +22,7 @@ export default function ChoosePlan() {
   const [couponCode, setCouponCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Preços fixos - TESTE (trocar por reais depois de validar)
-  const monthlyPrice = 1.00;
-  const yearlyPrice = 10.00;
-  const yearlyMonthlyEquivalent = yearlyPrice / 12;
-  const savings = Math.round(((monthlyPrice - yearlyMonthlyEquivalent) / monthlyPrice) * 100);
+  const savings = calculateYearlySavings();
 
   const handleCheckout = async () => {
     setIsLoading(true);
@@ -69,7 +65,9 @@ export default function ChoosePlan() {
     }
   };
 
-  const displayPrice = cycle === 'monthly' ? monthlyPrice : yearlyMonthlyEquivalent;
+  const displayPrice = cycle === 'monthly' 
+    ? DISPLAY_PRICES.monthly 
+    : DISPLAY_PRICES.yearlyMonthlyEquivalent;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20">
@@ -133,14 +131,14 @@ export default function ChoosePlan() {
           <CardContent className="space-y-6">
             <div className="flex items-baseline gap-2">
               <span className="text-5xl font-bold">
-                R$ {displayPrice.toFixed(2).replace('.', ',')}
+                {formatPrice(displayPrice)}
               </span>
               <span className="text-muted-foreground">/mês</span>
             </div>
 
             {cycle === 'yearly' && (
               <p className="text-sm text-muted-foreground">
-                Cobrado anualmente: R$ {yearlyPrice.toFixed(2).replace('.', ',')}
+                Cobrado anualmente: {formatPrice(DISPLAY_PRICES.yearly)}
               </p>
             )}
 
