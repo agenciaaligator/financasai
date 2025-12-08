@@ -201,28 +201,49 @@ serve(async (req) => {
         logStep("Subscription created/updated successfully");
       }
 
-      // Atualizar role do usuário para premium (DELETE + INSERT para evitar conflito com constraint user_id+role)
-      const { error: deleteRoleError } = await supabaseAdmin
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId);
+      // PROTEÇÃO: Verificar se usuário é master ou admin ANTES de alterar roles
+      const { data: isMasterUser } = await supabaseAdmin
+        .from('master_users')
+        .select('user_id')
+        .eq('user_id', userId)
+        .maybeSingle();
       
-      if (deleteRoleError) {
-        logStep("Error deleting old roles", { error: deleteRoleError.message });
-      }
-      
-      const { error: insertRoleError } = await supabaseAdmin
+      const { data: existingRole } = await supabaseAdmin
         .from('user_roles')
-        .insert({
-          user_id: userId,
-          role: 'premium',
-          expires_at: null,
+        .select('role')
+        .eq('user_id', userId)
+        .maybeSingle();
+      
+      // Se é master ou já tem role admin, NÃO sobrescrever
+      if (isMasterUser || existingRole?.role === 'admin') {
+        logStep("User is master/admin - skipping role update to preserve privileges", { 
+          isMaster: !!isMasterUser, 
+          currentRole: existingRole?.role 
         });
-
-      if (insertRoleError) {
-        logStep("Error inserting role", { error: insertRoleError.message });
       } else {
-        logStep("User role updated to premium");
+        // Atualizar role do usuário para premium (DELETE + INSERT para evitar conflito com constraint user_id+role)
+        const { error: deleteRoleError } = await supabaseAdmin
+          .from('user_roles')
+          .delete()
+          .eq('user_id', userId);
+        
+        if (deleteRoleError) {
+          logStep("Error deleting old roles", { error: deleteRoleError.message });
+        }
+        
+        const { error: insertRoleError } = await supabaseAdmin
+          .from('user_roles')
+          .insert({
+            user_id: userId,
+            role: 'premium',
+            expires_at: null,
+          });
+
+        if (insertRoleError) {
+          logStep("Error inserting role", { error: insertRoleError.message });
+        } else {
+          logStep("User role updated to premium");
+        }
       }
 
       // Se for novo usuário, enviar email de reset de senha via Supabase Auth nativo
@@ -462,19 +483,42 @@ serve(async (req) => {
           payment_gateway: 'stripe',
         }, { onConflict: 'user_id' });
 
-      // Atualizar role para premium (DELETE + INSERT para evitar conflito)
-      await supabaseAdmin
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId);
+      // PROTEÇÃO: Verificar se usuário é master ou admin ANTES de alterar roles
+      const { data: isMasterUser2 } = await supabaseAdmin
+        .from('master_users')
+        .select('user_id')
+        .eq('user_id', userId)
+        .maybeSingle();
       
-      await supabaseAdmin
+      const { data: existingRole2 } = await supabaseAdmin
         .from('user_roles')
-        .insert({
-          user_id: userId,
-          role: 'premium',
-          expires_at: null,
+        .select('role')
+        .eq('user_id', userId)
+        .maybeSingle();
+      
+      // Se é master ou já tem role admin, NÃO sobrescrever
+      if (isMasterUser2 || existingRole2?.role === 'admin') {
+        logStep("User is master/admin - skipping role update to preserve privileges", { 
+          isMaster: !!isMasterUser2, 
+          currentRole: existingRole2?.role 
         });
+      } else {
+        // Atualizar role para premium (DELETE + INSERT para evitar conflito)
+        await supabaseAdmin
+          .from('user_roles')
+          .delete()
+          .eq('user_id', userId);
+        
+        await supabaseAdmin
+          .from('user_roles')
+          .insert({
+            user_id: userId,
+            role: 'premium',
+            expires_at: null,
+          });
+        
+        logStep("User role updated to premium");
+      }
 
       logStep("Subscription and role created/updated", { userId, isNewUser });
 
