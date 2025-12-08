@@ -358,40 +358,54 @@ const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [checkingFirstLogin, setCheckingFirstLogin] = useState(true);
+  const [hasChecked, setHasChecked] = useState(false); // Flag para evitar múltiplas execuções
   
   // 🔥 DETECTAR PENDING CHECKOUT E VERIFICAR PRIMEIRO LOGIN
   useEffect(() => {
-    if (!user || loading) {
+    // Se ainda está carregando auth, aguardar
+    if (loading) return;
+    
+    // Se não está logado, mostrar landing page
+    if (!user) {
       setCheckingFirstLogin(false);
       return;
     }
     
+    // Evitar múltiplas execuções
+    if (hasChecked) return;
+    
+    // VERIFICAÇÃO SÍNCRONA PRIMEIRO - se já completou onboarding, não fazer nada
+    const onboardingCompleted = sessionStorage.getItem('onboarding_completed') === 'true';
+    const currentPath = window.location.pathname;
+    const allowedPaths = ['/boas-vindas', '/reset-password', '/payment-success', '/payment-cancelled'];
+    
+    if (onboardingCompleted || allowedPaths.includes(currentPath)) {
+      setCheckingFirstLogin(false);
+      setHasChecked(true);
+      return;
+    }
+    
     const checkUserStatus = async () => {
+      setHasChecked(true); // Marcar que já iniciou verificação
+      
       const params = new URLSearchParams(window.location.search);
       const pendingCheckout = params.get('pending_checkout') === 'true';
       const storedPending = sessionStorage.getItem('pending_checkout') === 'true';
       
       if (pendingCheckout || storedPending) {
-        console.log('[CHECKOUT] Detectado pending_checkout após confirmação de email', {
-          fromUrl: pendingCheckout,
-          fromStorage: storedPending,
-          user: user.id
-        });
+        console.log('[CHECKOUT] Detectado pending_checkout após confirmação de email');
         
         // Limpar flags e URL
         sessionStorage.removeItem('pending_checkout');
         sessionStorage.removeItem('checkout_cycle');
         window.history.replaceState({}, '', window.location.pathname);
         
-        // Conta confirmada - cupons são gerenciados pelo Stripe
-        console.log('[CHECKOUT] Conta confirmada, bem-vindo ao sistema!');
         toast({
           title: "✅ Conta confirmada!",
           description: "Bem-vindo ao Dona Wilma!",
         });
       }
       
-      // 🔥 VERIFICAR SE É PRIMEIRO LOGIN (SEM WHATSAPP CONECTADO)
       // Verificar se já existe sessão WhatsApp válida
       const { data: whatsappSession } = await supabase
         .from('whatsapp_sessions')
@@ -400,14 +414,9 @@ const Index = () => {
         .gt('expires_at', new Date().toISOString())
         .maybeSingle();
       
-      // Se não tem WhatsApp conectado E não está em uma rota específica, redirecionar para boas-vindas
-      const currentPath = window.location.pathname;
-      const allowedPaths = ['/boas-vindas', '/reset-password', '/payment-success', '/payment-cancelled'];
-      const onboardingCompleted = sessionStorage.getItem('onboarding_completed') === 'true';
-      
-      if (!whatsappSession && !onboardingCompleted && !allowedPaths.includes(currentPath)) {
-        console.log('[FIRST LOGIN] Usuário sem WhatsApp conectado, redirecionando para /boas-vindas');
-        navigate('/boas-vindas');
+      if (!whatsappSession) {
+        console.log('[FIRST LOGIN] Usuário sem WhatsApp, redirecionando para /boas-vindas');
+        navigate('/boas-vindas', { replace: true });
         return;
       }
       
@@ -415,7 +424,7 @@ const Index = () => {
     };
     
     checkUserStatus();
-  }, [user, loading, navigate, toast]);
+  }, [user, loading]); // Removido navigate e toast das dependências
   
   if (loading || (user && checkingFirstLogin)) {
     return (

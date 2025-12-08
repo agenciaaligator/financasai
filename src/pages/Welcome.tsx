@@ -26,7 +26,7 @@ export default function Welcome() {
 
   useEffect(() => {
     if (!user) {
-      navigate('/');
+      navigate('/', { replace: true }); // replace para evitar loop com botão voltar
       return;
     }
 
@@ -59,7 +59,7 @@ export default function Welcome() {
     };
 
     fetchProfile();
-  }, [user, navigate]);
+  }, [user]); // Removido navigate das dependências
 
   const handleSendCode = async () => {
     if (!phoneNumber || phoneNumber.length < 10) {
@@ -185,7 +185,7 @@ export default function Welcome() {
   const handleGoToDashboard = () => {
     // Marcar que usuário completou/pulou o onboarding para evitar loop
     sessionStorage.setItem('onboarding_completed', 'true');
-    navigate('/');
+    navigate('/', { replace: true }); // replace para evitar loop com botão voltar
   };
 
   return (
