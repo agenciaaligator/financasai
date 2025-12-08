@@ -30,9 +30,9 @@ serve(async (req) => {
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
     logStep("Stripe key verified");
 
-    // Extrair dados do body - priceId vem direto do frontend
-    const { priceId, email: providedEmail, couponCode } = await req.json();
-    logStep("Received request", { priceId, providedEmail: !!providedEmail, couponCode });
+    // Extrair priceId do body - cupons são gerenciados diretamente pelo Stripe
+    const { priceId, email: providedEmail } = await req.json();
+    logStep("Received request", { priceId, providedEmail: !!providedEmail });
 
     if (!priceId) throw new Error("priceId is required");
 
@@ -66,7 +66,7 @@ serve(async (req) => {
     const origin = req.headers.get("origin") || "https://financasai.lovable.app";
     logStep("Creating checkout session", { origin, priceId });
 
-    // Configurar opções do checkout - simples e direto
+    // Configurar checkout - cupons via allow_promotion_codes (campo nativo do Stripe)
     const checkoutConfig: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       customer_email: customerId ? undefined : userEmail,
@@ -82,11 +82,6 @@ serve(async (req) => {
       allow_promotion_codes: true,
       billing_address_collection: 'required',
     };
-
-    // Log coupon code para debugging (validação feita pelo Stripe)
-    if (couponCode) {
-      logStep("Coupon code provided - will be validated by Stripe", { couponCode });
-    }
 
     const session = await stripe.checkout.sessions.create(checkoutConfig);
 

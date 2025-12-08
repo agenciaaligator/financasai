@@ -2,10 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Check, Tag, Loader2, CreditCard } from "lucide-react";
+import { Calendar, Check, Loader2, CreditCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -19,7 +17,6 @@ export default function ChoosePlan() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [cycle, setCycle] = useState<'monthly' | 'yearly'>('monthly');
-  const [couponCode, setCouponCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const savings = calculateYearlySavings();
@@ -36,10 +33,7 @@ export default function ChoosePlan() {
       const priceId = STRIPE_PRICES[cycle];
       
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { 
-          priceId,
-          couponCode: couponCode.trim() || undefined,
-        },
+        body: { priceId },
       });
 
       if (error) {
@@ -159,23 +153,9 @@ export default function ChoosePlan() {
               ))}
             </ul>
 
-            {/* Input de Cupom - Validado via Stripe */}
-            <div className="pt-4 border-t">
-              <Label htmlFor="coupon" className="flex items-center gap-2 mb-2">
-                <Tag className="h-4 w-4" />
-                Tem um cupom de desconto?
-              </Label>
-              <Input
-                id="coupon"
-                placeholder="Digite o código (ex: AMIGOS2026)"
-                value={couponCode}
-                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                disabled={isLoading}
-              />
-              <p className="text-xs text-muted-foreground mt-2">
-                O cupom será validado automaticamente no checkout do Stripe
-              </p>
-            </div>
+            <p className="text-sm text-muted-foreground border-t pt-4">
+              💡 Tem um cupom de desconto? Digite diretamente na tela de pagamento do Stripe.
+            </p>
 
             <Button
               className="w-full"
