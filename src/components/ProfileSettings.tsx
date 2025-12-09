@@ -579,28 +579,7 @@ export function ProfileSettings() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="phoneNumber">Número WhatsApp</Label>
-              <Input
-                id="phoneNumber"
-                type="text"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                disabled={effectiveAuthenticated}
-                placeholder="5511999999999"
-                className={effectiveAuthenticated ? "bg-muted" : ""}
-              />
-              {effectiveAuthenticated && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  🔒 Para alterar o número, desconecte o WhatsApp primeiro na seção abaixo
-                </p>
-              )}
-              {!effectiveAuthenticated && (
-                <p className="text-xs text-muted-foreground">
-                  Formato internacional sem + (ex: 5511999999999)
-                </p>
-              )}
-            </div>
+            {/* Número WhatsApp removido deste card - gerenciado na seção WhatsApp abaixo */}
           </div>
         </CardContent>
       </Card>
@@ -724,41 +703,77 @@ export function ProfileSettings() {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg mb-4">
-                  <p className="text-sm text-blue-900 dark:text-blue-100">
-                    ⬆️ <strong>Configure seu número no Card de Perfil acima</strong> antes de solicitar o código
+                {/* Passo 1: Inserir número */}
+                <div className="space-y-2">
+                  <Label htmlFor="whatsappPhone">Número WhatsApp</Label>
+                  <Input
+                    id="whatsappPhone"
+                    type="text"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    disabled={codeSent}
+                    placeholder="5511999999999"
+                    className={codeSent ? "bg-muted" : ""}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Formato internacional sem + (ex: 5511999999999)
                   </p>
                 </div>
 
-                <Button
-                  onClick={handleRequestCode} 
-                  disabled={whatsappLoading || !phoneNumber}
-                  className="w-full"
-                >
-                  <Phone className="h-4 w-4 mr-2" />
-                  {whatsappLoading ? "Enviando..." : "Solicitar Código"}
-                </Button>
+                {!codeSent ? (
+                  <Button
+                    onClick={async () => {
+                      await handleRequestCode();
+                      setCodeSent(true);
+                    }} 
+                    disabled={whatsappLoading || !phoneNumber}
+                    className="w-full"
+                  >
+                    <Phone className="h-4 w-4 mr-2" />
+                    {whatsappLoading ? "Enviando..." : "📲 Enviar Código de Verificação"}
+                  </Button>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                      <p className="text-sm text-green-900 dark:text-green-100">
+                        ✅ Código enviado para <strong>{phoneNumber}</strong>
+                      </p>
+                    </div>
 
-                {phoneNumber && (
-                  <div className="space-y-2">
-                    <Label htmlFor="code">Código de Verificação</Label>
-                    <Input
-                      id="code"
-                      placeholder="Digite o código de 6 dígitos"
-                      value={authCode}
-                      onChange={(e) => setAuthCode(e.target.value)}
-                      maxLength={6}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Após solicitar o código, insira-o aqui para validar
+                    <div className="space-y-2">
+                      <Label htmlFor="code">Código de Verificação (6 dígitos)</Label>
+                      <Input
+                        id="code"
+                        placeholder="000000"
+                        value={authCode}
+                        onChange={(e) => setAuthCode(e.target.value.replace(/\D/g, ''))}
+                        maxLength={6}
+                        className="text-center text-lg tracking-widest font-mono"
+                      />
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={handleVerifyCode} 
+                        disabled={whatsappLoading || authCode.length !== 6}
+                        className="flex-1"
+                      >
+                        {whatsappLoading ? "Verificando..." : "✅ Verificar Código"}
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        onClick={() => {
+                          setCodeSent(false);
+                          setAuthCode("");
+                        }}
+                      >
+                        Alterar Número
+                      </Button>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground text-center">
+                      Não recebeu? Aguarde 30 segundos e solicite novamente
                     </p>
-                    <Button 
-                      onClick={handleVerifyCode} 
-                      disabled={whatsappLoading || !authCode}
-                      className="w-full"
-                    >
-                      {whatsappLoading ? "Verificando..." : "Validar Código"}
-                    </Button>
                   </div>
                 )}
               </div>
