@@ -7,6 +7,50 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper function para enviar mensagens via WhatsApp API
+async function sendWhatsAppMessage(to: string, message: string): Promise<void> {
+  const whatsappAccessToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
+  const whatsappPhoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID');
+  
+  if (!whatsappAccessToken || !whatsappPhoneNumberId) {
+    console.error('❌ [WHATSAPP-AGENT] WhatsApp credentials not configured');
+    return;
+  }
+
+  try {
+    // Garantir que número começa sem +
+    const cleanTo = to.startsWith('+') ? to.substring(1) : to;
+    
+    const response = await fetch(`https://graph.facebook.com/v21.0/${whatsappPhoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${whatsappAccessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: cleanTo,
+        type: 'text',
+        text: { body: message }
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('❌ [WHATSAPP-AGENT] WhatsApp API error:', error);
+    } else {
+      console.log('✅ [WHATSAPP-AGENT] Message sent to:', cleanTo.substring(0, 5) + '***');
+    }
+  } catch (error) {
+    console.error('❌ [WHATSAPP-AGENT] Error sending WhatsApp message:', error);
+  }
+}
+
+const corsHeadersOriginal = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
 // Helper para sincronizar com Google Calendar
 async function syncWithGoogleCalendar(
   action: 'create' | 'update' | 'delete',
