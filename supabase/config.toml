@@ -148,5 +148,8 @@ verify_jwt = true
 [functions.stripe-webhook]
 verify_jwt = false
 
+[functions.sync-stripe-subscriptions]
+verify_jwt = false
+
 [functions.activate-trial-coupon]
 verify_jwt = true

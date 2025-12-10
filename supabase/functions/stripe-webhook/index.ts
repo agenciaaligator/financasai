@@ -149,13 +149,47 @@ serve(async (req) => {
         logStep("Created new user", { userId, email: customerEmail });
       }
 
-      // Buscar detalhes da assinatura
-      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      // Buscar detalhes da assinatura com expand para invoice
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+        expand: ['latest_invoice']
+      }) as any;
       
       const priceId = subscription.items.data[0]?.price.id;
       const productId = subscription.items.data[0]?.price.product as string;
       
-      logStep("Subscription details", { subscriptionId, priceId, productId });
+      // CRITICAL FIX: Na API "basil" do Stripe, current_period pode estar em billing_cycle_anchor
+      // Usar fallbacks para garantir que sempre temos as datas
+      const periodStart = subscription.current_period_start 
+        || subscription.billing_cycle_anchor 
+        || subscription.created;
+      
+      let periodEnd = subscription.current_period_end;
+      
+      // Se period_end não está disponível, calcular baseado no intervalo
+      if (!periodEnd && periodStart) {
+        const latestInvoice = subscription.latest_invoice;
+        if (latestInvoice && latestInvoice.period_end) {
+          periodEnd = latestInvoice.period_end;
+        } else {
+          const interval = subscription.items?.data?.[0]?.price?.recurring?.interval;
+          const startDate = new Date(periodStart * 1000);
+          if (interval === 'year') {
+            startDate.setFullYear(startDate.getFullYear() + 1);
+          } else {
+            startDate.setMonth(startDate.getMonth() + 1);
+          }
+          periodEnd = Math.floor(startDate.getTime() / 1000);
+        }
+      }
+      
+      logStep("Subscription details", { 
+        subscriptionId, 
+        priceId, 
+        productId,
+        periodStart,
+        periodEnd,
+        status: subscription.status
+      });
 
       // Buscar plano correspondente no banco
       const { data: plan, error: planError } = await supabaseAdmin
@@ -173,6 +207,20 @@ serve(async (req) => {
         ? 'yearly' 
         : 'monthly';
 
+      // Converter timestamps Unix para ISO strings de forma segura
+      const currentPeriodStartISO = periodStart && typeof periodStart === 'number'
+        ? new Date(periodStart * 1000).toISOString()
+        : new Date().toISOString();
+      
+      const currentPeriodEndISO = periodEnd && typeof periodEnd === 'number'
+        ? new Date(periodEnd * 1000).toISOString()
+        : null;
+
+      logStep("Period dates converted", { 
+        currentPeriodStartISO, 
+        currentPeriodEndISO 
+      });
+
       // Criar/atualizar user_subscriptions
       const { error: subError } = await supabaseAdmin
         .from('user_subscriptions')
@@ -184,12 +232,8 @@ serve(async (req) => {
           stripe_price_id: priceId,
           status: subscription.status === 'active' || subscription.status === 'trialing' ? 'active' : subscription.status,
           billing_cycle: billingCycle,
-          current_period_start: subscription.current_period_start 
-            ? new Date(subscription.current_period_start * 1000).toISOString() 
-            : new Date().toISOString(),
-          current_period_end: subscription.current_period_end 
-            ? new Date(subscription.current_period_end * 1000).toISOString() 
-            : null,
+          current_period_start: currentPeriodStartISO,
+          current_period_end: currentPeriodEndISO,
           payment_gateway: 'stripe',
         }, {
           onConflict: 'user_id',
@@ -198,7 +242,7 @@ serve(async (req) => {
       if (subError) {
         logStep("Error upserting subscription", { error: subError.message });
       } else {
-        logStep("Subscription created/updated successfully");
+        logStep("Subscription created/updated successfully with period dates");
       }
 
       // PROTEÇÃO: Verificar se usuário é master ou admin ANTES de alterar roles
