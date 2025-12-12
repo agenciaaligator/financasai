@@ -252,7 +252,10 @@ export function UsersManagement() {
       console.log(`[DELETE USER] ✅ Usuário ${userEmail} excluído com sucesso!`);
       toast.success(`✅ Usuário ${userEmail} excluído permanentemente`);
       
-      // Aguardar recarregamento completar ANTES de desativar loading
+      // Remover imediatamente da lista local para feedback visual instantâneo
+      setUsers(prevUsers => prevUsers.filter(u => u.id !== userId));
+      
+      // Depois buscar lista completa para garantir sincronia
       await fetchUsers();
       
     } catch (error: any) {
