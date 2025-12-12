@@ -326,6 +326,43 @@ export function ProfileSettings() {
 
     setWhatsappLoading(true);
     try {
+      // Validar se telefone já está em uso por outro usuário
+      const { data: existingPhone } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('phone_number', phoneNumber.trim())
+        .neq('user_id', user?.id || '')
+        .maybeSingle();
+
+      if (existingPhone) {
+        toast({
+          title: "Número já cadastrado",
+          description: `Este WhatsApp já está vinculado à conta ${existingPhone.email}. Desconecte-o primeiro.`,
+          variant: "destructive"
+        });
+        setWhatsappLoading(false);
+        return;
+      }
+
+      // Verificar sessão ativa em outra conta
+      const { data: activeSession } = await supabase
+        .from('whatsapp_sessions')
+        .select('user_id')
+        .eq('phone_number', phoneNumber.trim())
+        .gt('expires_at', new Date().toISOString())
+        .neq('user_id', user?.id || '')
+        .maybeSingle();
+
+      if (activeSession) {
+        toast({
+          title: "WhatsApp em uso",
+          description: "Este WhatsApp já está conectado em outra conta. Desconecte-o primeiro.",
+          variant: "destructive"
+        });
+        setWhatsappLoading(false);
+        return;
+      }
+
       if (user) {
         await supabase
           .from('profiles')
