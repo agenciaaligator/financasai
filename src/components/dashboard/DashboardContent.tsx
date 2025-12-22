@@ -301,6 +301,46 @@ export function DashboardContent({
     return transactions.filter(t => t.user_id === user.id);
   }, [transactions, showOnlyMine, organization_id, user]);
 
+  // 🔧 FIX CRÍTICO: Filtrar apenas transações do mês atual para o SummaryCards
+  const currentMonthTransactions = useMemo(() => {
+    const now = toZonedTime(new Date(), TIMEZONE);
+    const monthStart = startOfMonth(now);
+    const monthEnd = endOfMonth(now);
+    
+    return visibleTransactions.filter(t => {
+      try {
+        const transactionDate = toZonedTime(parseISO(t.date), TIMEZONE);
+        return isWithinInterval(transactionDate, { start: monthStart, end: monthEnd });
+      } catch {
+        return false;
+      }
+    });
+  }, [visibleTransactions]);
+
+  // Usar transações do mês atual para os cards de resumo (CORRIGIDO)
+  const monthlyBalance = useMemo(() => {
+    return currentMonthTransactions.reduce((acc, transaction) => {
+      if (transaction.type === 'income') {
+        return acc + Number(transaction.amount);
+      } else {
+        return acc - Number(transaction.amount);
+      }
+    }, 0);
+  }, [currentMonthTransactions]);
+
+  const monthlyTotalIncome = useMemo(() => {
+    return currentMonthTransactions
+      .filter(t => t.type === 'income')
+      .reduce((acc, t) => acc + Number(t.amount), 0);
+  }, [currentMonthTransactions]);
+
+  const monthlyTotalExpenses = useMemo(() => {
+    return currentMonthTransactions
+      .filter(t => t.type === 'expense')
+      .reduce((acc, t) => acc + Number(t.amount), 0);
+  }, [currentMonthTransactions]);
+
+  // Manter visibleBalance/Income/Expenses para gráfico e lista (sem filtro de mês)
   const visibleBalance = useMemo(() => {
     return visibleTransactions.reduce((acc, transaction) => {
       if (transaction.type === 'income') {
@@ -399,9 +439,9 @@ export function DashboardContent({
         )}
         
         <SummaryCards
-          balance={visibleBalance}
-          totalIncome={visibleTotalIncome}
-          totalExpenses={visibleTotalExpenses}
+          balance={monthlyBalance}
+          totalIncome={monthlyTotalIncome}
+          totalExpenses={monthlyTotalExpenses}
         />
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

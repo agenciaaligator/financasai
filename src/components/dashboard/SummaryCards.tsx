@@ -2,11 +2,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { DollarSign, TrendingUp, TrendingDown, Crown, Sparkles } from "lucide-react";
+import { DollarSign, TrendingUp, TrendingDown, Crown, Sparkles, Calendar } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useFeatureLimits } from "@/hooks/useFeatureLimits";
 import { UpgradeModal } from "../UpgradeModal";
 import { useState } from "react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface SummaryCardsProps {
   balance: number;
@@ -23,21 +25,26 @@ export function SummaryCards({ balance, totalIncome, totalExpenses }: SummaryCar
   const transactionProgress = getTransactionProgress();
   const categoryProgress = getCategoryProgress();
 
+  // Nome do mês atual
+  const currentMonthName = format(new Date(), "MMMM 'de' yyyy", { locale: ptBR });
+  const capitalizedMonth = currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
+
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
       <Card className="bg-gradient-card shadow-card border-0">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Saldo Total</CardTitle>
+          <CardTitle className="text-sm font-medium">Saldo do Mês</CardTitle>
           <DollarSign className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className={`text-2xl font-bold ${isNegative ? 'text-destructive' : 'text-success'}`}>
             R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </div>
-          <Badge variant={isNegative ? "destructive" : "default"} className="mt-2">
-            {isNegative ? 'Negativo' : 'Positivo'}
-          </Badge>
+          <div className="flex items-center gap-1 mt-2">
+            <Calendar className="h-3 w-3 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">{capitalizedMonth}</span>
+          </div>
         </CardContent>
       </Card>
 
@@ -50,9 +57,10 @@ export function SummaryCards({ balance, totalIncome, totalExpenses }: SummaryCar
           <div className="text-2xl font-bold text-success">
             R$ {totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </div>
-          <p className="text-xs text-muted-foreground">
-            Este mês
-          </p>
+          <div className="flex items-center gap-1 mt-1">
+            <Calendar className="h-3 w-3 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">{capitalizedMonth}</span>
+          </div>
         </CardContent>
       </Card>
 
@@ -65,9 +73,10 @@ export function SummaryCards({ balance, totalIncome, totalExpenses }: SummaryCar
           <div className="text-2xl font-bold text-destructive">
             R$ {totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </div>
-          <p className="text-xs text-muted-foreground">
-            Este mês
-          </p>
+          <div className="flex items-center gap-1 mt-1">
+            <Calendar className="h-3 w-3 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">{capitalizedMonth}</span>
+          </div>
         </CardContent>
       </Card>
 
