@@ -60,6 +60,13 @@ function getTimeMessage(minutes: number): string {
   return `⏰ Faltam ${mins} minutos!`;
 }
 
+// Normaliza telefone para formato E.164 (adiciona + se necessário)
+function normalizePhoneNumber(phone: string): string {
+  if (!phone) return '';
+  const cleaned = phone.replace(/\D/g, '');
+  return cleaned ? `+${cleaned}` : '';
+}
+
 async function sendWhatsAppReminder(
   commitment: Commitment,
   minutesUntil: number,
@@ -69,8 +76,8 @@ async function sendWhatsAppReminder(
   const accessToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
   const rawPhone = commitment.profiles.phone_number;
 
-  // Normalizar para E.164 (apenas dígitos)
-  const recipientPhone = rawPhone?.replace(/\D/g, '') || '';
+  // Normalizar para E.164 com +
+  const recipientPhone = normalizePhoneNumber(rawPhone || '');
 
   console.log('📱 [REMINDER] WhatsApp config check:', {
     hasPhoneNumberId: !!phoneNumberId,

@@ -13,7 +13,21 @@ interface Commitment {
   location: string | null;
 }
 
+// Normaliza telefone para formato E.164 (adiciona + se necessário)
+function normalizePhoneNumber(phone: string): string {
+  if (!phone) return '';
+  const digits = phone.replace(/\D/g, '');
+  return digits.startsWith('+') ? digits : `+${digits}`;
+}
+
 async function sendWhatsAppMessage(phoneNumber: string, message: string): Promise<boolean> {
+  // Normalizar telefone antes de enviar
+  const normalizedPhone = normalizePhoneNumber(phoneNumber);
+  
+  console.log('[DAILY-AGENDA] Phone normalization:', {
+    original: phoneNumber,
+    normalized: normalizedPhone
+  });
   try {
     const whatsappToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
     const phoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID');
@@ -33,7 +47,7 @@ async function sendWhatsAppMessage(phoneNumber: string, message: string): Promis
         },
         body: JSON.stringify({
           messaging_product: 'whatsapp',
-          to: phoneNumber,
+          to: normalizedPhone,
           type: 'text',
           text: { body: message },
         }),
