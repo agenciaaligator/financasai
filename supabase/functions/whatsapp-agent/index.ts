@@ -1981,6 +1981,52 @@ class WhatsAppAgent {
 
     }
     
+    // PRIORIDADE 2.3: Comandos de CONTAS FIXAS / RECORRENTES
+    const contaFixaRegex = /\b(conta\s*fixa|assinatura|recorrente|fixo|fixa)\s+(\d+(?:[.,]\d+)?)\s+(.+?)(?:\s+dia\s+(\d{1,2}))?$/i;
+    const minhasContasRegex = /\b(minhas?\s*contas|contas?\s*fixas?|proximos?\s*vencimentos?|vencimentos?|contas?\s*a\s*pagar)\b/i;
+    const pagarContaRegex = /\b(paguei|pagar|quitar|baixa|dar\s*baixa)\s+(?:a?\s*)?(?:conta\s+)?(.+)/i;
+    const adiarContaRegex = /\b(adiar|postergar|prorrogar)\s+(?:conta\s+)?(.+?)\s+(?:para\s+)?(?:dia\s+)?(\d{1,2})/i;
+    
+    // Criar conta fixa: "conta fixa 150 internet dia 10" ou "assinatura 50 netflix"
+    const contaFixaMatch = normalizedText.match(contaFixaRegex);
+    if (contaFixaMatch) {
+      console.log('🔄 COMMAND DETECTED: criar conta fixa');
+      const amount = parseBrazilianNumber(contaFixaMatch[2]);
+      const title = contaFixaMatch[3].trim();
+      const dayOfMonth = contaFixaMatch[4] ? parseInt(contaFixaMatch[4]) : null;
+      
+      return await this.createRecurringTransaction(session.user_id!, {
+        amount,
+        title,
+        dayOfMonth,
+        type: 'expense', // Contas fixas geralmente são despesas
+        frequency: 'monthly'
+      });
+    }
+    
+    // Listar contas fixas: "minhas contas" ou "contas fixas"
+    if (minhasContasRegex.test(normalizedText)) {
+      console.log('🔄 COMMAND DETECTED: listar contas fixas');
+      return await this.listRecurringTransactions(session.user_id!);
+    }
+    
+    // Pagar/dar baixa: "paguei internet" ou "pagar conta de luz"
+    const pagarContaMatch = normalizedText.match(pagarContaRegex);
+    if (pagarContaMatch && !pagarContaMatch[2].match(/^\d/)) { // Não é "paguei 50 mercado"
+      console.log('🔄 COMMAND DETECTED: dar baixa em conta fixa');
+      const searchTerm = pagarContaMatch[2].trim();
+      return await this.markRecurringInstanceAsPaid(session.user_id!, searchTerm);
+    }
+    
+    // Adiar conta: "adiar internet para dia 20"
+    const adiarContaMatch = normalizedText.match(adiarContaRegex);
+    if (adiarContaMatch) {
+      console.log('🔄 COMMAND DETECTED: adiar conta fixa');
+      const searchTerm = adiarContaMatch[2].trim();
+      const newDay = parseInt(adiarContaMatch[3]);
+      return await this.postponeRecurringInstance(session.user_id!, searchTerm, newDay);
+    }
+    
     // PRIORIDADE 3: Comandos gerais (ajuda, cancelar, etc)
     console.log('🔵 Checking normalized command:', normalizedText);
     
@@ -2599,6 +2645,13 @@ class WhatsAppAgent {
            `• *relatorio* ou *mes* - mensal\n` +
            `• *ano* - relatório anual\n\n` +
            
+           `*🔄 Contas Fixas/Recorrentes:*\n` +
+           `• "conta fixa 150 internet dia 10"\n` +
+           `• "assinatura 50 netflix"\n` +
+           `• "minhas contas" ou "contas fixas"\n` +
+           `• "paguei internet" - dar baixa\n` +
+           `• "adiar conta luz para dia 20"\n\n` +
+           
            `*📅 Agenda - Comandos Inteligentes:*\n` +
            `• "agendar dentista amanhã 14h"\n` +
            `• "compromisso reunião sexta 10h"\n` +
@@ -2629,7 +2682,7 @@ class WhatsAppAgent {
            `• "paguei 200 de conta de luz"\n` +
            `• "recebi 300 de freelance"\n` +
            `• "gastei 45 na farmácia ontem"\n` +
-           `• "editar o compromisso dia 25/10"`;
+           `• "conta fixa 100 internet dia 5"`;
   }
 
   // 📸 Método para processar imagens (OCR)
@@ -6211,6 +6264,387 @@ Se não especificar hora, retorne scheduled_at: null.`
       return {
         response: '❌ Erro ao cancelar compromisso(s).',
         sessionData: { ...sessionData, conversation_state: 'idle' }
+      };
+    }
+  }
+
+  // =====================================================
+  // 🔄 CONTAS FIXAS / RECORRENTES
+  // =====================================================
+
+  /**
+   * Cria uma transação recorrente (conta fixa)
+   */
+  static async createRecurringTransaction(
+    userId: string,
+    data: {
+      amount: number;
+      title: string;
+      dayOfMonth: number | null;
+      type: 'income' | 'expense';
+      frequency: string;
+    }
+  ): Promise<{ response: string; sessionData: SessionData }> {
+    try {
+      console.log('🔄 [RECURRING] Creating recurring transaction:', data);
+      
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      );
+
+      // Buscar organization_id do usuário
+      const { data: orgMember } = await supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      // Calcular próximo vencimento
+      const today = getBrazilTime();
+      const currentDay = today.getUTCDate();
+      const dayOfMonth = data.dayOfMonth || currentDay;
+      
+      let startDate = new Date(today);
+      startDate.setUTCDate(dayOfMonth);
+      
+      // Se o dia já passou este mês, começar no próximo
+      if (dayOfMonth <= currentDay) {
+        startDate.setUTCMonth(startDate.getUTCMonth() + 1);
+      }
+      
+      const startDateStr = startDate.toISOString().split('T')[0];
+
+      // Criar transação recorrente
+      const { data: recurring, error } = await supabase
+        .from('recurring_transactions')
+        .insert({
+          user_id: userId,
+          organization_id: orgMember?.organization_id || null,
+          title: data.title,
+          amount: data.amount,
+          type: data.type,
+          frequency: 'monthly',
+          day_of_month: dayOfMonth,
+          start_date: startDateStr,
+          is_active: true
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Criar primeira instância para o próximo vencimento
+      const { error: instanceError } = await supabase
+        .from('recurring_instances')
+        .insert({
+          recurring_transaction_id: recurring.id,
+          due_date: startDateStr,
+          amount: data.amount,
+          status: 'scheduled'
+        });
+
+      if (instanceError) {
+        console.warn('⚠️ Failed to create first instance:', instanceError);
+      }
+
+      const formattedDate = startDate.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: 'long'
+      });
+
+      return {
+        response: `✅ *Conta fixa cadastrada com sucesso!*\n\n` +
+                 `📌 ${data.title}\n` +
+                 `💵 R$ ${data.amount.toFixed(2)}\n` +
+                 `📅 Todo dia ${dayOfMonth}\n` +
+                 `⏰ Próximo vencimento: ${formattedDate}\n\n` +
+                 `💡 Você será lembrado antes do vencimento!\n\n` +
+                 `_Digite "minhas contas" para ver todas._`,
+        sessionData: { conversation_state: 'idle' }
+      };
+
+    } catch (error) {
+      console.error('❌ [RECURRING] Error creating recurring transaction:', error);
+      return {
+        response: `❌ Erro ao cadastrar conta fixa.\n\nTente novamente ou digite "ajuda".`,
+        sessionData: { conversation_state: 'idle' }
+      };
+    }
+  }
+
+  /**
+   * Lista transações recorrentes e próximos vencimentos
+   */
+  static async listRecurringTransactions(userId: string): Promise<{ response: string; sessionData: SessionData }> {
+    try {
+      console.log('🔄 [RECURRING] Listing recurring transactions for user:', userId);
+      
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      );
+
+      // Buscar transações recorrentes ativas
+      const { data: recurring, error } = await supabase
+        .from('recurring_transactions')
+        .select('*, recurring_instances(*)')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .order('title');
+
+      if (error) throw error;
+
+      if (!recurring || recurring.length === 0) {
+        return {
+          response: `📋 *Você não tem contas fixas cadastradas.*\n\n` +
+                   `Para adicionar, digite:\n` +
+                   `• "conta fixa 150 internet dia 10"\n` +
+                   `• "assinatura 50 netflix"`,
+          sessionData: { conversation_state: 'idle' }
+        };
+      }
+
+      // Buscar instâncias pendentes
+      const today = getBrazilTime();
+      const todayStr = today.toISOString().split('T')[0];
+      
+      const { data: pendingInstances } = await supabase
+        .from('recurring_instances')
+        .select('*, recurring_transactions(title, amount, type)')
+        .in('recurring_transaction_id', recurring.map(r => r.id))
+        .in('status', ['scheduled', 'postponed'])
+        .gte('due_date', todayStr)
+        .order('due_date')
+        .limit(10);
+
+      let response = `📋 *Suas Contas Fixas*\n\n`;
+      
+      // Resumo das contas
+      let totalMonthly = 0;
+      recurring.forEach((r, index) => {
+        const emoji = r.type === 'income' ? '💰' : '💸';
+        const dayText = r.day_of_month ? `dia ${r.day_of_month}` : 'mensal';
+        totalMonthly += Number(r.amount);
+        response += `${index + 1}. ${emoji} *${r.title}*\n   R$ ${Number(r.amount).toFixed(2)} (${dayText})\n\n`;
+      });
+      
+      response += `━━━━━━━━━━━━━━━━━━\n`;
+      response += `💵 *Total mensal:* R$ ${totalMonthly.toFixed(2)}\n\n`;
+
+      // Próximos vencimentos
+      if (pendingInstances && pendingInstances.length > 0) {
+        response += `⏰ *Próximos vencimentos:*\n`;
+        
+        pendingInstances.slice(0, 5).forEach(inst => {
+          const dueDate = new Date(inst.due_date + 'T12:00:00');
+          const formatted = dueDate.toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: 'short'
+          });
+          const title = inst.recurring_transactions?.title || 'Conta';
+          const status = inst.status === 'postponed' ? ' _(adiado)_' : '';
+          response += `• ${formatted}: ${title} - R$ ${Number(inst.amount).toFixed(2)}${status}\n`;
+        });
+      }
+      
+      response += `\n💡 *Comandos:*\n`;
+      response += `• "paguei [nome]" - dar baixa\n`;
+      response += `• "adiar [nome] para dia X"`;
+
+      return {
+        response,
+        sessionData: { conversation_state: 'idle' }
+      };
+
+    } catch (error) {
+      console.error('❌ [RECURRING] Error listing recurring transactions:', error);
+      return {
+        response: `❌ Erro ao listar contas fixas.`,
+        sessionData: { conversation_state: 'idle' }
+      };
+    }
+  }
+
+  /**
+   * Marca uma instância de conta recorrente como paga
+   */
+  static async markRecurringInstanceAsPaid(userId: string, searchTerm: string): Promise<{ response: string; sessionData: SessionData }> {
+    try {
+      console.log('🔄 [RECURRING] Marking as paid:', searchTerm);
+      
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      );
+
+      // Buscar instância pendente que corresponda ao termo de busca
+      const { data: instances, error } = await supabase
+        .from('recurring_instances')
+        .select('*, recurring_transactions!inner(id, title, amount, type, category_id, user_id, organization_id)')
+        .eq('recurring_transactions.user_id', userId)
+        .in('status', ['scheduled', 'postponed'])
+        .ilike('recurring_transactions.title', `%${searchTerm}%`)
+        .order('due_date')
+        .limit(1);
+
+      if (error) throw error;
+
+      if (!instances || instances.length === 0) {
+        return {
+          response: `❌ Não encontrei conta pendente com "${searchTerm}".\n\n` +
+                   `Digite "minhas contas" para ver as contas fixas.`,
+          sessionData: { conversation_state: 'idle' }
+        };
+      }
+
+      const instance = instances[0];
+      const recurring = instance.recurring_transactions;
+
+      // Criar transação efetiva
+      const today = getBrazilTime();
+      const todayStr = today.toISOString().split('T')[0];
+
+      const { data: transaction, error: txError } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: userId,
+          organization_id: recurring.organization_id,
+          title: recurring.title,
+          amount: instance.amount,
+          type: recurring.type,
+          category_id: recurring.category_id,
+          date: todayStr,
+          source: 'whatsapp',
+          description: `Conta fixa - ${recurring.title}`
+        })
+        .select()
+        .single();
+
+      if (txError) throw txError;
+
+      // Atualizar instância como paga
+      const { error: updateError } = await supabase
+        .from('recurring_instances')
+        .update({
+          status: 'paid',
+          paid_at: new Date().toISOString(),
+          transaction_id: transaction.id
+        })
+        .eq('id', instance.id);
+
+      if (updateError) throw updateError;
+
+      // Criar próxima instância
+      const nextDueDate = new Date(instance.due_date);
+      nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+      
+      await supabase
+        .from('recurring_instances')
+        .insert({
+          recurring_transaction_id: recurring.id,
+          due_date: nextDueDate.toISOString().split('T')[0],
+          amount: recurring.amount,
+          status: 'scheduled'
+        });
+
+      const emoji = recurring.type === 'income' ? '💰' : '💸';
+      const typeText = recurring.type === 'income' ? 'Receita' : 'Despesa';
+
+      return {
+        response: `✅ *${recurring.title} - Baixa realizada!*\n\n` +
+                 `${emoji} ${typeText} registrada: R$ ${Number(instance.amount).toFixed(2)}\n` +
+                 `📅 Data: Hoje\n\n` +
+                 `🔄 Próximo vencimento: ${nextDueDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}`,
+        sessionData: { conversation_state: 'idle' }
+      };
+
+    } catch (error) {
+      console.error('❌ [RECURRING] Error marking as paid:', error);
+      return {
+        response: `❌ Erro ao dar baixa na conta.\n\nTente novamente.`,
+        sessionData: { conversation_state: 'idle' }
+      };
+    }
+  }
+
+  /**
+   * Adia uma instância de conta recorrente para outro dia
+   */
+  static async postponeRecurringInstance(userId: string, searchTerm: string, newDay: number): Promise<{ response: string; sessionData: SessionData }> {
+    try {
+      console.log('🔄 [RECURRING] Postponing:', searchTerm, 'to day', newDay);
+      
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      );
+
+      // Buscar instância pendente
+      const { data: instances, error } = await supabase
+        .from('recurring_instances')
+        .select('*, recurring_transactions!inner(id, title, user_id)')
+        .eq('recurring_transactions.user_id', userId)
+        .in('status', ['scheduled', 'postponed'])
+        .ilike('recurring_transactions.title', `%${searchTerm}%`)
+        .order('due_date')
+        .limit(1);
+
+      if (error) throw error;
+
+      if (!instances || instances.length === 0) {
+        return {
+          response: `❌ Não encontrei conta pendente com "${searchTerm}".\n\n` +
+                   `Digite "minhas contas" para ver as contas fixas.`,
+          sessionData: { conversation_state: 'idle' }
+        };
+      }
+
+      const instance = instances[0];
+      const recurring = instance.recurring_transactions;
+
+      // Calcular nova data
+      const currentDue = new Date(instance.due_date);
+      let newDueDate = new Date(currentDue);
+      newDueDate.setDate(newDay);
+      
+      // Se o novo dia já passou neste mês, vai para o próximo
+      const today = getBrazilTime();
+      if (newDueDate < today) {
+        newDueDate.setMonth(newDueDate.getMonth() + 1);
+      }
+
+      const newDueDateStr = newDueDate.toISOString().split('T')[0];
+
+      // Atualizar instância
+      const { error: updateError } = await supabase
+        .from('recurring_instances')
+        .update({
+          due_date: newDueDateStr,
+          status: 'postponed',
+          notes: `Adiado de ${instance.due_date} para ${newDueDateStr}`
+        })
+        .eq('id', instance.id);
+
+      if (updateError) throw updateError;
+
+      const formattedDate = newDueDate.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: 'long'
+      });
+
+      return {
+        response: `✅ *${recurring.title} - Adiado!*\n\n` +
+                 `📅 Novo vencimento: ${formattedDate}\n\n` +
+                 `💡 Você será lembrado antes da nova data.`,
+        sessionData: { conversation_state: 'idle' }
+      };
+
+    } catch (error) {
+      console.error('❌ [RECURRING] Error postponing:', error);
+      return {
+        response: `❌ Erro ao adiar conta.\n\nTente novamente.`,
+        sessionData: { conversation_state: 'idle' }
       };
     }
   }
