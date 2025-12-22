@@ -35,11 +35,11 @@ export function WhatsAppPage() {
     if (!user) return;
     
     try {
+      // SESSÕES PERMANENTES: Não verificar expiração
       const { data: session } = await supabase
         .from('whatsapp_sessions')
         .select('organization_id')
         .eq('user_id', user.id)
-        .gt('expires_at', new Date().toISOString())
         .order('last_activity', { ascending: false })
         .limit(1)
         .maybeSingle();

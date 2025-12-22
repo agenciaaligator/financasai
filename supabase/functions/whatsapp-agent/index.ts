@@ -267,12 +267,11 @@ class SessionManager {
     const phoneVariants = phoneNumber.startsWith('+') 
       ? [phoneNumber, phoneNumber.substring(1)]
       : [phoneNumber, '+' + phoneNumber];
-    
+    // SESSÕES PERMANENTES: Não verificar expiração
     const { data, error } = await supabase
       .from('whatsapp_sessions')
       .select('*')
       .or(`phone_number.in.(${phoneVariants.map(p => `"${p}"`).join(',')})`)
-      .gt('expires_at', new Date().toISOString())
       .maybeSingle();
 
     if (error) {
@@ -302,7 +301,7 @@ class SessionManager {
         last_command: null,
         context: {}
       },
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 horas
+      expires_at: new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000).toISOString() // 10 ANOS - sessão permanente
     };
 
     const { data, error } = await supabase
@@ -346,13 +345,12 @@ class SessionManager {
       } as any;
     }
     
-    // FASE 4: Aumentar TTL para 7 dias e renovar expires_at em toda interação
+    // SESSÕES PERMANENTES: Apenas atualizar last_activity (não expira)
     const { error } = await supabase
       .from('whatsapp_sessions')
       .update({
         ...finalUpdates,
-        last_activity: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 dias
+        last_activity: new Date().toISOString()
       })
       .eq('id', sessionId);
 
@@ -3575,11 +3573,11 @@ class WhatsAppAgent {
       let organizationSource: 'session' | 'fallback-owner' | 'fallback-member' | 'none' = 'none';
       
       // 1. Buscar organization_id da sessão ativa do WhatsApp
+      // SESSÕES PERMANENTES: Não verificar expiração
       const { data: whatsappSession } = await supabase
         .from('whatsapp_sessions')
         .select('organization_id')
         .eq('user_id', userId)
-        .gt('expires_at', new Date().toISOString())
         .order('last_activity', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -6873,7 +6871,7 @@ serve(async (req) => {
           .insert({
             user_id: codeValidation.user_id,
             phone_number: cleanPhone,
-            expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 dias
+            expires_at: new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000).toISOString(), // 10 ANOS - sessão permanente
           });
 
         if (sessionError) {
