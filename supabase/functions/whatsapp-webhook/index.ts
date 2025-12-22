@@ -886,11 +886,11 @@ const handler = async (req: Request): Promise<Response> => {
         ? [from, from.substring(1)] 
         : [from, '+' + from];
       
+      // SESSÕES PERMANENTES: Não verificar expiração - apenas buscar sessão válida
       const { data: existingSession, error: sessionError } = await supabase
         .from('whatsapp_sessions')
         .select('user_id, phone_number, expires_at')
         .or(`phone_number.in.(${phoneVariationsCheck.map(p => `"${p}"`).join(',')})`)
-        .gt('expires_at', new Date().toISOString())
         .order('last_activity', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -937,38 +937,12 @@ const handler = async (req: Request): Promise<Response> => {
         expiresAt: existingSession.expires_at
       });
 
-      // 🔄 RENOVAÇÃO AUTOMÁTICA: Estender sessão se expira em menos de 2 dias
-      const expiresAt = new Date(existingSession.expires_at);
+      // SESSÕES PERMANENTES: Apenas atualizar last_activity (não expiram mais)
       const now = new Date();
-      const daysUntilExpiry = (expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
-      
-      if (daysUntilExpiry < 2) {
-        const newExpiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // +7 dias
-        
-        try {
-          await supabase
-            .from('whatsapp_sessions')
-            .update({ 
-              expires_at: newExpiresAt.toISOString(),
-              last_activity: now.toISOString()
-            })
-            .eq('phone_number', existingSession.phone_number);
-          
-          console.log('🔄 Sessão renovada automaticamente:', {
-            oldExpiry: existingSession.expires_at,
-            newExpiry: newExpiresAt.toISOString(),
-            daysAdded: 7
-          });
-        } catch (renewError) {
-          console.error('⚠️ Erro ao renovar sessão (não crítico):', renewError);
-        }
-      } else {
-        // Atualizar apenas last_activity
-        await supabase
-          .from('whatsapp_sessions')
-          .update({ last_activity: now.toISOString() })
-          .eq('phone_number', existingSession.phone_number);
-      }
+      await supabase
+        .from('whatsapp_sessions')
+        .update({ last_activity: now.toISOString() })
+        .eq('phone_number', existingSession.phone_number);
 
       // ✅ whatsappMessage já foi declarado anteriormente (linha 632)
       const messageType = whatsappMessage?.type || 'text';
