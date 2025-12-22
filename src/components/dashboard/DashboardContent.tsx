@@ -444,7 +444,7 @@ export function DashboardContent({
           totalExpenses={monthlyTotalExpenses}
         />
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-6">
           <Card className="bg-gradient-card shadow-card border-0">
             <CardHeader>
               <CardTitle>Gráfico Financeiro</CardTitle>
@@ -456,7 +456,7 @@ export function DashboardContent({
 
           <Card className="bg-gradient-card shadow-card border-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle>Transações Recentes</CardTitle>
+              <CardTitle>Últimas Transações</CardTitle>
               <Button
                 variant="ghost"
                 size="sm"

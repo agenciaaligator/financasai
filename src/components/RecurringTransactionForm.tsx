@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,22 +36,44 @@ export function RecurringTransactionForm({
   editData,
 }: RecurringTransactionFormProps) {
   const [formData, setFormData] = useState({
-    title: editData?.title || "",
-    description: editData?.description || "",
-    amount: editData?.amount?.toString() || "",
-    type: editData?.type || "expense",
-    category_id: editData?.category_id || "",
-    frequency: editData?.frequency || "monthly",
-    day_of_month: editData?.day_of_month?.toString() || "1",
-    day_of_week: editData?.day_of_week?.toString() || "1",
-    interval_days: editData?.interval_days?.toString() || "1",
-    start_date: editData?.start_date || new Date().toISOString().split("T")[0],
-    end_date: editData?.end_date || "",
-    is_active: editData?.is_active ?? true,
-    organization_id: editData?.organization_id || "",
+    title: "",
+    description: "",
+    amount: "",
+    type: "expense",
+    category_id: "",
+    frequency: "monthly",
+    day_of_month: "1",
+    day_of_week: "1",
+    interval_days: "1",
+    start_date: new Date().toISOString().split("T")[0],
+    end_date: "",
+    is_active: true,
+    organization_id: "",
   });
 
   const [context, setContext] = useState<"personal" | "business">("personal");
+
+  // Reset formData quando o dialog abre ou editData muda
+  useEffect(() => {
+    if (open) {
+      setFormData({
+        title: editData?.title || "",
+        description: editData?.description || "",
+        amount: editData?.amount?.toString() || "",
+        type: editData?.type || "expense",
+        category_id: editData?.category_id || "",
+        frequency: editData?.frequency || "monthly",
+        day_of_month: editData?.day_of_month?.toString() || "1",
+        day_of_week: editData?.day_of_week?.toString() || "1",
+        interval_days: editData?.interval_days?.toString() || "1",
+        start_date: editData?.start_date || new Date().toISOString().split("T")[0],
+        end_date: editData?.end_date || "",
+        is_active: editData?.is_active ?? true,
+        organization_id: editData?.organization_id || "",
+      });
+      setContext(editData?.organization_id ? "business" : "personal");
+    }
+  }, [open, editData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
