@@ -30,10 +30,17 @@ export function FinancialDashboard() {
   const { transactions, categories, loading, balance, totalIncome, totalExpenses, addTransaction, deleteTransaction, refetch } = useTransactions();
   const isMobile = useIsMobile();
 
-  // Scroll para o topo quando mudar de tab (DEVE estar antes de qualquer early return)
+  // Scroll para o topo quando mudar de tab ou abrir formulário (DEVE estar antes de qualquer early return)
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentTab]);
+
+  // Scroll para o topo quando abrir o formulário de nova transação
+  useEffect(() => {
+    if (showForm) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [showForm]);
 
   console.log('[FinancialDashboard] org_id:', organization_id, 'role:', role, 'isOwner:', isOwner);
   console.log('[FinancialDashboard] isAdmin:', isAdmin, 'roleLoading:', roleLoading);
