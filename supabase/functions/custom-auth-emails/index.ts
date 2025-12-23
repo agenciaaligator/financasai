@@ -28,15 +28,15 @@ const handler = async (req: Request): Promise<Response> => {
     let subject = "";
     let html = "";
     
-    // Usar a URL atual do ambiente (desenvolvimento ou produção)
-    const appUrl = "https://bc45aac3-c622-434f-ad58-afc37c18c6c2.lovableproject.com";
+    // URL de produção do app
+    const appUrl = "https://financasai.lovable.app";
     const confirmUrl = `${site_url}/auth/v1/verify?token=${token_hash}&type=signup&redirect_to=${appUrl}`;
-    const recoveryUrl = `${site_url}/auth/v1/verify?token=${token_hash}&type=recovery&redirect_to=${appUrl}?recovery=true&t=${Date.now()}`;
+    const recoveryUrl = `${site_url}/auth/v1/verify?token=${token_hash}&type=recovery&redirect_to=${appUrl}/reset-password?t=${Date.now()}`;
 
     switch (type) {
       case 'signup':
       case 'confirmation':
-        subject = "🎉 Confirme seu cadastro no FinançasAI";
+        subject = "🎉 Confirme seu cadastro - Dona Wilma";
         html = `
           <!DOCTYPE html>
           <html>
@@ -45,22 +45,22 @@ const handler = async (req: Request): Promise<Response> => {
             <style>
               body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
               .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-              .header { background: linear-gradient(135deg, #3b82f6, #06b6d4); padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+              .header { background: linear-gradient(135deg, #10b981, #059669); padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
               .content { background: white; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; }
-              .button { display: inline-block; background: linear-gradient(135deg, #3b82f6, #06b6d4); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
+              .button { display: inline-block; background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
               .footer { text-align: center; color: #6b7280; font-size: 14px; margin-top: 20px; }
             </style>
           </head>
           <body>
             <div class="container">
               <div class="header">
-                <h1 style="color: white; margin: 0;">💰 FinançasAI</h1>
+                <h1 style="color: white; margin: 0;">🐊 Dona Wilma</h1>
                 <p style="color: white; margin: 10px 0 0 0;">Gestão Financeira Inteligente</p>
               </div>
               <div class="content">
-                <h2 style="color: #1f2937;">Bem-vindo ao FinançasAI! 🎉</h2>
+                <h2 style="color: #1f2937;">Bem-vindo! 🎉</h2>
                 <p>Olá! Estamos muito felizes em ter você conosco.</p>
-                <p>Para começar a usar sua conta e ter acesso a todas as funcionalidades do FinançasAI, você precisa confirmar seu endereço de email clicando no botão abaixo:</p>
+                <p>Para ativar sua conta e começar a usar todos os recursos, clique no botão abaixo:</p>
                 
                 <center>
                   <a href="${confirmUrl}" class="button">
@@ -68,21 +68,21 @@ const handler = async (req: Request): Promise<Response> => {
                   </a>
                 </center>
                 
-                <p><strong>O que você pode fazer com o FinançasAI:</strong></p>
+                <p><strong>O que você pode fazer:</strong></p>
                 <ul>
                   <li>📊 Acompanhar suas receitas e despesas</li>
                   <li>📈 Ver relatórios detalhados das suas finanças</li>
                   <li>🤖 Usar IA para análises inteligentes</li>
-                  <li>📱 Integração com WhatsApp</li>
-                  <li>🏷️ Organizar por categorias personalizadas</li>
+                  <li>📱 Gerenciar tudo via WhatsApp</li>
+                  <li>📅 Integração com Google Calendar</li>
                 </ul>
                 
                 <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
-                  Se você não criou uma conta no FinançasAI, pode ignorar este email com segurança.
+                  Se você não criou uma conta, pode ignorar este email com segurança.
                 </p>
               </div>
               <div class="footer">
-                <p>© 2024 FinançasAI - Sua gestão financeira mais inteligente</p>
+                <p>© 2024 Dona Wilma - Sua gestão financeira mais inteligente</p>
                 <p>Este email foi enviado automaticamente, não responda.</p>
               </div>
             </div>
@@ -92,7 +92,7 @@ const handler = async (req: Request): Promise<Response> => {
         break;
         
       case 'recovery':
-        subject = "🔐 Redefinir senha - FinançasAI";
+        subject = "🔐 Redefinir senha - Dona Wilma";
         html = `
           <!DOCTYPE html>
           <html>
@@ -101,22 +101,22 @@ const handler = async (req: Request): Promise<Response> => {
             <style>
               body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
               .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-              .header { background: linear-gradient(135deg, #3b82f6, #06b6d4); padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+              .header { background: linear-gradient(135deg, #10b981, #059669); padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
               .content { background: white; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; }
-              .button { display: inline-block; background: linear-gradient(135deg, #3b82f6, #06b6d4); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
+              .button { display: inline-block; background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
               .footer { text-align: center; color: #6b7280; font-size: 14px; margin-top: 20px; }
             </style>
           </head>
           <body>
             <div class="container">
               <div class="header">
-                <h1 style="color: white; margin: 0;">💰 FinançasAI</h1>
+                <h1 style="color: white; margin: 0;">🐊 Dona Wilma</h1>
                 <p style="color: white; margin: 10px 0 0 0;">Redefinição de Senha</p>
               </div>
               <div class="content">
                 <h2 style="color: #1f2937;">Redefinir sua senha 🔐</h2>
                 <p>Olá!</p>
-                <p>Recebemos uma solicitação para redefinir a senha da sua conta no FinançasAI.</p>
+                <p>Recebemos uma solicitação para redefinir sua senha.</p>
                 <p>Se foi você quem solicitou, clique no botão abaixo para criar uma nova senha:</p>
                 
                 <center>
@@ -130,11 +130,11 @@ const handler = async (req: Request): Promise<Response> => {
                 </p>
                 
                 <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
-                  Se você não solicitou a redefinição de senha, pode ignorar este email com segurança. Sua senha permanecerá inalterada.
+                  Se você não solicitou a redefinição de senha, pode ignorar este email com segurança.
                 </p>
               </div>
               <div class="footer">
-                <p>© 2024 FinançasAI - Sua gestão financeira mais inteligente</p>
+                <p>© 2024 Dona Wilma - Sua gestão financeira mais inteligente</p>
                 <p>Este email foi enviado automaticamente, não responda.</p>
               </div>
             </div>
@@ -145,7 +145,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const emailResponse = await resend.emails.send({
-      from: "FinançasAI <onboarding@resend.dev>",
+      from: "Dona Wilma <onboarding@resend.dev>",
       to: [email],
       subject: subject,
       html: html,

@@ -100,9 +100,9 @@ export default function PaymentSuccess() {
                 <KeyRound className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="font-semibold text-foreground">Próximo passo: Defina sua senha</p>
+                <p className="font-semibold text-foreground">📧 Verifique seu email</p>
                 <p className="text-sm text-muted-foreground">
-                  Enviamos um email com um link para você criar sua senha de acesso.
+                  Enviamos um link de confirmação para ativar sua conta.
                 </p>
               </div>
             </div>
@@ -112,9 +112,9 @@ export default function PaymentSuccess() {
                 <Mail className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="font-medium">Verifique sua caixa de entrada</p>
+                <p className="font-medium">Confirme sua conta</p>
                 <p className="text-sm text-muted-foreground">
-                  Procure pelo email "Bem-vindo ao Dona Wilma" e clique no botão para definir sua senha.
+                  Procure o email de confirmação e clique no botão para ativar seu acesso.
                 </p>
               </div>
             </div>
@@ -164,7 +164,7 @@ export default function PaymentSuccess() {
                   ) : (
                     <KeyRound className="mr-2 h-4 w-4" />
                   )}
-                  Enviar Link para Definir Senha
+                  Reenviar Email de Confirmação
                   <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Button>
               </>
@@ -175,13 +175,13 @@ export default function PaymentSuccess() {
               variant="outline"
               className="w-full"
             >
-              Já tenho senha - Fazer Login
+              Já confirmei minha conta - Fazer Login
             </Button>
           </div>
 
           <div className="pt-4 border-t">
             <p className="text-xs text-muted-foreground">
-              Se não receber o email em alguns minutos, verifique sua caixa de spam ou clique em "Definir Minha Senha" acima.
+              Se não receber o email em alguns minutos, verifique sua caixa de spam ou clique em "Reenviar Email de Confirmação" acima.
             </p>
           </div>
         </Card>
