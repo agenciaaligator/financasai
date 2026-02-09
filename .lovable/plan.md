@@ -1,56 +1,30 @@
 
 
-# Ajustes para Publicacao - Dona Wilma
+# Regenerar 9 Imagens da Landing Page
 
-## 1. SEO e Meta Tags
+As imagens geradas anteriormente nao foram substituidas corretamente ou ficaram genericas demais. Vou regera-las com prompts mais detalhados e humanizados, conectando cada imagem diretamente ao seu tema.
 
-Atualizar `index.html` com:
-- Title: "Dona Wilma - Seu Assessor Pessoal de Financas e Compromissos"
-- Description otimizada em portugues
-- og:title, og:description, og:url, og:locale (pt_BR)
-- Canonical URL apontando para financasai.lovable.app
-- JSON-LD structured data basico (SoftwareApplication)
-- Remover referencia a "Agente Financeiro" do title e meta tags
+## Imagens a Gerar (9 total)
 
-Criar `public/sitemap.xml` com as rotas publicas.
+Todas serao geradas com o modelo de IA de imagens (Nano banana pro para maior qualidade) e salvas diretamente nos arquivos em `public/images/landing/`.
 
-## 2. Textos da Landing Page
-
-- **Secao de planos**: Remover o subtitulo "Comece gratuitamente e faca upgrade quando precisar" (nao ha plano gratuito). Trocar por algo como "Tudo que voce precisa em um unico plano".
-- **FAQ**: Atualizar a pergunta "Existe um periodo de teste gratuito?" - remover mencao a "plano Gratuito sem limite de tempo". Substituir por informacao sobre o trial ou simplesmente remover a pergunta.
-- **PlansSection**: Manter como esta (card unico Premium). Sem alteracoes.
-
-## 3. Imagens da Landing Page
-
-Substituir as 8 imagens em `public/images/landing/` por ilustracoes geradas por IA que representem visualmente cada topico:
-
-| Topico | Arquivo | Descricao da ilustracao |
-|--------|---------|------------------------|
-| Financeiro | whatsapp-financeiro.png | Celular com conversa WhatsApp sobre financas, icones de dinheiro |
-| Compromissos | whatsapp-compromissos.png | Calendario com notificacoes e celular mostrando lembretes |
-| Registros | whatsapp-registros.png | Pessoa usando celular para falar com assistente IA |
-| Painel | dashboard-painel.png | Tela com graficos, barras e relatorios financeiros |
-| Compartilhamento | compartilhamento.png | Grupo de pessoas/familia conectadas compartilhando dados |
-| Categorias | categorias.png | Pastas coloridas organizando itens por categoria |
-| Lembretes | lembretes.png | Sino de notificacao com celular e mensagens de alerta |
-| Google Calendar | google-calendar-integration.png | Dois calendarios sincronizando com setas de conexao |
-
-As imagens serao geradas com estilo flat/moderno em tons que combinem com o tema do app.
-
-## 4. Hero da Landing Page
-
-Substituir o icone gigante de Calendar (48x48) no hero por uma ilustracao mais atrativa, como uma composicao visual mostrando celular + dashboard + WhatsApp.
+| # | Arquivo | Prompt detalhado |
+|---|---------|-----------------|
+| 1 | hero-illustration.png | Uma mulher sorridente usando o celular, com elementos visuais flutuando ao redor: graficos financeiros, icone do WhatsApp, calendario, notas de dinheiro. Estilo moderno e clean, cores vibrantes em tons de roxo e verde, fundo claro. Ilustracao digital realista. |
+| 2 | whatsapp-financeiro.png | Maos segurando um celular com tela do WhatsApp aberta, mostrando uma conversa com mensagens como "gastei 50 no mercado". Icones de moedas e graficos ao redor. Estilo clean e moderno, pessoa real usando o app no dia a dia. |
+| 3 | whatsapp-compromissos.png | Pessoa olhando para o celular com calendario e notificacoes na tela, relogio e lembretes visuais ao redor. Ambiente de escritorio aconchegante. Estilo fotografico moderno com elementos graficos sobrepostos. |
+| 4 | whatsapp-registros.png | Pessoa sorridente sentada no sofa enviando mensagem de voz no celular, com icones de microfone e texto aparecendo na tela. Ambiente caseiro e confortavel. Estilo moderno e acolhedor. |
+| 5 | dashboard-painel.png | Tela de computador/tablet mostrando um dashboard financeiro com graficos de barras coloridos, pizza charts e numeros. Mesa organizada com cafe ao lado. Estilo clean e profissional. |
+| 6 | compartilhamento.png | Familia reunida (mae, pai, filha) cada um com celular, conectados por linhas visuais. Ambiente domestico acolhedor. Icones de compartilhamento e conexao. Estilo moderno e familiar. |
+| 7 | categorias.png | Tela de celular mostrando lista de categorias coloridas (alimentacao, transporte, saude, lazer) com icones representativos. Organizacao visual clara e atrativa. Estilo flat design moderno. |
+| 8 | lembretes.png | Pessoa recebendo notificacao no celular com icone de sino, expressao de "lembrei!", com calendario e relogio ao fundo. Momento de dia a dia. Estilo moderno e humanizado. |
+| 9 | google-calendar-integration.png | Dois dispositivos lado a lado (celular com WhatsApp e tablet com Google Calendar) com setas de sincronizacao entre eles, mostrando os mesmos eventos. Estilo clean e tecnologico. |
 
 ## Detalhes Tecnicos
 
-### Arquivos a modificar:
-- `index.html` - Meta tags SEO, JSON-LD
-- `src/pages/Index.tsx` - Subtitulo da secao de planos
-- `src/components/FAQSection.tsx` - Remover/atualizar pergunta sobre plano gratuito
-- `public/sitemap.xml` - Criar novo
+- Modelo: `google/gemini-3-pro-image-preview` (maior qualidade)
+- Resolucao: 1024x1024 ou 1024x768 (landscape para melhor encaixe nos cards)
+- Formato: PNG
+- As imagens serao salvas diretamente nos caminhos existentes em `public/images/landing/`
+- Nenhum codigo sera alterado, apenas os assets visuais
 
-### Arquivos de imagem a substituir (8 + 1 hero):
-- Todas em `public/images/landing/`
-
-### Nenhuma funcionalidade existente sera alterada
-- Checkout, rotas, autenticacao e dashboard permanecem intactos
