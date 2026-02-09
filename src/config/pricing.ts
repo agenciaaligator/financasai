@@ -6,7 +6,7 @@
 type PricingMode = 'test' | 'production';
 
 // 👇 ALTERE AQUI PARA TROCAR ENTRE TESTE E PRODUÇÃO
-const MODE: PricingMode = 'test';
+const MODE: PricingMode = 'production';
 
 export const PRICING = {
   test: {

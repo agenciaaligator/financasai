@@ -275,10 +275,10 @@ const LandingPage = () => {
 
       <section id="depoimentos" className="container mx-auto px-4 py-20 bg-muted/30">
         <h2 className="text-3xl md:text-4xl font-bold text-center mb-3">
-          O que nossos clientes dizem
+          Como funciona na prática
         </h2>
         <p className="text-center text-muted-foreground mb-12">
-          Milhares de pessoas já confiam na Dona Wilma
+          Em 3 passos simples, você organiza sua vida financeira
         </p>
         <TestimonialsSection />
       </section>
@@ -324,6 +324,8 @@ const LandingPage = () => {
                 <li><a href="#home" className="hover:text-primary">Home</a></li>
                 <li><a href="#como-funciona" className="hover:text-primary">Como funciona</a></li>
                 <li><a href="#planos" className="hover:text-primary">Planos</a></li>
+                <li><a href="/termos" className="hover:text-primary">Termos de Serviço</a></li>
+                <li><a href="/privacidade" className="hover:text-primary">Política de Privacidade</a></li>
               </ul>
             </div>
             <div>
@@ -334,7 +336,7 @@ const LandingPage = () => {
             </div>
           </div>
           <div className="border-t mt-8 pt-8 text-center text-sm text-muted-foreground space-y-2">
-            <p>© 2024 Dona Wilma. Todos os direitos reservados.</p>
+            <p>© 2025 Dona Wilma. Todos os direitos reservados.</p>
             <p>
               Desenvolvido por{' '}
               <a 

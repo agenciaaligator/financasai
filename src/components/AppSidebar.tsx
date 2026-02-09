@@ -128,18 +128,6 @@ export function AppSidebar({
     isMobile ? true : (currentTab === 'transactions' || currentTab === 'recurring')
   );
 
-  console.log('[AppSidebar] DEBUG COMPLETO:', {
-    isMobile,
-    isAdmin,
-    isAdminProp,
-    isOwner,
-    currentTab,
-    transactionsOpen,
-    sidebarItems: sidebarItems.map(i => i.id),
-    adminItems: adminItems.map(i => i.id),
-    filteredSidebar: sidebarItems.filter(item => item.id !== 'team' || isOwner).map(i => i.id),
-    finalItems: [...sidebarItems.filter(item => item.id !== 'team' || isOwner), ...(isAdmin ? adminItems : [])].map(i => i.id)
-  });
 
   // Para uso mobile, renderiza apenas o conteúdo sem wrapper Sidebar
   if (isMobile) {
@@ -152,8 +140,8 @@ export function AppSidebar({
               <DollarSign className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h2 className="font-bold text-lg text-sidebar-primary">FinançasAI</h2>
-              <p className="text-xs text-sidebar-foreground/60">Gestão Inteligente</p>
+              <h2 className="font-bold text-lg text-sidebar-primary">Dona Wilma</h2>
+              <p className="text-xs text-sidebar-foreground/60">Seu assessor pessoal</p>
             </div>
           </div>
         </div>
@@ -163,10 +151,7 @@ export function AppSidebar({
           {/* Botão de adicionar transação */}
           <div className="mb-4">
             <button
-              onClick={() => {
-                console.log('Mobile: botão nova transação clicado');
-                onToggleForm();
-              }}
+              onClick={() => onToggleForm()}
               className="w-full h-12 text-left bg-gradient-primary hover:shadow-primary text-white hover:bg-gradient-primary transition-all duration-200 rounded-lg flex items-center justify-start px-4"
             >
               <Plus className="h-5 w-5" />
@@ -176,18 +161,7 @@ export function AppSidebar({
 
           {/* Menu de navegação */}
           <div className="space-y-1">
-            {(() => {
-              const allItems = [...sidebarItems.filter(item => item.id !== 'team' || isOwner), ...(isAdmin ? adminItems : [])];
-              console.log('[AppSidebar Mobile] RENDERIZAÇÃO:', {
-                allItemsIds: allItems.map(i => i.id),
-                allItemsTitles: allItems.map(i => i.title),
-                isAdmin,
-                isOwner,
-                adminItemsLength: adminItems.length,
-                adminIncluded: allItems.some(i => i.id === 'admin')
-              });
-              return allItems;
-            })().map((item) => {
+            {[...sidebarItems.filter(item => item.id !== 'team' || isOwner), ...(isAdmin ? adminItems : [])].map((item) => {
               // Para "Transações", criar submenu
               if (item.id === 'transactions') {
                 const isTransactionsActive = currentTab === 'transactions' || currentTab === 'recurring';
@@ -213,10 +187,7 @@ export function AppSidebar({
                     {transactionsOpen && (
                       <div className="ml-4 space-y-1">
                         <button
-                          onClick={() => {
-                            console.log('Mobile: clicou em Lançamentos');
-                            onTabChange('transactions');
-                          }}
+                          onClick={() => onTabChange('transactions')}
                           className={`w-full h-10 transition-all duration-200 rounded-lg flex items-center justify-start px-4 ${
                             currentTab === 'transactions'
                               ? "bg-sidebar-accent text-sidebar-primary font-medium"
@@ -228,10 +199,7 @@ export function AppSidebar({
                         </button>
                         
                         <button
-                          onClick={() => {
-                            console.log('Mobile: clicou em Contas Fixas');
-                            onTabChange('recurring');
-                          }}
+                          onClick={() => onTabChange('recurring')}
                           className={`w-full h-10 transition-all duration-200 rounded-lg flex items-center justify-start px-4 ${
                             currentTab === 'recurring'
                               ? "bg-sidebar-accent text-sidebar-primary font-medium"
@@ -251,10 +219,7 @@ export function AppSidebar({
               return (
                 <button
                   key={item.id}
-                  onClick={() => {
-                    console.log('Mobile: clicou na tab', item.id);
-                    onTabChange(item.id);
-                  }}
+                  onClick={() => onTabChange(item.id)}
                   className={`w-full h-12 transition-all duration-200 rounded-lg flex items-center justify-start px-4 ${
                     isActive 
                       ? "bg-sidebar-accent text-sidebar-primary font-medium border-l-4 border-primary" 
@@ -287,8 +252,8 @@ export function AppSidebar({
           </div>
           {open && (
             <div>
-              <h2 className="font-bold text-lg text-sidebar-primary">FinançasAI</h2>
-              <p className="text-xs text-sidebar-foreground/60">Gestão Inteligente</p>
+              <h2 className="font-bold text-lg text-sidebar-primary">Dona Wilma</h2>
+              <p className="text-xs text-sidebar-foreground/60">Seu assessor pessoal</p>
             </div>
           )}
         </div>

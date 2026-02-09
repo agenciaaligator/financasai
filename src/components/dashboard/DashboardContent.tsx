@@ -364,65 +364,10 @@ export function DashboardContent({
   }, [visibleTransactions]);
 
   if (currentTab === "dashboard") {
-    // 📊 Diagnóstico de visibilidade
-    const myTransactions = transactions.filter(t => t.user_id === user?.id);
-    const orgTransactions = organization_id ? transactions.filter(t => t.organization_id === organization_id) : [];
-    const myTransactionsWithOrg = myTransactions.filter(t => t.organization_id);
-    const myTransactionsWithoutOrg = myTransactions.filter(t => !t.organization_id);
-    
     return (
       <div className="space-y-6">
         <BalanceAlert isNegative={isNegative} />
         
-        {/* 🔍 Card de Diagnóstico de Visibilidade */}
-        {organization_id && (
-          <Card className="bg-muted/50 border-primary/20">
-            <CardHeader>
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                🔍 Diagnóstico de Visibilidade
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-muted-foreground">Organização ativa:</p>
-                  <p className="font-mono text-xs">{organization_id.substring(0, 8)}...</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Permissão ver outros:</p>
-                  <p className="font-semibold">{canViewOthers ? '✅ Sim' : '❌ Não'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Minhas transações:</p>
-                  <p className="font-semibold">{myTransactions.length} total</p>
-                  <p className="text-xs text-muted-foreground">
-                    {myTransactionsWithOrg.length} com org_id | {myTransactionsWithoutOrg.length} sem org_id
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Da organização:</p>
-                  <p className="font-semibold">{orgTransactions.length} total</p>
-                </div>
-              </div>
-              
-              {!canViewOthers && (
-                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-3 mt-2">
-                  <p className="text-yellow-700 dark:text-yellow-300 text-xs">
-                    💡 <strong>Membro sem permissão:</strong> Você está vendo apenas suas próprias transações.
-                  </p>
-                </div>
-              )}
-              
-              {myTransactionsWithoutOrg.length > 0 && (
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded p-3 mt-2">
-                  <p className="text-blue-700 dark:text-blue-300 text-xs">
-                    ℹ️ <strong>Transações antigas detectadas:</strong> Você tem {myTransactionsWithoutOrg.length} transações sem organization_id (criadas antes da correção). Novas transações via WhatsApp já incluem organization_id automaticamente.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
         
         {/* FASE 3: Switch "Ver apenas minhas transações" no dashboard */}
         {organization_id && (
