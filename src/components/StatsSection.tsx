@@ -22,7 +22,7 @@ export function StatsSection() {
     {
       icon: <Clock className="h-8 w-8 text-primary" />,
       title: "Disponível 24h",
-      description: "Seu assessor pessoal trabalhando o tempo todo"
+      description: "Sua assessora pessoal trabalhando o tempo todo"
     },
     {
       icon: <Shield className="h-8 w-8 text-primary" />,
