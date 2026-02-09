@@ -89,14 +89,9 @@ export function useSubscription() {
   const getPlanDisplayName = async () => {
     if (!user) return 'Gratuito';
 
-    console.log('[useSubscription] Determinando nome do plano para:', user.email);
-
-    // Verificar se é admin
     const { data: roleData } = await supabase.rpc('get_user_role', { _user_id: user.id });
-    console.log('[useSubscription] Role retornada:', roleData);
     
     if (roleData === 'admin') {
-      console.log('[useSubscription] ✅ Usuário é admin');
       return 'Admin (Acesso Total)';
     }
 
@@ -105,23 +100,14 @@ export function useSubscription() {
       const billingCycle = subscription.billing_cycle;
       
       if (billingCycle === 'trial') {
-        // Calcular dias restantes
         const endDate = new Date(subscription.current_period_end);
         const today = new Date();
         const daysRemaining = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        console.log('[useSubscription] ✅ Trial ativo:', daysRemaining, 'dias restantes');
         return `Trial (${daysRemaining} dias restantes)`;
       }
       
-      if (billingCycle === 'monthly') {
-        console.log('[useSubscription] ✅ Premium Mensal');
-        return 'Premium Mensal';
-      }
-      
-      if (billingCycle === 'yearly') {
-        console.log('[useSubscription] ✅ Premium Anual');
-        return 'Premium Anual';
-      }
+      if (billingCycle === 'monthly') return 'Premium Mensal';
+      if (billingCycle === 'yearly') return 'Premium Anual';
     }
 
     // Verificar se tem plano herdado da organização
@@ -130,8 +116,7 @@ export function useSubscription() {
       .maybeSingle();
 
     if (orgPlanData && orgPlanData.is_inherited) {
-      console.log('[useSubscription] ✅ Plano herdado da organização de:', orgPlanData.owner_email);
-      const displayName = orgPlanData.plan_name === 'trial' 
+      const displayName = orgPlanData.plan_name === 'trial'
         ? 'Trial Premium' 
         : orgPlanData.plan_name === 'premium'
         ? 'Premium'
@@ -139,7 +124,6 @@ export function useSubscription() {
       return `${displayName} (herdado)`;
     }
 
-    console.log('[useSubscription] ✅ Plano Gratuito');
     return 'Gratuito';
   };
 

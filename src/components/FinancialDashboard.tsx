@@ -42,14 +42,6 @@ export function FinancialDashboard() {
     }
   }, [showForm]);
 
-  console.log('[FinancialDashboard] org_id:', organization_id, 'role:', role, 'isOwner:', isOwner);
-  console.log('[FinancialDashboard] isAdmin:', isAdmin, 'roleLoading:', roleLoading);
-  console.log('Dashboard renderizado - user:', user?.email);
-  console.log('Categories carregadas:', categories?.length);
-  console.log('Transactions carregadas:', transactions?.length);
-  console.log('Current tab:', currentTab);
-  console.log('Is mobile:', isMobile);
-  console.log('Mobile menu open:', mobileMenuOpen);
 
   const handleAddTransaction = async (transaction: any) => {
     const result = await addTransaction(transaction);
@@ -69,10 +61,8 @@ export function FinancialDashboard() {
   const isNegative = balance < 0;
 
   const handleTabChange = (tab: string) => {
-    console.log('Tab mudando de', currentTab, 'para', tab);
     setCurrentTab(tab);
     if (isMobile) {
-      console.log('Mobile: fechando menu após mudança de tab');
       setMobileMenuOpen(false);
     }
   };
@@ -87,14 +77,11 @@ export function FinancialDashboard() {
             <div className="flex items-center gap-3">
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild>
-                  <Button 
+                   <Button 
                     variant="ghost" 
                     size="sm" 
                     className="h-8 w-8 p-0"
-                    onClick={() => {
-                      console.log('Botão menu clicado - abrindo sheet');
-                      setMobileMenuOpen(true);
-                    }}
+                    onClick={() => setMobileMenuOpen(true)}
                   >
                     <Menu className="h-5 w-5" />
                   </Button>

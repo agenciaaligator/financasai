@@ -1,37 +1,33 @@
 import { Card, CardContent } from "@/components/ui/card";
+import { Brain, Clock, Shield, Smartphone } from "lucide-react";
 
-interface Stat {
-  label: string;
-  sublabel: string;
-  value: string;
+interface Benefit {
+  icon: React.ReactNode;
+  title: string;
   description: string;
 }
 
 export function StatsSection() {
-  const stats: Stat[] = [
+  const benefits: Benefit[] = [
     {
-      label: "Processamento em segundos",
-      sublabel: "REGISTROS PROCESSADOS",
-      value: "+150.2K",
-      description: "Categorizadas automaticamente"
+      icon: <Smartphone className="h-8 w-8 text-primary" />,
+      title: "Direto no WhatsApp",
+      description: "Registre finanças e compromissos sem abrir nenhum app"
     },
     {
-      label: "Crescendo a cada dia",
-      sublabel: "VALOR GERENCIADO",
-      value: "+163.7 Milhões",
-      description: "Em finanças organizadas"
+      icon: <Brain className="h-8 w-8 text-primary" />,
+      title: "IA que entende você",
+      description: "Categorização automática com inteligência artificial"
     },
     {
-      label: "Lembretes ilimitados",
-      sublabel: "COMPROMISSOS LEMBRADOS",
-      value: "+87.3K",
-      description: "De compromissos organizados"
+      icon: <Clock className="h-8 w-8 text-primary" />,
+      title: "Disponível 24h",
+      description: "Seu assessor pessoal trabalhando o tempo todo"
     },
     {
-      label: "Tecnologia de ponta",
-      sublabel: "PRECISÃO DA IA",
-      value: "99.9%",
-      description: "Na categorização e registro automático"
+      icon: <Shield className="h-8 w-8 text-primary" />,
+      title: "Seguro e privado",
+      description: "Seus dados protegidos com criptografia de ponta"
     }
   ];
 
@@ -39,37 +35,26 @@ export function StatsSection() {
     <section className="container mx-auto px-4 py-20 bg-muted/30">
       <div className="text-center mb-12">
         <h2 className="text-3xl md:text-4xl font-bold mb-4">
-          Números que comprovam
+          Por que escolher a Dona Wilma?
         </h2>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          Milhares de transações e compromissos gerenciados com precisão e inteligência
+          Simplicidade e tecnologia para facilitar seu dia a dia
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto mb-8">
-        {stats.map((stat, index) => (
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+        {benefits.map((benefit, index) => (
           <Card key={index} className="text-center hover:shadow-lg transition-shadow">
-            <CardContent className="p-6 space-y-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                {stat.sublabel}
-              </p>
-              <p className="text-4xl md:text-5xl font-bold text-primary">
-                {stat.value}
-              </p>
+            <CardContent className="p-6 space-y-3 flex flex-col items-center">
+              {benefit.icon}
+              <h3 className="text-lg font-semibold">{benefit.title}</h3>
               <p className="text-sm text-muted-foreground">
-                {stat.description}
-              </p>
-              <p className="text-xs text-muted-foreground/70 pt-2">
-                {stat.label}
+                {benefit.description}
               </p>
             </CardContent>
           </Card>
         ))}
       </div>
-
-      <p className="text-center text-sm text-muted-foreground">
-        92% dos usuários avaliaram como 'excelente' o donawilma.com
-      </p>
     </section>
   );
 }

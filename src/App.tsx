@@ -14,6 +14,8 @@ import NotFound from "./pages/NotFound";
 import GCBridge from "./pages/GCBridge";
 import GCAuthResult from "./pages/GCAuthResult";
 import InviteAccept from "./pages/InviteAccept";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 import { AdminPanel } from "@/components/admin/AdminPanel";
 import { useUserRole } from "@/hooks/useUserRole";
 import { SignUpForm } from "@/components/auth/SignUpForm";
@@ -57,6 +59,8 @@ const App = () => {
             <Route path="/gc-bridge" element={<GCBridge />} />
             <Route path="/gc-done" element={<GCAuthResult />} />
             <Route path="/invite/:token" element={<InviteAccept />} />
+            <Route path="/termos" element={<Terms />} />
+            <Route path="/privacidade" element={<Privacy />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
