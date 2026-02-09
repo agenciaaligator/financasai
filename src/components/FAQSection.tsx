@@ -24,8 +24,8 @@ export function FAQSection() {
       answer: "Você recebe lembretes e notificações diretamente no seu WhatsApp. Também pode adicionar compromissos e registrar transações conversando naturalmente com a Dona Wilma, sem precisar abrir o aplicativo!"
     },
     {
-      question: "Existe um período de teste gratuito?",
-      answer: "Sim! O plano Gratuito não tem limite de tempo e oferece recursos essenciais. Você pode começar agora mesmo e fazer upgrade para planos premium quando precisar de mais funcionalidades."
+      question: "Posso testar antes de assinar?",
+      answer: "Sim! Ao criar sua conta, você recebe um período de teste gratuito para conhecer todas as funcionalidades da Dona Wilma. Após o período, basta assinar o plano Premium para continuar usando."
     }
   ];
 
