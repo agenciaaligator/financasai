@@ -97,7 +97,7 @@ const LandingPage = () => {
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div className="space-y-6 text-left">
             <h1 className="text-4xl md:text-6xl font-bold">
-              Tenha um assessor pessoal trabalhando{' '}
+              Tenha uma assessora pessoal trabalhando{' '}
               <span className="text-primary">24h por dia</span> por você
             </h1>
             <p className="text-xl text-muted-foreground">
@@ -243,7 +243,7 @@ const LandingPage = () => {
           <FeatureBlock
             title="LEMBRETES"
             subtitle="Lembretes Diários via WhatsApp"
-            description="Seu assessor te avisa sobre contas a pagar e compromissos — todo dia à manhã e 30 minutos antes de cada evento."
+            description="Sua assessora te avisa sobre contas a pagar e compromissos — todo dia pela manhã e 30 minutos antes de cada evento."
             highlights={[
               "Avisos diários e antecipados",
               "Ideal para cobranças, metas, aniversários",
@@ -318,7 +318,7 @@ const LandingPage = () => {
                 <span className="font-bold text-lg">Dona Wilma</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                Seu assessor pessoal para finanças e compromissos
+                Sua assessora pessoal para finanças e compromissos
               </p>
             </div>
             <div>
