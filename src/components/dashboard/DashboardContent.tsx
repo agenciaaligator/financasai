@@ -7,7 +7,7 @@ import { FinancialChart } from "../FinancialChart";
 import { CategoryManager } from "../CategoryManager";
 import { ProfileSettings } from "../ProfileSettings";
 import { ReportsPage } from "../ReportsPage";
-import { AIReportsChat } from "../AIReportsChat";
+
 import { FutureFeatures } from "../FutureFeatures";
 import { AdminPanel } from "../admin/AdminPanel";
 import { BalanceAlert } from "./BalanceAlert";
@@ -35,8 +35,6 @@ import {
 } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import { ErrorBoundary } from "../ErrorBoundary";
-import { CommitmentsManager } from "../CommitmentsManager";
-import { TeamManagement } from "../admin/TeamManagement";
 import { WhatsAppPage } from "./WhatsAppPage";
 import { useOrganizationPermissions } from "@/hooks/useOrganizationPermissions";
 import { Switch } from "@/components/ui/switch";
@@ -625,10 +623,6 @@ export function DashboardContent({
     return <ReportsPage />;
   }
 
-  if (currentTab === "ai-chat") {
-    return <AIReportsChat />;
-  }
-
   if (currentTab === "future") {
     return <FutureFeatures />;
   }
@@ -637,24 +631,8 @@ export function DashboardContent({
     return <ProfileSettings />;
   }
 
-  if (currentTab === "agenda") {
-    return (
-      <ErrorBoundary fallback={
-        <div className="p-4 text-destructive">
-          Erro ao carregar agenda. Tente recarregar a página.
-        </div>
-      }>
-        <CommitmentsManager />
-      </ErrorBoundary>
-    );
-  }
-
   if (currentTab === "whatsapp") {
     return <WhatsAppPage />;
-  }
-
-  if (currentTab === "team") {
-    return <TeamManagement />;
   }
 
   if (currentTab === "admin") {

@@ -4,8 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UsersManagement } from "./UsersManagement";
 import { SubscriptionsManagement } from "./SubscriptionsManagement";
 import { AdminStats } from "./AdminStats";
-import { Shield, Users, CreditCard, BarChart3, Calendar } from "lucide-react";
-import { AgendaMonitoring } from "./AgendaMonitoring";
+import { Shield, Users, CreditCard, BarChart3 } from "lucide-react";
 
 export function AdminPanel() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -52,7 +51,7 @@ export function AdminPanel() {
         onValueChange={(tab) => setSearchParams({ tab }, { replace: true })} 
         className="space-y-4"
       >
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 gap-2">
+        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-3 gap-2">
           <TabsTrigger value="stats" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             <span className="hidden sm:inline">Estatísticas</span>
@@ -64,10 +63,6 @@ export function AdminPanel() {
           <TabsTrigger value="subscriptions" className="flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
             <span className="hidden sm:inline">Assinaturas</span>
-          </TabsTrigger>
-          <TabsTrigger value="monitoring" className="flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            <span className="hidden sm:inline">Monitoramento</span>
           </TabsTrigger>
         </TabsList>
 
@@ -83,9 +78,6 @@ export function AdminPanel() {
           <SubscriptionsManagement />
         </TabsContent>
 
-        <TabsContent value="monitoring" className="space-y-4">
-          <AgendaMonitoring />
-        </TabsContent>
       </Tabs>
     </div>
   );

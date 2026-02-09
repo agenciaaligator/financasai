@@ -117,24 +117,12 @@ if (isLogout) {
     if (remoteVersion && remoteVersion !== localVersion) {
       console.log('[VERSION] NOVA VERSÃO DETECTADA! Remote:', remoteVersion, 'Local:', localVersion);
       await clearAllAndReload(remoteVersion);
-      return; // Não renderizar - vai recarregar
+      return;
     }
     
     console.log('[VERSION] Versão atual:', localVersion || 'primeira execução');
     
-    // Renderizar app normalmente
+    // Renderizar app normalmente (sem background interval)
     createRoot(document.getElementById("root")!).render(<App />);
-    
-    // Verificação AGRESSIVA periódica em background (a cada 30 segundos)
-    setInterval(async () => {
-      const local = localStorage.getItem('app_version') || '';
-      const remote = await fetchRemoteVersion(2000);
-      
-      if (remote && remote !== local) {
-        console.log('[VERSION] NOVA VERSÃO DETECTADA EM BACKGROUND! Remote:', remote, 'Local:', local);
-        console.log('[VERSION] Forçando atualização automática...');
-        await clearAllAndReload(remote);
-      }
-    }, 30 * 1000); // 30 segundos
   })();
 }

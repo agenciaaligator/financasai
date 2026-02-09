@@ -12,8 +12,6 @@ import { User, Mail, Lock, Crown, Calendar, Check, X, ExternalLink, RefreshCw, B
 import { useSubscription } from "@/hooks/useSubscription";
 import { useFeatureLimits } from "@/hooks/useFeatureLimits";
 import { UpgradeModal } from "./UpgradeModal";
-import { GoogleCalendarConnect } from "./dashboard/GoogleCalendarConnect";
-import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
 import { useOrganizationPermissions } from "@/hooks/useOrganizationPermissions";
 import { profileSchema } from "@/lib/validations";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -42,7 +40,7 @@ export function ProfileSettings() {
   const { subscription, planName, isFreePlan, isTrial, isPremium, planLimits, stripeStatus } = useSubscription();
   const { currentUsage, getTransactionProgress, getCategoryProgress } = useFeatureLimits();
   const [managingSubscription, setManagingSubscription] = useState(false);
-  const { syncNow, runDiagnostics, loading: gcLoading } = useGoogleCalendar();
+  
   const { organization_id } = useOrganizationPermissions();
 
   const supabaseUrl = "https://fsamlnlabdjoqpiuhgex.supabase.co";
@@ -51,52 +49,13 @@ export function ProfileSettings() {
     fetchProfile();
     if (planLimits?.hasWhatsapp) {
       checkAuthenticationStatus();
-      
-      // Setup real-time listener para WhatsApp sessions
-      const channel = supabase
-        .channel('whatsapp-session-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'whatsapp_sessions',
-            filter: `user_id=eq.${user?.id}`
-          },
-          () => {
-            checkAuthenticationStatus();
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
     }
   }, [user, planLimits]);
 
-  // Poll status para WhatsApp
+  // Check WhatsApp activity on mount (no polling)
   useEffect(() => {
     if (!user || !planLimits?.hasWhatsapp) return;
-    let active = true;
-    let count = 0;
-    let timer: any;
-
-    const poll = async () => {
-      if (!active) return;
-      await checkAuthenticationStatus();
-      await checkRecentWhatsAppActivity();
-      count++;
-      if (active && count < 12) {
-        timer = setTimeout(poll, 5000);
-      }
-    };
-
-    poll();
-    return () => { 
-      active = false; 
-      if (timer) clearTimeout(timer); 
-    };
+    checkRecentWhatsAppActivity();
   }, [user, planLimits]);
 
   useEffect(() => {
@@ -862,46 +821,6 @@ export function ProfileSettings() {
         </Card>
       )}
 
-      {/* Card 4: Google Calendar */}
-      {planLimits?.hasGoogleCalendar && (
-        <Card className="bg-gradient-card shadow-card border-0">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Calendar className="h-5 w-5 text-primary" />
-              <span>Google Calendar</span>
-            </CardTitle>
-            <CardDescription>
-              Sincronize automaticamente compromissos criados pelo WhatsApp com seu calendário
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <GoogleCalendarConnect />
-            
-            <div className="flex gap-2 pt-2">
-              <Button 
-                onClick={syncNow} 
-                disabled={gcLoading}
-                variant="outline"
-                size="sm"
-                className="gap-2"
-              >
-                <RefreshCw className={`h-4 w-4 ${gcLoading ? 'animate-spin' : ''}`} />
-                Sincronizar Agora
-              </Button>
-              <Button 
-                onClick={runDiagnostics} 
-                disabled={gcLoading}
-                variant="outline"
-                size="sm"
-                className="gap-2"
-              >
-                <Bug className="h-4 w-4" />
-                Diagnóstico
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Card 5: Minha Assinatura */}
       <Card className="bg-gradient-card shadow-card border-0">
@@ -988,28 +907,12 @@ export function ProfileSettings() {
                 <span>IA Reports</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
-                {planLimits?.hasGoogleCalendar ? (
-                  <Check className="h-4 w-4 text-success" />
-                ) : (
-                  <X className="h-4 w-4 text-muted-foreground" />
-                )}
-                <span>Google Calendar</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
                 {planLimits?.hasBankIntegration ? (
                   <Check className="h-4 w-4 text-success" />
                 ) : (
                   <X className="h-4 w-4 text-muted-foreground" />
                 )}
                 <span>Integração Bancária</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                {planLimits?.hasMultiUser ? (
-                  <Check className="h-4 w-4 text-success" />
-                ) : (
-                  <X className="h-4 w-4 text-muted-foreground" />
-                )}
-                <span>Multi-usuário</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 {planLimits?.hasPrioritySupport ? (

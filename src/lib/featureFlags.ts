@@ -5,9 +5,8 @@ export interface PlanLimits {
   maxCategories: number | null;
   hasWhatsapp: boolean;
   hasAiReports: boolean;
-  hasGoogleCalendar: boolean;
   hasBankIntegration: boolean;
-  hasMultiUser: boolean;
+  
   hasPrioritySupport: boolean;
 }
 
@@ -23,9 +22,7 @@ export async function getPlanLimits(userId: string): Promise<PlanLimits> {
       maxCategories: null,
       hasWhatsapp: true,
       hasAiReports: true,
-      hasGoogleCalendar: true,
       hasBankIntegration: true,
-      hasMultiUser: true,
       hasPrioritySupport: true,
     };
   }
@@ -50,9 +47,7 @@ export async function getPlanLimits(userId: string): Promise<PlanLimits> {
         maxCategories: orgPlanData.max_categories,
         hasWhatsapp: orgPlanData.has_whatsapp,
         hasAiReports: orgPlanData.has_ai_reports,
-        hasGoogleCalendar: orgPlanData.has_google_calendar,
         hasBankIntegration: orgPlanData.has_bank_integration,
-        hasMultiUser: orgPlanData.has_multi_user,
         hasPrioritySupport: orgPlanData.has_priority_support
       };
     }
@@ -63,9 +58,7 @@ export async function getPlanLimits(userId: string): Promise<PlanLimits> {
       maxCategories: 10,
       hasWhatsapp: true,
       hasAiReports: false,
-      hasGoogleCalendar: false,
       hasBankIntegration: false,
-      hasMultiUser: false,
       hasPrioritySupport: false
     };
   }
@@ -76,9 +69,7 @@ export async function getPlanLimits(userId: string): Promise<PlanLimits> {
     maxCategories: plan.max_categories,
     hasWhatsapp: plan.has_whatsapp,
     hasAiReports: plan.has_ai_reports,
-    hasGoogleCalendar: plan.has_google_calendar,
     hasBankIntegration: plan.has_bank_integration,
-    hasMultiUser: plan.has_multi_user,
     hasPrioritySupport: plan.has_priority_support
   };
 }

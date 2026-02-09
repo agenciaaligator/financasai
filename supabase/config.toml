@@ -76,12 +76,6 @@ enabled = true
 port = 54330
 ip_version = "ipv4"
 
-[functions.custom-auth-emails]
-verify_jwt = false
-
-[functions.ai-reports]
-verify_jwt = true
-
 [functions.whatsapp-webhook]
 verify_jwt = false
 
@@ -100,56 +94,8 @@ verify_jwt = true
 [functions.customer-portal]
 verify_jwt = true
 
-[functions.activate-trial]
-verify_jwt = true
-
-[functions.check-expired-trials]
-verify_jwt = false
-
-[functions.send-commitment-reminders]
-verify_jwt = false
-
-[functions.google-calendar-auth]
-verify_jwt = false
-
-[functions.google-calendar-callback]
-verify_jwt = false
-
-[functions.google-calendar-diagnostics]
-verify_jwt = false
-
-[functions.google-calendar-sync]
-verify_jwt = true
-
-[functions.google-calendar-disconnect]
-verify_jwt = true
-
-[functions.google-calendar-import]
-verify_jwt = true
-
-[functions.sync-pending-commitments]
-verify_jwt = false
-
-[functions.send-daily-agenda]
-verify_jwt = false
-
-[functions.sync-all-google-calendars]
-verify_jwt = false
-
-[functions.backfill-whatsapp-transactions]
-verify_jwt = true
-
-[functions.whatsapp-session-set-org]
-verify_jwt = true
-
-[functions.delete-user-admin]
-verify_jwt = true
-
 [functions.stripe-webhook]
 verify_jwt = false
 
-[functions.sync-stripe-subscriptions]
-verify_jwt = false
-
-[functions.activate-trial-coupon]
+[functions.whatsapp-session-set-org]
 verify_jwt = true

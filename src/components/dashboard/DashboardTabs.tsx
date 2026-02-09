@@ -6,9 +6,7 @@ import { FinancialChart } from "../FinancialChart";
 import { CategoryManager } from "../CategoryManager";
 import { ProfileSettings } from "../ProfileSettings";
 import { ReportsPage } from "../ReportsPage";
-import { AIReportsChat } from "../AIReportsChat";
 import { FutureFeatures } from "../FutureFeatures";
-import { CommitmentsManager } from "../CommitmentsManager";
 import { TransactionFilters, TransactionFiltersState } from "../TransactionFilters";
 import { Transaction } from "@/hooks/useTransactions";
 import { ErrorBoundary } from "../ErrorBoundary";
@@ -18,14 +16,10 @@ import {
   User,
   Tags,
   BarChart,
-  Bot,
   Shield,
-  Calendar,
-  Users,
   Sparkles,
   Repeat
 } from "lucide-react";
-import { TeamManagement } from "../admin/TeamManagement";
 import { AdminPanel } from "../admin/AdminPanel";
 import { RecurringTransactionsManager } from "../RecurringTransactionsManager";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -67,7 +61,7 @@ export function DashboardTabs({
 }: DashboardTabsProps) {
   const { isAdmin, role, loading } = useUserRole();
   
-  console.log('[DashboardTabs] Role status:', { isAdmin, role, loading });
+  
   const [filters, setFilters] = useState<TransactionFiltersState>({
     period: 'all',
     customDateRange: { start: null, end: null },
@@ -163,7 +157,7 @@ export function DashboardTabs({
 
   return (
     <Tabs value={currentTab} onValueChange={onTabChange} className="w-full">
-      <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-10' : 'grid-cols-9'} bg-muted/30`}>
+      <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-8' : 'grid-cols-7'} bg-muted/30`}>
         <TabsTrigger value="dashboard" className="flex items-center space-x-2">
           <DollarSign className="h-4 w-4" />
           <span>Dashboard</span>
@@ -183,18 +177,6 @@ export function DashboardTabs({
         <TabsTrigger value="reports" className="flex items-center space-x-2">
           <BarChart className="h-4 w-4" />
           <span>Relatórios</span>
-        </TabsTrigger>
-        <TabsTrigger value="ai-chat" className="flex items-center space-x-2">
-          <Bot className="h-4 w-4" />
-          <span>IA Reports</span>
-        </TabsTrigger>
-        <TabsTrigger value="agenda" className="flex items-center space-x-2">
-          <Calendar className="h-4 w-4" />
-          <span>Agenda</span>
-        </TabsTrigger>
-        <TabsTrigger value="team" className="flex items-center space-x-2">
-          <Users className="h-4 w-4" />
-          <span>Equipe</span>
         </TabsTrigger>
         <TabsTrigger value="future" className="flex items-center space-x-2">
           <Sparkles className="h-4 w-4" />
@@ -280,17 +262,6 @@ export function DashboardTabs({
         <ReportsPage />
       </TabsContent>
 
-      <TabsContent value="ai-chat">
-        <AIReportsChat />
-      </TabsContent>
-
-      <TabsContent value="agenda">
-        <CommitmentsManager />
-      </TabsContent>
-
-      <TabsContent value="team">
-        <TeamManagement />
-      </TabsContent>
 
       <TabsContent value="future">
         <FutureFeatures />
