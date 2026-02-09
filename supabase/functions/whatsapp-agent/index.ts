@@ -46,80 +46,15 @@ async function sendWhatsAppMessage(to: string, message: string): Promise<void> {
   }
 }
 
-const corsHeadersOriginal = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-// Helper para sincronizar com Google Calendar
-async function syncWithGoogleCalendar(
-  action: 'create' | 'update' | 'delete',
-  commitmentId: string,
-  userId: string,
-  googleEventId?: string
-): Promise<{ success: boolean; error?: string }> {
-  const maxRetries = 3;
-  let lastError: string = '';
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`📅 [WHATSAPP-AGENT] Sync attempt ${attempt}/${maxRetries}: ${action} for ${commitmentId}`);
-      
-      const syncResponse = await fetch(
-        `${Deno.env.get('SUPABASE_URL')}/functions/v1/google-calendar-sync`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            action,
-            commitmentId,
-            userId,
-            googleEventId,
-          }),
-          signal: AbortSignal.timeout(15000), // ✅ Timeout de 15s
-        }
-      );
-      
-      if (syncResponse.ok) {
-        const result = await syncResponse.json();
-        console.log(`✅ [WHATSAPP-AGENT] Sync successful on attempt ${attempt}:`, result);
-        return { success: true };
-      } else {
-        const errorText = await syncResponse.text();
-        lastError = `HTTP ${syncResponse.status}: ${errorText}`;
-        console.error(`⚠️ [WHATSAPP-AGENT] Sync failed attempt ${attempt}:`, lastError);
-        
-        // Não retry em erros 4xx (cliente)
-        if (syncResponse.status >= 400 && syncResponse.status < 500) {
-          break;
-        }
-        
-        // Aguardar antes de retry (exponential backoff)
-        if (attempt < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-        }
-      }
-    } catch (syncError) {
-      lastError = syncError.message || String(syncError);
-      console.error(`⚠️ [WHATSAPP-AGENT] Sync error attempt ${attempt}:`, lastError);
-      
-      // Aguardar antes de retry
-      if (attempt < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-      }
-    }
-  }
-  
-  console.error(`❌ [WHATSAPP-AGENT] All sync attempts failed for ${commitmentId}:`, lastError);
-  return { success: false, error: lastError };
-}
 
 // Rate limiting for authentication
 const authRateLimit = new Map<string, { count: number; windowStart: number }>();
 const AUTH_RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour
+const MAX_AUTH_ATTEMPTS_PER_HOUR = 3;
+
+// Message deduplication at agent level (defense in depth)
+const processedMessages = new Map<string, number>();
+const AGENT_DEDUPE_WINDOW = 10 * 60 * 1000; // 10 minutes
 const MAX_AUTH_ATTEMPTS_PER_HOUR = 3;
 
 interface WhatsAppMessage {
@@ -6655,18 +6590,26 @@ serve(async (req) => {
   }
 
   try {
-    // Log de versão para tracking de deploys
-    console.log('[WhatsApp Agent] VERSION: 2025-11-10T15:30:00 - AGENDA FIX DEFINITIVO');
-    
     const body = await req.json();
     const { phone_number, message, action } = body;
     
-    console.log('📥 Request body:', { 
-      hasPhoneNumber: !!phone_number, 
-      hasMessage: !!message,
-      action,
-      bodyKeys: Object.keys(body)
-    });
+    // Idempotency check: skip if this message_id was already processed
+    const msgId = message?.id;
+    if (msgId && msgId !== 'unknown') {
+      const now = Date.now();
+      const lastSeen = processedMessages.get(msgId);
+      if (lastSeen && (now - lastSeen < AGENT_DEDUPE_WINDOW)) {
+        console.log(`🚫 [AGENT] Duplicate message_id ignored: ${msgId.substring(0, 10)}***`);
+        return new Response(JSON.stringify({ success: true, response: 'duplicate_ignored' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      processedMessages.set(msgId, now);
+      // Cleanup old entries
+      for (const [id, ts] of processedMessages.entries()) {
+        if (now - ts > AGENT_DEDUPE_WINDOW) processedMessages.delete(id);
+      }
+    }
 
     // ✨ FASE 5: Handle send-validation-code action
     if (action === 'send-validation-code') {

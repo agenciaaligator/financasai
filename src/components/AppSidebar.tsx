@@ -4,14 +4,11 @@ import {
   TrendingUp,
   Tags,
   BarChart,
-  Bot,
   Rocket,
   User,
   Plus,
   Menu,
   X,
-  Calendar,
-  Users,
   MessageSquare,
   Shield,
   Repeat,
@@ -71,24 +68,6 @@ const sidebarItems = [
     title: "Relatórios", 
     icon: BarChart,
     description: "Análises e gráficos"
-  },
-  { 
-    id: "ai-chat", 
-    title: "IA Reports", 
-    icon: Bot,
-    description: "Relatórios inteligentes"
-  },
-  { 
-    id: "agenda", 
-    title: "Agenda", 
-    icon: Calendar,
-    description: "Compromissos e eventos"
-  },
-  { 
-    id: "team", 
-    title: "Equipe", 
-    icon: Users,
-    description: "Gerenciar membros da equipe"
   },
   { 
     id: "future", 
@@ -161,7 +140,7 @@ export function AppSidebar({
 
           {/* Menu de navegação */}
           <div className="space-y-1">
-            {[...sidebarItems.filter(item => item.id !== 'team' || isOwner), ...(isAdmin ? adminItems : [])].map((item) => {
+            {[...sidebarItems, ...(isAdmin ? adminItems : [])].map((item) => {
               // Para "Transações", criar submenu
               if (item.id === 'transactions') {
                 const isTransactionsActive = currentTab === 'transactions' || currentTab === 'recurring';
@@ -276,7 +255,7 @@ export function AppSidebar({
             </div>
 
             <SidebarMenu>
-              {[...sidebarItems.filter(item => item.id !== 'team' || isOwner), ...(isAdmin ? adminItems : [])].map((item) => {
+              {[...sidebarItems, ...(isAdmin ? adminItems : [])].map((item) => {
                 // Para "Transações", criar submenu com Collapsible
                 if (item.id === 'transactions') {
                   const isTransactionsActive = currentTab === 'transactions' || currentTab === 'recurring';

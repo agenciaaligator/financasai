@@ -11,9 +11,6 @@ import ResetPassword from "./pages/ResetPassword";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import NotFound from "./pages/NotFound";
-import GCBridge from "./pages/GCBridge";
-import GCAuthResult from "./pages/GCAuthResult";
-import InviteAccept from "./pages/InviteAccept";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import { AdminPanel } from "@/components/admin/AdminPanel";
@@ -56,9 +53,6 @@ const App = () => {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
             <Route path="/payment-cancelled" element={<PaymentCancelled />} />
-            <Route path="/gc-bridge" element={<GCBridge />} />
-            <Route path="/gc-done" element={<GCAuthResult />} />
-            <Route path="/invite/:token" element={<InviteAccept />} />
             <Route path="/termos" element={<Terms />} />
             <Route path="/privacidade" element={<Privacy />} />
             <Route path="*" element={<NotFound />} />
