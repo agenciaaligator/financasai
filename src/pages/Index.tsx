@@ -123,9 +123,12 @@ const LandingPage = () => {
           <div className="hidden md:flex items-center justify-center">
             <div className="relative">
               <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full"></div>
-              <div className="relative bg-card p-8 rounded-2xl shadow-2xl border-2 border-primary/20">
-                <Calendar className="h-48 w-48 text-primary" />
-              </div>
+              <img 
+                src="/images/landing/hero-illustration.png" 
+                alt="Dona Wilma - WhatsApp, Dashboard e Calendário integrados"
+                className="relative w-full max-w-md rounded-2xl shadow-2xl"
+                loading="eager"
+              />
             </div>
           </div>
         </div>
@@ -289,7 +292,7 @@ const LandingPage = () => {
       <section id="planos" className="container mx-auto px-4 py-16">
         <h2 className="text-3xl font-bold text-center mb-4">Escolha seu plano</h2>
         <p className="text-center text-muted-foreground mb-12">
-          Comece gratuitamente e faça upgrade quando precisar
+          Tudo que você precisa em um único plano
         </p>
         <PlansSection />
       </section>
