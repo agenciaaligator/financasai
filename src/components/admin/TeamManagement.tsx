@@ -73,31 +73,38 @@ export function TeamManagement() {
     if (!selectedOrg) return;
 
     try {
-      const { data, error } = await supabase
+      // Fetch members
+      const { data: membersRaw, error: membersError } = await supabase
         .from("organization_members")
-        .select(`
-          id,
-          user_id,
-          role,
-          permissions,
-          profiles!organization_members_user_id_fkey (email, full_name)
-        `)
+        .select("id, user_id, role, permissions")
         .eq("organization_id", selectedOrg);
 
-      if (error) throw error;
+      if (membersError) throw membersError;
 
-      const membersData = data?.map((m: any) => ({
-        id: m.id,
-        user_id: m.user_id,
-        role: m.role,
-        permissions: m.permissions,
-        email: m.profiles?.email || "N/A",
-        full_name: m.profiles?.full_name || null,
-      })) || [];
+      // Fetch safe profiles via RPC (excludes phone_number)
+      const { data: profiles, error: profilesError } = await supabase
+        .rpc("get_org_member_profiles" as any, { p_org_id: selectedOrg });
+
+      if (profilesError) throw profilesError;
+
+      const profileMap = new Map(
+        ((profiles as any[]) || []).map((p: any) => [p.user_id, p])
+      );
+
+      const membersData = (membersRaw || []).map((m: any) => {
+        const profile = profileMap.get(m.user_id);
+        return {
+          id: m.id,
+          user_id: m.user_id,
+          role: m.role,
+          permissions: m.permissions,
+          email: profile?.email || "N/A",
+          full_name: profile?.full_name || null,
+        };
+      });
 
       setMembers(membersData);
 
-      // Verificar se o usuário atual é owner
       const currentUserMember = membersData.find(m => m.user_id === user?.id);
       setIsOwner(currentUserMember?.role === 'owner');
     } catch (error: any) {
