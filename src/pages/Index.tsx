@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Calendar, DollarSign, Shield, Smartphone, Zap, BarChart3, Brain, Menu, FolderOpen } from "lucide-react";
 import { FinancialDashboard } from "@/components/FinancialDashboard";
+import { LanguageSelector } from "@/components/LanguageSelector";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { PlansSection } from "@/components/PlansSection";
 import { TestimonialsSection } from "@/components/TestimonialsSection";
@@ -52,6 +53,9 @@ const LandingPage = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            <div className="hidden md:block">
+              <LanguageSelector />
+            </div>
             <Button variant="outline" onClick={() => setShowLogin(true)} className="hidden sm:flex">
               {t('auth.login')}
             </Button>
@@ -69,6 +73,7 @@ const LandingPage = () => {
                   <a href="#planos" className="text-lg hover:text-primary transition-colors">{t('landing.nav.plans')}</a>
                   <a href="#contato" className="text-lg hover:text-primary transition-colors">{t('landing.nav.contact')}</a>
                   <div className="flex flex-col gap-2 mt-4">
+                    <LanguageSelector />
                     <Button variant="outline" onClick={() => setShowLogin(true)} className="w-full">
                       {t('auth.login')}
                     </Button>
