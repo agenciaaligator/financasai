@@ -206,5 +206,77 @@
   "profile": {
     "language": "Idioma",
     "languageDesc": "Selecione o idioma da sua preferência"
+  },
+  "landing": {
+    "nav": {
+      "howItWorks": "Como funciona",
+      "plans": "Planos",
+      "contact": "Contacto"
+    },
+    "hero": {
+      "title": "Tenha uma assessora pessoal a trabalhar",
+      "highlight": "24h por dia",
+      "titleEnd": "por si",
+      "subtitle": "Faça a gestão das suas finanças de forma inteligente com a Dona Wilma",
+      "viewPlans": "Ver planos",
+      "learnMore": "Saber mais"
+    },
+    "howItWorks": {
+      "subtitle": "Simplifique a sua vida com tecnologia que trabalha por si"
+    },
+    "features": {
+      "financial": {
+        "tag": "FINANCEIRO",
+        "title": "Controlo Financeiro no WhatsApp",
+        "description": "Registe receitas e despesas com mensagens como 'gastei 50 euros no supermercado' ou 'recebi 2 mil de salário' diretamente no WhatsApp. A IA compreende, categoriza e regista tudo automaticamente.",
+        "h1": "Categorização inteligente com IA",
+        "h2": "Relatórios por categoria",
+        "h3": "Integração com o painel web"
+      },
+      "records": {
+        "tag": "REGISTOS",
+        "title": "Registe tudo no WhatsApp",
+        "description": "Envie uma mensagem e o nosso assistente regista tudo automaticamente.",
+        "h1": "Texto ou áudio, escolha",
+        "h2": "Categorização inteligente",
+        "h3": "Rápido, prático e sem complicação"
+      },
+      "dashboard": {
+        "tag": "PAINEL",
+        "title": "Painel Profissional",
+        "description": "Visualize relatórios, gráficos e detalhes das suas transações com poucos cliques. Tudo organizado automaticamente, sem registo manual.",
+        "h1": "Gráficos de fluxo de caixa",
+        "h2": "Visão por categoria",
+        "h3": "Detalhamento por período",
+        "h4": "Prático e acessível"
+      },
+      "categories": {
+        "tag": "CATEGORIAS",
+        "title": "Categorias Personalizadas",
+        "description": "Use as que já vêm prontas ou crie quantas quiser.",
+        "h1": "Categorias ilimitadas",
+        "h2": "Classificação automática por IA",
+        "h3": "Registo automático no WhatsApp"
+      }
+    },
+    "howItWorksPractice": {
+      "title": "Como funciona na prática",
+      "subtitle": "Em 3 passos simples, organiza a sua vida financeira"
+    },
+    "plans": {
+      "title": "Escolha o seu plano",
+      "subtitle": "Tudo o que precisa num único plano"
+    },
+    "faq": {
+      "title": "Perguntas frequentes",
+      "subtitle": "Esclareça as suas dúvidas sobre a Dona Wilma"
+    },
+    "footer": {
+      "tagline": "A sua assessora pessoal para finanças",
+      "links": "Links",
+      "terms": "Termos de Serviço",
+      "privacy": "Política de Privacidade",
+      "copyright": "© 2025 Dona Wilma. Todos os direitos reservados."
+    }
   }
 }
