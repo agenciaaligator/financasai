@@ -17,6 +17,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useTranslation } from "react-i18next";
 
 export function FinancialDashboard() {
   const [showForm, setShowForm] = useState(false);
@@ -29,6 +30,19 @@ export function FinancialDashboard() {
   const isOwner = role === 'owner'; // Derivar isOwner da role ativa
   const { transactions, categories, loading, balance, totalIncome, totalExpenses, addTransaction, deleteTransaction, refetch } = useTransactions();
   const isMobile = useIsMobile();
+  const { t } = useTranslation();
+
+  const tabTitleMap: Record<string, string> = {
+    dashboard: t('dashboard.title', 'Dashboard Financeiro'),
+    transactions: t('dashboard.transactions', 'Transações'),
+    categories: t('dashboard.categories', 'Categorias'),
+    reports: t('dashboard.reports', 'Relatórios'),
+    recurring: t('dashboard.recurring', 'Contas Fixas'),
+    whatsapp: t('dashboard.whatsapp', 'WhatsApp'),
+    future: t('dashboard.future', 'Novidades'),
+    profile: t('dashboard.profile', 'Perfil'),
+    admin: t('dashboard.admin', 'Painel Administrativo'),
+  };
 
   // Scroll para o topo quando mudar de tab ou abrir formulário (DEVE estar antes de qualquer early return)
   useEffect(() => {
@@ -102,18 +116,7 @@ export function FinancialDashboard() {
               </Sheet>
               <div>
                 <h1 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                  {currentTab === "dashboard" && "Dashboard Financeiro"}
-                  {currentTab === "transactions" && "Transações"}
-                  {currentTab === "categories" && "Categorias"}
-                  {currentTab === "reports" && "Relatórios"}
-                  {currentTab === "ai-chat" && "IA Reports"}
-                  {currentTab === "agenda" && "Agenda"}
-                  {currentTab === "recurring" && "Contas Fixas"}
-                  {currentTab === "whatsapp" && "WhatsApp"}
-                  {currentTab === "team" && "Equipe"}
-                  {currentTab === "future" && "Novidades"}
-                  {currentTab === "profile" && "Perfil"}
-                  {currentTab === "admin" && "Painel Administrativo"}
+                  {tabTitleMap[currentTab] || currentTab}
                 </h1>
               </div>
             </div>
@@ -183,21 +186,10 @@ export function FinancialDashboard() {
                 <SidebarTrigger className="h-8 w-8" />
                 <div>
                   <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                    {currentTab === "dashboard" && "Dashboard Financeiro"}
-                    {currentTab === "transactions" && "Transações"}
-                    {currentTab === "categories" && "Categorias"}
-                    {currentTab === "reports" && "Relatórios"}
-                    {currentTab === "ai-chat" && "IA Reports"}
-                    {currentTab === "agenda" && "Agenda"}
-                    {currentTab === "recurring" && "Contas Fixas"}
-                    {currentTab === "whatsapp" && "WhatsApp"}
-                    {currentTab === "team" && "Equipe"}
-                    {currentTab === "future" && "Novidades"}
-                    {currentTab === "profile" && "Perfil"}
-                    {currentTab === "admin" && "Painel Administrativo"}
+                    {tabTitleMap[currentTab] || currentTab}
                   </h1>
                   <p className="text-sm text-muted-foreground">
-                    Olá, {user?.email}
+                    {t('dashboard.hello', 'Olá')}, {user?.email}
                   </p>
                 </div>
               </div>

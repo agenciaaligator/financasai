@@ -119,7 +119,7 @@ export function TransactionList({
       
       <div className="space-y-3">
       {transactions.map((transaction) => (
-        <Card key={transaction.id} className="border-l-4 border-l-primary/20 hover:shadow-soft transition-shadow">
+        <Card key={transaction.id} className={`border-l-4 hover:shadow-soft transition-shadow ${transaction.type === 'income' ? 'border-l-success/40' : 'border-l-destructive/40'}`}>
           <CardContent className="pt-4">
             {/* Layout mobile-first responsivo */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -145,15 +145,15 @@ export function TransactionList({
                           {transaction.categories.name}
                         </Badge>
                       )}
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge variant="outline" className="text-xs opacity-60">
                         {transaction.source === 'whatsapp' ? 'WhatsApp' : 'Manual'}
                       </Badge>
                       {transaction.profiles && (
                         <Badge 
                           variant="outline" 
-                          className="text-xs bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 font-semibold"
+                          className="text-xs opacity-60"
                         >
-                          👤 {transaction.profiles.full_name || transaction.profiles.email || 'Sem nome'}
+                          {transaction.profiles.full_name || transaction.profiles.email || 'Sem nome'}
                         </Badge>
                       )}
                     </div>
@@ -172,7 +172,7 @@ export function TransactionList({
               
               <div className="flex items-center justify-between sm:justify-end space-x-2 flex-shrink-0">
                 <div className="text-left sm:text-right">
-                  <p className={`font-bold text-sm sm:text-base ${
+                  <p className={`font-bold text-base sm:text-lg ${
                     transaction.type === 'income' ? 'text-success' : 'text-destructive'
                   }`}>
                     {transaction.type === 'income' ? '+' : '-'} R$ {transaction.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}

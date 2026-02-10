@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useTranslation } from "react-i18next";
 
 import {
   Sidebar,
@@ -103,9 +104,23 @@ export function AppSidebar({
   const { open } = useSidebar();
   const isMobile = useIsMobile();
   const isAdmin = !!isAdminProp;
+  const { t } = useTranslation();
   const [transactionsOpen, setTransactionsOpen] = useState(
     isMobile ? true : (currentTab === 'transactions' || currentTab === 'recurring')
   );
+
+  const sidebarItemsLocal = [
+    { id: "dashboard", title: t('sidebar.dashboard', 'Dashboard'), icon: DollarSign, description: t('sidebar.dashboardDesc', 'Visão geral financeira') },
+    { id: "transactions", title: t('sidebar.transactions', 'Transações'), icon: TrendingUp, description: t('sidebar.transactionsDesc', 'Lançamentos e movimentações') },
+    { id: "categories", title: t('sidebar.categories', 'Categorias'), icon: Tags, description: t('sidebar.categoriesDesc', 'Gerenciar categorias') },
+    { id: "reports", title: t('sidebar.reports', 'Relatórios'), icon: BarChart, description: t('sidebar.reportsDesc', 'Análises e gráficos') },
+    { id: "future", title: t('sidebar.future', 'Novidades'), icon: Rocket, description: t('sidebar.futureDesc', 'Próximas funcionalidades') },
+    { id: "profile", title: t('sidebar.profile', 'Perfil'), icon: User, description: t('sidebar.profileDesc', 'Configurações pessoais') },
+  ];
+
+  const adminItemsLocal = [
+    { id: "admin", title: t('sidebar.admin', 'Admin'), icon: Shield, description: t('sidebar.adminDesc', 'Painel administrativo') },
+  ];
 
 
   // Para uso mobile, renderiza apenas o conteúdo sem wrapper Sidebar
@@ -134,13 +149,13 @@ export function AppSidebar({
               className="w-full h-12 text-left bg-gradient-primary hover:shadow-primary text-white hover:bg-gradient-primary transition-all duration-200 rounded-lg flex items-center justify-start px-4"
             >
               <Plus className="h-5 w-5" />
-              <span className="ml-2 font-medium">Nova Transação</span>
+              <span className="ml-2 font-medium">{t('sidebar.newTransaction', 'Nova Transação')}</span>
             </button>
           </div>
 
           {/* Menu de navegação */}
           <div className="space-y-1">
-            {[...sidebarItems, ...(isAdmin ? adminItems : [])].map((item) => {
+            {[...sidebarItemsLocal, ...(isAdmin ? adminItemsLocal : [])].map((item) => {
               // Para "Transações", criar submenu
               if (item.id === 'transactions') {
                 const isTransactionsActive = currentTab === 'transactions' || currentTab === 'recurring';
@@ -174,7 +189,7 @@ export function AppSidebar({
                           }`}
                         >
                           <TrendingUp className={`h-4 w-4 ${currentTab === 'transactions' ? "text-primary" : ""}`} />
-                          <span className="ml-2 text-sm">Lançamentos</span>
+                          <span className="ml-2 text-sm">{t('sidebar.lancamentos', 'Lançamentos')}</span>
                         </button>
                         
                         <button
@@ -186,7 +201,7 @@ export function AppSidebar({
                           }`}
                         >
                           <Repeat className={`h-4 w-4 ${currentTab === 'recurring' ? "text-primary" : ""}`} />
-                          <span className="ml-2 text-sm">Contas Fixas</span>
+                          <span className="ml-2 text-sm">{t('sidebar.contasFixas', 'Contas Fixas')}</span>
                         </button>
                       </div>
                     )}
@@ -250,12 +265,12 @@ export function AppSidebar({
                 }`}
               >
                 <Plus className="h-5 w-5" />
-                {open && <span className="ml-2 font-medium">Nova Transação</span>}
+                {open && <span className="ml-2 font-medium">{t('sidebar.newTransaction', 'Nova Transação')}</span>}
               </SidebarMenuButton>
             </div>
 
             <SidebarMenu>
-              {[...sidebarItems, ...(isAdmin ? adminItems : [])].map((item) => {
+              {[...sidebarItemsLocal, ...(isAdmin ? adminItemsLocal : [])].map((item) => {
                 // Para "Transações", criar submenu com Collapsible
                 if (item.id === 'transactions') {
                   const isTransactionsActive = currentTab === 'transactions' || currentTab === 'recurring';
@@ -294,7 +309,7 @@ export function AppSidebar({
                                 className={currentTab === 'transactions' ? "bg-sidebar-accent text-sidebar-primary" : ""}
                               >
                                 <TrendingUp className="h-4 w-4" />
-                                {open && <span>Lançamentos</span>}
+                                {open && <span>{t('sidebar.lancamentos', 'Lançamentos')}</span>}
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
                             <SidebarMenuSubItem>
@@ -303,7 +318,7 @@ export function AppSidebar({
                                 className={currentTab === 'recurring' ? "bg-sidebar-accent text-sidebar-primary" : ""}
                               >
                                 <Repeat className="h-4 w-4" />
-                                {open && <span>Contas Fixas</span>}
+                                {open && <span>{t('sidebar.contasFixas', 'Contas Fixas')}</span>}
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
                           </SidebarMenuSub>

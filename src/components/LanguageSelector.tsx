@@ -6,7 +6,8 @@ export function LanguageSelector() {
   const { i18n } = useTranslation();
 
   const languages = [
-    { code: 'pt-BR', label: '🇧🇷 Português', flag: '🇧🇷' },
+    { code: 'pt-BR', label: '🇧🇷 Português (BR)', flag: '🇧🇷' },
+    { code: 'pt-PT', label: '🇵🇹 Português (PT)', flag: '🇵🇹' },
     { code: 'en-US', label: '🇺🇸 English', flag: '🇺🇸' },
     { code: 'es-ES', label: '🇪🇸 Español', flag: '🇪🇸' },
     { code: 'it-IT', label: '🇮🇹 Italiano', flag: '🇮🇹' },
