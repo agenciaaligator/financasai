@@ -1,109 +1,144 @@
 
-# Ajustes para MVP de Producao - Fluxo Claro e Funcional
+# UX/UI Dashboard Improvements + i18n Preparation
 
-## Resumo
+## Overview
 
-Simplificar o fluxo de onboarding para: Landing Page -> Checkout Stripe -> Payment Success -> Onboarding (WhatsApp) -> Dashboard. Eliminar duplicidade de telas de planos, remover referencias a features removidas (Google Calendar, equipe, lembretes), e padronizar mensagens de erro.
+This plan covers two major areas: (1) visual/UX improvements to the dashboard, and (2) full i18n integration across the frontend. No backend, database, or business logic changes.
 
-## O que sera alterado
+## PHASE 1: UX/UI Dashboard Improvements
 
-### 1. Unificar telas de plano (eliminar duplicidade)
+### 1.1 Toggle "Ver apenas minhas transacoes" (improved)
 
-**Problema:** Existem duas telas separadas (`/plans` com `PlansSection` e `/choose-plan` com `ChoosePlan`). O botao da landing page leva a `PlansSection`, que por sua vez navega para `/choose-plan`. Dois cliques desnecessarios.
+**Files:** `src/components/dashboard/DashboardContent.tsx`
 
-**Solucao:**
-- Remover a rota `/plans` e a pagina `src/pages/Plans.tsx`
-- Na `PlansSection` (usada na landing page), trocar o botao "Comecar agora" para chamar diretamente o `create-checkout` com o `priceId` correto (igual ao `ChoosePlan`), em vez de navegar para `/choose-plan`
-- Manter `/choose-plan` como rota direta para quem acessar via URL (sem mudancas)
-- Na landing page, o botao "Ver planos" ja faz scroll para `#planos` - isso continua
+Current state: a plain Switch + Label, easy to miss. 
 
-### 2. Atualizar lista de features (remover items do MVP removido)
+Changes:
+- Wrap the Switch in a small styled container with background (`bg-muted/50 rounded-lg px-3 py-2`)
+- Add a subtle helper text below: "Filtra transacoes para mostrar somente as suas"
+- Make ON state visually distinct (green accent border or background shift)
+- Apply same style in both dashboard tab (line 371-382) and transactions tab (line 479-489)
 
-Nos dois locais onde features sao listadas (`PlansSection.tsx` e `ChoosePlan.tsx`):
+### 1.2 Card "Meu Plano" (improved)
 
-**Remover:**
-- "Google Calendar"
-- "Multi-usuario"
-- "Relatorios com IA"
+**File:** `src/components/dashboard/SummaryCards.tsx`
 
-**Manter:**
-- Transacoes ilimitadas
-- Categorias ilimitadas
-- WhatsApp integrado
-- Suporte prioritario
+Changes:
+- Add a status badge (green dot + "Ativo") next to plan name
+- Replace raw plan name with clearer layout: plan name on top, access type below (e.g., "Acesso completo" or "Acesso limitado")
+- Change "Upgrade" button text to "Gerenciar assinatura" for premium users, calling the `customer-portal` edge function
+- Keep "Upgrade" for free/trial users (existing behavior)
+- Remove Progress bars for premium users (they have unlimited)
 
-**Adicionar:**
-- Classificacao automatica por IA
-- Consultas financeiras por WhatsApp
+### 1.3 Financial Chart improvements
 
-### 3. Atualizar Landing Page (remover blocos de features removidas)
+**File:** `src/components/FinancialChart.tsx`
 
-No `src/pages/Index.tsx`, remover os FeatureBlocks que promovem funcionalidades fora do MVP:
+Changes:
+- Increase chart height from 200px to 280px for both charts
+- Improve tooltip: add white background with shadow, better formatted currency
+- Improve legend font size and spacing
+- Use softer colors with better contrast: income `#059669` (darker green), expense `#dc2626` (darker red)
+- Add `radius` to bar chart bars for rounded corners
+- Increase padding between pie chart and bar chart (spacing)
 
-- **Remover** Bloco 2: "Gestao de Compromissos" (agenda)
-- **Remover** Bloco 5: "Compartilhe sua conta" (multiusuario)
-- **Remover** Bloco 7: "Lembretes Diarios" (notificacoes)
-- **Remover** Bloco 8: "Integracao com Google Agenda" (Google Calendar)
+### 1.4 Transaction List visual hierarchy
 
-**Manter:** Bloco 1 (Financeiro), Bloco 3 (Registros), Bloco 4 (Painel), Bloco 6 (Categorias)
+**File:** `src/components/TransactionList.tsx`
 
-### 4. Atualizar FAQ
+Changes:
+- Make the amount (`font-bold`) larger: `text-base sm:text-lg` instead of `text-sm sm:text-base`
+- Add +/- prefix more prominently
+- Make category/source badges lighter: use `variant="outline"` with lower opacity for source badge
+- Reduce user badge prominence (smaller, more subtle)
+- Add subtle left border color based on transaction type: green for income, red for expense (replace current `border-l-primary/20`)
 
-No `src/components/FAQSection.tsx`:
-- Remover pergunta sobre Google Calendar
-- Atualizar pergunta sobre WhatsApp (remover "lembretes e notificacoes", focar em registro de transacoes)
+### 1.5 Remove debug diagnostic card
 
-### 5. Atualizar Welcome/Onboarding
+**File:** `src/components/dashboard/DashboardContent.tsx`
 
-No `src/pages/Welcome.tsx`:
-- Remover dica "Reuniao amanha as 14h" (agenda removida)
-- Atualizar descricao do card WhatsApp: remover "Receba lembretes", focar em "Registre transacoes pelo WhatsApp"
-- Manter fluxo existente (phone -> code -> connected -> dashboard)
-- Nao bloquear acesso ao dashboard
+The transactions tab shows a diagnostic card with "Permissao ver outros", "Minhas", "Da org" counts (lines 448-471). This is developer-only info. Remove it.
 
-### 6. Padronizar mensagens de erro
+## PHASE 2: i18n Integration
 
-No `src/components/PlansSection.tsx` (apos adicionar checkout direto) e `src/pages/ChoosePlan.tsx`:
-- Mensagem de erro padrao: "Nao foi possivel completar a acao. Tente novamente."
-- Remover mensagens tecnicas como `error.message` da exibicao ao usuario
+### 2.1 Expand translation files
 
-### 7. Remover rota `/plans` do App.tsx
+**Files:** All 4 locale files + create `src/locales/pt-PT.json`
 
-- Remover import de `Plans`
-- Remover `<Route path="/plans" ...>`
+The current locale files have partial coverage. Expand them with keys for:
+- Sidebar menu items (dashboard, transactions, lancamentos, contas_fixas, categories, reports, news, profile, admin)
+- Summary cards (monthBalance, income, expenses, myPlan, active, manageSubscription, upgrade)
+- Transaction list (noTransactions, showingRange, manual, whatsapp, filterActive)
+- Filters (period, type, source, category, search, clearFilters, all, today, week, month)
+- Chart labels (incomeVsExpenses, byCategory)
+- Dashboard header titles
+- Common actions and error messages
+- Landing page texts (hero, features, FAQ, plans, CTA)
 
-### 8. Limpeza do `src/pages/Index.tsx`
+Remove the entire `agenda` section from all locale files (feature removed from MVP).
 
-- Remover texto da hero que menciona "compromissos" (focar em financas)
-- Remover icons nao utilizados (Bell, RefreshCw, Users, Clock)
+Create `pt-PT.json` by copying `pt-BR.json` and adjusting vocabulary (e.g., "Lancamentos" stays, but some expressions may differ).
 
-## Arquivos afetados
+### 2.2 Apply `useTranslation` to dashboard components
 
-| Arquivo | Acao |
-|---------|------|
-| `src/pages/Plans.tsx` | Deletar |
-| `src/App.tsx` | Remover rota `/plans` e import |
-| `src/components/PlansSection.tsx` | Adicionar checkout direto, atualizar features |
-| `src/pages/ChoosePlan.tsx` | Atualizar features, padronizar erros |
-| `src/pages/Index.tsx` | Remover 4 FeatureBlocks, limpar hero text e icons |
-| `src/components/FAQSection.tsx` | Remover FAQ do GCal, atualizar FAQ do WhatsApp |
-| `src/pages/Welcome.tsx` | Remover dica de agenda, atualizar descricao |
+**Files affected:**
+- `src/components/AppSidebar.tsx` - sidebar items titles and descriptions
+- `src/components/dashboard/SummaryCards.tsx` - card titles, labels
+- `src/components/dashboard/DashboardContent.tsx` - tab titles, buttons, labels
+- `src/components/FinancialChart.tsx` - chart labels, tooltips
+- `src/components/TransactionList.tsx` - empty states, badges, pagination text
+- `src/components/TransactionFilters.tsx` - filter labels
+- `src/components/dashboard/AddTransactionButton.tsx` - button text
+- `src/components/FinancialDashboard.tsx` - header tab titles (mobile + desktop)
 
-## O que NAO sera alterado
+Pattern: import `useTranslation`, call `const { t } = useTranslation()`, replace hardcoded strings with `t('key')`.
 
-- Edge functions (create-checkout, stripe-webhook, check-subscription, whatsapp-*)
-- Banco de dados
-- Fluxo de autenticacao
-- PaymentSuccess (ja funciona corretamente)
-- Dashboard
-- useSubscriptionStatus (ja e reativo, sem background)
-- Stripe (allow_promotion_codes ja esta true)
+### 2.3 Add language selector to ProfileSettings
 
-## Ordem de execucao
+**File:** `src/components/ProfileSettings.tsx`
 
-1. Deletar `src/pages/Plans.tsx` e remover rota do `App.tsx`
-2. Atualizar `PlansSection.tsx` com checkout direto
-3. Atualizar features em `PlansSection.tsx` e `ChoosePlan.tsx`
-4. Limpar landing page (`Index.tsx`) - remover blocos e texto
-5. Atualizar `FAQSection.tsx`
-6. Atualizar `Welcome.tsx`
+Add the existing `LanguageSelector` component (already built at `src/components/LanguageSelector.tsx`) to the profile settings page, in a new "Idioma / Language" section near the top.
+
+### 2.4 Add pt-PT to LanguageSelector and i18n config
+
+**Files:** `src/i18n.ts`, `src/components/LanguageSelector.tsx`
+
+- Import and register `pt-PT` in i18n config
+- Add Portuguese (Portugal) option to the language selector dropdown
+
+## Files Summary
+
+| File | Action |
+|------|--------|
+| `src/components/dashboard/DashboardContent.tsx` | Improve toggle UX, remove debug card |
+| `src/components/dashboard/SummaryCards.tsx` | Improve "Meu Plano" card, add i18n |
+| `src/components/FinancialChart.tsx` | Better spacing, colors, tooltips, add i18n |
+| `src/components/TransactionList.tsx` | Visual hierarchy improvements, add i18n |
+| `src/components/TransactionFilters.tsx` | Add i18n |
+| `src/components/AppSidebar.tsx` | Add i18n to menu items |
+| `src/components/FinancialDashboard.tsx` | Add i18n to header titles |
+| `src/components/dashboard/AddTransactionButton.tsx` | Add i18n |
+| `src/components/ProfileSettings.tsx` | Add LanguageSelector |
+| `src/locales/pt-BR.json` | Expand keys, remove agenda section |
+| `src/locales/en-US.json` | Expand keys, remove agenda section |
+| `src/locales/es-ES.json` | Expand keys, remove agenda section |
+| `src/locales/it-IT.json` | Expand keys, remove agenda section |
+| `src/locales/pt-PT.json` | Create (new file) |
+| `src/i18n.ts` | Add pt-PT |
+| `src/components/LanguageSelector.tsx` | Add pt-PT option |
+
+## What will NOT change
+
+- No backend/edge function changes
+- No database changes
+- No Stripe logic changes
+- No new features
+- No component rewrites (incremental edits only)
+- No WhatsApp agent changes (WhatsApp i18n is out of scope for this phase -- requires edge function changes)
+
+## Execution order
+
+1. Phase 1: UX improvements (toggle, plan card, chart, transaction list, remove debug card)
+2. Phase 2: Expand locale files + create pt-PT
+3. Phase 2: Apply `useTranslation` across components
+4. Phase 2: Add LanguageSelector to ProfileSettings
