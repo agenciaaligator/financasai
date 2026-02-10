@@ -5,6 +5,7 @@ import { UsersManagement } from "./UsersManagement";
 import { SubscriptionsManagement } from "./SubscriptionsManagement";
 import { AdminStats } from "./AdminStats";
 import { Shield, Users, CreditCard, BarChart3 } from "lucide-react";
+import { LanguageFlagSelector } from "@/components/LanguageFlagSelector";
 
 export function AdminPanel() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -36,14 +37,17 @@ export function AdminPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="p-3 bg-gradient-primary rounded-xl">
-          <Shield className="h-6 w-6 text-white" />
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-gradient-primary rounded-xl">
+            <Shield className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Painel Administrativo</h1>
+            <p className="text-muted-foreground">Gerencie usuários, assinaturas e visualize estatísticas</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Painel Administrativo</h1>
-          <p className="text-muted-foreground">Gerencie usuários, assinaturas e visualize estatísticas</p>
-        </div>
+        <LanguageFlagSelector />
       </div>
 
       <Tabs 

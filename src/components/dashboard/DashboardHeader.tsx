@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { LogOut, User } from "lucide-react";
-import { LanguageSelector } from "@/components/LanguageSelector";
+import { LanguageFlagSelector } from "@/components/LanguageFlagSelector";
 import { useTranslation } from "react-i18next";
 
 interface DashboardHeaderProps {
@@ -15,7 +15,7 @@ export function DashboardHeader({ userEmail, onSignOut, minimal = false }: Dashb
   if (minimal) {
     return (
       <div className="flex items-center gap-3">
-        <LanguageSelector />
+        <LanguageFlagSelector />
         <Button 
           onClick={onSignOut}
           variant="outline"
@@ -48,7 +48,7 @@ export function DashboardHeader({ userEmail, onSignOut, minimal = false }: Dashb
           </span>
         </div>
         
-        <LanguageSelector />
+        <LanguageFlagSelector />
         
         <Button 
           onClick={onSignOut}
