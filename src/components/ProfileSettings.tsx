@@ -15,6 +15,9 @@ import { UpgradeModal } from "./UpgradeModal";
 import { useOrganizationPermissions } from "@/hooks/useOrganizationPermissions";
 import { profileSchema } from "@/lib/validations";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useTranslation } from "react-i18next";
+import { LanguageSelector } from "./LanguageSelector";
+import { Globe } from "lucide-react";
 
 export function ProfileSettings() {
   // Estados do perfil básico
@@ -37,6 +40,7 @@ export function ProfileSettings() {
   
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const { subscription, planName, isFreePlan, isTrial, isPremium, planLimits, stripeStatus } = useSubscription();
   const { currentUsage, getTransactionProgress, getCategoryProgress } = useFeatureLimits();
   const [managingSubscription, setManagingSubscription] = useState(false);
@@ -537,6 +541,22 @@ export function ProfileSettings() {
 
   return (
     <div className="space-y-6">
+      {/* Card 0: Language / Idioma */}
+      <Card className="bg-gradient-card shadow-card border-0">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Globe className="h-5 w-5" />
+            <span>{t('profile.language', 'Idioma')}</span>
+          </CardTitle>
+          <CardDescription>
+            {t('profile.languageDesc', 'Selecione o idioma de sua preferência')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <LanguageSelector />
+        </CardContent>
+      </Card>
+
       {/* Card 1: Informações do Perfil */}
       <Card className="bg-gradient-card shadow-card border-0">
         <CardHeader>

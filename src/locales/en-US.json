@@ -7,9 +7,99 @@
     "transactions": "Transactions",
     "categories": "Categories",
     "reports": "Reports",
-    "agenda": "Agenda",
     "profile": "Profile",
-    "admin": "Admin Panel"
+    "admin": "Admin Panel",
+    "future": "News",
+    "recurring": "Recurring Bills",
+    "whatsapp": "WhatsApp",
+    "hello": "Hello"
+  },
+  "summary": {
+    "monthBalance": "Month Balance",
+    "myPlan": "My Plan",
+    "active": "Active",
+    "fullAccess": "Full access",
+    "limitedAccess": "Limited access",
+    "manageSubscription": "Manage subscription",
+    "upgrade": "Upgrade"
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "dashboardDesc": "Financial overview",
+    "transactions": "Transactions",
+    "transactionsDesc": "Entries and movements",
+    "lancamentos": "Entries",
+    "contasFixas": "Recurring Bills",
+    "categories": "Categories",
+    "categoriesDesc": "Manage categories",
+    "reports": "Reports",
+    "reportsDesc": "Analysis and charts",
+    "future": "News",
+    "futureDesc": "Upcoming features",
+    "profile": "Profile",
+    "profileDesc": "Personal settings",
+    "admin": "Admin",
+    "adminDesc": "Admin panel",
+    "newTransaction": "New Transaction"
+  },
+  "chart": {
+    "incomeVsExpenses": "Income vs Expenses",
+    "byCategory": "By Category",
+    "noCategory": "No Category",
+    "addTransactions": "Add transactions to see the charts",
+    "financialChart": "Financial Chart"
+  },
+  "transactionList": {
+    "noTransactions": "No transactions found",
+    "activeFilters": "You have active filters",
+    "filtersHiding": "Transactions may be hidden by applied filters.",
+    "clearAllFilters": "Clear all filters",
+    "totalTransactions": "There are {{count}} transactions in total",
+    "tryReload": "Try reloading to see the latest transactions.",
+    "reloadTransactions": "Reload transactions",
+    "showing": "Showing {{start}}-{{end}} of {{total}} transactions",
+    "allTransactions": "All Transactions",
+    "ofTotal": "{{filtered}} of {{total}} transactions",
+    "activeFiltersInfo": "Active filters:",
+    "showingFiltered": "Showing {{filtered}} of {{total}} transactions",
+    "clearFilters": "Clear filters",
+    "latestTransactions": "Latest Transactions",
+    "recentTransactions": "Recent Transactions"
+  },
+  "filters": {
+    "filters": "Filters",
+    "activeFilter": "active filter",
+    "activeFilters": "active filters",
+    "clearFilters": "Clear filters",
+    "period": "Period",
+    "all": "All",
+    "today": "Today",
+    "week": "Week",
+    "month": "Month",
+    "year": "Year",
+    "custom": "Custom",
+    "type": "Type",
+    "allTransactions": "All transactions",
+    "onlyIncome": "Income only",
+    "onlyExpenses": "Expenses only",
+    "source": "Source",
+    "allSources": "All",
+    "manual": "Manual",
+    "responsible": "Responsible",
+    "allMembers": "All members",
+    "categories": "Categories",
+    "allCategories": "All categories",
+    "selected": "{{count}} selected",
+    "selectedPlural": "{{count}} selected",
+    "searchCategory": "Search category...",
+    "noCategoryFound": "No category found.",
+    "search": "Search",
+    "searchPlaceholder": "Search by title or description...",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "selectDate": "Select date",
+    "showOnlyMine": "Show only my transactions",
+    "showOnlyMineHelp": "Filters to show only yours"
   },
   "transactions": {
     "add": "New Transaction",
@@ -44,7 +134,8 @@
     "loading": "Loading...",
     "noData": "No data found",
     "error": "Error",
-    "success": "Success"
+    "success": "Success",
+    "genericError": "Could not complete the action. Please try again."
   },
   "admin": {
     "stats": "Statistics",
@@ -52,34 +143,6 @@
     "subscriptions": "Subscriptions",
     "plans": "Plans",
     "team": "Team"
-  },
-  "agenda": {
-    "googleCalendarSync": "Google Calendar Sync",
-    "googleCalendarDescription": "Your commitments will be automatically synced with Google Calendar",
-    "connectGoogleCalendar": "Connect Google Calendar",
-    "synced": "Synced",
-    "commitmentCreated": "Commitment created!",
-    "commitmentUpdated": "Commitment updated",
-    "commitmentDeleted": "Commitment deleted",
-    "syncedWithGoogle": "Synced with Google Calendar automatically!",
-    "tipConnectGoogle": "💡 Tip: Connect Google Calendar for automatic sync.",
-    "updatedAndSynced": "Updated and synced with Google Calendar!",
-    "updatedSuccess": "Updated successfully!",
-    "deletedFromGoogle": "Deleted and removed from Google Calendar!",
-    "deletedSuccess": "Deleted successfully!",
-    "onboarding": {
-      "title": "Sync with Google Calendar",
-      "description": "Keep your commitments always updated and accessible on all your devices.",
-      "benefit1Title": "Access from anywhere",
-      "benefit1Desc": "View your commitments on phone, tablet or computer",
-      "benefit2Title": "Automatic reminders",
-      "benefit2Desc": "Get notifications before your commitments",
-      "benefit3Title": "Real-time sync",
-      "benefit3Desc": "Changes appear instantly on all devices",
-      "securityTitle": "Safe and Private",
-      "securityDesc": "Your information is encrypted and you can disconnect at any time.",
-      "dontShowAgain": "Don't show again"
-    }
   },
   "whatsapp": {
     "title": "WhatsApp",
@@ -114,5 +177,35 @@
       "wrongCountry": "Check if you selected the correct country"
     },
     "helper": "Select your country and enter your full phone number"
+  },
+  "recurring": {
+    "title": "Recurring Bills",
+    "description": "Manage your recurring income and expenses",
+    "add": "New Recurring Bill",
+    "edit": "Edit Recurring Bill",
+    "delete": "Remove Recurring Bill",
+    "payBill": "Mark as Paid",
+    "postpone": "Postpone",
+    "pause": "Pause",
+    "resume": "Resume",
+    "frequency": {
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "custom": "Custom"
+    },
+    "status": {
+      "active": "Active",
+      "paused": "Paused",
+      "paid": "Paid",
+      "scheduled": "Scheduled",
+      "postponed": "Postponed",
+      "overdue": "Overdue"
+    }
+  },
+  "profile": {
+    "language": "Language",
+    "languageDesc": "Select your preferred language"
   }
 }

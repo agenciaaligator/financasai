@@ -7,9 +7,99 @@
     "transactions": "Transazioni",
     "categories": "Categorie",
     "reports": "Rapporti",
-    "agenda": "Agenda",
     "profile": "Profilo",
-    "admin": "Pannello Admin"
+    "admin": "Pannello Admin",
+    "future": "Novità",
+    "recurring": "Conti Fissi",
+    "whatsapp": "WhatsApp",
+    "hello": "Ciao"
+  },
+  "summary": {
+    "monthBalance": "Saldo del Mese",
+    "myPlan": "Il Mio Piano",
+    "active": "Attivo",
+    "fullAccess": "Accesso completo",
+    "limitedAccess": "Accesso limitato",
+    "manageSubscription": "Gestisci abbonamento",
+    "upgrade": "Upgrade"
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "dashboardDesc": "Panoramica finanziaria",
+    "transactions": "Transazioni",
+    "transactionsDesc": "Movimenti e registrazioni",
+    "lancamentos": "Movimenti",
+    "contasFixas": "Conti Fissi",
+    "categories": "Categorie",
+    "categoriesDesc": "Gestisci categorie",
+    "reports": "Rapporti",
+    "reportsDesc": "Analisi e grafici",
+    "future": "Novità",
+    "futureDesc": "Prossime funzionalità",
+    "profile": "Profilo",
+    "profileDesc": "Impostazioni personali",
+    "admin": "Admin",
+    "adminDesc": "Pannello amministrativo",
+    "newTransaction": "Nuova Transazione"
+  },
+  "chart": {
+    "incomeVsExpenses": "Entrate vs Spese",
+    "byCategory": "Per Categoria",
+    "noCategory": "Senza Categoria",
+    "addTransactions": "Aggiungi transazioni per vedere i grafici",
+    "financialChart": "Grafico Finanziario"
+  },
+  "transactionList": {
+    "noTransactions": "Nessuna transazione trovata",
+    "activeFilters": "Hai filtri attivi",
+    "filtersHiding": "Le transazioni potrebbero essere nascoste dai filtri applicati.",
+    "clearAllFilters": "Cancella tutti i filtri",
+    "totalTransactions": "Ci sono {{count}} transazioni in totale",
+    "tryReload": "Prova a ricaricare per vedere le transazioni più recenti.",
+    "reloadTransactions": "Ricarica transazioni",
+    "showing": "Mostrando {{start}}-{{end}} di {{total}} transazioni",
+    "allTransactions": "Tutte le Transazioni",
+    "ofTotal": "{{filtered}} di {{total}} transazioni",
+    "activeFiltersInfo": "Filtri attivi:",
+    "showingFiltered": "Mostrando {{filtered}} di {{total}} transazioni",
+    "clearFilters": "Cancella filtri",
+    "latestTransactions": "Ultime Transazioni",
+    "recentTransactions": "Transazioni Recenti"
+  },
+  "filters": {
+    "filters": "Filtri",
+    "activeFilter": "filtro attivo",
+    "activeFilters": "filtri attivi",
+    "clearFilters": "Cancella filtri",
+    "period": "Periodo",
+    "all": "Tutti",
+    "today": "Oggi",
+    "week": "Settimana",
+    "month": "Mese",
+    "year": "Anno",
+    "custom": "Personalizzato",
+    "type": "Tipo",
+    "allTransactions": "Tutte le transazioni",
+    "onlyIncome": "Solo Entrate",
+    "onlyExpenses": "Solo Spese",
+    "source": "Fonte",
+    "allSources": "Tutte",
+    "manual": "Manuale",
+    "responsible": "Responsabile",
+    "allMembers": "Tutti i membri",
+    "categories": "Categorie",
+    "allCategories": "Tutte le categorie",
+    "selected": "{{count}} selezionata",
+    "selectedPlural": "{{count}} selezionate",
+    "searchCategory": "Cerca categoria...",
+    "noCategoryFound": "Nessuna categoria trovata.",
+    "search": "Cerca",
+    "searchPlaceholder": "Cerca per titolo o descrizione...",
+    "startDate": "Data Iniziale",
+    "endDate": "Data Finale",
+    "selectDate": "Seleziona la data",
+    "showOnlyMine": "Mostra solo le mie transazioni",
+    "showOnlyMineHelp": "Filtra per mostrare solo le tue"
   },
   "transactions": {
     "add": "Nuova Transazione",
@@ -44,7 +134,8 @@
     "loading": "Caricamento...",
     "noData": "Nessun dato trovato",
     "error": "Errore",
-    "success": "Successo"
+    "success": "Successo",
+    "genericError": "Non è stato possibile completare l'azione. Riprova."
   },
   "admin": {
     "stats": "Statistiche",
@@ -52,34 +143,6 @@
     "subscriptions": "Abbonamenti",
     "plans": "Piani",
     "team": "Team"
-  },
-  "agenda": {
-    "googleCalendarSync": "Sincronizzazione Google Calendar",
-    "googleCalendarDescription": "I tuoi impegni saranno sincronizzati automaticamente con Google Calendar",
-    "connectGoogleCalendar": "Connetti Google Calendar",
-    "synced": "Sincronizzato",
-    "commitmentCreated": "Impegno creato!",
-    "commitmentUpdated": "Impegno aggiornato",
-    "commitmentDeleted": "Impegno eliminato",
-    "syncedWithGoogle": "Sincronizzato automaticamente con Google Calendar!",
-    "tipConnectGoogle": "💡 Suggerimento: Connetti Google Calendar per la sincronizzazione automatica.",
-    "updatedAndSynced": "Aggiornato e sincronizzato con Google Calendar!",
-    "updatedSuccess": "Aggiornato con successo!",
-    "deletedFromGoogle": "Eliminato e rimosso da Google Calendar!",
-    "deletedSuccess": "Eliminato con successo!",
-    "onboarding": {
-      "title": "Sincronizza con Google Calendar",
-      "description": "Mantieni i tuoi impegni sempre aggiornati e accessibili su tutti i tuoi dispositivi.",
-      "benefit1Title": "Accedi da ovunque",
-      "benefit1Desc": "Visualizza i tuoi impegni su telefono, tablet o computer",
-      "benefit2Title": "Promemoria automatici",
-      "benefit2Desc": "Ricevi notifiche prima dei tuoi impegni",
-      "benefit3Title": "Sincronizzazione in tempo reale",
-      "benefit3Desc": "Le modifiche appaiono istantaneamente su tutti i dispositivi",
-      "securityTitle": "Sicuro e Privato",
-      "securityDesc": "Le tue informazioni sono crittografate e puoi disconnetterti in qualsiasi momento.",
-      "dontShowAgain": "Non mostrare più"
-    }
   },
   "whatsapp": {
     "title": "WhatsApp",
@@ -114,5 +177,35 @@
       "wrongCountry": "Verifica di aver selezionato il paese corretto"
     },
     "helper": "Seleziona il tuo paese e inserisci il numero completo"
+  },
+  "recurring": {
+    "title": "Conti Fissi",
+    "description": "Gestisci le tue entrate e spese ricorrenti",
+    "add": "Nuovo Conto Fisso",
+    "edit": "Modifica Conto Fisso",
+    "delete": "Rimuovi Conto Fisso",
+    "payBill": "Segna come Pagato",
+    "postpone": "Rimanda",
+    "pause": "Pausa",
+    "resume": "Riprendi",
+    "frequency": {
+      "daily": "Giornaliera",
+      "weekly": "Settimanale",
+      "monthly": "Mensile",
+      "yearly": "Annuale",
+      "custom": "Personalizzata"
+    },
+    "status": {
+      "active": "Attivo",
+      "paused": "In pausa",
+      "paid": "Pagato",
+      "scheduled": "Programmato",
+      "postponed": "Rimandato",
+      "overdue": "Scaduto"
+    }
+  },
+  "profile": {
+    "language": "Lingua",
+    "languageDesc": "Seleziona la lingua preferita"
   }
 }

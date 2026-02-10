@@ -367,17 +367,20 @@ export function DashboardContent({
         <BalanceAlert isNegative={isNegative} />
         
         
-        {/* FASE 3: Switch "Ver apenas minhas transações" no dashboard */}
+        {/* Toggle "Ver apenas minhas transações" */}
         {organization_id && (
-          <div className="flex items-center justify-end space-x-2">
+          <div className={`flex items-center justify-end space-x-3 rounded-lg px-4 py-3 transition-colors ${showOnlyMine ? 'bg-success/10 border border-success/30' : 'bg-muted/50'}`}>
+            <div className="flex-1 text-right">
+              <Label htmlFor="dashboard-show-only-mine" className="cursor-pointer font-medium text-sm">
+                Ver apenas minhas transações
+              </Label>
+              <p className="text-xs text-muted-foreground">Filtra para mostrar somente as suas</p>
+            </div>
             <Switch
               id="dashboard-show-only-mine"
               checked={showOnlyMine}
               onCheckedChange={setShowOnlyMine}
             />
-            <Label htmlFor="dashboard-show-only-mine" className="cursor-pointer">
-              Ver apenas minhas transações
-            </Label>
           </div>
         )}
         
@@ -444,31 +447,7 @@ export function DashboardContent({
     return (
       <ErrorBoundary>
         <div className="space-y-4">
-          {/* 🔍 Diagnóstico no topo da aba de transações */}
-          {organization_id && (
-            <Card className="bg-muted/50 border-primary/20">
-              <CardContent className="pt-4 space-y-2 text-sm">
-                <div className="flex flex-wrap gap-4">
-                  <div>
-                    <span className="text-muted-foreground">Permissão ver outros: </span>
-                    <span className="font-semibold">{canViewOthers ? '✅ Sim' : '❌ Não'}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Minhas: </span>
-                    <span className="font-semibold">{myTransactions.length}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Da org: </span>
-                    <span className="font-semibold">{orgTransactions.length}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Filtradas: </span>
-                    <span className="font-semibold">{filteredTransactions.length}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          
           
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
             <AddTransactionButton 
@@ -477,15 +456,18 @@ export function DashboardContent({
             />
             
             {organization_id && (
-              <div className="flex items-center space-x-2">
+              <div className={`flex items-center space-x-3 rounded-lg px-4 py-3 transition-colors ${showOnlyMine ? 'bg-success/10 border border-success/30' : 'bg-muted/50'}`}>
+                <div>
+                  <Label htmlFor="show-only-mine" className="cursor-pointer font-medium text-sm">
+                    Ver apenas minhas transações
+                  </Label>
+                  <p className="text-xs text-muted-foreground">Filtra para mostrar somente as suas</p>
+                </div>
                 <Switch
                   id="show-only-mine"
                   checked={showOnlyMine}
                   onCheckedChange={setShowOnlyMine}
                 />
-                <Label htmlFor="show-only-mine" className="cursor-pointer">
-                  Ver apenas minhas transações
-                </Label>
               </div>
             )}
           </div>
