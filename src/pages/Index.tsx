@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Calendar, DollarSign, Bell, Shield, Smartphone, Zap, RefreshCw, BarChart3, Brain, Menu, Users, FolderOpen, Clock } from "lucide-react";
+import { Calendar, DollarSign, Shield, Smartphone, Zap, BarChart3, Brain, Menu, FolderOpen } from "lucide-react";
 import { FinancialDashboard } from "@/components/FinancialDashboard";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { PlansSection } from "@/components/PlansSection";
@@ -101,7 +101,7 @@ const LandingPage = () => {
               <span className="text-primary">24h por dia</span> por você
             </h1>
             <p className="text-xl text-muted-foreground">
-              Gerencie suas finanças e compromissos de forma inteligente com a Dona Wilma
+              Gerencie suas finanças de forma inteligente com a Dona Wilma
             </p>
             <div className="flex gap-4">
               <Button 
@@ -159,22 +159,6 @@ const LandingPage = () => {
             icon={<DollarSign className="h-6 w-6 text-primary" />}
           />
 
-          {/* Bloco 2: Gestão de Compromissos */}
-          <FeatureBlock
-            title="COMPROMISSOS"
-            subtitle="Gestão de Compromissos por mensagem"
-            description="Agende reuniões, consultas ou lembretes apenas digitando mensagens como 'reunião amanhã às 14h'. A agenda será criada automaticamente e sincronizada com o painel e Google Calendar."
-            highlights={[
-              "Agendamento por texto ou áudio",
-              "Sincronização com Google Agenda",
-              "Receba lembretes automáticos"
-            ]}
-            imageSrc="/images/landing/whatsapp-compromissos.png"
-            imageAlt="WhatsApp mostrando compromissos do dia"
-            imagePosition="right"
-            icon={<Calendar className="h-6 w-6 text-primary" />}
-          />
-
           {/* Bloco 3: Registre tudo no WhatsApp */}
           <FeatureBlock
             title="REGISTROS"
@@ -187,7 +171,7 @@ const LandingPage = () => {
             ]}
             imageSrc="/images/landing/whatsapp-registros.png"
             imageAlt="Interface do WhatsApp"
-            imagePosition="left"
+            imagePosition="right"
             icon={<Smartphone className="h-6 w-6 text-primary" />}
           />
 
@@ -204,23 +188,8 @@ const LandingPage = () => {
             ]}
             imageSrc="/images/landing/dashboard-painel.png"
             imageAlt="Dashboard financeiro"
-            imagePosition="right"
-            icon={<BarChart3 className="h-6 w-6 text-primary" />}
-          />
-
-          {/* Bloco 5: Compartilhe sua conta */}
-          <FeatureBlock
-            title="COMPARTILHAMENTO"
-            subtitle="Compartilhe sua conta com quem quiser"
-            description="Família ou empresa. Todos podem registrar com você."
-            highlights={[
-              "Usuários ilimitados",
-              "Controle compartilhado"
-            ]}
-            imageSrc="/images/landing/compartilhamento.png"
-            imageAlt="Gestão de membros"
             imagePosition="left"
-            icon={<Users className="h-6 w-6 text-primary" />}
+            icon={<BarChart3 className="h-6 w-6 text-primary" />}
           />
 
           {/* Bloco 6: Categorias Personalizadas */}
@@ -230,45 +199,13 @@ const LandingPage = () => {
             description="Use as que já vêm prontas ou crie quantas quiser."
             highlights={[
               "Ilimitadas categorias",
-              "Relatórios com IA",
+              "Classificação automática por IA",
               "Cadastro automático no WhatsApp"
             ]}
             imageSrc="/images/landing/categorias.png"
             imageAlt="Categorias personalizadas"
             imagePosition="right"
             icon={<FolderOpen className="h-6 w-6 text-primary" />}
-          />
-
-          {/* Bloco 7: Lembretes Diários */}
-          <FeatureBlock
-            title="LEMBRETES"
-            subtitle="Lembretes Diários via WhatsApp"
-            description="Sua assessora te avisa sobre contas a pagar e compromissos — todo dia pela manhã e 30 minutos antes de cada evento."
-            highlights={[
-              "Avisos diários e antecipados",
-              "Ideal para cobranças, metas, aniversários",
-              "Contas a pagar e receber"
-            ]}
-            imageSrc="/images/landing/lembretes.png"
-            imageAlt="Lembretes no WhatsApp"
-            imagePosition="left"
-            icon={<Bell className="h-6 w-6 text-primary" />}
-          />
-
-          {/* Bloco 8: Integração Google Agenda */}
-          <FeatureBlock
-            title="INTEGRAÇÃO"
-            subtitle="Integração com Google Agenda"
-            description="Agora você pode integrar seus compromissos automaticamente com o Google Agenda. A Dona Wilma será sincronizada em tempo real com sua agenda pessoal ou profissional."
-            highlights={[
-              "Sincronização automática dos compromissos",
-              "Receba lembretes automáticos no WhatsApp",
-              "Organização e produtividade no seu dia a dia"
-            ]}
-            imageSrc="/images/landing/google-calendar-integration.png"
-            imageAlt="Integração com Google Calendar"
-            imagePosition="right"
-            icon={<RefreshCw className="h-6 w-6 text-primary" />}
           />
         </div>
       </section>
@@ -318,7 +255,7 @@ const LandingPage = () => {
                 <span className="font-bold text-lg">Dona Wilma</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                Sua assessora pessoal para finanças e compromissos
+                Sua assessora pessoal para finanças
               </p>
             </div>
             <div>
