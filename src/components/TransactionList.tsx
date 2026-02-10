@@ -3,9 +3,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, TrendingDown, Trash2, Edit } from "lucide-react";
 import { Transaction } from '@/hooks/useTransactions';
-import { useOrganizationPermissions } from "@/hooks/useOrganizationPermissions";
 import { useAuth } from "@/hooks/useAuth";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
+import { useTranslation } from "react-i18next";
 import {
   Pagination,
   PaginationContent,
@@ -45,12 +45,10 @@ export function TransactionList({
   onClearFilters,
   totalTransactionsCount
 }: TransactionListProps) {
-  const { canEditOthers, canDeleteOthers } = useOrganizationPermissions();
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const formatDate = (dateString: string) => {
-    // Parse date manually to avoid timezone issues
-    // dateString is in format YYYY-MM-DD
     const [year, month, day] = dateString.split('-');
     return `${day}/${month}/${year}`;
   };
@@ -58,7 +56,6 @@ export function TransactionList({
   const handlePageChange = (page: number) => {
     if (onPageChange && page >= 1 && totalPages && page <= totalPages) {
       onPageChange(page);
-      // Scroll to top suavemente
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -66,19 +63,19 @@ export function TransactionList({
   if (transactions.length === 0) {
     return (
       <div className="text-center py-8 space-y-4">
-        <p className="text-muted-foreground">Nenhuma transação encontrada</p>
+        <p className="text-muted-foreground">{t('transactionList.noTransactions', 'Nenhuma transação encontrada')}</p>
         
         {hasActiveFilters && (
           <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 text-sm">
             <p className="text-yellow-800 dark:text-yellow-200 font-medium mb-2">
-              ⚠️ Você tem filtros ativos
+              ⚠️ {t('transactionList.activeFilters', 'Você tem filtros ativos')}
             </p>
             <p className="text-yellow-700 dark:text-yellow-300 mb-3">
-              As transações podem estar ocultas pelos filtros aplicados.
+              {t('transactionList.filtersHiding', 'As transações podem estar ocultas pelos filtros aplicados.')}
             </p>
             {onClearFilters && (
               <Button variant="outline" size="sm" onClick={onClearFilters}>
-                Limpar todos os filtros
+                {t('transactionList.clearAllFilters', 'Limpar todos os filtros')}
               </Button>
             )}
           </div>
@@ -87,14 +84,14 @@ export function TransactionList({
         {!hasActiveFilters && totalTransactionsCount && totalTransactionsCount > 0 && (
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-sm">
             <p className="text-blue-800 dark:text-blue-200 font-medium mb-2">
-              💡 Existem {totalTransactionsCount} transações no total
+              💡 {t('transactionList.totalTransactions', 'Existem {{count}} transações no total', { count: totalTransactionsCount })}
             </p>
             <p className="text-blue-700 dark:text-blue-300 mb-3">
-              Tente recarregar para ver as transações mais recentes.
+              {t('transactionList.tryReload', 'Tente recarregar para ver as transações mais recentes.')}
             </p>
             {onRefresh && (
               <Button variant="outline" size="sm" onClick={onRefresh}>
-                Recarregar transações
+                {t('transactionList.reloadTransactions', 'Recarregar transações')}
               </Button>
             )}
           </div>
@@ -113,7 +110,7 @@ export function TransactionList({
     <div className="space-y-4">
       {showPagination && totalItems && (
         <div className="text-sm text-muted-foreground text-center sm:text-left">
-          Mostrando {startItem}-{endItem} de {totalItems} transações
+          {t('transactionList.showing', 'Mostrando {{start}}-{{end}} de {{total}} transações', { start: startItem, end: endItem, total: totalItems })}
         </div>
       )}
       
@@ -121,7 +118,6 @@ export function TransactionList({
       {transactions.map((transaction) => (
         <Card key={transaction.id} className={`border-l-4 hover:shadow-soft transition-shadow ${transaction.type === 'income' ? 'border-l-success/40' : 'border-l-destructive/40'}`}>
           <CardContent className="pt-4">
-            {/* Layout mobile-first responsivo */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-start sm:items-center space-x-3 min-w-0 flex-1">
                 <div className={`p-2 rounded-full flex-shrink-0 ${
@@ -148,14 +144,6 @@ export function TransactionList({
                       <Badge variant="outline" className="text-xs opacity-60">
                         {transaction.source === 'whatsapp' ? 'WhatsApp' : 'Manual'}
                       </Badge>
-                      {transaction.profiles && (
-                        <Badge 
-                          variant="outline" 
-                          className="text-xs opacity-60"
-                        >
-                          {transaction.profiles.full_name || transaction.profiles.email || 'Sem nome'}
-                        </Badge>
-                      )}
                     </div>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
@@ -179,7 +167,7 @@ export function TransactionList({
                   </p>
                 </div>
                 <div className="flex space-x-1">
-                  {onEdit && (transaction.user_id === user?.id || canEditOthers) && (
+                  {onEdit && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -189,7 +177,7 @@ export function TransactionList({
                       <Edit className="h-4 w-4" />
                     </Button>
                   )}
-                  {onDelete && (transaction.user_id === user?.id || canDeleteOthers) && (
+                  {onDelete && (
                     <DeleteConfirmationDialog
                       itemName={transaction.title}
                       itemType="transação"
@@ -223,7 +211,6 @@ export function TransactionList({
             </PaginationItem>
             
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-              // Mostrar apenas algumas páginas
               if (
                 page === 1 ||
                 page === totalPages ||

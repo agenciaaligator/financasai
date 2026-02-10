@@ -1,5 +1,4 @@
 import { useMemo, useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, RefreshCw } from "lucide-react";
@@ -36,10 +35,7 @@ import {
 import { toZonedTime } from "date-fns-tz";
 import { ErrorBoundary } from "../ErrorBoundary";
 import { WhatsAppPage } from "./WhatsAppPage";
-import { useOrganizationPermissions } from "@/hooks/useOrganizationPermissions";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "react-i18next";
 import { RecurringTransactionsManager } from "../RecurringTransactionsManager";
 
 const TIMEZONE = 'America/Sao_Paulo';
@@ -76,37 +72,7 @@ export function DashboardContent({
 }: DashboardContentProps) {
   const { planName, planLimits } = useSubscription();
   const { getTransactionProgress, getCategoryProgress } = useFeatureLimits();
-  const { canViewOthers, organization_id, role } = useOrganizationPermissions();
-  const { user } = useAuth();
-  
-  // FASE 2: Buscar membros da organização
-  const [orgMembers, setOrgMembers] = useState<Array<{id: string, name: string}>>([]);
-  
-  useEffect(() => {
-    const fetchOrgMembers = async () => {
-      if (!organization_id || !user) return;
-      
-      const { data, error } = await supabase
-        .from('organization_members')
-        .select(`
-          user_id,
-          profiles:user_id (
-            full_name,
-            email
-          )
-        `)
-        .eq('organization_id', organization_id);
-      
-      if (!error && data) {
-        setOrgMembers(data.map((m: any) => ({
-          id: m.user_id,
-          name: m.profiles?.full_name || m.profiles?.email || 'Sem nome'
-        })));
-      }
-    };
-    
-    fetchOrgMembers();
-  }, [organization_id, user]);
+  const { t } = useTranslation();
   
   // 🔄 Carregar filtros do localStorage na montagem
   const [filters, setFilters] = useState<TransactionFiltersState>(() => {
@@ -121,7 +87,6 @@ export function DashboardContent({
           categories: parsed.categories || [],
           source: parsed.source || 'all',
           searchText: parsed.searchText || '',
-          responsible: parsed.responsible || 'all'
         };
       }
     } catch (e) {
@@ -134,22 +99,11 @@ export function DashboardContent({
       categories: [],
       source: 'all',
       searchText: '',
-      responsible: 'all'
     };
   });
 
   const [currentPage, setCurrentPage] = useState(1);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
-  
-  // 🔄 Carregar showOnlyMine do localStorage
-  const [showOnlyMine, setShowOnlyMine] = useState(() => {
-    try {
-      const saved = localStorage.getItem('transactions_showOnlyMine_v1');
-      return saved === 'true';
-    } catch {
-      return false;
-    }
-  });
 
   // 💾 Salvar filtros no localStorage quando mudarem
   useEffect(() => {
@@ -160,28 +114,15 @@ export function DashboardContent({
     }
   }, [filters]);
 
-  // 💾 Salvar showOnlyMine no localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('transactions_showOnlyMine_v1', showOnlyMine.toString());
-    } catch (e) {
-      console.warn('Erro ao salvar showOnlyMine:', e);
-    }
-  }, [showOnlyMine]);
-
   // Reset para página 1 quando filtros mudarem
   useEffect(() => {
     setCurrentPage(1);
-  }, [filters, showOnlyMine]);
+  }, [filters]);
 
   const filteredTransactions = useMemo(() => {
     const now = toZonedTime(new Date(), TIMEZONE);
     
     return transactions.filter(transaction => {
-      // Filtro "Ver apenas minhas" se habilitado (funciona se há organization_id)
-      if (showOnlyMine && organization_id && user?.id && transaction.user_id !== user.id) {
-        return false;
-      }
       // Filtro de período
       if (filters.period !== 'all') {
         try {
@@ -191,14 +132,11 @@ export function DashboardContent({
 
           switch (filters.period) {
             case 'today': {
-              // 🔧 FIX: Comparar datas como string para evitar problema de timezone
-              const todayStr = now.toISOString().split('T')[0]; // yyyy-mm-dd
-              const transactionDateStr = transaction.date; // já está em yyyy-mm-dd
-              
+              const todayStr = now.toISOString().split('T')[0];
+              const transactionDateStr = transaction.date;
               if (transactionDateStr !== todayStr) {
                 return false;
               }
-              // Continuar para os próximos filtros
               break;
             }
             case 'week':
@@ -250,7 +188,7 @@ export function DashboardContent({
           }
         } catch (error) {
           console.warn('[DashboardContent] Data inválida na transação:', transaction.id, transaction.date);
-          return true; // Incluir transações com data inválida
+          return true;
         }
       }
 
@@ -271,11 +209,6 @@ export function DashboardContent({
         return false;
       }
 
-      // FASE 2: Filtro de responsável
-      if (filters.responsible !== 'all' && transaction.user_id !== filters.responsible) {
-        return false;
-      }
-
       // Filtro de texto
       if (filters.searchText.trim() !== '') {
         const searchLower = filters.searchText.toLowerCase();
@@ -288,16 +221,7 @@ export function DashboardContent({
 
       return true;
     });
-  }, [transactions, filters, showOnlyMine, canViewOthers, user]);
-  
-  // FASE 3: Calcular valores filtrados para dashboard quando showOnlyMine está ativo
-  const visibleTransactions = useMemo(() => {
-    // Aplicar showOnlyMine independente de canViewOthers (se tiver organization_id, já pode filtrar)
-    if (!showOnlyMine || !organization_id || !user?.id) {
-      return transactions;
-    }
-    return transactions.filter(t => t.user_id === user.id);
-  }, [transactions, showOnlyMine, organization_id, user]);
+  }, [transactions, filters]);
 
   // 🔧 FIX CRÍTICO: Filtrar apenas transações do mês atual para o SummaryCards
   const currentMonthTransactions = useMemo(() => {
@@ -305,7 +229,7 @@ export function DashboardContent({
     const monthStart = startOfMonth(now);
     const monthEnd = endOfMonth(now);
     
-    return visibleTransactions.filter(t => {
+    return transactions.filter(t => {
       try {
         const transactionDate = toZonedTime(parseISO(t.date), TIMEZONE);
         return isWithinInterval(transactionDate, { start: monthStart, end: monthEnd });
@@ -313,9 +237,9 @@ export function DashboardContent({
         return false;
       }
     });
-  }, [visibleTransactions]);
+  }, [transactions]);
 
-  // Usar transações do mês atual para os cards de resumo (CORRIGIDO)
+  // Usar transações do mês atual para os cards de resumo
   const monthlyBalance = useMemo(() => {
     return currentMonthTransactions.reduce((acc, transaction) => {
       if (transaction.type === 'income') {
@@ -338,51 +262,10 @@ export function DashboardContent({
       .reduce((acc, t) => acc + Number(t.amount), 0);
   }, [currentMonthTransactions]);
 
-  // Manter visibleBalance/Income/Expenses para gráfico e lista (sem filtro de mês)
-  const visibleBalance = useMemo(() => {
-    return visibleTransactions.reduce((acc, transaction) => {
-      if (transaction.type === 'income') {
-        return acc + Number(transaction.amount);
-      } else {
-        return acc - Number(transaction.amount);
-      }
-    }, 0);
-  }, [visibleTransactions]);
-
-  const visibleTotalIncome = useMemo(() => {
-    return visibleTransactions
-      .filter(t => t.type === 'income')
-      .reduce((acc, t) => acc + Number(t.amount), 0);
-  }, [visibleTransactions]);
-
-  const visibleTotalExpenses = useMemo(() => {
-    return visibleTransactions
-      .filter(t => t.type === 'expense')
-      .reduce((acc, t) => acc + Number(t.amount), 0);
-  }, [visibleTransactions]);
-
   if (currentTab === "dashboard") {
     return (
       <div className="space-y-6">
         <BalanceAlert isNegative={isNegative} />
-        
-        
-        {/* Toggle "Ver apenas minhas transações" */}
-        {organization_id && (
-          <div className={`flex items-center justify-end space-x-3 rounded-lg px-4 py-3 transition-colors ${showOnlyMine ? 'bg-success/10 border border-success/30' : 'bg-muted/50'}`}>
-            <div className="flex-1 text-right">
-              <Label htmlFor="dashboard-show-only-mine" className="cursor-pointer font-medium text-sm">
-                Ver apenas minhas transações
-              </Label>
-              <p className="text-xs text-muted-foreground">Filtra para mostrar somente as suas</p>
-            </div>
-            <Switch
-              id="dashboard-show-only-mine"
-              checked={showOnlyMine}
-              onCheckedChange={setShowOnlyMine}
-            />
-          </div>
-        )}
         
         <SummaryCards
           balance={monthlyBalance}
@@ -393,16 +276,16 @@ export function DashboardContent({
         <div className="space-y-6">
           <Card className="bg-gradient-card shadow-card border-0">
             <CardHeader>
-              <CardTitle>Gráfico Financeiro</CardTitle>
+              <CardTitle>{t('chart.financialChart', 'Gráfico Financeiro')}</CardTitle>
             </CardHeader>
             <CardContent>
-              <FinancialChart transactions={visibleTransactions} />
+              <FinancialChart transactions={transactions} />
             </CardContent>
           </Card>
 
           <Card className="bg-gradient-card shadow-card border-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle>Últimas Transações</CardTitle>
+              <CardTitle>{t('transactionList.latestTransactions', 'Últimas Transações')}</CardTitle>
               <Button
                 variant="ghost"
                 size="sm"
@@ -414,7 +297,7 @@ export function DashboardContent({
             </CardHeader>
             <CardContent>
               <TransactionList 
-                transactions={visibleTransactions.slice(0, 10)} 
+                transactions={transactions.slice(0, 10)} 
                 onDelete={onDelete}
                 onEdit={onEdit}
               />
@@ -439,37 +322,16 @@ export function DashboardContent({
 
     const transactionProgress = getTransactionProgress();
     const categoryProgress = getCategoryProgress();
-    
-    // 📊 Diagnóstico de visibilidade na aba de transações
-    const myTransactions = transactions.filter(t => t.user_id === user?.id);
-    const orgTransactions = organization_id ? transactions.filter(t => t.organization_id === organization_id) : [];
 
     return (
       <ErrorBoundary>
         <div className="space-y-4">
-          
           
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
             <AddTransactionButton 
               showForm={showTransactionForm}
               onToggle={onToggleTransactionForm}
             />
-            
-            {organization_id && (
-              <div className={`flex items-center space-x-3 rounded-lg px-4 py-3 transition-colors ${showOnlyMine ? 'bg-success/10 border border-success/30' : 'bg-muted/50'}`}>
-                <div>
-                  <Label htmlFor="show-only-mine" className="cursor-pointer font-medium text-sm">
-                    Ver apenas minhas transações
-                  </Label>
-                  <p className="text-xs text-muted-foreground">Filtra para mostrar somente as suas</p>
-                </div>
-                <Switch
-                  id="show-only-mine"
-                  checked={showOnlyMine}
-                  onCheckedChange={setShowOnlyMine}
-                />
-              </div>
-            )}
           </div>
           
           {/* Limit Warnings */}
@@ -494,7 +356,6 @@ export function DashboardContent({
             filters={filters}
             onFiltersChange={setFilters}
             categories={categories}
-            orgMembers={orgMembers}
           />
           
           {hasActiveFilters && (
@@ -504,10 +365,10 @@ export function DashboardContent({
           <Card className="bg-gradient-card shadow-card border-0">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
-                <span>Todas as Transações</span>
+                <span>{t('transactionList.allTransactions', 'Todas as Transações')}</span>
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-normal text-muted-foreground">
-                    {filteredTransactions.length} de {transactions.length} transações
+                    {t('transactionList.ofTotal', '{{filtered}} de {{total}} transações', { filtered: filteredTransactions.length, total: transactions.length })}
                   </span>
                   <Button
                     variant="ghost"
@@ -524,7 +385,7 @@ export function DashboardContent({
               {hasActiveFilters && filteredTransactions.length > 0 && (
                 <div className="mb-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-sm flex items-center justify-between">
                   <p className="text-blue-800 dark:text-blue-200">
-                    ℹ️ <strong>Filtros ativos:</strong> Mostrando {filteredTransactions.length} de {transactions.length} transações
+                    ℹ️ <strong>{t('transactionList.activeFiltersInfo', 'Filtros ativos:')}</strong> {t('transactionList.showingFiltered', 'Mostrando {{filtered}} de {{total}} transações', { filtered: filteredTransactions.length, total: transactions.length })}
                   </p>
                   <Button 
                     variant="outline" 
@@ -536,10 +397,9 @@ export function DashboardContent({
                       categories: [],
                       source: 'all',
                       searchText: '',
-                      responsible: 'all'
                     })}
                   >
-                    Limpar filtros
+                    {t('transactionList.clearFilters', 'Limpar filtros')}
                   </Button>
                 </div>
               )}
@@ -561,7 +421,6 @@ export function DashboardContent({
                   categories: [],
                   source: 'all',
                   searchText: '',
-                  responsible: 'all'
                 })}
                 totalTransactionsCount={transactions.length}
               />
@@ -588,7 +447,7 @@ export function DashboardContent({
           className="bg-gradient-primary hover:shadow-primary transition-all duration-200"
         >
           <Plus className="h-4 w-4 mr-2" />
-          {showCategoryForm ? 'Cancelar' : 'Nova Categoria'}
+          {showCategoryForm ? t('common.cancel', 'Cancelar') : t('sidebar.categoriesDesc', 'Nova Categoria')}
         </Button>
         
         <CategoryManager 
@@ -635,7 +494,7 @@ export function DashboardContent({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="bg-gradient-card shadow-card border-0">
           <CardHeader>
-            <CardTitle>Gráfico Financeiro</CardTitle>
+            <CardTitle>{t('chart.financialChart', 'Gráfico Financeiro')}</CardTitle>
           </CardHeader>
           <CardContent>
             <FinancialChart transactions={transactions} />
@@ -644,7 +503,7 @@ export function DashboardContent({
 
         <Card className="bg-gradient-card shadow-card border-0">
           <CardHeader>
-            <CardTitle>Transações Recentes</CardTitle>
+            <CardTitle>{t('transactionList.recentTransactions', 'Transações Recentes')}</CardTitle>
           </CardHeader>
           <CardContent>
             <TransactionList 

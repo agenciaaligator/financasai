@@ -946,15 +946,6 @@ export function ProfileSettings() {
           </div>
 
           <div className="space-y-3">
-            {(isFreePlan || isTrial) && (
-              <Button 
-                className="w-full bg-gradient-primary hover:shadow-primary"
-                onClick={() => setShowUpgradeModal(true)}
-              >
-                <Crown className="h-4 w-4 mr-2" />
-                Fazer Upgrade para Premium
-              </Button>
-            )}
 
             {isPremium && stripeStatus?.stripe_customer_id && (
               <Button 
@@ -1017,10 +1008,6 @@ export function ProfileSettings() {
         </CardContent>
       </Card>
 
-      <UpgradeModal
-        open={showUpgradeModal} 
-        onClose={() => setShowUpgradeModal(false)}
-      />
     </div>
   );
 }

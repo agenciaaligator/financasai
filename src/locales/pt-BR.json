@@ -1,6 +1,7 @@
 {
   "dashboard": {
     "title": "Dashboard Financeiro",
+    "subtitle": "Gerencie suas finanças de forma inteligente",
     "balance": "Saldo",
     "income": "Receitas",
     "expenses": "Despesas",
@@ -16,12 +17,11 @@
   },
   "summary": {
     "monthBalance": "Saldo do Mês",
-    "myPlan": "Meu Plano",
+    "yourAccess": "Seu Acesso",
     "active": "Ativo",
     "fullAccess": "Acesso completo",
     "limitedAccess": "Acesso limitado",
-    "manageSubscription": "Gerenciar assinatura",
-    "upgrade": "Upgrade"
+    "manageSubscription": "Gerenciar assinatura"
   },
   "sidebar": {
     "dashboard": "Dashboard",
@@ -85,21 +85,17 @@
     "source": "Fonte",
     "allSources": "Todas",
     "manual": "Manual",
-    "responsible": "Responsável",
-    "allMembers": "Todos os membros",
     "categories": "Categorias",
     "allCategories": "Todas as categorias",
-    "selected": "{{count}} selecionada",
-    "selectedPlural": "{{count}} selecionadas",
+    "selected": "selecionada",
+    "selectedPlural": "selecionadas",
     "searchCategory": "Buscar categoria...",
     "noCategoryFound": "Nenhuma categoria encontrada.",
     "search": "Buscar",
     "searchPlaceholder": "Buscar por título ou descrição...",
     "startDate": "Data Inicial",
     "endDate": "Data Final",
-    "selectDate": "Selecione a data",
-    "showOnlyMine": "Ver apenas minhas transações",
-    "showOnlyMineHelp": "Filtra para mostrar somente as suas"
+    "selectDate": "Selecione a data"
   },
   "transactions": {
     "add": "Nova Transação",

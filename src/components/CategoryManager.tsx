@@ -8,9 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Trash2, Palette } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useFeatureLimits } from "@/hooks/useFeatureLimits";
-import { UpgradeModal } from "./UpgradeModal";
 import { categorySchema } from "@/lib/validations";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 
@@ -32,8 +31,6 @@ export function CategoryManager({ categories, onRefresh, showForm, setShowForm }
   const [name, setName] = useState("");
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [color, setColor] = useState("#3B82F6");
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [upgradeReason, setUpgradeReason] = useState("");
   const { user } = useAuth();
   const { toast } = useToast();
   const { canCreateCategory, getCategoryProgress, refetchUsage } = useFeatureLimits();
@@ -50,18 +47,10 @@ export function CategoryManager({ categories, onRefresh, showForm, setShowForm }
     if (!name.trim() || !user) return;
 
     try {
-      // Validar dados
-      const validated = categorySchema.parse({
-        name,
-        type,
-        color
-      });
+      const validated = categorySchema.parse({ name, type, color });
 
-      // Verificar limite antes de criar
       const limitCheck = canCreateCategory();
       if (!limitCheck.allowed) {
-        setUpgradeReason(limitCheck.reason || 'Upgrade necessário para criar mais categorias.');
-        setShowUpgradeModal(true);
         toast({
           title: "Limite atingido",
           description: limitCheck.reason,
@@ -86,7 +75,6 @@ export function CategoryManager({ categories, onRefresh, showForm, setShowForm }
         description: `Categoria "${validated.name}" adicionada com sucesso.`
       });
 
-      // Atualizar uso após criar
       await refetchUsage();
 
       setName("");
@@ -264,12 +252,6 @@ export function CategoryManager({ categories, onRefresh, showForm, setShowForm }
           </div>
         </div>
       </CardContent>
-      
-      <UpgradeModal 
-        open={showUpgradeModal} 
-        onClose={() => setShowUpgradeModal(false)}
-        reason={upgradeReason}
-      />
     </Card>
   );
 }
