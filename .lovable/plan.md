@@ -1,144 +1,184 @@
 
-# UX/UI Dashboard Improvements + i18n Preparation
 
-## Overview
+# Preparacao para Lancamento MVP - Limpeza e Simplificacao
 
-This plan covers two major areas: (1) visual/UX improvements to the dashboard, and (2) full i18n integration across the frontend. No backend, database, or business logic changes.
+## Resumo
 
-## PHASE 1: UX/UI Dashboard Improvements
+Remover funcionalidades de multiusuario e upgrade do frontend, simplificar o card "Meu Plano" para "Seu Acesso", melhorar visual do dashboard, e expandir cobertura i18n. A logica de sugestao de conta fixa no WhatsApp ja existe parcialmente no agente -- sera complementada. Nenhuma alteracao de backend, banco ou Stripe.
 
-### 1.1 Toggle "Ver apenas minhas transacoes" (improved)
+---
 
-**Files:** `src/components/dashboard/DashboardContent.tsx`
+## 1. Remover "Ver apenas minhas transacoes" e logica multiusuario visivel
 
-Current state: a plain Switch + Label, easy to miss. 
+**Arquivos:** `src/components/dashboard/DashboardContent.tsx`, `src/components/dashboard/DashboardHeader.tsx`
 
-Changes:
-- Wrap the Switch in a small styled container with background (`bg-muted/50 rounded-lg px-3 py-2`)
-- Add a subtle helper text below: "Filtra transacoes para mostrar somente as suas"
-- Make ON state visually distinct (green accent border or background shift)
-- Apply same style in both dashboard tab (line 371-382) and transactions tab (line 479-489)
+Alteracoes em `DashboardContent.tsx`:
+- Remover os dois blocos de toggle "Ver apenas minhas" (linhas 371-385 e 458-472)
+- Remover estado `showOnlyMine` e seus efeitos de localStorage (linhas 144-170)
+- Remover busca de `orgMembers` (linhas 83-109)
+- Remover import de `useOrganizationPermissions`, `Switch`, `Label`
+- Simplificar `visibleTransactions` para ser igual a `transactions` (sem filtro multiusuario)
+- Remover `canViewOthers`, `organization_id`, `role` do destructuring
+- Remover variavel `orgTransactions` e `myTransactions` (linhas 443-445)
+- Remover prop `orgMembers` do `TransactionFilters`
 
-### 1.2 Card "Meu Plano" (improved)
+Alteracoes em `DashboardHeader.tsx`:
+- Remover banner de backfill inteiro (linhas 17-63 e 84-120)
+- Remover badge de role (owner/admin/membro) (linhas 134-149)
+- Remover import de `useOrganizationPermissions`
+- Manter apenas email do usuario, LanguageSelector e botao Sair
 
-**File:** `src/components/dashboard/SummaryCards.tsx`
+**Arquivo:** `src/components/TransactionList.tsx`
+- Remover badge de `profiles` (usuario) das transacoes (linhas 151-158)
+- Manter badges de categoria e fonte (WhatsApp/Manual)
 
-Changes:
-- Add a status badge (green dot + "Ativo") next to plan name
-- Replace raw plan name with clearer layout: plan name on top, access type below (e.g., "Acesso completo" or "Acesso limitado")
-- Change "Upgrade" button text to "Gerenciar assinatura" for premium users, calling the `customer-portal` edge function
-- Keep "Upgrade" for free/trial users (existing behavior)
-- Remove Progress bars for premium users (they have unlimited)
+**Arquivo:** `src/components/TransactionFilters.tsx`
+- Remover filtro "Responsavel" se existir
+- Remover prop `orgMembers`
 
-### 1.3 Financial Chart improvements
+---
 
-**File:** `src/components/FinancialChart.tsx`
+## 2. Remover todas as referencias a Upgrade
 
-Changes:
-- Increase chart height from 200px to 280px for both charts
-- Improve tooltip: add white background with shadow, better formatted currency
-- Improve legend font size and spacing
-- Use softer colors with better contrast: income `#059669` (darker green), expense `#dc2626` (darker red)
-- Add `radius` to bar chart bars for rounded corners
-- Increase padding between pie chart and bar chart (spacing)
+**Arquivos afetados:**
 
-### 1.4 Transaction List visual hierarchy
+| Arquivo | O que remover |
+|---------|--------------|
+| `SummaryCards.tsx` | Botao "Upgrade", import/uso de `UpgradeModal`, estados `showUpgradeModal` |
+| `LimitWarning.tsx` | Botao "Fazer Upgrade" e `UpgradeModal` -- simplificar para apenas mostrar aviso informativo |
+| `ProfileSettings.tsx` | Botao "Fazer Upgrade para Premium" e `UpgradeModal` |
+| `TransactionForm.tsx` | `UpgradeModal` -- manter o `toast` de limite mas remover o modal de upgrade |
+| `CategoryManager.tsx` | `UpgradeModal` -- manter o `toast` de limite mas remover o modal de upgrade |
 
-**File:** `src/components/TransactionList.tsx`
+O componente `UpgradeModal.tsx` pode ser mantido no codigo (nao precisa deletar), mas nao sera mais importado em nenhum lugar.
 
-Changes:
-- Make the amount (`font-bold`) larger: `text-base sm:text-lg` instead of `text-sm sm:text-base`
-- Add +/- prefix more prominently
-- Make category/source badges lighter: use `variant="outline"` with lower opacity for source badge
-- Reduce user badge prominence (smaller, more subtle)
-- Add subtle left border color based on transaction type: green for income, red for expense (replace current `border-l-primary/20`)
+---
 
-### 1.5 Remove debug diagnostic card
+## 3. Simplificar card "Meu Plano" para "Seu Acesso"
 
-**File:** `src/components/dashboard/DashboardContent.tsx`
+**Arquivo:** `src/components/dashboard/SummaryCards.tsx`
 
-The transactions tab shows a diagnostic card with "Permissao ver outros", "Minhas", "Da org" counts (lines 448-471). This is developer-only info. Remove it.
+Transformar o 4o card:
+- Titulo: "Seu Acesso" (via i18n key `summary.yourAccess`)
+- Exibir apenas:
+  - Badge verde "Ativo" (sempre, ja que so tem 1 plano pago)
+  - Texto "Acesso completo" 
+- Remover progress bars de transacoes/categorias
+- Remover botao Upgrade
+- Manter botao "Gerenciar assinatura" (Stripe Customer Portal) para usuarios premium
+- Remover imports de `Progress`, `useFeatureLimits`, `UpgradeModal`, `Sparkles`
+- Simplificar grid para 3 colunas em desktop (`md:grid-cols-3`) -- ou manter 4 se o card "Seu Acesso" for mantido
 
-## PHASE 2: i18n Integration
+---
 
-### 2.1 Expand translation files
+## 4. Melhorias visuais no dashboard
 
-**Files:** All 4 locale files + create `src/locales/pt-PT.json`
+### 4.1 Cards de resumo
+- Ja estao com `border-0` e `shadow-card` -- manter
+- Valores ja estao `text-2xl font-bold` -- manter
 
-The current locale files have partial coverage. Expand them with keys for:
-- Sidebar menu items (dashboard, transactions, lancamentos, contas_fixas, categories, reports, news, profile, admin)
-- Summary cards (monthBalance, income, expenses, myPlan, active, manageSubscription, upgrade)
-- Transaction list (noTransactions, showingRange, manual, whatsapp, filterActive)
-- Filters (period, type, source, category, search, clearFilters, all, today, week, month)
-- Chart labels (incomeVsExpenses, byCategory)
-- Dashboard header titles
-- Common actions and error messages
-- Landing page texts (hero, features, FAQ, plans, CTA)
+### 4.2 Grafico financeiro (ja melhorado anteriormente)
+- Ja tem altura 280px, cores `#059669`/`#dc2626`, tooltips -- manter como esta
 
-Remove the entire `agenda` section from all locale files (feature removed from MVP).
+### 4.3 Lista de transacoes
+- Ja tem icones por tipo (`TrendingUp`/`TrendingDown`), border colorido, valores grandes -- manter
+- Remover badge de usuario (item 1 acima)
 
-Create `pt-PT.json` by copying `pt-BR.json` and adjusting vocabulary (e.g., "Lancamentos" stays, but some expressions may differ).
+---
 
-### 2.2 Apply `useTranslation` to dashboard components
+## 5. WhatsApp -- sugestao de conta fixa
 
-**Files affected:**
-- `src/components/AppSidebar.tsx` - sidebar items titles and descriptions
-- `src/components/dashboard/SummaryCards.tsx` - card titles, labels
-- `src/components/dashboard/DashboardContent.tsx` - tab titles, buttons, labels
-- `src/components/FinancialChart.tsx` - chart labels, tooltips
-- `src/components/TransactionList.tsx` - empty states, badges, pagination text
-- `src/components/TransactionFilters.tsx` - filter labels
-- `src/components/dashboard/AddTransactionButton.tsx` - button text
-- `src/components/FinancialDashboard.tsx` - header tab titles (mobile + desktop)
+**Arquivo:** `supabase/functions/whatsapp-agent/index.ts`
 
-Pattern: import `useTranslation`, call `const { t } = useTranslation()`, replace hardcoded strings with `t('key')`.
+O agente ja tem logica para criar contas fixas via comandos explicitos ("conta fixa 150 internet dia 10"). O pedido e adicionar deteccao de palavras-chave em transacoes normais.
 
-### 2.3 Add language selector to ProfileSettings
+Na funcao que processa transacoes normais (quando o usuario diz "paguei 200 conta de luz"):
+- Apos salvar a transacao, verificar se o titulo contem palavras-chave: `luz`, `agua`, `aluguel`, `internet`, `netflix`, `spotify`, `assinatura`, `condominio`, `seguro`, `plano`
+- Se detectar, adicionar ao final da resposta de confirmacao:
+  ```
+  💡 Essa conta parece se repetir todo mes. Quer salvar como conta fixa?
+  Responda SIM para cadastrar automaticamente.
+  ```
+- Salvar no `sessionData` um estado `awaiting_recurring_confirmation` com os dados da transacao
+- Quando o usuario responder "sim", criar a conta fixa
+- Quando responder "nao" ou qualquer outra coisa, voltar ao estado normal
 
-**File:** `src/components/ProfileSettings.tsx`
+Esta e a UNICA alteracao de edge function neste plano.
 
-Add the existing `LanguageSelector` component (already built at `src/components/LanguageSelector.tsx`) to the profile settings page, in a new "Idioma / Language" section near the top.
+---
 
-### 2.4 Add pt-PT to LanguageSelector and i18n config
+## 6. Internacionalizacao -- expandir cobertura
 
-**Files:** `src/i18n.ts`, `src/components/LanguageSelector.tsx`
+### Componentes com strings hardcoded a corrigir:
 
-- Import and register `pt-PT` in i18n config
-- Add Portuguese (Portugal) option to the language selector dropdown
+| Componente | Strings hardcoded |
+|-----------|-------------------|
+| `DashboardHeader.tsx` | "Dashboard Financeiro", "Gerencie suas financas...", "Sair" |
+| `DashboardContent.tsx` | "Grafico Financeiro", "Ultimas Transacoes", "Todas as Transacoes", "Nova Categoria", "Cancelar" |
+| `TransactionList.tsx` | "Nenhuma transacao encontrada", "Voce tem filtros ativos", "Mostrando X-Y de Z transacoes", etc |
+| `TransactionFilters.tsx` | Todos os labels de filtro |
+| `LimitWarning.tsx` | Textos de aviso de limite |
+| `CategoryManager.tsx` | Textos de formulario |
 
-## Files Summary
+Todos serao substituidos por chamadas `t('key')` usando chaves ja existentes ou novas nos arquivos de locale.
 
-| File | Action |
-|------|--------|
-| `src/components/dashboard/DashboardContent.tsx` | Improve toggle UX, remove debug card |
-| `src/components/dashboard/SummaryCards.tsx` | Improve "Meu Plano" card, add i18n |
-| `src/components/FinancialChart.tsx` | Better spacing, colors, tooltips, add i18n |
-| `src/components/TransactionList.tsx` | Visual hierarchy improvements, add i18n |
-| `src/components/TransactionFilters.tsx` | Add i18n |
-| `src/components/AppSidebar.tsx` | Add i18n to menu items |
-| `src/components/FinancialDashboard.tsx` | Add i18n to header titles |
-| `src/components/dashboard/AddTransactionButton.tsx` | Add i18n |
-| `src/components/ProfileSettings.tsx` | Add LanguageSelector |
-| `src/locales/pt-BR.json` | Expand keys, remove agenda section |
-| `src/locales/en-US.json` | Expand keys, remove agenda section |
-| `src/locales/es-ES.json` | Expand keys, remove agenda section |
-| `src/locales/it-IT.json` | Expand keys, remove agenda section |
-| `src/locales/pt-PT.json` | Create (new file) |
-| `src/i18n.ts` | Add pt-PT |
-| `src/components/LanguageSelector.tsx` | Add pt-PT option |
+### Locale files
+- Expandir `pt-BR.json`, `en-US.json`, `es-ES.json`, `it-IT.json`, `pt-PT.json` com as chaves faltantes
+- Adicionar nova secao `summary.yourAccess` em todos os locales
+- Remover chave `summary.upgrade` (nao mais usada)
 
-## What will NOT change
+### Landing page
+- A maioria dos textos da landing page (`Index.tsx`) ainda esta hardcoded
+- Aplicar `useTranslation` e criar chaves em `landing.*` nos 5 arquivos de locale
+- Cobrir: hero, secao de features, CTAs, nav links, footer
 
-- No backend/edge function changes
-- No database changes
-- No Stripe logic changes
-- No new features
-- No component rewrites (incremental edits only)
-- No WhatsApp agent changes (WhatsApp i18n is out of scope for this phase -- requires edge function changes)
+---
 
-## Execution order
+## 7. Limpeza adicional
 
-1. Phase 1: UX improvements (toggle, plan card, chart, transaction list, remove debug card)
-2. Phase 2: Expand locale files + create pt-PT
-3. Phase 2: Apply `useTranslation` across components
-4. Phase 2: Add LanguageSelector to ProfileSettings
+- Remover `DashboardHeader.tsx`: import de `useOrganizationPermissions` e toda a logica de backfill
+- Remover `TransactionFilters.tsx`: campo `responsible` do state type e da UI
+- Remover referencia a `orgMembers` de `DashboardContent.tsx`
+
+---
+
+## Arquivos afetados
+
+| Arquivo | Acao |
+|---------|------|
+| `src/components/dashboard/DashboardContent.tsx` | Remover toggle, multiusuario, orgMembers |
+| `src/components/dashboard/DashboardHeader.tsx` | Remover backfill, role badge |
+| `src/components/dashboard/SummaryCards.tsx` | Simplificar para "Seu Acesso", remover upgrade |
+| `src/components/dashboard/LimitWarning.tsx` | Remover botao upgrade |
+| `src/components/TransactionList.tsx` | Remover badge de usuario, i18n |
+| `src/components/TransactionFilters.tsx` | Remover filtro responsavel, i18n |
+| `src/components/TransactionForm.tsx` | Remover UpgradeModal |
+| `src/components/CategoryManager.tsx` | Remover UpgradeModal |
+| `src/components/ProfileSettings.tsx` | Remover botao upgrade |
+| `src/pages/Index.tsx` | i18n na landing page |
+| `supabase/functions/whatsapp-agent/index.ts` | Sugestao de conta fixa |
+| `src/locales/pt-BR.json` | Expandir chaves, landing |
+| `src/locales/en-US.json` | Expandir chaves, landing |
+| `src/locales/es-ES.json` | Expandir chaves, landing |
+| `src/locales/it-IT.json` | Expandir chaves, landing |
+| `src/locales/pt-PT.json` | Expandir chaves, landing |
+
+## O que NAO sera alterado
+
+- Banco de dados
+- Stripe / checkout / webhook
+- Autenticacao
+- Edge functions (exceto whatsapp-agent para sugestao)
+- Hooks de negocio (useSubscription, useFeatureLimits ficam no codigo, apenas nao exibidos)
+- Menu lateral (ja esta correto com Lancamentos + Contas Fixas)
+
+## Ordem de execucao
+
+1. Remover toggle e multiusuario do DashboardContent e DashboardHeader
+2. Remover upgrade de SummaryCards, LimitWarning, ProfileSettings, TransactionForm, CategoryManager
+3. Simplificar card "Seu Acesso"
+4. Remover badge de usuario e filtro responsavel
+5. Expandir locale files e aplicar i18n nos componentes com strings hardcoded
+6. Aplicar i18n na landing page
+7. Atualizar whatsapp-agent com sugestao de conta fixa
+
