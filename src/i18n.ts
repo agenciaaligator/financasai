@@ -20,6 +20,11 @@ i18n
       'it-IT': { translation: itIT },
     },
     fallbackLng: 'pt-BR',
+    detection: {
+      order: ['querystring', 'localStorage', 'navigator'],
+      lookupQuerystring: 'lang',
+      caches: ['localStorage'],
+    },
     interpolation: {
       escapeValue: false,
     },
