@@ -85,7 +85,7 @@ interface SessionData {
   authenticated?: boolean;
   last_command?: string | null;
   context?: any;
-  conversation_state?: 'idle' | 'waiting_date' | 'waiting_confirmation' | 'awaiting_category' | 'confirming_ocr' | 'awaiting_delete_confirmation' | 'awaiting_edit_field' | 'awaiting_edit_value' | 'awaiting_commitment_resolution' | 'awaiting_commitment_edit_field' | 'awaiting_commitment_edit_value' | 'awaiting_commitment_cancel_selection' | 'awaiting_commitment_time' | 'awaiting_commitment_details' | 'awaiting_commitment_confirmation' | 'awaiting_work_hour_override';
+  conversation_state?: 'idle' | 'waiting_date' | 'waiting_confirmation' | 'awaiting_category' | 'confirming_ocr' | 'awaiting_delete_confirmation' | 'awaiting_edit_field' | 'awaiting_edit_value' | 'awaiting_commitment_resolution' | 'awaiting_commitment_edit_field' | 'awaiting_commitment_edit_value' | 'awaiting_commitment_cancel_selection' | 'awaiting_commitment_time' | 'awaiting_commitment_details' | 'awaiting_commitment_confirmation' | 'awaiting_work_hour_override' | 'awaiting_recurring_confirmation';
   pending_transaction?: Partial<Transaction>;
   pending_ocr_data?: {
     amount: number;
@@ -131,6 +131,12 @@ interface SessionData {
   };
   last_question?: string;
   full_name?: string;
+  pending_recurring_suggestion?: {
+    title: string;
+    amount: number;
+    type: 'income' | 'expense';
+    category_id?: string;
+  };
 }
 
 interface Transaction {
@@ -1812,6 +1818,78 @@ class WhatsAppAgent {
       return await this.handleCommitmentCancelSelection(session, messageText);
     }
 
+    // PRIORIDADE 0.94: Sugestão de conta fixa recorrente
+    if (sessionData.conversation_state === 'awaiting_recurring_confirmation' && sessionData.pending_recurring_suggestion) {
+      const affirmative = ['sim', 's', 'yes', 'y', 'ok', 'confirmo'];
+      const normalized = messageText.toLowerCase().trim();
+      
+      if (affirmative.includes(normalized)) {
+        console.log('✅ User confirmed recurring transaction suggestion');
+        const rec = sessionData.pending_recurring_suggestion;
+        
+        // Buscar organization_id
+        const { data: whatsappSession } = await supabase
+          .from('whatsapp_sessions')
+          .select('organization_id')
+          .eq('user_id', session.user_id)
+          .order('last_activity', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        const localTime = getBrazilTime();
+        const dayOfMonth = localTime.getUTCDate();
+        
+        const { error } = await supabase
+          .from('recurring_transactions')
+          .insert({
+            user_id: session.user_id,
+            title: rec.title,
+            amount: rec.amount,
+            type: rec.type,
+            frequency: 'monthly',
+            day_of_month: dayOfMonth,
+            start_date: new Date().toISOString().split('T')[0],
+            category_id: rec.category_id || null,
+            is_active: true,
+            organization_id: whatsappSession?.organization_id || null
+          });
+        
+        await SessionManager.updateSession(session.id, {
+          session_data: {
+            ...sessionData,
+            conversation_state: 'idle',
+            pending_recurring_suggestion: undefined
+          }
+        });
+        
+        if (error) {
+          console.error('❌ Error creating recurring transaction:', error);
+          return {
+            response: `❌ Erro ao criar conta fixa. Tente novamente pelo painel.`,
+            sessionData: { ...sessionData, conversation_state: 'idle', pending_recurring_suggestion: undefined }
+          };
+        }
+        
+        return {
+          response: `✅ *Conta fixa cadastrada!*\n\n📝 *${rec.title}* — R$ ${rec.amount.toFixed(2)}\n🔄 Todo dia ${dayOfMonth} de cada mês\n\nVocê pode gerenciar suas contas fixas no painel web.`,
+          sessionData: { ...sessionData, conversation_state: 'idle', pending_recurring_suggestion: undefined }
+        };
+      } else {
+        // User declined or sent other message - clear state
+        await SessionManager.updateSession(session.id, {
+          session_data: {
+            ...sessionData,
+            conversation_state: 'idle',
+            pending_recurring_suggestion: undefined
+          }
+        });
+        
+        // Don't return - let the message be processed normally below
+        sessionData.conversation_state = 'idle';
+        sessionData.pending_recurring_suggestion = undefined;
+      }
+    }
+
     // PRIORIDADE 0.95: Edição de transação
     if (sessionData.conversation_state === 'awaiting_edit_field' && sessionData.pending_edit) {
       return await this.handleEditFieldSelection(session, messageText);
@@ -2387,15 +2465,18 @@ class WhatsAppAgent {
       const saveResponse = typeof saveResult === 'string' ? saveResult : saveResult.response;
       const transactionId = typeof saveResult === 'object' ? saveResult.transactionId : undefined;
       const sendButtons = typeof saveResult === 'object' ? saveResult.sendButtons : false;
+      const pendingRecurring = typeof saveResult === 'object' ? saveResult.pendingRecurring : undefined;
       
       console.log('✅ saveTransaction() completed, response:', saveResponse.substring(0, 50) + '...');
       
-      // 🔧 LIMPAR ESTADO após salvar para evitar processar próxima mensagem como comando
+      // 🔧 LIMPAR ESTADO após salvar (ou definir awaiting_recurring_confirmation)
+      const newState = pendingRecurring ? 'awaiting_recurring_confirmation' : 'idle';
       await SessionManager.updateSession(session.id, {
         session_data: {
           ...sessionData,
-          conversation_state: 'idle',
-          pending_transaction: undefined
+          conversation_state: newState,
+          pending_transaction: undefined,
+          pending_recurring_suggestion: pendingRecurring || undefined
         }
       });
       
@@ -2403,7 +2484,7 @@ class WhatsAppAgent {
         response: saveResponse,
         transactionId,
         sendButtons,
-        sessionData: { ...sessionData, conversation_state: 'idle', pending_transaction: undefined }
+        sessionData: { ...sessionData, conversation_state: newState, pending_transaction: undefined, pending_recurring_suggestion: pendingRecurring || undefined }
       };
     }
 
@@ -3675,11 +3756,33 @@ class WhatsAppAgent {
         `💰 *Saldo atual:* R$ ${currentBalance.toFixed(2)}\n\n` +
         `📊 Para visualizar mais detalhes e relatórios, acesse a plataforma:\n` +
         `🔗 https://bc45aac3-c622-434f-ad58-afc37c18c6c2.lovableproject.com`;
-      
+
+      // 💡 Detectar se a transação parece recorrente
+      const recurringKeywords = ['luz', 'agua', 'água', 'aluguel', 'internet', 'netflix', 'spotify', 'assinatura', 'condominio', 'condomínio', 'seguro', 'plano', 'telefone', 'celular', 'academia', 'escola', 'faculdade', 'mensalidade', 'iptu', 'ipva'];
+      const titleLower = (transaction.title || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const isRecurring = recurringKeywords.some(kw => {
+        const kwNorm = kw.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return titleLower.includes(kwNorm);
+      });
+
+      let finalResponse = structuredResponse;
+      let pendingRecurring: any = undefined;
+
+      if (isRecurring && transaction.type === 'expense') {
+        finalResponse += `\n\n💡 *Essa conta parece se repetir todo mês.* Quer salvar como conta fixa?\nResponda *SIM* para cadastrar automaticamente.`;
+        pendingRecurring = {
+          title: transaction.title,
+          amount: transaction.amount,
+          type: transaction.type,
+          category_id: transactionData.category_id
+        };
+      }
+
       return {
-        response: structuredResponse,
+        response: finalResponse,
         transactionId: data.id,
-        sendButtons: true
+        sendButtons: !isRecurring, // Don't send buttons if we're asking about recurring
+        pendingRecurring
       };
     } catch (error) {
       console.error('Error saving transaction:', error);

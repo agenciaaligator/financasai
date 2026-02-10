@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Calendar, DollarSign, Shield, Smartphone, Zap, BarChart3, Brain, Menu, FolderOpen } from "lucide-react";
 import { FinancialDashboard } from "@/components/FinancialDashboard";
@@ -18,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [showLogin, setShowLogin] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -44,14 +46,14 @@ const LandingPage = () => {
           
           <div className="hidden md:flex items-center gap-6">
             <a href="#home" className="text-sm hover:text-primary transition-colors">Home</a>
-            <a href="#como-funciona" className="text-sm hover:text-primary transition-colors">Como funciona</a>
-            <a href="#planos" className="text-sm hover:text-primary transition-colors">Planos</a>
-            <a href="#contato" className="text-sm hover:text-primary transition-colors">Contato</a>
+            <a href="#como-funciona" className="text-sm hover:text-primary transition-colors">{t('landing.nav.howItWorks')}</a>
+            <a href="#planos" className="text-sm hover:text-primary transition-colors">{t('landing.nav.plans')}</a>
+            <a href="#contato" className="text-sm hover:text-primary transition-colors">{t('landing.nav.contact')}</a>
           </div>
 
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => setShowLogin(true)} className="hidden sm:flex">
-              Entrar
+              {t('auth.login')}
             </Button>
             
             <Sheet>
@@ -63,12 +65,12 @@ const LandingPage = () => {
               <SheetContent side="right">
                 <nav className="flex flex-col gap-4 mt-8">
                   <a href="#home" className="text-lg hover:text-primary transition-colors">Home</a>
-                  <a href="#como-funciona" className="text-lg hover:text-primary transition-colors">Como funciona</a>
-                  <a href="#planos" className="text-lg hover:text-primary transition-colors">Planos</a>
-                  <a href="#contato" className="text-lg hover:text-primary transition-colors">Contato</a>
+                  <a href="#como-funciona" className="text-lg hover:text-primary transition-colors">{t('landing.nav.howItWorks')}</a>
+                  <a href="#planos" className="text-lg hover:text-primary transition-colors">{t('landing.nav.plans')}</a>
+                  <a href="#contato" className="text-lg hover:text-primary transition-colors">{t('landing.nav.contact')}</a>
                   <div className="flex flex-col gap-2 mt-4">
                     <Button variant="outline" onClick={() => setShowLogin(true)} className="w-full">
-                      Entrar
+                      {t('auth.login')}
                     </Button>
                   </div>
                 </nav>
@@ -97,25 +99,25 @@ const LandingPage = () => {
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div className="space-y-6 text-left">
             <h1 className="text-4xl md:text-6xl font-bold">
-              Tenha uma assessora pessoal trabalhando{' '}
-              <span className="text-primary">24h por dia</span> por você
+              {t('landing.hero.title')}{' '}
+              <span className="text-primary">{t('landing.hero.highlight')}</span> {t('landing.hero.titleEnd')}
             </h1>
             <p className="text-xl text-muted-foreground">
-              Gerencie suas finanças de forma inteligente com a Dona Wilma
+              {t('landing.hero.subtitle')}
             </p>
             <div className="flex gap-4">
               <Button 
                 size="lg" 
                 onClick={() => document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' })}
               >
-                Ver planos
+                {t('landing.hero.viewPlans')}
               </Button>
               <Button 
                 size="lg" 
                 variant="outline"
                 onClick={() => document.getElementById('como-funciona')?.scrollIntoView({ behavior: 'smooth' })}
               >
-                Saiba mais
+                {t('landing.hero.learnMore')}
               </Button>
             </div>
           </div>
@@ -136,22 +138,21 @@ const LandingPage = () => {
 
       <section id="como-funciona" className="container mx-auto px-4 py-20">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-5xl font-bold mb-4">Como funciona</h2>
+          <h2 className="text-3xl md:text-5xl font-bold mb-4">{t('landing.nav.howItWorks')}</h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Simplifique sua vida com tecnologia que trabalha por você
+            {t('landing.howItWorks.subtitle')}
           </p>
         </div>
 
         <div className="max-w-7xl mx-auto">
-          {/* Bloco 1: Controle Financeiro no WhatsApp */}
           <FeatureBlock
-            title="FINANCEIRO"
-            subtitle="Controle Financeiro no WhatsApp"
-            description="Registre receitas e despesas com mensagens como 'gastei 50 reais no mercado' ou 'recebi 2 mil de salário' direto no WhatsApp. A IA entende, categoriza e registra tudo automaticamente."
+            title={t('landing.features.financial.tag')}
+            subtitle={t('landing.features.financial.title')}
+            description={t('landing.features.financial.description')}
             highlights={[
-              "Categorização inteligente com IA",
-              "Relatórios por categoria",
-              "Integração com o painel web"
+              t('landing.features.financial.h1'),
+              t('landing.features.financial.h2'),
+              t('landing.features.financial.h3')
             ]}
             imageSrc="/images/landing/whatsapp-financeiro.png"
             imageAlt="WhatsApp processando transação financeira"
@@ -159,15 +160,14 @@ const LandingPage = () => {
             icon={<DollarSign className="h-6 w-6 text-primary" />}
           />
 
-          {/* Bloco 3: Registre tudo no WhatsApp */}
           <FeatureBlock
-            title="REGISTROS"
-            subtitle="Registre tudo no WhatsApp"
-            description="Envie uma mensagem e nosso assistente lança tudo automaticamente."
+            title={t('landing.features.records.tag')}
+            subtitle={t('landing.features.records.title')}
+            description={t('landing.features.records.description')}
             highlights={[
-              "Texto ou áudio, você escolhe",
-              "Categorização inteligente",
-              "Rápido, prático e sem complicação"
+              t('landing.features.records.h1'),
+              t('landing.features.records.h2'),
+              t('landing.features.records.h3')
             ]}
             imageSrc="/images/landing/whatsapp-registros.png"
             imageAlt="Interface do WhatsApp"
@@ -175,16 +175,15 @@ const LandingPage = () => {
             icon={<Smartphone className="h-6 w-6 text-primary" />}
           />
 
-          {/* Bloco 4: Painel Profissional */}
           <FeatureBlock
-            title="PAINEL"
-            subtitle="Painel Profissional"
-            description="Visualize relatórios, gráficos e detalhes de suas transações com poucos cliques. Tudo organizado automaticamente, sem cadastro manual."
+            title={t('landing.features.dashboard.tag')}
+            subtitle={t('landing.features.dashboard.title')}
+            description={t('landing.features.dashboard.description')}
             highlights={[
-              "Gráficos de fluxo de caixa",
-              "Visão por categoria",
-              "Detalhamento por período",
-              "Prático e acessível"
+              t('landing.features.dashboard.h1'),
+              t('landing.features.dashboard.h2'),
+              t('landing.features.dashboard.h3'),
+              t('landing.features.dashboard.h4')
             ]}
             imageSrc="/images/landing/dashboard-painel.png"
             imageAlt="Dashboard financeiro"
@@ -192,15 +191,14 @@ const LandingPage = () => {
             icon={<BarChart3 className="h-6 w-6 text-primary" />}
           />
 
-          {/* Bloco 6: Categorias Personalizadas */}
           <FeatureBlock
-            title="CATEGORIAS"
-            subtitle="Categorias Personalizadas"
-            description="Use as que já vêm prontas ou crie quantas quiser."
+            title={t('landing.features.categories.tag')}
+            subtitle={t('landing.features.categories.title')}
+            description={t('landing.features.categories.description')}
             highlights={[
-              "Ilimitadas categorias",
-              "Classificação automática por IA",
-              "Cadastro automático no WhatsApp"
+              t('landing.features.categories.h1'),
+              t('landing.features.categories.h2'),
+              t('landing.features.categories.h3')
             ]}
             imageSrc="/images/landing/categorias.png"
             imageAlt="Categorias personalizadas"
@@ -215,10 +213,10 @@ const LandingPage = () => {
 
       <section id="depoimentos" className="container mx-auto px-4 py-20 bg-muted/30">
         <h2 className="text-3xl md:text-4xl font-bold text-center mb-3">
-          Como funciona na prática
+          {t('landing.howItWorksPractice.title')}
         </h2>
         <p className="text-center text-muted-foreground mb-12">
-          Em 3 passos simples, você organiza sua vida financeira
+          {t('landing.howItWorksPractice.subtitle')}
         </p>
         <TestimonialsSection />
       </section>
@@ -227,19 +225,19 @@ const LandingPage = () => {
       <StatsSection />
 
       <section id="planos" className="container mx-auto px-4 py-16">
-        <h2 className="text-3xl font-bold text-center mb-4">Escolha seu plano</h2>
+        <h2 className="text-3xl font-bold text-center mb-4">{t('landing.plans.title')}</h2>
         <p className="text-center text-muted-foreground mb-12">
-          Tudo que você precisa em um único plano
+          {t('landing.plans.subtitle')}
         </p>
         <PlansSection />
       </section>
 
       <section id="faq" className="container mx-auto px-4 py-16">
         <h2 className="text-3xl font-bold text-center mb-3">
-          Perguntas frequentes
+          {t('landing.faq.title')}
         </h2>
         <p className="text-center text-muted-foreground mb-12">
-          Tire suas dúvidas sobre a Dona Wilma
+          {t('landing.faq.subtitle')}
         </p>
         <div className="max-w-3xl mx-auto">
           <FAQSection />
@@ -255,28 +253,28 @@ const LandingPage = () => {
                 <span className="font-bold text-lg">Dona Wilma</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                Sua assessora pessoal para finanças
+                {t('landing.footer.tagline')}
               </p>
             </div>
             <div>
-              <h3 className="font-semibold mb-4">Links</h3>
+              <h3 className="font-semibold mb-4">{t('landing.footer.links')}</h3>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><a href="#home" className="hover:text-primary">Home</a></li>
-                <li><a href="#como-funciona" className="hover:text-primary">Como funciona</a></li>
-                <li><a href="#planos" className="hover:text-primary">Planos</a></li>
-                <li><a href="/termos" className="hover:text-primary">Termos de Serviço</a></li>
-                <li><a href="/privacidade" className="hover:text-primary">Política de Privacidade</a></li>
+                <li><a href="#como-funciona" className="hover:text-primary">{t('landing.nav.howItWorks')}</a></li>
+                <li><a href="#planos" className="hover:text-primary">{t('landing.nav.plans')}</a></li>
+                <li><a href="/termos" className="hover:text-primary">{t('landing.footer.terms')}</a></li>
+                <li><a href="/privacidade" className="hover:text-primary">{t('landing.footer.privacy')}</a></li>
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold mb-4">Contato</h3>
+              <h3 className="font-semibold mb-4">{t('landing.nav.contact')}</h3>
               <p className="text-sm text-muted-foreground">
                 contato@donawilma.com.br
               </p>
             </div>
           </div>
           <div className="border-t mt-8 pt-8 text-center text-sm text-muted-foreground space-y-2">
-            <p>© 2025 Dona Wilma. Todos os direitos reservados.</p>
+            <p>{t('landing.footer.copyright')}</p>
             <p>
               Desenvolvido por{' '}
               <a 

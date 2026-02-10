@@ -203,5 +203,77 @@
   "profile": {
     "language": "Language",
     "languageDesc": "Select your preferred language"
+  },
+  "landing": {
+    "nav": {
+      "howItWorks": "How it works",
+      "plans": "Plans",
+      "contact": "Contact"
+    },
+    "hero": {
+      "title": "Have a personal assistant working",
+      "highlight": "24/7",
+      "titleEnd": "for you",
+      "subtitle": "Manage your finances smartly with Dona Wilma",
+      "viewPlans": "View plans",
+      "learnMore": "Learn more"
+    },
+    "howItWorks": {
+      "subtitle": "Simplify your life with technology that works for you"
+    },
+    "features": {
+      "financial": {
+        "tag": "FINANCIAL",
+        "title": "Financial Control on WhatsApp",
+        "description": "Record income and expenses with messages like 'spent 50 at the grocery store' or 'received 2k salary' directly on WhatsApp. AI understands, categorizes and records everything automatically.",
+        "h1": "Smart categorization with AI",
+        "h2": "Reports by category",
+        "h3": "Web dashboard integration"
+      },
+      "records": {
+        "tag": "RECORDS",
+        "title": "Record everything on WhatsApp",
+        "description": "Send a message and our assistant records everything automatically.",
+        "h1": "Text or audio, your choice",
+        "h2": "Smart categorization",
+        "h3": "Fast, practical and hassle-free"
+      },
+      "dashboard": {
+        "tag": "DASHBOARD",
+        "title": "Professional Dashboard",
+        "description": "View reports, charts and transaction details with just a few clicks. Everything organized automatically, no manual entry.",
+        "h1": "Cash flow charts",
+        "h2": "Category view",
+        "h3": "Period breakdown",
+        "h4": "Practical and accessible"
+      },
+      "categories": {
+        "tag": "CATEGORIES",
+        "title": "Custom Categories",
+        "description": "Use the built-in ones or create as many as you want.",
+        "h1": "Unlimited categories",
+        "h2": "Automatic AI classification",
+        "h3": "Auto-register on WhatsApp"
+      }
+    },
+    "howItWorksPractice": {
+      "title": "How it works in practice",
+      "subtitle": "In 3 simple steps, organize your financial life"
+    },
+    "plans": {
+      "title": "Choose your plan",
+      "subtitle": "Everything you need in a single plan"
+    },
+    "faq": {
+      "title": "Frequently asked questions",
+      "subtitle": "Get answers about Dona Wilma"
+    },
+    "footer": {
+      "tagline": "Your personal finance assistant",
+      "links": "Links",
+      "terms": "Terms of Service",
+      "privacy": "Privacy Policy",
+      "copyright": "© 2025 Dona Wilma. All rights reserved."
+    }
   }
 }
