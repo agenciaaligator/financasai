@@ -1,46 +1,50 @@
 
 
-# Seletor de idiomas com bandeirinhas -- padronizado nos headers
+# Suporte a idioma via URL para campanhas de marketing
 
 ## O que sera feito
 
-Criar um novo componente `LanguageFlagSelector` com visual de bandeira + codigo do pais + seta (como na imagem de referencia), e usa-lo **somente nos headers** de todo o site.
+Configurar o `i18next-browser-languagedetector` para reconhecer o parametro `lang` na URL, permitindo links como:
 
-## Design do componente
+- `https://financasai.lovable.app/?lang=en-US` (ingles)
+- `https://financasai.lovable.app/?lang=es-ES` (espanhol)
+- `https://financasai.lovable.app/?lang=it-IT` (italiano)
 
-O seletor tera o estilo da imagem: um botao compacto mostrando a bandeira do idioma ativo + sigla (ex: "BR", "PT", "EN", "ES", "IT") + seta para cima/baixo. Ao clicar, abre um popover/dropdown com as 5 opcoes, cada uma com bandeira + nome. O idioma default e pt-BR (bandeira do Brasil).
+## Como funciona
 
-As bandeiras serao emoji flags (sem necessidade de imagens externas).
+O detector de idioma do i18next suporta multiplas fontes de deteccao com ordem de prioridade. Basta configurar `querystring` como primeira opcao, e o parametro da URL tera prioridade sobre o idioma salvo no navegador.
 
-## Alteracoes
+## Alteracao
 
-### 1. Novo componente: `src/components/LanguageFlagSelector.tsx`
+**Arquivo:** `src/i18n.ts`
 
-- Botao com: emoji flag do idioma ativo + sigla + icone ChevronDown
-- Popover com lista das 5 opcoes (bandeira + nome completo)
-- Ao selecionar, chama `i18n.changeLanguage(code)` e salva no localStorage
-- Visual compacto, fundo sutil, borda arredondada
+Adicionar a configuracao `detection` no `init()` do i18n com:
 
-### 2. Atualizar `src/pages/Index.tsx` (Landing Page)
+- `order`: define a prioridade -- querystring primeiro, depois localStorage, depois navegador
+- `lookupQuerystring`: define o nome do parametro na URL (sera `lang`)
+- `caches`: manter localStorage para persistir a escolha do usuario
 
-- Substituir `LanguageSelector` por `LanguageFlagSelector` nos dois pontos (desktop e mobile)
+## Exemplos de uso em campanhas
 
-### 3. Atualizar `src/components/dashboard/DashboardHeader.tsx`
+| Publico        | URL                                            |
+|----------------|------------------------------------------------|
+| EUA/UK         | `financasai.lovable.app/?lang=en-US`           |
+| Espanha/Latam  | `financasai.lovable.app/?lang=es-ES`           |
+| Italia         | `financasai.lovable.app/?lang=it-IT`           |
+| Portugal       | `financasai.lovable.app/?lang=pt-PT`           |
+| Brasil         | `financasai.lovable.app/` (default)            |
 
-- Substituir `LanguageSelector` por `LanguageFlagSelector` nos dois modos (minimal e full)
+## Detalhes tecnicos
 
-### 4. Atualizar `src/components/admin/AdminPanel.tsx`
+A unica mudanca e adicionar o objeto `detection` na configuracao do i18n:
 
-- Adicionar `LanguageFlagSelector` no header do painel admin, ao lado do titulo
+```text
+detection: {
+  order: ['querystring', 'localStorage', 'navigator'],
+  lookupQuerystring: 'lang',
+  caches: ['localStorage'],
+}
+```
 
-### 5. Remover de `src/components/ProfileSettings.tsx`
-
-- Remover o card "Idioma" inteiro (Card com Globe + LanguageSelector)
-- Remover import de `LanguageSelector` e `Globe`
-
-## O que NAO muda
-
-- O componente original `LanguageSelector` continua existindo no codigo (pode ser removido futuramente)
-- Nenhuma logica de i18n muda
-- Nenhum locale file muda
+Nenhum outro arquivo precisa ser alterado. O componente `LanguageFlagSelector` continuara funcionando normalmente -- se o usuario trocar o idioma manualmente, isso sera salvo no localStorage e prevalecera nas proximas visitas.
 
