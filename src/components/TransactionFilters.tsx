@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 export interface TransactionFiltersState {
   period: 'all' | 'today' | 'week' | 'month' | '30days' | '90days' | 'year' | 'custom';
@@ -22,24 +23,22 @@ export interface TransactionFiltersState {
   categories: string[];
   source: 'all' | 'manual' | 'whatsapp';
   searchText: string;
-  responsible: string; // FASE 2: Filtro por responsável
 }
 
 interface TransactionFiltersProps {
   filters: TransactionFiltersState;
   onFiltersChange: (filters: TransactionFiltersState) => void;
   categories: Array<{ id: string; name: string; type: string }>;
-  orgMembers?: Array<{ id: string; name: string }>; // FASE 2: Membros da organização
 }
 
 export function TransactionFilters({ 
   filters, 
   onFiltersChange, 
   categories,
-  orgMembers = [] // FASE 2
 }: TransactionFiltersProps) {
   const [showCustomDate, setShowCustomDate] = useState(false);
   const [categorySearchOpen, setCategorySearchOpen] = useState(false);
+  const { t } = useTranslation();
 
   const activeFiltersCount = [
     filters.period !== 'all',
@@ -47,7 +46,6 @@ export function TransactionFilters({
     filters.categories.length > 0,
     filters.source !== 'all',
     filters.searchText.trim() !== '',
-    filters.responsible !== 'all' // FASE 2
   ].filter(Boolean).length;
 
   const handlePeriodChange = (period: string) => {
@@ -76,7 +74,6 @@ export function TransactionFilters({
       categories: [],
       source: 'all',
       searchText: '',
-      responsible: 'all' // FASE 2
     });
     setShowCustomDate(false);
   };
@@ -87,17 +84,17 @@ export function TransactionFilters({
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4" />
-            <h3 className="font-semibold">Filtros</h3>
+            <h3 className="font-semibold">{t('filters.filters', 'Filtros')}</h3>
             {activeFiltersCount > 0 && (
               <Badge variant="secondary" className="ml-2">
-                {activeFiltersCount} {activeFiltersCount === 1 ? 'filtro ativo' : 'filtros ativos'}
+                {activeFiltersCount} {activeFiltersCount === 1 ? t('filters.activeFilter', 'filtro ativo') : t('filters.activeFilters', 'filtros ativos')}
               </Badge>
             )}
           </div>
           {activeFiltersCount > 0 && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
               <X className="h-4 w-4 mr-2" />
-              Limpar filtros
+              {t('filters.clearFilters', 'Limpar filtros')}
             </Button>
           )}
         </div>
@@ -105,94 +102,71 @@ export function TransactionFilters({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Período */}
           <div className="space-y-2">
-            <Label>Período</Label>
+            <Label>{t('filters.period', 'Período')}</Label>
             <Tabs value={filters.period} onValueChange={handlePeriodChange} className="w-full">
               <TabsList className="grid grid-cols-4 h-auto">
-                <TabsTrigger value="all" className="text-xs">Todos</TabsTrigger>
-                <TabsTrigger value="today" className="text-xs">Hoje</TabsTrigger>
-                <TabsTrigger value="week" className="text-xs">Semana</TabsTrigger>
-                <TabsTrigger value="month" className="text-xs">Mês</TabsTrigger>
+                <TabsTrigger value="all" className="text-xs">{t('filters.all', 'Todos')}</TabsTrigger>
+                <TabsTrigger value="today" className="text-xs">{t('filters.today', 'Hoje')}</TabsTrigger>
+                <TabsTrigger value="week" className="text-xs">{t('filters.week', 'Semana')}</TabsTrigger>
+                <TabsTrigger value="month" className="text-xs">{t('filters.month', 'Mês')}</TabsTrigger>
               </TabsList>
             </Tabs>
             <Tabs value={filters.period} onValueChange={handlePeriodChange} className="w-full">
               <TabsList className="grid grid-cols-4 h-auto">
                 <TabsTrigger value="30days" className="text-xs">30d</TabsTrigger>
                 <TabsTrigger value="90days" className="text-xs">90d</TabsTrigger>
-                <TabsTrigger value="year" className="text-xs">Ano</TabsTrigger>
-                <TabsTrigger value="custom" className="text-xs">Custom</TabsTrigger>
+                <TabsTrigger value="year" className="text-xs">{t('filters.year', 'Ano')}</TabsTrigger>
+                <TabsTrigger value="custom" className="text-xs">{t('filters.custom', 'Custom')}</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
 
           {/* Tipo */}
           <div className="space-y-2">
-            <Label>Tipo</Label>
+            <Label>{t('filters.type', 'Tipo')}</Label>
             <Select value={filters.type} onValueChange={(value) => onFiltersChange({ ...filters, type: value as TransactionFiltersState['type'] })}>
               <SelectTrigger>
-                <SelectValue placeholder="Selecione o tipo" />
+                <SelectValue placeholder={t('filters.allTransactions', 'Todas as transações')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas as transações</SelectItem>
-                <SelectItem value="income">Apenas Receitas</SelectItem>
-                <SelectItem value="expense">Apenas Despesas</SelectItem>
+                <SelectItem value="all">{t('filters.allTransactions', 'Todas as transações')}</SelectItem>
+                <SelectItem value="income">{t('filters.onlyIncome', 'Apenas Receitas')}</SelectItem>
+                <SelectItem value="expense">{t('filters.onlyExpenses', 'Apenas Despesas')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Fonte */}
           <div className="space-y-2">
-            <Label>Fonte</Label>
+            <Label>{t('filters.source', 'Fonte')}</Label>
             <Select value={filters.source} onValueChange={(value) => onFiltersChange({ ...filters, source: value as TransactionFiltersState['source'] })}>
               <SelectTrigger>
-                <SelectValue placeholder="Selecione a fonte" />
+                <SelectValue placeholder={t('filters.allSources', 'Todas')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                <SelectItem value="manual">Manual</SelectItem>
+                <SelectItem value="all">{t('filters.allSources', 'Todas')}</SelectItem>
+                <SelectItem value="manual">{t('filters.manual', 'Manual')}</SelectItem>
                 <SelectItem value="whatsapp">WhatsApp</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* FASE 2: Filtro por Responsável */}
-          {orgMembers.length > 0 && (
-            <div className="space-y-2">
-              <Label>Responsável</Label>
-              <Select 
-                value={filters.responsible || 'all'} 
-                onValueChange={(value) => onFiltersChange({ ...filters, responsible: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos os membros" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os membros</SelectItem>
-                  {orgMembers.map(member => (
-                    <SelectItem key={member.id} value={member.id}>
-                      {member.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
           {/* Categorias */}
           <div className="space-y-2">
-            <Label>Categorias</Label>
+            <Label>{t('filters.categories', 'Categorias')}</Label>
             <Popover open={categorySearchOpen} onOpenChange={setCategorySearchOpen}>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="w-full justify-start">
                   {filters.categories.length === 0 
-                    ? "Todas as categorias" 
-                    : `${filters.categories.length} selecionada${filters.categories.length > 1 ? 's' : ''}`}
+                    ? t('filters.allCategories', 'Todas as categorias')
+                    : `${filters.categories.length} ${filters.categories.length > 1 ? t('filters.selectedPlural', 'selecionadas') : t('filters.selected', 'selecionada')}`}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[300px] p-0" align="start">
                 <Command>
-                  <CommandInput placeholder="Buscar categoria..." />
+                  <CommandInput placeholder={t('filters.searchCategory', 'Buscar categoria...')} />
                   <CommandList>
-                    <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
+                    <CommandEmpty>{t('filters.noCategoryFound', 'Nenhuma categoria encontrada.')}</CommandEmpty>
                     <CommandGroup>
                       {categories.map((category) => (
                         <CommandItem
@@ -208,7 +182,7 @@ export function TransactionFilters({
                             variant="outline" 
                             className="ml-auto text-xs"
                           >
-                            {category.type === 'income' ? 'Receita' : 'Despesa'}
+                            {category.type === 'income' ? t('transactions.income', 'Receita') : t('transactions.expense', 'Despesa')}
                           </Badge>
                         </CommandItem>
                       ))}
@@ -221,9 +195,9 @@ export function TransactionFilters({
 
           {/* Busca por texto */}
           <div className="space-y-2 md:col-span-2 lg:col-span-2">
-            <Label>Buscar</Label>
+            <Label>{t('filters.search', 'Buscar')}</Label>
             <Input
-              placeholder="Buscar por título ou descrição..."
+              placeholder={t('filters.searchPlaceholder', 'Buscar por título ou descrição...')}
               value={filters.searchText}
               onChange={(e) => onFiltersChange({ ...filters, searchText: e.target.value })}
             />
@@ -234,7 +208,7 @@ export function TransactionFilters({
         {showCustomDate && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t">
             <div className="space-y-2">
-              <Label>Data Inicial</Label>
+              <Label>{t('filters.startDate', 'Data Inicial')}</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -247,7 +221,7 @@ export function TransactionFilters({
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {filters.customDateRange.start 
                       ? format(filters.customDateRange.start, "PPP", { locale: ptBR })
-                      : "Selecione a data"}
+                      : t('filters.selectDate', 'Selecione a data')}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -268,7 +242,7 @@ export function TransactionFilters({
             </div>
 
             <div className="space-y-2">
-              <Label>Data Final</Label>
+              <Label>{t('filters.endDate', 'Data Final')}</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -281,7 +255,7 @@ export function TransactionFilters({
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {filters.customDateRange.end 
                       ? format(filters.customDateRange.end, "PPP", { locale: ptBR })
-                      : "Selecione a data"}
+                      : t('filters.selectDate', 'Selecione a data')}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">

@@ -1,7 +1,7 @@
 {
   "dashboard": {
     "title": "Dashboard Financeiro",
-    "balance": "Saldo",
+    "subtitle": "Faça a gestão das suas finanças de forma inteligente",
     "income": "Receitas",
     "expenses": "Despesas",
     "transactions": "Transações",
@@ -16,12 +16,11 @@
   },
   "summary": {
     "monthBalance": "Saldo do Mês",
-    "myPlan": "O Meu Plano",
+    "yourAccess": "O Seu Acesso",
     "active": "Ativo",
     "fullAccess": "Acesso completo",
     "limitedAccess": "Acesso limitado",
-    "manageSubscription": "Gerir subscrição",
-    "upgrade": "Upgrade"
+    "manageSubscription": "Gerir subscrição"
   },
   "sidebar": {
     "dashboard": "Dashboard",

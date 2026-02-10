@@ -1,6 +1,7 @@
 {
   "dashboard": {
     "title": "Financial Dashboard",
+    "subtitle": "Manage your finances smartly",
     "balance": "Balance",
     "income": "Income",
     "expenses": "Expenses",
@@ -16,12 +17,11 @@
   },
   "summary": {
     "monthBalance": "Month Balance",
-    "myPlan": "My Plan",
+    "yourAccess": "Your Access",
     "active": "Active",
     "fullAccess": "Full access",
     "limitedAccess": "Limited access",
-    "manageSubscription": "Manage subscription",
-    "upgrade": "Upgrade"
+    "manageSubscription": "Manage subscription"
   },
   "sidebar": {
     "dashboard": "Dashboard",
@@ -85,21 +85,17 @@
     "source": "Source",
     "allSources": "All",
     "manual": "Manual",
-    "responsible": "Responsible",
-    "allMembers": "All members",
     "categories": "Categories",
     "allCategories": "All categories",
-    "selected": "{{count}} selected",
-    "selectedPlural": "{{count}} selected",
+    "selected": "selected",
+    "selectedPlural": "selected",
     "searchCategory": "Search category...",
     "noCategoryFound": "No category found.",
     "search": "Search",
     "searchPlaceholder": "Search by title or description...",
     "startDate": "Start Date",
     "endDate": "End Date",
-    "selectDate": "Select date",
-    "showOnlyMine": "Show only my transactions",
-    "showOnlyMineHelp": "Filters to show only yours"
+    "selectDate": "Select date"
   },
   "transactions": {
     "add": "New Transaction",

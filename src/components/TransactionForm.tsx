@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { X } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useFeatureLimits } from "@/hooks/useFeatureLimits";
-import { UpgradeModal } from "./UpgradeModal";
 import { useToast } from "@/hooks/use-toast";
 import { transactionSchema } from "@/lib/validations";
 
@@ -26,10 +25,9 @@ interface TransactionFormProps {
 }
 
 export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
-  // Calcular data local (Brasil UTC-3) para evitar data do dia seguinte
   const getLocalDate = () => {
     const now = new Date();
-    const brazilOffset = -3 * 60; // UTC-3 em minutos
+    const brazilOffset = -3 * 60;
     const localTime = new Date(now.getTime() + (brazilOffset * 60 * 1000));
     const year = localTime.getUTCFullYear();
     const month = String(localTime.getUTCMonth() + 1).padStart(2, '0');
@@ -43,8 +41,6 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
   const [categoryId, setCategoryId] = useState("");
   const [date, setDate] = useState(getLocalDate());
   const [description, setDescription] = useState("");
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [upgradeReason, setUpgradeReason] = useState("");
   const { categories } = useTransactions();
   const { canCreateTransaction, refetchUsage } = useFeatureLimits();
   const { toast } = useToast();
@@ -52,12 +48,9 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!title || !amount) {
-      return;
-    }
+    if (!title || !amount) return;
 
     try {
-      // Validar dados
       const validated = transactionSchema.parse({
         title,
         amount: parseFloat(amount),
@@ -67,11 +60,8 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
         description: description || undefined,
       });
 
-      // Verificar limite antes de criar
       const limitCheck = canCreateTransaction();
       if (!limitCheck.allowed) {
-        setUpgradeReason(limitCheck.reason || 'Upgrade necessário para criar mais transações.');
-        setShowUpgradeModal(true);
         toast({
           title: "Limite atingido",
           description: limitCheck.reason,
@@ -90,10 +80,8 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
         source: 'manual'
       });
 
-      // Atualizar uso após criar
       await refetchUsage();
 
-      // Reset form
       setTitle("");
       setAmount("");
       setType('expense');
@@ -214,12 +202,6 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
           </div>
         </form>
       </CardContent>
-      
-      <UpgradeModal 
-        open={showUpgradeModal} 
-        onClose={() => setShowUpgradeModal(false)}
-        reason={upgradeReason}
-      />
     </Card>
   );
 }
