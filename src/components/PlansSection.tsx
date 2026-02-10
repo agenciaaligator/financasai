@@ -1,18 +1,21 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Crown } from "lucide-react";
+import { Check, Crown, Loader2, CreditCard } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { 
+  STRIPE_PRICES, 
   DISPLAY_PRICES, 
   formatPrice, 
   calculateYearlySavings 
 } from "@/config/pricing";
 
 export function PlansSection() {
-  const navigate = useNavigate();
+  const { toast } = useToast();
   const [cycle, setCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const [isLoading, setIsLoading] = useState(false);
 
   const savings = calculateYearlySavings();
 
@@ -24,11 +27,45 @@ export function PlansSection() {
     'Transações ilimitadas',
     'Categorias ilimitadas',
     'WhatsApp integrado',
-    'Relatórios com IA',
-    'Google Calendar',
-    'Multi-usuário',
+    'Classificação automática por IA',
+    'Consultas financeiras por WhatsApp',
     'Suporte prioritário',
   ];
+
+  const handleCheckout = async () => {
+    setIsLoading(true);
+    try {
+      toast({
+        title: "🔄 Redirecionando para checkout...",
+        description: "Aguarde enquanto preparamos seu pagamento",
+      });
+
+      const priceId = STRIPE_PRICES[cycle];
+
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { priceId },
+      });
+
+      if (error) {
+        console.error('[CHECKOUT] Error:', error);
+        throw error;
+      }
+
+      if (!data?.url) {
+        throw new Error('URL de checkout não retornada');
+      }
+
+      window.location.href = data.url;
+    } catch (error) {
+      console.error('[CHECKOUT] Error:', error);
+      toast({
+        title: "❌ Erro",
+        description: "Não foi possível completar a ação. Tente novamente.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="max-w-lg mx-auto">
@@ -100,10 +137,25 @@ export function PlansSection() {
           <Button 
             className="w-full"
             size="lg"
-            onClick={() => navigate('/choose-plan')}
+            onClick={handleCheckout}
+            disabled={isLoading}
           >
-            Começar agora
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Redirecionando...
+              </>
+            ) : (
+              <>
+                <CreditCard className="mr-2 h-5 w-5" />
+                Ir para pagamento
+              </>
+            )}
           </Button>
+
+          <p className="text-center text-xs text-muted-foreground">
+            💡 Tem um cupom? Digite na tela de pagamento do Stripe.
+          </p>
         </CardContent>
       </Card>
     </div>

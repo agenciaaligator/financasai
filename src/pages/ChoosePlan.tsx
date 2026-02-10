@@ -51,8 +51,8 @@ export default function ChoosePlan() {
     } catch (error) {
       console.error('[CHECKOUT] Error:', error);
       toast({
-        title: "❌ Erro ao criar checkout",
-        description: error instanceof Error ? error.message : "Tente novamente mais tarde",
+        title: "❌ Erro",
+        description: "Não foi possível completar a ação. Tente novamente.",
         variant: "destructive",
       });
       setIsLoading(false);
@@ -141,9 +141,8 @@ export default function ChoosePlan() {
                 'Transações ilimitadas',
                 'Categorias ilimitadas',
                 'WhatsApp integrado',
-                'Relatórios com IA',
-                'Google Calendar',
-                'Multi-usuário',
+                'Classificação automática por IA',
+                'Consultas financeiras por WhatsApp',
                 'Suporte prioritário',
               ].map((feature, index) => (
                 <li key={index} className="flex items-start gap-2">

@@ -16,12 +16,8 @@ export function FAQSection() {
       answer: "Sim! Você pode cancelar a qualquer momento sem multas, taxas ou burocracia. Seu plano permanece ativo até o final do período pago, e você mantém acesso a todos os seus dados."
     },
     {
-      question: "A integração com Google Calendar é automática?",
-      answer: "Sim, após conectar sua conta Google (processo de 2 cliques), todos os compromissos são sincronizados automaticamente em tempo real. Alterações feitas na Dona Wilma aparecem no Google Calendar e vice-versa."
-    },
-    {
       question: "Como funciona o WhatsApp integrado?",
-      answer: "Você recebe lembretes e notificações diretamente no seu WhatsApp. Também pode adicionar compromissos e registrar transações conversando naturalmente com a Dona Wilma, sem precisar abrir o aplicativo!"
+      answer: "Você pode registrar transações financeiras e fazer consultas conversando naturalmente com a Dona Wilma pelo WhatsApp. Basta enviar mensagens como 'gastei 50 no mercado' ou 'quanto gastei este mês?' — sem precisar abrir o aplicativo!"
     },
     {
       question: "Como posso experimentar a Dona Wilma?",

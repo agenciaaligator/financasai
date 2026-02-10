@@ -262,7 +262,7 @@ export default function Welcome() {
               <div>
                 <CardTitle>Conectar WhatsApp</CardTitle>
                 <CardDescription>
-                  Receba lembretes e gerencie suas finanças pelo WhatsApp
+                  Registre transações e consulte suas finanças pelo WhatsApp
                 </CardDescription>
               </div>
             </div>
@@ -388,7 +388,7 @@ export default function Welcome() {
               </li>
               <li className="flex items-start gap-2">
                 <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <span>Envie <strong>"Reunião amanhã às 14h"</strong> para agendar compromissos</span>
+                <span>Envie <strong>"Recebi 3000 de salário"</strong> para registrar receitas</span>
               </li>
               <li className="flex items-start gap-2">
                 <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
