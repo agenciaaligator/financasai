@@ -55,7 +55,6 @@ const MAX_AUTH_ATTEMPTS_PER_HOUR = 3;
 // Message deduplication at agent level (defense in depth)
 const processedMessages = new Map<string, number>();
 const AGENT_DEDUPE_WINDOW = 10 * 60 * 1000; // 10 minutes
-const MAX_AUTH_ATTEMPTS_PER_HOUR = 3;
 
 interface WhatsAppMessage {
   from: string;
@@ -6692,6 +6691,13 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  console.log("🔍 [AGENT] ENV check:", {
+    SUPABASE_URL: !!Deno.env.get("SUPABASE_URL"),
+    SUPABASE_SERVICE_ROLE_KEY: !!Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
+    WHATSAPP_ACCESS_TOKEN: !!Deno.env.get("WHATSAPP_ACCESS_TOKEN"),
+    WHATSAPP_PHONE_NUMBER_ID: !!Deno.env.get("WHATSAPP_PHONE_NUMBER_ID"),
+  });
+
   try {
     const body = await req.json();
     const { phone_number, message, action } = body;
@@ -7185,7 +7191,11 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('Error in WhatsApp Agent:', error);
+    console.error('❌ [AGENT] Error in WhatsApp Agent:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+    });
     return new Response(JSON.stringify({
       success: false,
       error: error.message,
