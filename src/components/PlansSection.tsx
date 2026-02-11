@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Check, Crown, Loader2, CreditCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 import { 
   STRIPE_PRICES, 
   DISPLAY_PRICES, 
@@ -14,6 +15,7 @@ import {
 
 export function PlansSection() {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [cycle, setCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -23,21 +25,14 @@ export function PlansSection() {
     ? DISPLAY_PRICES.monthly 
     : DISPLAY_PRICES.yearlyMonthlyEquivalent;
 
-  const features = [
-    'Transações ilimitadas',
-    'Categorias ilimitadas',
-    'WhatsApp integrado',
-    'Classificação automática por IA',
-    'Consultas financeiras por WhatsApp',
-    'Suporte prioritário',
-  ];
+  const featureKeys = [0, 1, 2, 3, 4, 5];
 
   const handleCheckout = async () => {
     setIsLoading(true);
     try {
       toast({
-        title: "🔄 Redirecionando para checkout...",
-        description: "Aguarde enquanto preparamos seu pagamento",
+        title: t('landing.plans.redirectingToast'),
+        description: t('landing.plans.redirectingToastDesc'),
       });
 
       const priceId = STRIPE_PRICES[cycle];
@@ -59,8 +54,8 @@ export function PlansSection() {
     } catch (error) {
       console.error('[CHECKOUT] Error:', error);
       toast({
-        title: "❌ Erro",
-        description: "Não foi possível completar a ação. Tente novamente.",
+        title: t('landing.plans.errorTitle'),
+        description: t('landing.plans.errorDesc'),
         variant: "destructive",
       });
       setIsLoading(false);
@@ -78,7 +73,7 @@ export function PlansSection() {
             className="rounded-md"
             size="sm"
           >
-            Mensal
+            {t('landing.plans.monthly')}
           </Button>
           <Button
             variant={cycle === 'yearly' ? 'default' : 'ghost'}
@@ -86,7 +81,7 @@ export function PlansSection() {
             className="rounded-md"
             size="sm"
           >
-            Anual
+            {t('landing.plans.yearly')}
             <Badge variant="secondary" className="ml-2">
               -{savings}%
             </Badge>
@@ -97,16 +92,16 @@ export function PlansSection() {
       {/* Card do Plano Premium */}
       <Card className="border-2 border-primary shadow-lg relative">
         <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-semibold">
-          Mais popular
+          {t('landing.plans.mostPopular')}
         </div>
         
         <CardHeader>
           <div className="flex items-center gap-2 mb-2">
             <Crown className="h-6 w-6 text-primary" />
-            <CardTitle className="text-2xl">Premium</CardTitle>
+            <CardTitle className="text-2xl">{t('landing.plans.premiumTitle')}</CardTitle>
           </div>
           <CardDescription>
-            Plano completo com todos os recursos
+            {t('landing.plans.premiumDesc')}
           </CardDescription>
         </CardHeader>
         
@@ -116,20 +111,20 @@ export function PlansSection() {
               <span className="text-4xl font-bold text-foreground">
                 {formatPrice(displayPrice)}
               </span>
-              <span className="text-muted-foreground">/mês</span>
+              <span className="text-muted-foreground">{t('landing.plans.perMonth')}</span>
             </div>
             {cycle === 'yearly' && (
               <p className="text-sm text-muted-foreground mt-1">
-                Cobrado anualmente: {formatPrice(DISPLAY_PRICES.yearly)}
+                {t('landing.plans.billedAnnually')} {formatPrice(DISPLAY_PRICES.yearly)}
               </p>
             )}
           </div>
 
           <ul className="space-y-3">
-            {features.map((feature, index) => (
+            {featureKeys.map((index) => (
               <li key={index} className="flex items-start gap-2">
                 <Check className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                <span className="text-foreground">{feature}</span>
+                <span className="text-foreground">{t(`landing.plans.features.${index}`)}</span>
               </li>
             ))}
           </ul>
@@ -143,18 +138,18 @@ export function PlansSection() {
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Redirecionando...
+                {t('landing.plans.redirecting')}
               </>
             ) : (
               <>
                 <CreditCard className="mr-2 h-5 w-5" />
-                Ir para pagamento
+                {t('landing.plans.goToPayment')}
               </>
             )}
           </Button>
 
           <p className="text-center text-xs text-muted-foreground">
-            💡 Tem um cupom? Digite na tela de pagamento do Stripe.
+            {t('landing.plans.couponHint')}
           </p>
         </CardContent>
       </Card>

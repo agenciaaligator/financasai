@@ -281,7 +281,7 @@ const LandingPage = () => {
           <div className="border-t mt-8 pt-8 text-center text-sm text-muted-foreground space-y-2">
             <p>{t('landing.footer.copyright')}</p>
             <p>
-              Desenvolvido por{' '}
+              {t('landing.footer.developedBy')}{' '}
               <a 
                 href="https://aligator.com.br" 
                 target="_blank" 

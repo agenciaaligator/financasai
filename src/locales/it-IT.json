@@ -265,18 +265,95 @@
     },
     "plans": {
       "title": "Scegli il tuo piano",
-      "subtitle": "Tutto ciò di cui hai bisogno in un unico piano"
+      "subtitle": "Tutto ciò di cui hai bisogno in un unico piano",
+      "monthly": "Mensile",
+      "yearly": "Annuale",
+      "mostPopular": "Più popolare",
+      "premiumTitle": "Premium",
+      "premiumDesc": "Piano completo con tutte le funzionalità",
+      "perMonth": "/mese",
+      "billedAnnually": "Fatturato annualmente:",
+      "goToPayment": "Vai al pagamento",
+      "redirecting": "Reindirizzamento...",
+      "couponHint": "💡 Hai un coupon? Inseriscilo nella pagina di pagamento Stripe.",
+      "redirectingToast": "🔄 Reindirizzamento al checkout...",
+      "redirectingToastDesc": "Attendi mentre prepariamo il tuo pagamento",
+      "errorTitle": "❌ Errore",
+      "errorDesc": "Non è stato possibile completare l'azione. Riprova.",
+      "features": {
+        "0": "Transazioni illimitate",
+        "1": "Categorie illimitate",
+        "2": "WhatsApp integrato",
+        "3": "Classificazione automatica con IA",
+        "4": "Consulenze finanziarie via WhatsApp",
+        "5": "Supporto prioritario"
+      }
     },
     "faq": {
       "title": "Domande frequenti",
-      "subtitle": "Risposte alle tue domande su Dona Wilma"
+      "subtitle": "Risposte alle tue domande su Dona Wilma",
+      "items": {
+        "0": {
+          "question": "Come funziona la sicurezza dei miei dati?",
+          "answer": "Utilizziamo crittografia end-to-end e archiviazione sicura su Supabase, con certificazione ISO 27001. I tuoi dati sono protetti con i più alti standard di sicurezza del settore, inclusi backup automatici giornalieri."
+        },
+        "1": {
+          "question": "Posso cancellare il mio abbonamento in qualsiasi momento?",
+          "answer": "Sì! Puoi cancellare in qualsiasi momento senza penali, costi aggiuntivi o burocrazia. Il tuo piano rimane attivo fino alla fine del periodo pagato, e mantieni l'accesso a tutti i tuoi dati."
+        },
+        "2": {
+          "question": "Come funziona il WhatsApp integrato?",
+          "answer": "Puoi registrare transazioni finanziarie e fare consulte parlando naturalmente con Dona Wilma su WhatsApp. Basta inviare messaggi come 'speso 50 al supermercato' o 'quanto ho speso questo mese?' — senza bisogno di aprire l'app!"
+        },
+        "3": {
+          "question": "Come posso provare Dona Wilma?",
+          "answer": "Sottoscrivendo il piano, avrai accesso immediato a tutte le funzionalità di Dona Wilma. Eventualmente, coupon di sconto potranno essere resi disponibili per i nuovi utenti."
+        }
+      }
+    },
+    "interaction": {
+      "title": "Interagisci con Dona Wilma 24 ore su 24",
+      "subtitle": "Chiedi quello che vuoi sulle tue finanze o impegni. Ecco alcuni esempi di cosa puoi dire:",
+      "footer": "E molto altro... L'IA capisce il linguaggio naturale ed è sempre pronta ad aiutarti!",
+      "examples": {
+        "0": "Speso 200 con la carta",
+        "1": "Ricevuto 10 mila di stipendio",
+        "2": "Quanto ho speso oggi?",
+        "3": "Saldo del mese?",
+        "4": "Pagato 30 di benzina",
+        "5": "Ho l'affitto il 22",
+        "6": "Quanto ho speso questo mese?",
+        "7": "Quali promemoria ho oggi?",
+        "8": "Riunione domani alle 14",
+        "9": "Ricordami di chiamare il cliente",
+        "10": "Visita medica venerdì",
+        "11": "Compleanno di Giovanni il 15"
+      }
+    },
+    "stats": {
+      "title": "Perché scegliere Dona Wilma?",
+      "subtitle": "Semplicità e tecnologia per facilitare la tua giornata",
+      "items": {
+        "0": { "title": "Direttamente su WhatsApp", "description": "Registra finanze e impegni senza aprire nessuna app" },
+        "1": { "title": "IA che ti capisce", "description": "Categorizzazione automatica con intelligenza artificiale" },
+        "2": { "title": "Disponibile 24h", "description": "La tua assistente personale che lavora tutto il tempo" },
+        "3": { "title": "Sicuro e privato", "description": "I tuoi dati protetti con crittografia avanzata" }
+      }
+    },
+    "steps": {
+      "items": {
+        "0": { "title": "Invia un messaggio", "description": "Manda un testo o audio su WhatsApp come 'speso 50 al supermercato' o 'riunione domani alle 10'" },
+        "1": { "title": "L'IA organizza tutto", "description": "Dona Wilma capisce, categorizza e registra automaticamente le tue finanze e i tuoi impegni" },
+        "2": { "title": "Segui sul pannello", "description": "Vedi grafici, report e la tua agenda completa sul pannello web o ricevi riepiloghi su WhatsApp" }
+      }
     },
     "footer": {
       "tagline": "La tua assistente personale per le finanze",
       "links": "Link",
       "terms": "Termini di Servizio",
       "privacy": "Informativa sulla Privacy",
-      "copyright": "© 2025 Dona Wilma. Tutti i diritti riservati."
+      "copyright": "© 2025 Dona Wilma. Tutti i diritti riservati.",
+      "developedBy": "Sviluppato da"
     }
   }
 }
