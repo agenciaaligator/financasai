@@ -1,1 +1,25 @@
 project_id = "fsamlnlabdjoqpiuhgex"
+
+[functions.whatsapp-agent]
+verify_jwt = false
+
+[functions.whatsapp-webhook]
+verify_jwt = false
+
+[functions.whatsapp-session-set-org]
+verify_jwt = false
+
+[functions.create-checkout]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.customer-portal]
+verify_jwt = false
+
+[functions.check-subscription]
+verify_jwt = false
+
+[functions.make-webhook]
+verify_jwt = false
