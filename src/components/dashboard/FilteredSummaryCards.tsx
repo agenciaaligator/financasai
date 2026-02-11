@@ -2,12 +2,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Wallet, Tag } from "lucide-react";
 import { Transaction } from "@/hooks/useTransactions";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 interface FilteredSummaryCardsProps {
   transactions: Transaction[];
 }
 
 export function FilteredSummaryCards({ transactions }: FilteredSummaryCardsProps) {
+  const { t } = useTranslation();
+  
   const summary = useMemo(() => {
     const income = transactions
       .filter(t => t.type === 'income')
@@ -19,7 +22,6 @@ export function FilteredSummaryCards({ transactions }: FilteredSummaryCardsProps
     
     const balance = income - expenses;
 
-    // Top 3 categorias mais usadas
     const categoryCount = transactions.reduce((acc, transaction) => {
       if (transaction.category_id && transaction.categories) {
         const categoryName = transaction.categories.name;
@@ -46,7 +48,7 @@ export function FilteredSummaryCards({ transactions }: FilteredSummaryCardsProps
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
       <Card className="bg-gradient-card shadow-card border-0">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Saldo do Período</CardTitle>
+          <CardTitle className="text-sm font-medium">{t('dashboard.filtered.periodBalance')}</CardTitle>
           <Wallet className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
@@ -54,14 +56,14 @@ export function FilteredSummaryCards({ transactions }: FilteredSummaryCardsProps
             R$ {summary.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            {summary.transactionCount} transações
+            {summary.transactionCount} {t('dashboard.filtered.transactions')}
           </p>
         </CardContent>
       </Card>
 
       <Card className="bg-gradient-card shadow-card border-0">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Receitas</CardTitle>
+          <CardTitle className="text-sm font-medium">{t('dashboard.filtered.income')}</CardTitle>
           <TrendingUp className="h-4 w-4 text-success" />
         </CardHeader>
         <CardContent>
@@ -69,14 +71,14 @@ export function FilteredSummaryCards({ transactions }: FilteredSummaryCardsProps
             R$ {summary.income.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Total recebido
+            {t('dashboard.filtered.totalReceived')}
           </p>
         </CardContent>
       </Card>
 
       <Card className="bg-gradient-card shadow-card border-0">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Despesas</CardTitle>
+          <CardTitle className="text-sm font-medium">{t('dashboard.filtered.expenses')}</CardTitle>
           <TrendingDown className="h-4 w-4 text-destructive" />
         </CardHeader>
         <CardContent>
@@ -84,14 +86,14 @@ export function FilteredSummaryCards({ transactions }: FilteredSummaryCardsProps
             R$ {summary.expenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Total gasto
+            {t('dashboard.filtered.totalSpent')}
           </p>
         </CardContent>
       </Card>
 
       <Card className="bg-gradient-card shadow-card border-0">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Top Categorias</CardTitle>
+          <CardTitle className="text-sm font-medium">{t('dashboard.filtered.topCategories')}</CardTitle>
           <Tag className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
@@ -106,7 +108,7 @@ export function FilteredSummaryCards({ transactions }: FilteredSummaryCardsProps
                 </div>
               ))
             ) : (
-              <p className="text-xs text-muted-foreground">Sem categorias</p>
+              <p className="text-xs text-muted-foreground">{t('dashboard.filtered.noCategories')}</p>
             )}
           </div>
         </CardContent>

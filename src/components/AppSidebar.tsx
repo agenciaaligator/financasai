@@ -135,7 +135,7 @@ export function AppSidebar({
             </div>
             <div>
               <h2 className="font-bold text-lg text-sidebar-primary">Dona Wilma</h2>
-               <p className="text-xs text-sidebar-foreground/60">Sua assessora pessoal</p>
+               <p className="text-xs text-sidebar-foreground/60">{t('sidebar.subtitle')}</p>
             </div>
           </div>
         </div>
@@ -247,7 +247,7 @@ export function AppSidebar({
           {open && (
             <div>
               <h2 className="font-bold text-lg text-sidebar-primary">Dona Wilma</h2>
-              <p className="text-xs text-sidebar-foreground/60">Sua assessora pessoal</p>
+              <p className="text-xs text-sidebar-foreground/60">{t('sidebar.subtitle')}</p>
             </div>
           )}
         </div>

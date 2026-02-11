@@ -37,7 +37,7 @@ export function SummaryCards({ balance, totalIncome, totalExpenses }: SummaryCar
     } catch (error) {
       toast({
         title: t('common.error'),
-        description: "Não foi possível abrir o portal. Tente novamente.",
+        description: t('common.genericError'),
         variant: "destructive",
       });
     } finally {
