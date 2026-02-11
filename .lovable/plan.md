@@ -1,81 +1,209 @@
 
+# Plano de Refinamento: Dashboard, i18n, Stripe e Onboarding
 
-# Corrigir erro no cadastro de transacoes via WhatsApp
+## Visao Geral
 
-## Diagnostico
+Quatro frentes de trabalho, organizadas por prioridade e dependencia.
 
-A mensagem generica acontece porque o `whatsapp-webhook` recebe um erro HTTP do `whatsapp-agent` (linha 1084-1089) e envia o fallback. O agente esta falhando no deploy ou na execucao.
+---
 
-### Problema 1: Erro de compilacao no whatsapp-agent (CRITICO)
+## 1. Refinar visual do dashboard
 
-Linha 53 e linha 58 do `whatsapp-agent/index.ts` ambas declaram:
+### Problemas identificados
+
+- **Moeda hardcoded "R$"**: `SummaryCards.tsx`, `FilteredSummaryCards.tsx`, `FinancialChart.tsx` usam "R$" fixo e `toLocaleString('pt-BR')`. Isso nao faz sentido para usuarios em outros idiomas/moedas.
+- **Nome do mes hardcoded em pt-BR**: `SummaryCards.tsx` linha 26 usa `ptBR` do date-fns fixo para formatar o mes.
+- **Textos hardcoded no dashboard**:
+  - `BalanceAlert.tsx`: "Atencao! Seu saldo esta negativo" e subtexto
+  - `FilteredSummaryCards.tsx`: "Saldo do Periodo", "Receitas", "Despesas", "Top Categorias", "transacoes", "Total recebido", "Total gasto", "Sem categorias"
+  - `WhatsAppPage.tsx`: ~40 textos hardcoded (labels, toasts, comandos, etc.)
+  - `AppSidebar.tsx`: "Sua assessora pessoal" hardcoded (linhas 138, 250)
+- **Welcome.tsx**: Todos os textos hardcoded (~30 strings)
+
+### Alteracoes
+
+| Arquivo | O que fazer |
+|---------|-------------|
+| `SummaryCards.tsx` | Usar locale dinamico do i18n para formatar data do mes; usar t() nos textos restantes |
+| `FilteredSummaryCards.tsx` | Migrar todos os textos para t() |
+| `BalanceAlert.tsx` | Migrar textos para t() |
+| `FinancialChart.tsx` | Ja usa t() -- OK |
+| `AppSidebar.tsx` | Migrar "Sua assessora pessoal" para t() |
+
+**Nota sobre moeda**: Manter "R$" por enquanto pois o produto e focado no mercado brasileiro. A formatacao multi-moeda sera tratada no item 3 (Stripe multi-moeda) como uma evolucao futura.
+
+---
+
+## 2. Finalizar internacionalizacao
+
+### Componentes ainda com textos hardcoded
+
+| Componente | Textos hardcoded |
+|------------|------------------|
+| `BalanceAlert.tsx` | 2 strings |
+| `FilteredSummaryCards.tsx` | 8 strings |
+| `WhatsAppPage.tsx` | ~40 strings (labels, toasts, comandos, dicas) |
+| `Welcome.tsx` | ~30 strings (onboarding completo) |
+| `ProfileSettings.tsx` | ~50 strings (labels, toasts, status) |
+| `AppSidebar.tsx` | 1 string ("Sua assessora pessoal") |
+| `SummaryCards.tsx` | 1 toast description hardcoded |
+
+### Acao
+
+- Adicionar chaves novas nos 5 arquivos de locale (`pt-BR`, `pt-PT`, `en-US`, `es-ES`, `it-IT`)
+- Substituir todos os textos hardcoded por `t('chave')`
+- Organizar chaves em namespaces: `dashboard.*`, `whatsapp.*`, `welcome.*`, `profile.*`
+
+### Novas chaves a criar (estimativa)
+
 ```text
-const MAX_AUTH_ATTEMPTS_PER_HOUR = 3;
+dashboard.balanceAlert.title
+dashboard.balanceAlert.description
+dashboard.filtered.periodBalance
+dashboard.filtered.totalReceived
+dashboard.filtered.totalSpent
+dashboard.filtered.topCategories
+dashboard.filtered.noCategories
+dashboard.filtered.transactions
+
+whatsapp.setupIn2Min
+whatsapp.afterConnect
+whatsapp.addByVoice
+whatsapp.sendReceipts
+whatsapp.checkBalance
+whatsapp.phoneLabel
+whatsapp.phonePlaceholder
+whatsapp.phoneFormat
+whatsapp.codeLabel
+whatsapp.codePlaceholder
+whatsapp.codeHint
+whatsapp.sending
+whatsapp.verifyCode
+whatsapp.number
+whatsapp.sendHelpHint
+whatsapp.cmdAdd (lista de comandos)
+whatsapp.cmdOcr
+whatsapp.cmdEdit
+whatsapp.cmdQuery
+... (detalhados na implementacao)
+
+welcome.title
+welcome.subtitle
+welcome.connectWhatsApp
+welcome.connectDesc
+welcome.phoneLabel
+welcome.phoneHint
+welcome.sendCode
+welcome.sending
+welcome.codeLabel
+welcome.codePlaceholder
+welcome.codeHint
+welcome.back
+welcome.verify
+welcome.verifying
+welcome.connected
+welcome.number
+welcome.readyToUse
+welcome.tips.title
+welcome.tips (4 dicas)
+welcome.goToSystem
+welcome.skipForNow
+
+sidebar.subtitle (Sua assessora pessoal)
 ```
-Isso causa um erro de compilacao Deno (`Duplicate identifier`), impedindo o deploy da funcao. Resultado: toda chamada ao agent retorna erro HTTP, e o webhook envia a mensagem generica.
 
-### Problema 2: Falta de config.toml para as edge functions
+---
 
-O `supabase/config.toml` esta praticamente vazio -- nao tem configuracao de `verify_jwt = false` para as funcoes. Isso pode causar rejeicao JWT em certas situacoes.
+## 3. Ajustar Stripe multi-moeda
 
-### Problema 3: SUPABASE_SERVICE_ROLE_KEY pode estar desatualizada
+### Situacao atual
 
-Como o projeto foi migrado, a service role key configurada nos secrets pode ser do projeto antigo.
+- `pricing.ts` tem precos fixos em BRL (R$ 24,90/mes e R$ 239,04/ano)
+- `formatPrice()` retorna sempre "R$" com formato brasileiro
+- `PlansSection.tsx` ja usa `t()` para textos, mas o preco e formatado com `formatPrice()` que e fixo em BRL
+- O Stripe aceita apenas um `priceId` por checkout, entao multi-moeda real exigiria criar prices separados no Stripe para cada moeda
 
-## Plano de correcao
+### Recomendacao para MVP
 
-### Passo 1: Corrigir duplicata no whatsapp-agent
+**NAO implementar multi-moeda real agora.** Razoes:
+- Exige criar prices separados no Stripe para cada moeda (USD, EUR, etc.)
+- Exige logica de selecao de price baseado no locale do usuario
+- Complexidade alta para beneficio baixo no MVP
 
-Remover a linha 58 (`const MAX_AUTH_ATTEMPTS_PER_HOUR = 3;`) que e duplicada da linha 53.
+### Acao minima viavel
 
-### Passo 2: Adicionar log de diagnostico
+- Extrair o simbolo de moeda e formatacao para uma funcao utilitaria que respeita o locale
+- No `pricing.ts`, adicionar um helper `formatCurrency(amount, locale)` que usa `Intl.NumberFormat`
+- Atualizar `formatPrice()` para aceitar locale opcional
+- Resultado: mesmo preco em BRL, mas formatado corretamente para cada locale (ex: "BRL 24,90" vs "R$ 24.90")
 
-No inicio do handler `serve()` do whatsapp-agent, adicionar log verificando se as variaveis de ambiente existem (sem logar valores):
+| Arquivo | Alteracao |
+|---------|-----------|
+| `src/config/pricing.ts` | Atualizar `formatPrice()` para usar `Intl.NumberFormat` com locale |
+| `src/components/PlansSection.tsx` | Passar locale atual para formatacao |
+| `src/components/dashboard/SummaryCards.tsx` | Usar formatacao baseada em locale |
+| `src/components/dashboard/FilteredSummaryCards.tsx` | Usar formatacao baseada em locale |
+
+---
+
+## 4. Organizar fluxo final de onboarding
+
+### Fluxo atual
 
 ```text
-console.log("ENV check:", {
-  SUPABASE_URL: !!Deno.env.get("SUPABASE_URL"),
-  SUPABASE_SERVICE_ROLE_KEY: !!Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
-  WHATSAPP_ACCESS_TOKEN: !!Deno.env.get("WHATSAPP_ACCESS_TOKEN"),
-});
+Stripe checkout -> stripe-webhook cria usuario -> 
+email de reset de senha -> usuario faz login -> 
+Index.tsx verifica whatsapp_sessions -> 
+redireciona para /boas-vindas -> Welcome.tsx
 ```
 
-### Passo 3: Melhorar error handling no catch principal
+### Problemas
 
-No catch final (linha 7187), logar mais detalhes do erro:
+- `Welcome.tsx` tem textos 100% hardcoded em portugues
+- Nao usa `useTranslation()` nem respeita o idioma selecionado
+- Textos de toast e validacao hardcoded
 
-```text
-console.error('Error in WhatsApp Agent:', {
-  message: error.message,
-  stack: error.stack,
-  name: error.name
-});
-```
+### Acao
 
-### Passo 4: Atualizar config.toml
+- Adicionar `useTranslation()` ao `Welcome.tsx`
+- Migrar todos os textos para chaves i18n
+- Manter a logica de fluxo intacta (nao alterar redirecionamentos nem verificacoes)
+- Adicionar `LanguageFlagSelector` ao header do Welcome.tsx para consistencia
 
-Adicionar `verify_jwt = false` para `whatsapp-agent` e `whatsapp-webhook`:
+---
 
-```text
-[functions.whatsapp-agent]
-verify_jwt = false
+## Ordem de implementacao
 
-[functions.whatsapp-webhook]
-verify_jwt = false
-```
+1. **Locale files**: Adicionar todas as novas chaves nos 5 arquivos de idioma
+2. **Componentes do dashboard**: BalanceAlert, FilteredSummaryCards, AppSidebar
+3. **WhatsAppPage.tsx**: Migrar ~40 strings
+4. **Welcome.tsx**: Migrar ~30 strings + adicionar seletor de idioma
+5. **ProfileSettings.tsx**: Migrar ~50 strings
+6. **Pricing/formatacao**: Atualizar formatPrice() e aplicar nos componentes
 
-### Passo 5: Verificar e redeployar
+## Arquivos modificados (total)
 
-Apos as correcoes, redeployar ambas as funcoes e verificar os logs para confirmar se o SUPABASE_SERVICE_ROLE_KEY esta presente. Se nao estiver, sera necessario atualizar o secret com a chave do projeto atual.
-
-## Arquivos modificados
-
-| Arquivo | Acao |
+| Arquivo | Tipo |
 |---------|------|
-| supabase/functions/whatsapp-agent/index.ts | Remover const duplicada, melhorar logs |
-| supabase/config.toml | Adicionar verify_jwt = false |
+| `src/locales/pt-BR.json` | Novas chaves |
+| `src/locales/pt-PT.json` | Novas chaves |
+| `src/locales/en-US.json` | Novas chaves |
+| `src/locales/es-ES.json` | Novas chaves |
+| `src/locales/it-IT.json` | Novas chaves |
+| `src/components/dashboard/BalanceAlert.tsx` | i18n |
+| `src/components/dashboard/FilteredSummaryCards.tsx` | i18n |
+| `src/components/dashboard/SummaryCards.tsx` | i18n + locale format |
+| `src/components/dashboard/WhatsAppPage.tsx` | i18n |
+| `src/components/AppSidebar.tsx` | i18n |
+| `src/components/ProfileSettings.tsx` | i18n |
+| `src/pages/Welcome.tsx` | i18n + language selector |
+| `src/config/pricing.ts` | formatPrice com locale |
+| `src/components/PlansSection.tsx` | Usar locale na formatacao |
 
-## Resultado esperado
+## O que NAO muda
 
-O agente voltara a fazer deploy corretamente, e transacoes via WhatsApp serao salvas normalmente. Se o problema persistir apos o deploy, os novos logs indicarao exatamente o que esta falhando (ex: service role key invalida).
-
+- Logica do Stripe (priceIds, checkout, webhooks)
+- Valores de precos (R$ 24,90/mes e R$ 239,04/ano)
+- Fluxo de onboarding (redirecionamentos, verificacoes)
+- Estrutura de rotas
+- RLS/banco de dados
