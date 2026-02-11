@@ -1,11 +1,14 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertTriangle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface BalanceAlertProps {
   isNegative: boolean;
 }
 
 export function BalanceAlert({ isNegative }: BalanceAlertProps) {
+  const { t } = useTranslation();
+  
   if (!isNegative) return null;
 
   return (
@@ -14,9 +17,9 @@ export function BalanceAlert({ isNegative }: BalanceAlertProps) {
         <div className="flex items-center space-x-3">
           <AlertTriangle className="h-5 w-5 text-destructive" />
           <div>
-            <p className="text-destructive font-medium">Atenção! Seu saldo está negativo</p>
+            <p className="text-destructive font-medium">{t('dashboard.balanceAlert.title')}</p>
             <p className="text-sm text-muted-foreground">
-              Considere revisar seus gastos ou aumentar sua receita
+              {t('dashboard.balanceAlert.description')}
             </p>
           </div>
         </div>
