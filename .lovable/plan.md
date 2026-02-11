@@ -1,96 +1,81 @@
 
-# Internacionalizar 100% da Landing Page
 
-## Resumo
+# Corrigir erro no cadastro de transacoes via WhatsApp
 
-Existem 6 componentes com textos hardcoded que precisam ser migrados para o sistema i18n. Todos os 5 arquivos de idioma (pt-BR, pt-PT, en-US, es-ES, it-IT) serao atualizados com as novas chaves.
+## Diagnostico
 
-## Componentes a alterar
+A mensagem generica acontece porque o `whatsapp-webhook` recebe um erro HTTP do `whatsapp-agent` (linha 1084-1089) e envia o fallback. O agente esta falhando no deploy ou na execucao.
 
-### 1. InteractionExamplesSection.tsx
-Textos hardcoded: titulo, subtitulo, 12 exemplos de interacao, texto final.
-- Adicionar `useTranslation()` e usar chaves `landing.interaction.*`
+### Problema 1: Erro de compilacao no whatsapp-agent (CRITICO)
 
-### 2. StatsSection.tsx
-Textos hardcoded: titulo, subtitulo, 4 cards (titulo + descricao cada).
-- Usar chaves `landing.stats.*`
+Linha 53 e linha 58 do `whatsapp-agent/index.ts` ambas declaram:
+```text
+const MAX_AUTH_ATTEMPTS_PER_HOUR = 3;
+```
+Isso causa um erro de compilacao Deno (`Duplicate identifier`), impedindo o deploy da funcao. Resultado: toda chamada ao agent retorna erro HTTP, e o webhook envia a mensagem generica.
 
-### 3. TestimonialsSection.tsx
-Textos hardcoded: 3 steps (titulo + descricao cada).
-- Usar chaves `landing.steps.*`
+### Problema 2: Falta de config.toml para as edge functions
 
-### 4. FAQSection.tsx
-Textos hardcoded: 4 perguntas + 4 respostas.
-- Usar chaves `landing.faq.items.*`
+O `supabase/config.toml` esta praticamente vazio -- nao tem configuracao de `verify_jwt = false` para as funcoes. Isso pode causar rejeicao JWT em certas situacoes.
 
-### 5. PlansSection.tsx
-Textos hardcoded: "Mensal", "Anual", "Mais popular", "Premium", "Plano completo...", lista de features (6 itens), "/mes", "Cobrado anualmente:", botao "Ir para pagamento", "Redirecionando...", texto do cupom, toast messages.
-- Usar chaves `landing.plans.*`
-- NAO alterar logica do Stripe, precos ou priceIds
+### Problema 3: SUPABASE_SERVICE_ROLE_KEY pode estar desatualizada
 
-### 6. Index.tsx (footer)
-Texto hardcoded: "Desenvolvido por"
-- Usar chave `landing.footer.developedBy`
+Como o projeto foi migrado, a service role key configurada nos secrets pode ser do projeto antigo.
 
-## Novas chaves nos arquivos de idioma
+## Plano de correcao
 
-Cada arquivo de locale recebera as seguintes novas chaves dentro de `landing`:
+### Passo 1: Corrigir duplicata no whatsapp-agent
+
+Remover a linha 58 (`const MAX_AUTH_ATTEMPTS_PER_HOUR = 3;`) que e duplicada da linha 53.
+
+### Passo 2: Adicionar log de diagnostico
+
+No inicio do handler `serve()` do whatsapp-agent, adicionar log verificando se as variaveis de ambiente existem (sem logar valores):
 
 ```text
-landing.interaction.title
-landing.interaction.subtitle
-landing.interaction.footer
-landing.interaction.examples (array de 12 exemplos)
-
-landing.stats.title
-landing.stats.subtitle
-landing.stats.items[0-3].title
-landing.stats.items[0-3].description
-
-landing.steps.items[0-2].title
-landing.steps.items[0-2].description
-
-landing.faq.items[0-3].question
-landing.faq.items[0-3].answer
-
-landing.plans.monthly
-landing.plans.yearly
-landing.plans.mostPopular
-landing.plans.premiumTitle
-landing.plans.premiumDesc
-landing.plans.perMonth
-landing.plans.billedAnnually
-landing.plans.goToPayment
-landing.plans.redirecting
-landing.plans.couponHint
-landing.plans.features[0-5]
-landing.plans.redirectingToast
-landing.plans.redirectingToastDesc
-landing.plans.errorTitle
-landing.plans.errorDesc
-
-landing.footer.developedBy
+console.log("ENV check:", {
+  SUPABASE_URL: !!Deno.env.get("SUPABASE_URL"),
+  SUPABASE_SERVICE_ROLE_KEY: !!Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
+  WHATSAPP_ACCESS_TOKEN: !!Deno.env.get("WHATSAPP_ACCESS_TOKEN"),
+});
 ```
+
+### Passo 3: Melhorar error handling no catch principal
+
+No catch final (linha 7187), logar mais detalhes do erro:
+
+```text
+console.error('Error in WhatsApp Agent:', {
+  message: error.message,
+  stack: error.stack,
+  name: error.name
+});
+```
+
+### Passo 4: Atualizar config.toml
+
+Adicionar `verify_jwt = false` para `whatsapp-agent` e `whatsapp-webhook`:
+
+```text
+[functions.whatsapp-agent]
+verify_jwt = false
+
+[functions.whatsapp-webhook]
+verify_jwt = false
+```
+
+### Passo 5: Verificar e redeployar
+
+Apos as correcoes, redeployar ambas as funcoes e verificar os logs para confirmar se o SUPABASE_SERVICE_ROLE_KEY esta presente. Se nao estiver, sera necessario atualizar o secret com a chave do projeto atual.
 
 ## Arquivos modificados
 
 | Arquivo | Acao |
 |---------|------|
-| src/components/InteractionExamplesSection.tsx | Substituir hardcoded por t() |
-| src/components/StatsSection.tsx | Substituir hardcoded por t() |
-| src/components/TestimonialsSection.tsx | Substituir hardcoded por t() |
-| src/components/FAQSection.tsx | Substituir hardcoded por t() |
-| src/components/PlansSection.tsx | Substituir hardcoded por t() |
-| src/pages/Index.tsx | Substituir "Desenvolvido por" por t() |
-| src/locales/pt-BR.json | Adicionar novas chaves |
-| src/locales/pt-PT.json | Adicionar novas chaves |
-| src/locales/en-US.json | Adicionar novas chaves |
-| src/locales/es-ES.json | Adicionar novas chaves |
-| src/locales/it-IT.json | Adicionar novas chaves |
+| supabase/functions/whatsapp-agent/index.ts | Remover const duplicada, melhorar logs |
+| supabase/config.toml | Adicionar verify_jwt = false |
 
-## O que NAO muda
+## Resultado esperado
 
-- Logica do Stripe (precos, priceIds, checkout)
-- Estrutura dos componentes
-- Estilos visuais
-- Componentes que ja usam t() (hero, nav, feature blocks)
+O agente voltara a fazer deploy corretamente, e transacoes via WhatsApp serao salvas normalmente. Se o problema persistir apos o deploy, os novos logs indicarao exatamente o que esta falhando (ex: service role key invalida).
+
