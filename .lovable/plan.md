@@ -1,50 +1,96 @@
 
+# Internacionalizar 100% da Landing Page
 
-# Suporte a idioma via URL para campanhas de marketing
+## Resumo
 
-## O que sera feito
+Existem 6 componentes com textos hardcoded que precisam ser migrados para o sistema i18n. Todos os 5 arquivos de idioma (pt-BR, pt-PT, en-US, es-ES, it-IT) serao atualizados com as novas chaves.
 
-Configurar o `i18next-browser-languagedetector` para reconhecer o parametro `lang` na URL, permitindo links como:
+## Componentes a alterar
 
-- `https://financasai.lovable.app/?lang=en-US` (ingles)
-- `https://financasai.lovable.app/?lang=es-ES` (espanhol)
-- `https://financasai.lovable.app/?lang=it-IT` (italiano)
+### 1. InteractionExamplesSection.tsx
+Textos hardcoded: titulo, subtitulo, 12 exemplos de interacao, texto final.
+- Adicionar `useTranslation()` e usar chaves `landing.interaction.*`
 
-## Como funciona
+### 2. StatsSection.tsx
+Textos hardcoded: titulo, subtitulo, 4 cards (titulo + descricao cada).
+- Usar chaves `landing.stats.*`
 
-O detector de idioma do i18next suporta multiplas fontes de deteccao com ordem de prioridade. Basta configurar `querystring` como primeira opcao, e o parametro da URL tera prioridade sobre o idioma salvo no navegador.
+### 3. TestimonialsSection.tsx
+Textos hardcoded: 3 steps (titulo + descricao cada).
+- Usar chaves `landing.steps.*`
 
-## Alteracao
+### 4. FAQSection.tsx
+Textos hardcoded: 4 perguntas + 4 respostas.
+- Usar chaves `landing.faq.items.*`
 
-**Arquivo:** `src/i18n.ts`
+### 5. PlansSection.tsx
+Textos hardcoded: "Mensal", "Anual", "Mais popular", "Premium", "Plano completo...", lista de features (6 itens), "/mes", "Cobrado anualmente:", botao "Ir para pagamento", "Redirecionando...", texto do cupom, toast messages.
+- Usar chaves `landing.plans.*`
+- NAO alterar logica do Stripe, precos ou priceIds
 
-Adicionar a configuracao `detection` no `init()` do i18n com:
+### 6. Index.tsx (footer)
+Texto hardcoded: "Desenvolvido por"
+- Usar chave `landing.footer.developedBy`
 
-- `order`: define a prioridade -- querystring primeiro, depois localStorage, depois navegador
-- `lookupQuerystring`: define o nome do parametro na URL (sera `lang`)
-- `caches`: manter localStorage para persistir a escolha do usuario
+## Novas chaves nos arquivos de idioma
 
-## Exemplos de uso em campanhas
-
-| Publico        | URL                                            |
-|----------------|------------------------------------------------|
-| EUA/UK         | `financasai.lovable.app/?lang=en-US`           |
-| Espanha/Latam  | `financasai.lovable.app/?lang=es-ES`           |
-| Italia         | `financasai.lovable.app/?lang=it-IT`           |
-| Portugal       | `financasai.lovable.app/?lang=pt-PT`           |
-| Brasil         | `financasai.lovable.app/` (default)            |
-
-## Detalhes tecnicos
-
-A unica mudanca e adicionar o objeto `detection` na configuracao do i18n:
+Cada arquivo de locale recebera as seguintes novas chaves dentro de `landing`:
 
 ```text
-detection: {
-  order: ['querystring', 'localStorage', 'navigator'],
-  lookupQuerystring: 'lang',
-  caches: ['localStorage'],
-}
+landing.interaction.title
+landing.interaction.subtitle
+landing.interaction.footer
+landing.interaction.examples (array de 12 exemplos)
+
+landing.stats.title
+landing.stats.subtitle
+landing.stats.items[0-3].title
+landing.stats.items[0-3].description
+
+landing.steps.items[0-2].title
+landing.steps.items[0-2].description
+
+landing.faq.items[0-3].question
+landing.faq.items[0-3].answer
+
+landing.plans.monthly
+landing.plans.yearly
+landing.plans.mostPopular
+landing.plans.premiumTitle
+landing.plans.premiumDesc
+landing.plans.perMonth
+landing.plans.billedAnnually
+landing.plans.goToPayment
+landing.plans.redirecting
+landing.plans.couponHint
+landing.plans.features[0-5]
+landing.plans.redirectingToast
+landing.plans.redirectingToastDesc
+landing.plans.errorTitle
+landing.plans.errorDesc
+
+landing.footer.developedBy
 ```
 
-Nenhum outro arquivo precisa ser alterado. O componente `LanguageFlagSelector` continuara funcionando normalmente -- se o usuario trocar o idioma manualmente, isso sera salvo no localStorage e prevalecera nas proximas visitas.
+## Arquivos modificados
 
+| Arquivo | Acao |
+|---------|------|
+| src/components/InteractionExamplesSection.tsx | Substituir hardcoded por t() |
+| src/components/StatsSection.tsx | Substituir hardcoded por t() |
+| src/components/TestimonialsSection.tsx | Substituir hardcoded por t() |
+| src/components/FAQSection.tsx | Substituir hardcoded por t() |
+| src/components/PlansSection.tsx | Substituir hardcoded por t() |
+| src/pages/Index.tsx | Substituir "Desenvolvido por" por t() |
+| src/locales/pt-BR.json | Adicionar novas chaves |
+| src/locales/pt-PT.json | Adicionar novas chaves |
+| src/locales/en-US.json | Adicionar novas chaves |
+| src/locales/es-ES.json | Adicionar novas chaves |
+| src/locales/it-IT.json | Adicionar novas chaves |
+
+## O que NAO muda
+
+- Logica do Stripe (precos, priceIds, checkout)
+- Estrutura dos componentes
+- Estilos visuais
+- Componentes que ja usam t() (hero, nav, feature blocks)
