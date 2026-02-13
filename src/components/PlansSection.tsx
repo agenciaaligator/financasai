@@ -1,8 +1,5 @@
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Check, Crown, Loader2, CreditCard } from "lucide-react";
+import { Check, Loader2, CreditCard, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
@@ -12,27 +9,20 @@ import {
   getDisplayPrice,
   getYearlyMonthlyEquivalent,
   formatPrice,
-  calculateYearlySavings,
 } from "@/config/pricing";
 
 export function PlansSection() {
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
-  const [cycle, setCycle] = useState<'monthly' | 'yearly'>('monthly');
-  const [isLoading, setIsLoading] = useState(false);
+  const [loadingCycle, setLoadingCycle] = useState<'monthly' | 'yearly' | null>(null);
 
   const locale = i18n.language;
   const currency = getCurrencyFromLocale(locale);
-  const savings = calculateYearlySavings(locale);
-
-  const displayPrice = cycle === 'monthly' 
-    ? getDisplayPrice('monthly', locale)
-    : getYearlyMonthlyEquivalent(locale);
 
   const featureKeys = [0, 1, 2, 3, 4, 5];
 
-  const handleCheckout = async () => {
-    setIsLoading(true);
+  const handleCheckout = async (cycle: 'monthly' | 'yearly') => {
+    setLoadingCycle(cycle);
     try {
       toast({
         title: t('landing.plans.redirectingToast'),
@@ -62,101 +52,142 @@ export function PlansSection() {
         description: t('landing.plans.errorDesc'),
         variant: "destructive",
       });
-      setIsLoading(false);
+      setLoadingCycle(null);
     }
   };
 
   return (
-    <div className="max-w-lg mx-auto">
-      {/* Toggle Mensal/Anual */}
-      <div className="flex justify-center mb-8">
-        <div className="inline-flex rounded-lg border p-1 bg-muted/50">
-          <Button
-            variant={cycle === 'monthly' ? 'default' : 'ghost'}
-            onClick={() => setCycle('monthly')}
-            className="rounded-md"
-            size="sm"
-          >
-            {t('landing.plans.monthly')}
-          </Button>
-          <Button
-            variant={cycle === 'yearly' ? 'default' : 'ghost'}
-            onClick={() => setCycle('yearly')}
-            className="rounded-md"
-            size="sm"
-          >
-            {t('landing.plans.yearly')}
-            <Badge variant="secondary" className="ml-2">
-              -{savings}%
-            </Badge>
-          </Button>
+    <div className="relative py-20 px-4">
+      {/* Background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 rounded-3xl" />
+      
+      <div className="relative max-w-5xl mx-auto">
+        {/* Section header */}
+        <div className="text-center mb-16">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
+            {t('landing.plans.sectionTitle')}
+          </h2>
+          <p className="text-lg text-white/60">
+            {t('landing.plans.sectionSubtitle')}
+          </p>
+        </div>
+
+        {/* Cards grid */}
+        <div className="grid md:grid-cols-2 gap-6 md:gap-8 items-start">
+          
+          {/* Monthly Card */}
+          <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-8 flex flex-col h-full">
+            <h3 className="text-xl font-semibold text-white mb-6">
+              {t('landing.plans.monthlyTitle')}
+            </h3>
+
+            <div className="mb-6">
+              <div className="flex items-baseline gap-2">
+                <span className="text-5xl font-bold text-white">
+                  {formatPrice(getDisplayPrice('monthly', locale), currency)}
+                </span>
+                <span className="text-white/60">{t('landing.plans.perMonth')}</span>
+              </div>
+            </div>
+
+            <ul className="space-y-3 mb-8 flex-1">
+              {featureKeys.map((index) => (
+                <li key={index} className="flex items-start gap-2">
+                  <Check className="h-5 w-5 text-green-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-white/90">{t(`landing.plans.features.${index}`)}</span>
+                </li>
+              ))}
+            </ul>
+
+            <button
+              onClick={() => handleCheckout('monthly')}
+              disabled={loadingCycle !== null}
+              className="w-full py-3 px-6 rounded-xl bg-white/20 text-white font-semibold border border-white/30 hover:bg-white/30 hover:scale-[1.02] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {loadingCycle === 'monthly' ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  {t('landing.plans.redirecting')}
+                </>
+              ) : (
+                <>
+                  <CreditCard className="h-5 w-5" />
+                  {t('landing.plans.startNow')}
+                </>
+              )}
+            </button>
+
+            <div className="mt-4 text-center space-y-1">
+              <p className="text-sm text-white/50">{t('landing.plans.cancelAnytime')}</p>
+              <p className="text-sm text-white/50">{t('landing.plans.noCommitment')}</p>
+            </div>
+          </div>
+
+          {/* Annual Card (highlighted) */}
+          <div className="relative bg-white/10 backdrop-blur-lg border-2 border-primary/60 rounded-2xl p-8 md:scale-105 flex flex-col h-full shadow-2xl shadow-primary/10">
+            {/* Badge */}
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+              <div className="flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap">
+                <Star className="h-4 w-4" />
+                {t('landing.plans.bestValue')}
+              </div>
+            </div>
+
+            <h3 className="text-xl font-semibold text-white mb-6 mt-2">
+              {t('landing.plans.annualTitle')}
+            </h3>
+
+            <div className="mb-2">
+              <div className="flex items-baseline gap-2">
+                <span className="text-5xl font-bold text-white">
+                  {formatPrice(getDisplayPrice('yearly', locale), currency)}
+                </span>
+                <span className="text-white/60">{t('landing.plans.perYear')}</span>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-sm text-white/60">
+                {t('landing.plans.equivalentTo')} {formatPrice(getYearlyMonthlyEquivalent(locale), currency)}{t('landing.plans.perMonth')}
+              </p>
+              <p className="text-sm text-white/60">
+                {t('landing.plans.chargedAnnually')}
+              </p>
+            </div>
+
+            <ul className="space-y-3 mb-8 flex-1">
+              {featureKeys.map((index) => (
+                <li key={index} className="flex items-start gap-2">
+                  <Check className="h-5 w-5 text-green-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-white/90">{t(`landing.plans.features.${index}`)}</span>
+                </li>
+              ))}
+            </ul>
+
+            <button
+              onClick={() => handleCheckout('yearly')}
+              disabled={loadingCycle !== null}
+              className="w-full py-3 px-6 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 hover:scale-[1.02] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {loadingCycle === 'yearly' ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  {t('landing.plans.redirecting')}
+                </>
+              ) : (
+                <>
+                  <CreditCard className="h-5 w-5" />
+                  {t('landing.plans.startNow')}
+                </>
+              )}
+            </button>
+
+            <p className="mt-4 text-center text-sm text-white/50">
+              {t('landing.plans.couponHint')}
+            </p>
+          </div>
         </div>
       </div>
-
-      {/* Card do Plano Premium */}
-      <Card className="border-2 border-primary shadow-lg relative">
-        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-semibold">
-          {t('landing.plans.mostPopular')}
-        </div>
-        
-        <CardHeader>
-          <div className="flex items-center gap-2 mb-2">
-            <Crown className="h-6 w-6 text-primary" />
-            <CardTitle className="text-2xl">{t('landing.plans.premiumTitle')}</CardTitle>
-          </div>
-          <CardDescription>
-            {t('landing.plans.premiumDesc')}
-          </CardDescription>
-        </CardHeader>
-        
-        <CardContent className="space-y-6">
-          <div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold text-foreground">
-                {formatPrice(displayPrice, currency)}
-              </span>
-              <span className="text-muted-foreground">{t('landing.plans.perMonth')}</span>
-            </div>
-            {cycle === 'yearly' && (
-              <p className="text-sm text-muted-foreground mt-1">
-                {t('landing.plans.billedAnnually')} {formatPrice(getDisplayPrice('yearly', locale), currency)}
-              </p>
-            )}
-          </div>
-
-          <ul className="space-y-3">
-            {featureKeys.map((index) => (
-              <li key={index} className="flex items-start gap-2">
-                <Check className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                <span className="text-foreground">{t(`landing.plans.features.${index}`)}</span>
-              </li>
-            ))}
-          </ul>
-
-          <Button 
-            className="w-full"
-            size="lg"
-            onClick={handleCheckout}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                {t('landing.plans.redirecting')}
-              </>
-            ) : (
-              <>
-                <CreditCard className="mr-2 h-5 w-5" />
-                {t('landing.plans.goToPayment')}
-              </>
-            )}
-          </Button>
-
-          <p className="text-center text-xs text-muted-foreground">
-            {t('landing.plans.couponHint')}
-          </p>
-        </CardContent>
-      </Card>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 // ============================================
 // CONFIGURAÇÃO CENTRALIZADA DE PREÇOS
 // Mapeamento automático por idioma → moeda
+// Preços EXATOS do Stripe — sem cálculo automático
 // ============================================
 
 type PricingMode = 'test' | 'production';
@@ -18,18 +19,18 @@ export const LOCALE_CURRENCY_MAP: Record<string, Currency> = {
   'pt-PT': 'EUR',
 };
 
-// Preços de produção por moeda
+// Preços EXATOS conforme cadastrado no Stripe
 const PRICE_MAP = {
   production: {
     monthly: {
       BRL: { priceId: 'price_1T0RbZJH1fRNsXz1rT6ThCQb', price: 24.90 },
-      USD: { priceId: 'price_1T0TGaJH1fRNsXz1x9NUlNUi', price: 4.90 },
-      EUR: { priceId: 'price_1T0TGtJH1fRNsXz1NJgJomfj', price: 4.50 },
+      USD: { priceId: 'price_1T0TGaJH1fRNsXz1x9NUlNUi', price: 8.90 },
+      EUR: { priceId: 'price_1T0TGtJH1fRNsXz1NJgJomfj', price: 8.90 },
     },
     yearly: {
-      BRL: { priceId: 'price_1T0TJPJH1fRNsXz1UhcqKorA', price: 239.04 },
-      USD: { priceId: 'price_1T0TK5JH1fRNsXz18TSaGs8t', price: 47.04 },
-      EUR: { priceId: 'price_1T0TJmJH1fRNsXz1DOEJGiBo', price: 43.20 },
+      BRL: { priceId: 'price_1T0TJPJH1fRNsXz1UhcqKorA', price: 239.00 },
+      USD: { priceId: 'price_1T0TK5JH1fRNsXz18TSaGs8t', price: 79.00 },
+      EUR: { priceId: 'price_1T0TJmJH1fRNsXz1DOEJGiBo', price: 79.00 },
     },
   },
   test: {
@@ -61,6 +62,7 @@ export const getDisplayPrice = (cycle: 'monthly' | 'yearly', locale: string): nu
   return PRICE_MAP[MODE][cycle][currency].price;
 };
 
+// Equivalente mensal do plano anual — APENAS para exibição visual
 export const getYearlyMonthlyEquivalent = (locale: string): number => {
   return getDisplayPrice('yearly', locale) / 12;
 };
@@ -78,13 +80,6 @@ export const formatPrice = (price: number, currency?: Currency): string => {
     currency: cur,
     minimumFractionDigits: 2,
   }).format(price);
-};
-
-// Calcular economia do plano anual por moeda
-export const calculateYearlySavings = (locale: string = 'pt-BR'): number => {
-  const monthlyTotal = getDisplayPrice('monthly', locale) * 12;
-  const yearlyTotal = getDisplayPrice('yearly', locale);
-  return Math.round(((monthlyTotal - yearlyTotal) / monthlyTotal) * 100);
 };
 
 // Modo atual (para debug)
