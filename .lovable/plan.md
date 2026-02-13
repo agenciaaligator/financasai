@@ -1,95 +1,126 @@
 
-# Mapeamento automatico de price_id por idioma
+
+# Upgrade Completo -- Secao de Planos Premium
 
 ## Resumo
 
-Substituir o sistema atual de priceId unico por um mapeamento automatico baseado no idioma selecionado pelo usuario. Sem seletor de moeda -- a moeda e determinada pelo idioma. O `create-checkout` ja aceita qualquer `priceId`, entao nao precisa de alteracao no backend.
+Redesenhar completamente o `PlansSection.tsx` com layout premium de 2 cards lado a lado (mensal + anual), visual SaaS internacional, cabecalho forte i18n, e precos exatos do Stripe. Atualizar tambem o `ChoosePlan.tsx` com o mesmo visual. Corrigir precos em `pricing.ts`.
 
-## Mapeamento idioma -> moeda
+---
 
-| Idioma | Moeda | Mensal | Anual |
-|--------|-------|--------|-------|
-| pt-BR | BRL | price_1T0RbZJH1fRNsXz1rT6ThCQb | price_1T0TJPJH1fRNsXz1UhcqKorA |
-| en-US, es-ES | USD | price_1T0TGaJH1fRNsXz1x9NUlNUi | price_1T0TK5JH1fRNsXz18TSaGs8t |
-| it-IT, pt-PT | EUR | price_1T0TGtJH1fRNsXz1NJgJomfj | price_1T0TJmJH1fRNsXz1DOEJGiBo |
+## 1. Correcao critica de precos (`src/config/pricing.ts`)
 
-## Alteracoes
-
-### 1. `src/config/pricing.ts` -- reestruturar completamente
-
-- Remover `STRIPE_PRICES` e `DISPLAY_PRICES` antigos (priceId unico)
-- Criar tipo `Currency = 'BRL' | 'USD' | 'EUR'`
-- Criar `LOCALE_CURRENCY_MAP` que mapeia idioma para moeda:
-  - `pt-BR` -> `BRL`
-  - `en-US`, `es-ES` -> `USD`
-  - `it-IT`, `pt-PT` -> `EUR`
-- Criar `PRICE_MAP` com priceIds e precos de exibicao por moeda:
-  ```
-  { monthly: { BRL: { priceId, price }, USD: { ... }, EUR: { ... } },
-    yearly:  { BRL: { priceId, price }, USD: { ... }, EUR: { ... } } }
-  ```
-- Exportar `getCurrencyFromLocale(locale: string): Currency`
-- Exportar `getPriceId(cycle, locale): string`
-- Exportar `getDisplayPrice(cycle, locale): number`
-- Atualizar `formatPrice(price, currency)` para usar `Intl.NumberFormat` com moeda correta
-- Atualizar `calculateYearlySavings(locale)` para calcular por moeda
-- Manter `MODE` test/production (test continua com BRL apenas)
-
-Precos de exibicao (devem corresponder ao configurado no Stripe):
+Atualizar os valores de exibicao para corresponder ao Stripe:
 
 | Moeda | Mensal | Anual |
 |-------|--------|-------|
-| BRL | 24.90 | 239.04 |
-| USD | 4.90 | 47.04 |
-| EUR | 4.50 | 43.20 |
+| BRL | R$ 24,90 | R$ 239,00 |
+| USD | $8.90 | $79.00 |
+| EUR | EUR 8.90 | EUR 79.00 |
 
-**Nota**: Se os valores nao corresponderem aos precos reais no Stripe, serao facilmente ajustaveis neste arquivo.
+Remover `getYearlyMonthlyEquivalent` (divisao anual/12) como funcao de preco principal. Manter apenas como helper de exibicao visual do "equivalente mensal" no card anual, claramente separado do preco real.
 
-### 2. `src/components/PlansSection.tsx`
+Remover `calculateYearlySavings` (calculo automatico de desconto). Se necessario, o desconto sera exibido como texto fixo via i18n.
 
-- Importar `useTranslation` para obter `i18n.language`
-- Importar novos helpers: `getCurrencyFromLocale`, `getPriceId`, `getDisplayPrice`, `formatPrice`
-- No `handleCheckout`: usar `getPriceId(cycle, i18n.language)` em vez de `STRIPE_PRICES[cycle]`
-- Enviar `{ priceId, locale: i18n.language }` no body do checkout
-- Na exibicao: usar `formatPrice(getDisplayPrice(cycle, i18n.language), getCurrencyFromLocale(i18n.language))`
-- Mesma logica para o preco anual total
+Manter os mesmos priceIds ja configurados. Nenhum calculo altera o priceId enviado ao Stripe.
 
-### 3. `src/pages/ChoosePlan.tsx`
+---
 
-- Mesmas alteracoes do PlansSection: usar helpers baseados no idioma
-- Adicionar `useTranslation` (ainda nao usa)
-- Substituir `STRIPE_PRICES[cycle]` por `getPriceId(cycle, i18n.language)`
-- Substituir `formatPrice(displayPrice)` por `formatPrice(getDisplayPrice(cycle, i18n.language), getCurrencyFromLocale(i18n.language))`
+## 2. Novo layout visual (`src/components/PlansSection.tsx`)
 
-### 4. `src/components/UpgradeModal.tsx`
+### Estrutura: 2 cards lado a lado
 
-- O UpgradeModal usa `subscription_plans` do banco com `stripe_price_id_monthly/yearly` -- esses priceIds vem do banco e sao fixos em BRL
-- Para multi-moeda no UpgradeModal, seria necessario adicionar colunas no banco para cada moeda, o que e complexo
-- **Acao minima**: atualizar a formatacao de `R$` hardcoded para usar `formatPrice()` com a moeda do locale, mas manter os priceIds vindos do banco (BRL)
-- Adicionar um comentario `// TODO: multi-currency priceIds from DB` para evolucao futura
+```text
++---------------------------+    +---------------------------+
+|     Premium Monthly       |    |  * Best Value             |
+|                           |    |     Premium Annual        |
+|      R$ 24,90/mes         |    |      R$ 239/ano           |
+|                           |    |   equiv. R$ 19,92/mes     |
+|  - Transacoes ilimitadas  |    |   Cobrado anualmente.     |
+|  - Categorizacao IA       |    |                           |
+|  - WhatsApp integrado     |    |  - Transacoes ilimitadas  |
+|  - Insights financeiros   |    |  - Categorizacao IA       |
+|  - Dashboard completo     |    |  - WhatsApp integrado     |
+|  - Suporte prioritario    |    |  - Insights financeiros   |
+|                           |    |  - Dashboard completo     |
+|  [ Start Now ]            |    |  - Suporte prioritario    |
+|                           |    |                           |
+|  Cancel anytime           |    |  [ Start Now ]            |
+|  No long-term commitment  |    |                           |
++---------------------------+    +---------------------------+
+```
 
-### 5. `src/hooks/useCheckout.ts`
+### Detalhes visuais
 
-- Nenhuma alteracao necessaria -- ja recebe `priceId` como parametro
+- Fundo da secao: gradiente escuro (azul profundo para roxo sutil) usando classes Tailwind `bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950`
+- Cards com `bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl` (glassmorphism escuro)
+- Card anual levemente maior (`scale-105`) com borda dourada/primaria e badge "Best Value" ou "Mais Popular"
+- Preco principal em `text-5xl font-bold text-white`
+- Subtexto do equivalente mensal no card anual em `text-sm text-white/60`
+- Botoes com hover elegante: `hover:scale-105 transition-all duration-300`
+- Features com icone Check verde
+- Textos em branco/white para contraste com fundo escuro
+- Responsivo: stack vertical em mobile, lado a lado em desktop (`grid md:grid-cols-2`)
 
-### 6. `supabase/functions/create-checkout/index.ts`
+### Cabecalho da secao (i18n)
 
-- Nenhuma alteracao necessaria -- ja recebe `priceId` no body e usa diretamente. O campo `locale` extra sera ignorado pelo backend (nao causa erro).
+Novo texto forte acima dos cards:
 
-## Arquivos modificados
+- pt-BR: "Sua vida financeira sob controle. Sem planilhas. Sem complicacao."
+- en-US: "Your financial life under control. No spreadsheets. No complexity."
+- es-ES: "Tu vida financiera bajo control. Sin hojas de calculo. Sin complicaciones."
+- it-IT: "La tua vita finanziaria sotto controllo. Senza fogli di calcolo. Senza complicazioni."
+- pt-PT: "A sua vida financeira sob controlo. Sem folhas de calculo. Sem complicacoes."
 
-| Arquivo | Tipo |
+### Remocao do toggle mensal/anual
+
+Os 2 cards sao exibidos simultaneamente, sem toggle. Cada card tem seu proprio botao de checkout.
+
+---
+
+## 3. Atualizar `src/pages/ChoosePlan.tsx`
+
+Aplicar o mesmo visual premium: 2 cards lado a lado com fundo escuro, mesma logica de checkout por card.
+
+---
+
+## 4. Novas chaves i18n (todos os 5 locales)
+
+```text
+landing.plans.sectionTitle    -> "Sua vida financeira sob controle."
+landing.plans.sectionSubtitle -> "Sem planilhas. Sem complicacao."
+landing.plans.monthlyTitle    -> "Premium Mensal" / "Premium Monthly"
+landing.plans.annualTitle     -> "Premium Anual" / "Premium Annual"
+landing.plans.bestValue       -> "Melhor valor" / "Best Value"
+landing.plans.perYear         -> "/ano" / "/year"
+landing.plans.equivalentTo   -> "Equivalente a" / "Equivalent to"
+landing.plans.chargedAnnually -> "Cobrado anualmente." / "Charged annually."
+landing.plans.cancelAnytime   -> "Cancele quando quiser" / "Cancel anytime"
+landing.plans.noCommitment    -> "Sem compromisso de longo prazo" / "No long-term commitment"
+landing.plans.startNow        -> "Comecar agora" / "Start Now"
+```
+
+---
+
+## 5. Arquivos modificados
+
+| Arquivo | Acao |
 |---------|------|
-| `src/config/pricing.ts` | Reestruturar com mapa multi-moeda |
-| `src/components/PlansSection.tsx` | Usar helpers por idioma |
-| `src/pages/ChoosePlan.tsx` | Usar helpers por idioma |
-| `src/components/UpgradeModal.tsx` | Atualizar formatacao de preco |
+| `src/config/pricing.ts` | Corrigir precos USD/EUR, remover calculo de savings |
+| `src/components/PlansSection.tsx` | Redesenho completo: 2 cards, fundo escuro, visual premium |
+| `src/pages/ChoosePlan.tsx` | Mesmo redesenho premium |
+| `src/locales/pt-BR.json` | Novas chaves de planos |
+| `src/locales/en-US.json` | Novas chaves de planos |
+| `src/locales/es-ES.json` | Novas chaves de planos |
+| `src/locales/pt-PT.json` | Novas chaves de planos |
+| `src/locales/it-IT.json` | Novas chaves de planos |
 
 ## O que NAO muda
 
-- Edge function `create-checkout` (ja aceita qualquer priceId)
+- `create-checkout` (backend)
 - `stripe-webhook`
-- Fluxo de onboarding
+- `check-subscription`
+- Price IDs do Stripe
 - Rotas
 - Banco de dados
-- Nenhum componente novo de seletor de moeda
+
