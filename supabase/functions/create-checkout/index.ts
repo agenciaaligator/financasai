@@ -31,8 +31,14 @@ serve(async (req) => {
     logStep("Stripe key verified");
 
     // Extrair priceId do body - cupons são gerenciados diretamente pelo Stripe
-    const { priceId, email: providedEmail } = await req.json();
-    logStep("Received request", { priceId, providedEmail: !!providedEmail });
+    const { priceId, email: providedEmail, locale } = await req.json();
+    logStep("Received request", { priceId, providedEmail: !!providedEmail, locale });
+
+    const getStripeLocale = (loc?: string): string | undefined => {
+      if (!loc) return undefined;
+      if (loc === 'pt-BR') return 'pt-BR';
+      return loc.split('-')[0];
+    };
 
     if (!priceId) throw new Error("priceId is required");
 
@@ -81,6 +87,7 @@ serve(async (req) => {
       cancel_url: `${origin}/payment-cancelled`,
       allow_promotion_codes: true,
       billing_address_collection: 'required',
+      locale: getStripeLocale(locale) as any,
     };
 
     const session = await stripe.checkout.sessions.create(checkoutConfig);
