@@ -7,23 +7,27 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { 
-  STRIPE_PRICES, 
-  DISPLAY_PRICES, 
-  formatPrice, 
-  calculateYearlySavings 
+  getCurrencyFromLocale,
+  getPriceId,
+  getDisplayPrice,
+  getYearlyMonthlyEquivalent,
+  formatPrice,
+  calculateYearlySavings,
 } from "@/config/pricing";
 
 export function PlansSection() {
   const { toast } = useToast();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [cycle, setCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [isLoading, setIsLoading] = useState(false);
 
-  const savings = calculateYearlySavings();
+  const locale = i18n.language;
+  const currency = getCurrencyFromLocale(locale);
+  const savings = calculateYearlySavings(locale);
 
   const displayPrice = cycle === 'monthly' 
-    ? DISPLAY_PRICES.monthly 
-    : DISPLAY_PRICES.yearlyMonthlyEquivalent;
+    ? getDisplayPrice('monthly', locale)
+    : getYearlyMonthlyEquivalent(locale);
 
   const featureKeys = [0, 1, 2, 3, 4, 5];
 
@@ -35,10 +39,10 @@ export function PlansSection() {
         description: t('landing.plans.redirectingToastDesc'),
       });
 
-      const priceId = STRIPE_PRICES[cycle];
+      const priceId = getPriceId(cycle, locale);
 
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceId },
+        body: { priceId, locale },
       });
 
       if (error) {
@@ -109,13 +113,13 @@ export function PlansSection() {
           <div>
             <div className="flex items-baseline gap-2">
               <span className="text-4xl font-bold text-foreground">
-                {formatPrice(displayPrice)}
+                {formatPrice(displayPrice, currency)}
               </span>
               <span className="text-muted-foreground">{t('landing.plans.perMonth')}</span>
             </div>
             {cycle === 'yearly' && (
               <p className="text-sm text-muted-foreground mt-1">
-                {t('landing.plans.billedAnnually')} {formatPrice(DISPLAY_PRICES.yearly)}
+                {t('landing.plans.billedAnnually')} {formatPrice(getDisplayPrice('yearly', locale), currency)}
               </p>
             )}
           </div>

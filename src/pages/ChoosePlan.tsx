@@ -6,34 +6,40 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, Check, Loader2, CreditCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 import { 
-  STRIPE_PRICES, 
-  DISPLAY_PRICES, 
-  formatPrice, 
-  calculateYearlySavings 
+  getCurrencyFromLocale,
+  getPriceId,
+  getDisplayPrice,
+  getYearlyMonthlyEquivalent,
+  formatPrice,
+  calculateYearlySavings,
 } from "@/config/pricing";
 
 export default function ChoosePlan() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t, i18n } = useTranslation();
   const [cycle, setCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [isLoading, setIsLoading] = useState(false);
 
-  const savings = calculateYearlySavings();
+  const locale = i18n.language;
+  const currency = getCurrencyFromLocale(locale);
+  const savings = calculateYearlySavings(locale);
 
   const handleCheckout = async () => {
     setIsLoading(true);
     
     try {
       toast({
-        title: "🔄 Redirecionando para checkout...",
-        description: "Aguarde enquanto preparamos seu pagamento",
+        title: t('landing.plans.redirectingToast'),
+        description: t('landing.plans.redirectingToastDesc'),
       });
 
-      const priceId = STRIPE_PRICES[cycle];
+      const priceId = getPriceId(cycle, locale);
       
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceId },
+        body: { priceId, locale },
       });
 
       if (error) {
@@ -51,8 +57,8 @@ export default function ChoosePlan() {
     } catch (error) {
       console.error('[CHECKOUT] Error:', error);
       toast({
-        title: "❌ Erro",
-        description: "Não foi possível completar a ação. Tente novamente.",
+        title: t('landing.plans.errorTitle'),
+        description: t('landing.plans.errorDesc'),
         variant: "destructive",
       });
       setIsLoading(false);
@@ -60,8 +66,8 @@ export default function ChoosePlan() {
   };
 
   const displayPrice = cycle === 'monthly' 
-    ? DISPLAY_PRICES.monthly 
-    : DISPLAY_PRICES.yearlyMonthlyEquivalent;
+    ? getDisplayPrice('monthly', locale)
+    : getYearlyMonthlyEquivalent(locale);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20">
@@ -72,7 +78,7 @@ export default function ChoosePlan() {
             <span className="font-bold text-xl">Dona Wilma</span>
           </div>
           <Button variant="outline" onClick={() => navigate('/')}>
-            Voltar
+            {t('common.back')}
           </Button>
         </nav>
       </header>
@@ -80,10 +86,10 @@ export default function ChoosePlan() {
       <div className="container mx-auto px-4 py-16 max-w-4xl">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold mb-4">
-            Escolha seu plano
+            {t('landing.plans.choosePlanTitle')}
           </h1>
           <p className="text-muted-foreground text-lg">
-            Gerencie suas finanças e compromissos com inteligência artificial
+            {t('landing.plans.choosePlanDesc')}
           </p>
         </div>
 
@@ -95,16 +101,16 @@ export default function ChoosePlan() {
               onClick={() => setCycle('monthly')}
               className="rounded-md"
             >
-              Mensal
+              {t('landing.plans.monthly')}
             </Button>
             <Button
               variant={cycle === 'yearly' ? 'default' : 'ghost'}
               onClick={() => setCycle('yearly')}
               className="rounded-md"
             >
-              Anual
+              {t('landing.plans.yearly')}
               <Badge variant="secondary" className="ml-2">
-                Economize {savings}%
+                -{savings}%
               </Badge>
             </Button>
           </div>
@@ -114,46 +120,39 @@ export default function ChoosePlan() {
         <Card className="border-2 border-primary shadow-xl mb-8">
           <CardHeader>
             <div className="flex items-center justify-between mb-2">
-              <CardTitle className="text-3xl">Premium</CardTitle>
-              <Badge className="text-sm">Mais popular</Badge>
+              <CardTitle className="text-3xl">{t('landing.plans.premiumTitle')}</CardTitle>
+              <Badge className="text-sm">{t('landing.plans.mostPopular')}</Badge>
             </div>
             <CardDescription>
-              Plano completo com todos os recursos
+              {t('landing.plans.premiumDesc')}
             </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-6">
             <div className="flex items-baseline gap-2">
               <span className="text-5xl font-bold">
-                {formatPrice(displayPrice)}
+                {formatPrice(displayPrice, currency)}
               </span>
-              <span className="text-muted-foreground">/mês</span>
+              <span className="text-muted-foreground">{t('landing.plans.perMonth')}</span>
             </div>
 
             {cycle === 'yearly' && (
               <p className="text-sm text-muted-foreground">
-                Cobrado anualmente: {formatPrice(DISPLAY_PRICES.yearly)}
+                {t('landing.plans.billedAnnually')} {formatPrice(getDisplayPrice('yearly', locale), currency)}
               </p>
             )}
 
             <ul className="space-y-3">
-              {[
-                'Transações ilimitadas',
-                'Categorias ilimitadas',
-                'WhatsApp integrado',
-                'Classificação automática por IA',
-                'Consultas financeiras por WhatsApp',
-                'Suporte prioritário',
-              ].map((feature, index) => (
+              {[0, 1, 2, 3, 4, 5].map((index) => (
                 <li key={index} className="flex items-start gap-2">
                   <Check className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>{feature}</span>
+                  <span>{t(`landing.plans.features.${index}`)}</span>
                 </li>
               ))}
             </ul>
 
             <p className="text-sm text-muted-foreground border-t pt-4">
-              💡 Tem um cupom de desconto? Digite diretamente na tela de pagamento do Stripe.
+              {t('landing.plans.couponHint')}
             </p>
 
             <Button
@@ -165,24 +164,24 @@ export default function ChoosePlan() {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Redirecionando...
+                  {t('landing.plans.redirecting')}
                 </>
               ) : (
                 <>
                   <CreditCard className="mr-2 h-5 w-5" />
-                  Ir para pagamento
+                  {t('landing.plans.goToPayment')}
                 </>
               )}
             </Button>
 
             <p className="text-center text-xs text-muted-foreground">
-              Pagamento seguro via Stripe. Cancele quando quiser.
+              {t('landing.plans.securePayment')}
             </p>
           </CardContent>
         </Card>
 
         <p className="text-center text-sm text-muted-foreground">
-          Ao continuar, você concorda com nossos termos de serviço
+          {t('landing.plans.termsAgreement')}
         </p>
       </div>
     </div>

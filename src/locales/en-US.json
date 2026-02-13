@@ -146,7 +146,8 @@
     "noData": "No data found",
     "error": "Error",
     "success": "Success",
-    "genericError": "Could not complete the action. Please try again."
+    "genericError": "Could not complete the action. Please try again.",
+    "back": "Back"
   },
   "admin": {
     "stats": "Statistics",
@@ -489,7 +490,11 @@
         "3": "Automatic AI classification",
         "4": "Financial queries via WhatsApp",
         "5": "Priority support"
-      }
+      },
+      "choosePlanTitle": "Choose your plan",
+      "choosePlanDesc": "Manage your finances and appointments with artificial intelligence",
+      "securePayment": "Secure payment via Stripe. Cancel anytime.",
+      "termsAgreement": "By continuing, you agree to our terms of service"
     },
     "faq": {
       "title": "Frequently asked questions",
