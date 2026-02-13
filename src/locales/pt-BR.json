@@ -146,7 +146,8 @@
     "noData": "Nenhum dado encontrado",
     "error": "Erro",
     "success": "Sucesso",
-    "genericError": "Não foi possível completar a ação. Tente novamente."
+    "genericError": "Não foi possível completar a ação. Tente novamente.",
+    "back": "Voltar"
   },
   "admin": {
     "stats": "Estatísticas",
@@ -495,7 +496,11 @@
         "3": "Classificação automática por IA",
         "4": "Consultas financeiras por WhatsApp",
         "5": "Suporte prioritário"
-      }
+      },
+      "choosePlanTitle": "Escolha seu plano",
+      "choosePlanDesc": "Gerencie suas finanças e compromissos com inteligência artificial",
+      "securePayment": "Pagamento seguro via Stripe. Cancele quando quiser.",
+      "termsAgreement": "Ao continuar, você concorda com nossos termos de serviço"
     },
     "faq": {
       "title": "Perguntas frequentes",

@@ -8,6 +8,8 @@ import { useCheckout } from "@/hooks/useCheckout";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
+import { getCurrencyFromLocale, formatPrice as formatCurrencyPrice } from "@/config/pricing";
 
 interface UpgradeModalProps {
   open: boolean;
@@ -16,6 +18,8 @@ interface UpgradeModalProps {
 }
 
 export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
+  const { i18n } = useTranslation();
+  const currency = getCurrencyFromLocale(i18n.language);
   const { planName, isFreePlan, isTrial, isPremium, refetch } = useSubscription();
   const { createCheckoutSession, loading } = useCheckout();
   const [selectedCycle, setSelectedCycle] = useState<'monthly' | 'yearly'>('monthly');
@@ -80,9 +84,10 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
       name: plan.name,
       displayName: plan.display_name,
       icon: isFreePlanRole ? Gift : isTrialPlan ? Sparkles : Crown,
-      price: isFreePlanRole ? 'R$ 0' : isTrialPlan ? 'Grátis' : `R$ ${(selectedCycle === 'monthly' ? plan.price_monthly : (plan.price_yearly || 0) / 12)?.toFixed(2)}`,
+      // TODO: multi-currency priceIds from DB — currently DB plans are BRL only
+      price: isFreePlanRole ? formatCurrencyPrice(0, currency) : isTrialPlan ? 'Grátis' : formatCurrencyPrice((selectedCycle === 'monthly' ? plan.price_monthly : (plan.price_yearly || 0) / 12) || 0, currency),
       period: isFreePlanRole ? 'para sempre' : isTrialPlan ? '14 dias' : selectedCycle === 'monthly' ? 'por mês' : 'por mês',
-      yearlyPrice: isPremiumPlan && selectedCycle === 'yearly' ? `R$ ${plan.price_yearly?.toFixed(2)}/ano` : undefined,
+      yearlyPrice: isPremiumPlan && selectedCycle === 'yearly' ? `${formatCurrencyPrice(plan.price_yearly || 0, currency)}/ano` : undefined,
       yearlySavings: isPremiumPlan && selectedCycle === 'yearly' ? '💰 Economize 40%' : undefined,
       badge: isTrialPlan ? '🎁 Teste Grátis' : isPremiumPlan ? '⭐ Mais Popular' : undefined,
       features: [

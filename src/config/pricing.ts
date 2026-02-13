@@ -1,61 +1,103 @@
 // ============================================
 // CONFIGURAÇÃO CENTRALIZADA DE PREÇOS
+// Mapeamento automático por idioma → moeda
 // ============================================
-// Para trocar entre TESTE e PRODUÇÃO, altere apenas o MODE abaixo
 
 type PricingMode = 'test' | 'production';
+export type Currency = 'BRL' | 'USD' | 'EUR';
 
 // 👇 ALTERE AQUI PARA TROCAR ENTRE TESTE E PRODUÇÃO
 const MODE: PricingMode = 'production';
 
-export const PRICING = {
-  test: {
-    monthly: {
-      priceId: 'price_1SbmlUJH1fRNsXz1xV238gzq',
-      price: 1.00,
-    },
-    yearly: {
-      priceId: 'price_1SbqsUJH1fRNsXz1DEQjETOw',
-      price: 10.00,
-    },
-  },
+// Mapeamento idioma → moeda
+export const LOCALE_CURRENCY_MAP: Record<string, Currency> = {
+  'pt-BR': 'BRL',
+  'en-US': 'USD',
+  'es-ES': 'USD',
+  'it-IT': 'EUR',
+  'pt-PT': 'EUR',
+};
+
+// Preços de produção por moeda
+const PRICE_MAP = {
   production: {
     monthly: {
-      priceId: 'price_1SbmaXJH1fRNsXz1vvmAtvvq',
-      price: 24.90,
+      BRL: { priceId: 'price_1T0RbZJH1fRNsXz1rT6ThCQb', price: 24.90 },
+      USD: { priceId: 'price_1T0TGaJH1fRNsXz1x9NUlNUi', price: 4.90 },
+      EUR: { priceId: 'price_1T0TGtJH1fRNsXz1NJgJomfj', price: 4.50 },
     },
     yearly: {
-      priceId: 'price_1SSi5nJH1fRNsXz18jwx0OPS',
-      price: 239.04,
+      BRL: { priceId: 'price_1T0TJPJH1fRNsXz1UhcqKorA', price: 239.04 },
+      USD: { priceId: 'price_1T0TK5JH1fRNsXz18TSaGs8t', price: 47.04 },
+      EUR: { priceId: 'price_1T0TJmJH1fRNsXz1DOEJGiBo', price: 43.20 },
+    },
+  },
+  test: {
+    monthly: {
+      BRL: { priceId: 'price_1SbmlUJH1fRNsXz1xV238gzq', price: 1.00 },
+      USD: { priceId: 'price_1SbmlUJH1fRNsXz1xV238gzq', price: 1.00 },
+      EUR: { priceId: 'price_1SbmlUJH1fRNsXz1xV238gzq', price: 1.00 },
+    },
+    yearly: {
+      BRL: { priceId: 'price_1SbqsUJH1fRNsXz1DEQjETOw', price: 10.00 },
+      USD: { priceId: 'price_1SbqsUJH1fRNsXz1DEQjETOw', price: 10.00 },
+      EUR: { priceId: 'price_1SbqsUJH1fRNsXz1DEQjETOw', price: 10.00 },
     },
   },
 } as const;
 
-// Exportar preços ativos baseado no modo
-export const ACTIVE_PRICING = PRICING[MODE];
-
-export const STRIPE_PRICES = {
-  monthly: ACTIVE_PRICING.monthly.priceId,
-  yearly: ACTIVE_PRICING.yearly.priceId,
+// Helpers
+export const getCurrencyFromLocale = (locale: string): Currency => {
+  return LOCALE_CURRENCY_MAP[locale] || 'BRL';
 };
 
-export const DISPLAY_PRICES = {
-  monthly: ACTIVE_PRICING.monthly.price,
-  yearly: ACTIVE_PRICING.yearly.price,
-  yearlyMonthlyEquivalent: ACTIVE_PRICING.yearly.price / 12,
+export const getPriceId = (cycle: 'monthly' | 'yearly', locale: string): string => {
+  const currency = getCurrencyFromLocale(locale);
+  return PRICE_MAP[MODE][cycle][currency].priceId;
 };
 
-// Helper para formatar preço em BRL
-export const formatPrice = (price: number): string => {
-  return `R$ ${price.toFixed(2).replace('.', ',')}`;
+export const getDisplayPrice = (cycle: 'monthly' | 'yearly', locale: string): number => {
+  const currency = getCurrencyFromLocale(locale);
+  return PRICE_MAP[MODE][cycle][currency].price;
 };
 
-// Calcular economia do plano anual
-export const calculateYearlySavings = (): number => {
-  const monthlyTotal = DISPLAY_PRICES.monthly * 12;
-  const yearlyTotal = DISPLAY_PRICES.yearly;
+export const getYearlyMonthlyEquivalent = (locale: string): number => {
+  return getDisplayPrice('yearly', locale) / 12;
+};
+
+// Formatar preço com Intl.NumberFormat
+export const formatPrice = (price: number, currency?: Currency): string => {
+  const cur = currency || 'BRL';
+  const localeMap: Record<Currency, string> = {
+    BRL: 'pt-BR',
+    USD: 'en-US',
+    EUR: 'de-DE',
+  };
+  return new Intl.NumberFormat(localeMap[cur], {
+    style: 'currency',
+    currency: cur,
+    minimumFractionDigits: 2,
+  }).format(price);
+};
+
+// Calcular economia do plano anual por moeda
+export const calculateYearlySavings = (locale: string = 'pt-BR'): number => {
+  const monthlyTotal = getDisplayPrice('monthly', locale) * 12;
+  const yearlyTotal = getDisplayPrice('yearly', locale);
   return Math.round(((monthlyTotal - yearlyTotal) / monthlyTotal) * 100);
 };
 
-// Modo atual (para debug/exibição)
+// Modo atual (para debug)
 export const CURRENT_MODE = MODE;
+
+// Backwards compatibility exports (deprecated)
+export const STRIPE_PRICES = {
+  monthly: PRICE_MAP[MODE].monthly.BRL.priceId,
+  yearly: PRICE_MAP[MODE].yearly.BRL.priceId,
+};
+
+export const DISPLAY_PRICES = {
+  monthly: PRICE_MAP[MODE].monthly.BRL.price,
+  yearly: PRICE_MAP[MODE].yearly.BRL.price,
+  yearlyMonthlyEquivalent: PRICE_MAP[MODE].yearly.BRL.price / 12,
+};
