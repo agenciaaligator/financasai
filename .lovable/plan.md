@@ -1,45 +1,58 @@
 
+# Correcao: Navegacao "Criar conta" + i18n para Termos e Privacidade
 
-# Correcao do Seletor de Idioma no Mobile
+## Problema 1: 404 ao clicar "Criar conta"
 
-## Problema
+O `LoginForm.tsx` usa `navigate('/plans')` nas linhas 134 e 169, mas a rota correta no `App.tsx` e `/choose-plan`. Isso causa o erro 404 mostrado no screenshot.
 
-O `LanguageFlagSelector` usa um componente `Popover` (portal) para exibir a lista de idiomas. Quando esse Popover esta dentro de um `Sheet` (menu hamburger mobile), ocorrem conflitos de z-index e portais: o clique no idioma nao funciona corretamente, o menu nao fecha, e o idioma nao muda.
+### Correcao
 
-Isso afeta tanto a landing page (`Index.tsx`) quanto o dashboard mobile (`FinancialDashboard.tsx`).
+- Linha 134: `navigate('/plans')` -> `navigate('/choose-plan')`
+- Linha 169: `navigate('/plans')` -> `navigate('/choose-plan')`
 
-## Solucao
+## Problema 2: Termos e Privacidade sem traducao
 
-Duas alteracoes minimas:
+As paginas `Terms.tsx` e `Privacy.tsx` tem todo o conteudo hardcoded em portugues. Precisam ser internacionalizadas com `t()`.
 
-### 1. `LanguageFlagSelector` - Adicionar modo inline para mobile
+### Correcao
 
-Adicionar uma prop opcional `inline?: boolean`. Quando `true`, renderizar os idiomas diretamente como botoes visiveis (sem Popover), evitando qualquer conflito de portal/z-index dentro do Sheet.
+1. Adicionar chaves `legal.terms.*` e `legal.privacy.*` nos 5 arquivos de locale (pt-BR, pt-PT, en-US, es-ES, it-IT)
+2. Atualizar `Terms.tsx` e `Privacy.tsx` para usar `useTranslation()` e `t()` em todos os textos
+3. O botao "Voltar" tambem sera traduzido
 
-Tambem adicionar uma prop `onSelect?: () => void` que sera chamada apos mudar o idioma, permitindo que o componente pai feche o menu mobile.
+### Chaves a adicionar (exemplo da estrutura)
 
-O modo desktop (Popover) permanece inalterado.
+```
+legal.terms.title
+legal.terms.lastUpdated
+legal.terms.sections.acceptance.title / .content
+legal.terms.sections.description.title / .content
+... (9 secoes para termos)
 
-### 2. `Index.tsx` - Landing page mobile
+legal.privacy.title
+legal.privacy.lastUpdated
+legal.privacy.sections.dataCollected.title / .content
+... (9 secoes para privacidade)
 
-- Tornar o Sheet mobile controlado com `useState` (atualmente e uncontrolled)
-- Passar `inline` e `onSelect={() => setSheetOpen(false)}` ao `LanguageFlagSelector` dentro do Sheet mobile
-- Nenhuma alteracao no desktop
-
-### 3. Dashboard mobile (sem alteracao necessaria)
-
-No dashboard mobile, o `LanguageFlagSelector` fica no header (fora do Sheet), entao o Popover funciona normalmente. Nao precisa de alteracao.
+legal.backButton
+```
 
 ## Arquivos modificados
 
 | Arquivo | Acao |
 |---------|------|
-| `src/components/LanguageFlagSelector.tsx` | Adicionar props `inline` e `onSelect`, renderizar modo inline quando `inline=true` |
-| `src/pages/Index.tsx` | Sheet controlado, passar props de mobile ao seletor |
+| `src/components/auth/LoginForm.tsx` | Corrigir `/plans` para `/choose-plan` (2 ocorrencias) |
+| `src/pages/Terms.tsx` | Usar `t()` para todos os textos |
+| `src/pages/Privacy.tsx` | Usar `t()` para todos os textos |
+| `src/locales/pt-BR.json` | Adicionar chaves `legal.*` |
+| `src/locales/pt-PT.json` | Adicionar chaves `legal.*` |
+| `src/locales/en-US.json` | Adicionar chaves `legal.*` |
+| `src/locales/es-ES.json` | Adicionar chaves `legal.*` |
+| `src/locales/it-IT.json` | Adicionar chaves `legal.*` |
 
 ## O que NAO muda
 
-- Desktop permanece identico (Popover normal)
-- Dashboard mobile (seletor ja esta fora do Sheet)
-- Logica de i18n (`i18n.changeLanguage`, `localStorage`)
-- Nenhum componente recriado
+- Rotas no App.tsx (ja estao corretas)
+- Logica de autenticacao
+- Estilo visual das paginas
+- Desktop language selector
