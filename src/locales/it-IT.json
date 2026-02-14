@@ -107,5 +107,38 @@
     "stats": { "title": "Perché scegliere Dona Wilma?", "subtitle": "Semplicità e tecnologia per facilitare la tua giornata", "items": { "0": { "title": "Direttamente su WhatsApp", "description": "Registra finanze e impegni senza aprire nessuna app" }, "1": { "title": "IA che ti capisce", "description": "Categorizzazione automatica con intelligenza artificiale" }, "2": { "title": "Disponibile 24h", "description": "La tua assistente personale che lavora tutto il tempo" }, "3": { "title": "Sicuro e privato", "description": "I tuoi dati protetti con crittografia avanzata" } } },
     "steps": { "items": { "0": { "title": "Invia un messaggio", "description": "Manda un testo o audio su WhatsApp" }, "1": { "title": "L'IA organizza tutto", "description": "Dona Wilma capisce, categorizza e registra automaticamente" }, "2": { "title": "Segui sul pannello", "description": "Vedi grafici, report e la tua agenda completa sul pannello web" } } },
     "footer": { "tagline": "La tua assistente personale per le finanze", "links": "Link", "terms": "Termini di Servizio", "privacy": "Informativa sulla Privacy", "copyright": "© 2025 Dona Wilma. Tutti i diritti riservati.", "developedBy": "Sviluppato da" }
+  },
+  "legal": {
+    "backButton": "Indietro",
+    "terms": {
+      "title": "Termini di Servizio",
+      "lastUpdated": "Ultimo aggiornamento: Febbraio 2025",
+      "sections": {
+        "acceptance": { "title": "1. Accettazione dei Termini", "content": "Utilizzando il servizio Dona Wilma (\"Servizio\"), accetti questi Termini di Servizio. Se non sei d'accordo, non utilizzare il Servizio. Il Servizio è offerto da Aligator (\"Azienda\")." },
+        "description": { "title": "2. Descrizione del Servizio", "content": "Dona Wilma è una piattaforma di gestione finanziaria e impegni personali che utilizza l'intelligenza artificiale per categorizzare transazioni e organizzare agende. Il servizio include l'integrazione con WhatsApp, Google Calendar e pannello web." },
+        "account": { "title": "3. Registrazione e Account", "content": "Sei responsabile del mantenimento della riservatezza delle tue credenziali di accesso. Tutte le attività svolte sul tuo account sono sotto la tua responsabilità. Devi fornire informazioni veritiere e aggiornate durante la registrazione." },
+        "payment": { "title": "4. Piani e Pagamento", "content": "Il Servizio offre piani gratuiti e a pagamento. I piani a pagamento vengono addebitati in modo ricorrente (mensile o annuale) tramite Stripe. Puoi cancellare in qualsiasi momento tramite il portale di gestione dell'abbonamento. Non sono previsti rimborsi proporzionali per periodi già pagati." },
+        "acceptableUse": { "title": "5. Uso Accettabile", "content": "Accetti di non utilizzare il Servizio per scopi illegali, fraudolenti o che violino i diritti di terzi. L'uso abusivo del bot WhatsApp (spam, messaggi di massa) può comportare la sospensione dell'account." },
+        "ip": { "title": "6. Proprietà Intellettuale", "content": "Tutti i contenuti, il design e il codice del Servizio sono di proprietà dell'Azienda. I tuoi dati finanziari e personali rimangono di tua proprietà." },
+        "liability": { "title": "7. Limitazione di Responsabilità", "content": "Il Servizio è fornito \"così com'è\". L'Azienda non è responsabile per decisioni finanziarie prese sulla base delle informazioni del Servizio. La categorizzazione automatica tramite IA può contenere imprecisioni e deve essere verificata dall'utente." },
+        "modifications": { "title": "8. Modifiche", "content": "L'Azienda si riserva il diritto di modificare questi termini in qualsiasi momento. Le modifiche significative saranno comunicate via email o notifica nel Servizio." },
+        "contact": { "title": "9. Contatto", "content": "Per domande su questi termini, contattaci all'indirizzo: contato@donawilma.com.br" }
+      }
+    },
+    "privacy": {
+      "title": "Informativa sulla Privacy",
+      "lastUpdated": "Ultimo aggiornamento: Febbraio 2025",
+      "sections": {
+        "dataCollected": { "title": "1. Dati Raccolti", "content": "Raccogliamo i seguenti dati: email, nome, numero di telefono (WhatsApp), dati finanziari inseriti da te (transazioni, categorie), impegni e informazioni di pagamento elaborate da Stripe." },
+        "dataUsage": { "title": "2. Utilizzo dei Dati", "content": "I tuoi dati vengono utilizzati esclusivamente per: fornire il Servizio (categorizzazione, report, promemoria), elaborare pagamenti, inviare notifiche sul tuo account e impegni, e migliorare il Servizio con analisi aggregate e anonime." },
+        "sharing": { "title": "3. Condivisione", "content": "Non vendiamo né condividiamo i tuoi dati personali con terze parti per scopi di marketing. Condividiamo i dati solo con: Stripe (elaborazione pagamenti), Meta/WhatsApp (invio messaggi), Google (sincronizzazione calendario, quando autorizzato da te) e Supabase (archiviazione sicura dei dati)." },
+        "ai": { "title": "4. Intelligenza Artificiale", "content": "Utilizziamo l'IA (OpenAI) per elaborare i tuoi messaggi WhatsApp e categorizzare le transazioni. I messaggi vengono inviati in modo sicuro e non vengono utilizzati per addestrare modelli di IA di terze parti. I dati elaborati vengono archiviati solo nel tuo account." },
+        "security": { "title": "5. Sicurezza", "content": "Utilizziamo la crittografia in transito (HTTPS/TLS) e a riposo. I dati sono archiviati su server sicuri con accesso limitato. Implementiamo autenticazione sicura e politiche di accesso basate sui ruoli (RLS)." },
+        "rights": { "title": "6. I Tuoi Diritti (LGPD)", "content": "Ai sensi della Legge Generale sulla Protezione dei Dati (LGPD), hai il diritto di: accedere ai tuoi dati, correggere dati inesatti, richiedere la cancellazione dei tuoi dati, revocare il consenso e richiedere la portabilità. Per esercitare questi diritti, contattaci all'indirizzo: contato@donawilma.com.br" },
+        "cookies": { "title": "7. Cookie", "content": "Utilizziamo cookie essenziali per mantenere attiva la tua sessione di login. Non utilizziamo cookie di tracciamento o pubblicitari." },
+        "retention": { "title": "8. Conservazione dei Dati", "content": "I tuoi dati vengono conservati finché il tuo account è attivo. Dopo la cancellazione, i dati vengono conservati per 30 giorni per una possibile riattivazione e poi eliminati definitivamente." },
+        "dpo": { "title": "9. Responsabile della Protezione dei Dati (DPO)", "content": "Per questioni relative alla privacy e alla protezione dei dati, contattaci: contato@donawilma.com.br" }
+      }
+    }
   }
 }
