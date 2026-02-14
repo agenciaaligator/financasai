@@ -23,6 +23,7 @@ const LandingPage = () => {
   const { t } = useTranslation();
   const [showLogin, setShowLogin] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -60,7 +61,7 @@ const LandingPage = () => {
               {t('auth.login')}
             </Button>
             
-            <Sheet>
+            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
               <SheetTrigger asChild className="md:hidden">
                 <Button variant="ghost" size="icon">
                   <Menu className="h-5 w-5" />
@@ -68,13 +69,13 @@ const LandingPage = () => {
               </SheetTrigger>
               <SheetContent side="right">
                 <nav className="flex flex-col gap-4 mt-8">
-                  <a href="#home" className="text-lg hover:text-primary transition-colors">Home</a>
-                  <a href="#como-funciona" className="text-lg hover:text-primary transition-colors">{t('landing.nav.howItWorks')}</a>
-                  <a href="#planos" className="text-lg hover:text-primary transition-colors">{t('landing.nav.plans')}</a>
-                  <a href="#contato" className="text-lg hover:text-primary transition-colors">{t('landing.nav.contact')}</a>
+                  <a href="#home" onClick={() => setSheetOpen(false)} className="text-lg hover:text-primary transition-colors">Home</a>
+                  <a href="#como-funciona" onClick={() => setSheetOpen(false)} className="text-lg hover:text-primary transition-colors">{t('landing.nav.howItWorks')}</a>
+                  <a href="#planos" onClick={() => setSheetOpen(false)} className="text-lg hover:text-primary transition-colors">{t('landing.nav.plans')}</a>
+                  <a href="#contato" onClick={() => setSheetOpen(false)} className="text-lg hover:text-primary transition-colors">{t('landing.nav.contact')}</a>
                   <div className="flex flex-col gap-2 mt-4">
-                    <LanguageFlagSelector />
-                    <Button variant="outline" onClick={() => setShowLogin(true)} className="w-full">
+                    <LanguageFlagSelector inline onSelect={() => setSheetOpen(false)} />
+                    <Button variant="outline" onClick={() => { setShowLogin(true); setSheetOpen(false); }} className="w-full">
                       {t('auth.login')}
                     </Button>
                   </div>
