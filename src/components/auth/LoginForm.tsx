@@ -131,7 +131,7 @@ export function LoginForm() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => navigate('/plans')}
+                    onClick={() => navigate('/choose-plan')}
                     className="w-full"
                   >
                     Não tenho conta - Criar agora
@@ -166,7 +166,7 @@ export function LoginForm() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => navigate('/plans')}
+              onClick={() => navigate('/choose-plan')}
               className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
             >
               Criar conta grátis
