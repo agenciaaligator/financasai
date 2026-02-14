@@ -1,68 +1,45 @@
 
 
-# Enviar locale ao Stripe Checkout
+# Correcao do Seletor de Idioma no Mobile
 
-## Resumo
+## Problema
 
-O frontend ja envia `locale` no body para `create-checkout`, mas a edge function ignora esse campo. A unica alteracao necessaria e na edge function: extrair o `locale` do body e passa-lo para `stripe.checkout.sessions.create({ locale })`.
+O `LanguageFlagSelector` usa um componente `Popover` (portal) para exibir a lista de idiomas. Quando esse Popover esta dentro de um `Sheet` (menu hamburger mobile), ocorrem conflitos de z-index e portais: o clique no idioma nao funciona corretamente, o menu nao fecha, e o idioma nao muda.
 
-## Mapeamento de locale
+Isso afeta tanto a landing page (`Index.tsx`) quanto o dashboard mobile (`FinancialDashboard.tsx`).
 
-O Stripe aceita locales curtos (ex: `en`, `pt`, `es`, `it`). O frontend envia locales como `pt-BR`, `en-US`, etc. A edge function deve converter para o formato Stripe:
+## Solucao
 
-| Frontend | Stripe |
-|----------|--------|
-| pt-BR | pt-BR |
-| pt-PT | pt |
-| en-US | en |
-| es-ES | es |
-| it-IT | it |
+Duas alteracoes minimas:
 
-Stripe suporta `pt-BR` como locale valido, entao pt-BR pode ser enviado diretamente. Para os demais, usar apenas a parte antes do hifen.
+### 1. `LanguageFlagSelector` - Adicionar modo inline para mobile
 
-## Alteracoes
+Adicionar uma prop opcional `inline?: boolean`. Quando `true`, renderizar os idiomas diretamente como botoes visiveis (sem Popover), evitando qualquer conflito de portal/z-index dentro do Sheet.
 
-### 1. `supabase/functions/create-checkout/index.ts`
+Tambem adicionar uma prop `onSelect?: () => void` que sera chamada apos mudar o idioma, permitindo que o componente pai feche o menu mobile.
 
-- Linha 34: Extrair `locale` do body junto com `priceId` e `email`
-- Criar helper para converter locale do frontend para formato Stripe (ex: `en-US` -> `en`, `pt-BR` -> `pt-BR`)
-- Linha 70-84: Adicionar `locale: stripeLocale` ao `checkoutConfig`
+O modo desktop (Popover) permanece inalterado.
 
-Codigo relevante:
+### 2. `Index.tsx` - Landing page mobile
 
-```typescript
-// Extrair locale do body
-const { priceId, email: providedEmail, locale } = await req.json();
+- Tornar o Sheet mobile controlado com `useState` (atualmente e uncontrolled)
+- Passar `inline` e `onSelect={() => setSheetOpen(false)}` ao `LanguageFlagSelector` dentro do Sheet mobile
+- Nenhuma alteracao no desktop
 
-// Converter para formato Stripe
-const getStripeLocale = (loc?: string): string | undefined => {
-  if (!loc) return undefined;
-  if (loc === 'pt-BR') return 'pt-BR';
-  return loc.split('-')[0]; // en-US -> en, es-ES -> es, it-IT -> it
-};
+### 3. Dashboard mobile (sem alteracao necessaria)
 
-// Adicionar ao checkoutConfig
-const checkoutConfig = {
-  ...existingConfig,
-  locale: getStripeLocale(locale),
-};
-```
-
-### 2. Frontend (PlansSection.tsx, ChoosePlan.tsx)
-
-Nenhuma alteracao necessaria -- ambos ja enviam `{ priceId, locale }` no body.
+No dashboard mobile, o `LanguageFlagSelector` fica no header (fora do Sheet), entao o Popover funciona normalmente. Nao precisa de alteracao.
 
 ## Arquivos modificados
 
 | Arquivo | Acao |
 |---------|------|
-| `supabase/functions/create-checkout/index.ts` | Extrair locale e passar ao Stripe |
+| `src/components/LanguageFlagSelector.tsx` | Adicionar props `inline` e `onSelect`, renderizar modo inline quando `inline=true` |
+| `src/pages/Index.tsx` | Sheet controlado, passar props de mobile ao seletor |
 
 ## O que NAO muda
 
-- priceIds
-- Logica de autenticacao
-- Frontend (ja envia locale)
-- stripe-webhook
-- Rotas
-
+- Desktop permanece identico (Popover normal)
+- Dashboard mobile (seletor ja esta fora do Sheet)
+- Logica de i18n (`i18n.changeLanguage`, `localStorage`)
+- Nenhum componente recriado
