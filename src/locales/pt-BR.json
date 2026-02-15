@@ -621,11 +621,17 @@
     "goToLogin": "Ir para o Login",
     "configureWhatsApp": "Configurar WhatsApp",
     "skipToDashboard": "Pular e ir para o Dashboard",
-    "checkSpam": "Verifique sua caixa de entrada e spam. O email pode levar alguns minutos para chegar."
+    "checkSpam": "Verifique sua caixa de entrada e spam. O email pode levar alguns minutos para chegar.",
+    "alreadyActiveTitle": "Assinatura já ativa",
+    "alreadyActiveSubtitle": "Este email já possui uma assinatura ativa. Faça login para acessar sua conta."
   },
   "resetPassword": {
     "title": "Defina sua Senha",
     "subtitle": "Crie uma senha para acessar sua conta",
+    "setPasswordTitle": "Defina sua Senha",
+    "setPasswordSubtitle": "Crie uma senha para acessar sua nova conta",
+    "resetPasswordTitle": "Redefinir Senha",
+    "resetPasswordSubtitle": "Crie uma nova senha para sua conta",
     "validating": "Validando seu link...",
     "newPassword": "Nova Senha",
     "confirmPassword": "Confirmar Senha",

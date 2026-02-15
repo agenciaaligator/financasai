@@ -615,11 +615,17 @@
     "goToLogin": "Go to Login",
     "configureWhatsApp": "Set up WhatsApp",
     "skipToDashboard": "Skip to Dashboard",
-    "checkSpam": "Check your inbox and spam folder. The email may take a few minutes to arrive."
+    "checkSpam": "Check your inbox and spam folder. The email may take a few minutes to arrive.",
+    "alreadyActiveTitle": "Subscription already active",
+    "alreadyActiveSubtitle": "This email already has an active subscription. Log in to access your account."
   },
   "resetPassword": {
     "title": "Set Your Password",
     "subtitle": "Create a password to access your account",
+    "setPasswordTitle": "Set Your Password",
+    "setPasswordSubtitle": "Create a password for your new account",
+    "resetPasswordTitle": "Reset Password",
+    "resetPasswordSubtitle": "Create a new password for your account",
     "validating": "Validating your link...",
     "newPassword": "New Password",
     "confirmPassword": "Confirm Password",

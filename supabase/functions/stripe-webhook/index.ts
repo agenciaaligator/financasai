@@ -12,6 +12,188 @@ const logStep = (step: string, details?: any) => {
   console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
 };
 
+const SITE_URL = "https://donawilma.lovable.app";
+
+/**
+ * Handles user creation/lookup and subscription setup after a Stripe event.
+ * Uses inviteUserByEmail for new users (never resetPasswordForEmail).
+ */
+async function handleUserAndSubscription(
+  supabaseAdmin: any,
+  stripe: any,
+  customerEmail: string,
+  stripeCustomerId: string,
+  subscriptionId: string,
+  source: string
+) {
+  // ========== IDEMPOTENCY CHECK ==========
+  const { data: existingSub } = await supabaseAdmin
+    .from('user_subscriptions')
+    .select('id, user_id')
+    .eq('stripe_subscription_id', subscriptionId)
+    .maybeSingle();
+
+  if (existingSub) {
+    logStep("IDEMPOTENT: Subscription already processed", { subscriptionId, userId: existingSub.user_id });
+    return { success: true, skipped: true, userId: existingSub.user_id, isNewUser: false };
+  }
+  // ========== END IDEMPOTENCY CHECK ==========
+
+  // ========== USER LOOKUP ==========
+  let userId: string;
+  let isNewUser = false;
+
+  // Use getUserByEmail (more efficient than listUsers)
+  const { data: existingUserData, error: lookupError } = await supabaseAdmin.auth.admin.listUsers();
+  const existingUser = existingUserData?.users?.find((u: any) => u.email === customerEmail);
+
+  if (existingUser) {
+    userId = existingUser.id;
+    logStep("User already exists", { userId, email: customerEmail });
+
+    // Check existing subscription
+    const { data: userSub } = await supabaseAdmin
+      .from('user_subscriptions')
+      .select('id, status, stripe_customer_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (userSub?.status === 'active') {
+      logStep("User already has active subscription - updating stripe_customer_id only", { userId });
+      
+      // Update stripe_customer_id if needed
+      if (userSub.stripe_customer_id !== stripeCustomerId) {
+        await supabaseAdmin
+          .from('user_subscriptions')
+          .update({ stripe_customer_id: stripeCustomerId })
+          .eq('id', userSub.id);
+        logStep("Updated stripe_customer_id", { old: userSub.stripe_customer_id, new: stripeCustomerId });
+      }
+
+      return { success: true, skipped: false, userId, isNewUser: false, alreadyActive: true };
+    }
+
+    // User exists but subscription is cancelled/expired - will reactivate below
+    logStep("User exists with inactive subscription - will reactivate", { 
+      userId, 
+      currentStatus: userSub?.status || 'none' 
+    });
+  } else {
+    // ========== NEW USER: Use inviteUserByEmail ==========
+    const siteUrl = Deno.env.get("SITE_URL") || SITE_URL;
+    
+    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+      customerEmail,
+      {
+        redirectTo: `${siteUrl}/set-password`,
+        data: {
+          created_via: source,
+          stripe_customer_id: stripeCustomerId,
+        }
+      }
+    );
+
+    if (inviteError) {
+      logStep("Error inviting user", { error: inviteError.message });
+      throw inviteError;
+    }
+
+    userId = inviteData.user.id;
+    isNewUser = true;
+    logStep("New user invited via inviteUserByEmail", { userId, email: customerEmail });
+  }
+
+  // ========== SUBSCRIPTION SETUP ==========
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+    expand: ['latest_invoice']
+  }) as any;
+
+  const priceId = subscription.items.data[0]?.price.id;
+  const billingCycle = subscription.items.data[0]?.price.recurring?.interval === 'year' ? 'yearly' : 'monthly';
+
+  // Period dates
+  const periodStart = subscription.current_period_start || subscription.billing_cycle_anchor || subscription.created;
+  let periodEnd = subscription.current_period_end;
+  
+  if (!periodEnd && periodStart) {
+    const latestInvoice = subscription.latest_invoice;
+    if (latestInvoice && latestInvoice.period_end) {
+      periodEnd = latestInvoice.period_end;
+    } else {
+      const interval = subscription.items?.data?.[0]?.price?.recurring?.interval;
+      const startDate = new Date(periodStart * 1000);
+      if (interval === 'year') {
+        startDate.setFullYear(startDate.getFullYear() + 1);
+      } else {
+        startDate.setMonth(startDate.getMonth() + 1);
+      }
+      periodEnd = Math.floor(startDate.getTime() / 1000);
+    }
+  }
+
+  const currentPeriodStartISO = periodStart && typeof periodStart === 'number'
+    ? new Date(periodStart * 1000).toISOString()
+    : new Date().toISOString();
+  const currentPeriodEndISO = periodEnd && typeof periodEnd === 'number'
+    ? new Date(periodEnd * 1000).toISOString()
+    : null;
+
+  // Find matching plan
+  const { data: plan } = await supabaseAdmin
+    .from('subscription_plans')
+    .select('*')
+    .or(`stripe_price_id_monthly.eq.${priceId},stripe_price_id_yearly.eq.${priceId}`)
+    .maybeSingle();
+
+  logStep("Subscription details", { subscriptionId, priceId, billingCycle, periodStart: currentPeriodStartISO, periodEnd: currentPeriodEndISO });
+
+  // Upsert subscription
+  const { error: subError } = await supabaseAdmin
+    .from('user_subscriptions')
+    .upsert({
+      user_id: userId,
+      plan_id: plan?.id || null,
+      stripe_subscription_id: subscriptionId,
+      stripe_customer_id: stripeCustomerId,
+      stripe_price_id: priceId,
+      status: subscription.status === 'active' || subscription.status === 'trialing' ? 'active' : subscription.status,
+      billing_cycle: billingCycle,
+      current_period_start: currentPeriodStartISO,
+      current_period_end: currentPeriodEndISO,
+      payment_gateway: 'stripe',
+      cancelled_at: null, // Clear cancelled_at on reactivation
+    }, { onConflict: 'user_id' });
+
+  if (subError) {
+    logStep("Error upserting subscription", { error: subError.message });
+  } else {
+    logStep("Subscription created/updated successfully");
+  }
+
+  // ========== ROLE UPDATE (with master/admin protection) ==========
+  const { data: isMasterUser } = await supabaseAdmin
+    .from('master_users')
+    .select('user_id')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  const { data: existingRole } = await supabaseAdmin
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (isMasterUser || existingRole?.role === 'admin') {
+    logStep("User is master/admin - preserving privileges", { isMaster: !!isMasterUser, currentRole: existingRole?.role });
+  } else {
+    await supabaseAdmin.from('user_roles').delete().eq('user_id', userId);
+    await supabaseAdmin.from('user_roles').insert({ user_id: userId, role: 'premium', expires_at: null });
+    logStep("User role updated to premium");
+  }
+
+  return { success: true, skipped: false, userId, isNewUser, alreadyActive: false };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -38,10 +220,8 @@ serve(async (req) => {
     
     let event: Stripe.Event;
     
-    // Verificar assinatura se webhook secret estiver configurado
     if (webhookSecret && signature) {
       try {
-        // IMPORTANTE: Usar método assíncrono para Deno
         event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
         logStep("Webhook signature verified");
       } catch (err) {
@@ -52,276 +232,47 @@ serve(async (req) => {
         });
       }
     } else {
-      // Para desenvolvimento, aceitar sem verificação
       event = JSON.parse(body);
       logStep("Webhook parsed without signature verification (dev mode)");
     }
 
     logStep("Event type", { type: event.type });
 
-    // Processar checkout.session.completed
+    // ========== checkout.session.completed ==========
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
       const subscriptionId = session.subscription as string;
-      
-      // ========== IDEMPOTENCY CHECK ==========
-      // Verificar se esta subscription já foi processada para evitar erros em eventos duplicados
-      if (subscriptionId) {
-        const { data: existingSub } = await supabaseAdmin
-          .from('user_subscriptions')
-          .select('id, user_id')
-          .eq('stripe_subscription_id', subscriptionId)
-          .maybeSingle();
-
-        if (existingSub) {
-          logStep("IDEMPOTENT: Subscription already processed, skipping duplicate event", { 
-            subscriptionId, 
-            existingUserId: existingSub.user_id 
-          });
-          
-          // Mesmo pulando, garantir que o email de boas-vindas foi enviado para o usuário
-          // (em caso de falha parcial anterior onde usuário foi criado mas email não enviado)
-          return new Response(JSON.stringify({ 
-            success: true, 
-            skipped: true,
-            reason: "subscription_already_processed",
-            userId: existingSub.user_id
-          }), {
-            status: 200,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-      }
-      // ========== END IDEMPOTENCY CHECK ==========
-      
-      // CRITICAL FIX: No Stripe-first flow, o email está em customer_details.email, não em customer_email
       const customerEmail = session.customer_email || session.customer_details?.email;
-      
+
       logStep("Processing checkout session", { 
         sessionId: session.id, 
-        customer_email: session.customer_email,
-        customer_details_email: session.customer_details?.email,
-        resolved_email: customerEmail,
+        email: customerEmail,
         customerId: session.customer
       });
 
       if (!customerEmail) {
-        logStep("ERROR: No customer email found in session", {
-          customer_email: session.customer_email,
-          customer_details: session.customer_details
+        throw new Error("No customer email in checkout session");
+      }
+
+      if (!subscriptionId) {
+        logStep("No subscription ID in checkout session - one-time payment?");
+        return new Response(JSON.stringify({ success: true, message: "No subscription to process" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
-        throw new Error("No customer email in checkout session - check customer_email and customer_details.email");
       }
 
-      // Verificar se usuário já existe
-      const { data: existingUser } = await supabaseAdmin.auth.admin.listUsers();
-      const user = existingUser?.users?.find(u => u.email === customerEmail);
-      
-      let userId: string;
-      let isNewUser = false;
-      let tempPassword = '';
+      const result = await handleUserAndSubscription(
+        supabaseAdmin, stripe, customerEmail, session.customer as string, subscriptionId, 'stripe_checkout'
+      );
 
-      if (user) {
-        // Usuário já existe
-        userId = user.id;
-        logStep("User already exists", { userId, email: customerEmail });
-      } else {
-        // Criar novo usuário com senha temporária
-        tempPassword = crypto.randomUUID().slice(0, 12);
-        
-        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-          email: customerEmail,
-          password: tempPassword,
-          email_confirm: true, // Confirmar email automaticamente
-          user_metadata: {
-            created_via: 'stripe_checkout',
-            stripe_customer_id: session.customer,
-          }
-        });
-
-        if (createError) {
-          logStep("Error creating user", { error: createError.message });
-          throw createError;
-        }
-
-        userId = newUser.user.id;
-        isNewUser = true;
-        logStep("Created new user", { userId, email: customerEmail });
-      }
-
-      // Buscar detalhes da assinatura com expand para invoice
-      const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
-        expand: ['latest_invoice']
-      }) as any;
-      
-      const priceId = subscription.items.data[0]?.price.id;
-      const productId = subscription.items.data[0]?.price.product as string;
-      
-      // CRITICAL FIX: Na API "basil" do Stripe, current_period pode estar em billing_cycle_anchor
-      // Usar fallbacks para garantir que sempre temos as datas
-      const periodStart = subscription.current_period_start 
-        || subscription.billing_cycle_anchor 
-        || subscription.created;
-      
-      let periodEnd = subscription.current_period_end;
-      
-      // Se period_end não está disponível, calcular baseado no intervalo
-      if (!periodEnd && periodStart) {
-        const latestInvoice = subscription.latest_invoice;
-        if (latestInvoice && latestInvoice.period_end) {
-          periodEnd = latestInvoice.period_end;
-        } else {
-          const interval = subscription.items?.data?.[0]?.price?.recurring?.interval;
-          const startDate = new Date(periodStart * 1000);
-          if (interval === 'year') {
-            startDate.setFullYear(startDate.getFullYear() + 1);
-          } else {
-            startDate.setMonth(startDate.getMonth() + 1);
-          }
-          periodEnd = Math.floor(startDate.getTime() / 1000);
-        }
-      }
-      
-      logStep("Subscription details", { 
-        subscriptionId, 
-        priceId, 
-        productId,
-        periodStart,
-        periodEnd,
-        status: subscription.status
-      });
-
-      // Buscar plano correspondente no banco
-      const { data: plan, error: planError } = await supabaseAdmin
-        .from('subscription_plans')
-        .select('*')
-        .or(`stripe_price_id_monthly.eq.${priceId},stripe_price_id_yearly.eq.${priceId}`)
-        .maybeSingle();
-
-      if (planError) {
-        logStep("Error fetching plan", { error: planError.message });
-      }
-
-      // Determinar ciclo de cobrança
-      const billingCycle = subscription.items.data[0]?.price.recurring?.interval === 'year' 
-        ? 'yearly' 
-        : 'monthly';
-
-      // Converter timestamps Unix para ISO strings de forma segura
-      const currentPeriodStartISO = periodStart && typeof periodStart === 'number'
-        ? new Date(periodStart * 1000).toISOString()
-        : new Date().toISOString();
-      
-      const currentPeriodEndISO = periodEnd && typeof periodEnd === 'number'
-        ? new Date(periodEnd * 1000).toISOString()
-        : null;
-
-      logStep("Period dates converted", { 
-        currentPeriodStartISO, 
-        currentPeriodEndISO 
-      });
-
-      // Criar/atualizar user_subscriptions
-      const { error: subError } = await supabaseAdmin
-        .from('user_subscriptions')
-        .upsert({
-          user_id: userId,
-          plan_id: plan?.id || null,
-          stripe_subscription_id: subscriptionId,
-          stripe_customer_id: session.customer as string,
-          stripe_price_id: priceId,
-          status: subscription.status === 'active' || subscription.status === 'trialing' ? 'active' : subscription.status,
-          billing_cycle: billingCycle,
-          current_period_start: currentPeriodStartISO,
-          current_period_end: currentPeriodEndISO,
-          payment_gateway: 'stripe',
-        }, {
-          onConflict: 'user_id',
-        });
-
-      if (subError) {
-        logStep("Error upserting subscription", { error: subError.message });
-      } else {
-        logStep("Subscription created/updated successfully with period dates");
-      }
-
-      // PROTEÇÃO: Verificar se usuário é master ou admin ANTES de alterar roles
-      const { data: isMasterUser } = await supabaseAdmin
-        .from('master_users')
-        .select('user_id')
-        .eq('user_id', userId)
-        .maybeSingle();
-      
-      const { data: existingRole } = await supabaseAdmin
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
-      
-      // Se é master ou já tem role admin, NÃO sobrescrever
-      if (isMasterUser || existingRole?.role === 'admin') {
-        logStep("User is master/admin - skipping role update to preserve privileges", { 
-          isMaster: !!isMasterUser, 
-          currentRole: existingRole?.role 
-        });
-      } else {
-        // Atualizar role do usuário para premium (DELETE + INSERT para evitar conflito com constraint user_id+role)
-        const { error: deleteRoleError } = await supabaseAdmin
-          .from('user_roles')
-          .delete()
-          .eq('user_id', userId);
-        
-        if (deleteRoleError) {
-          logStep("Error deleting old roles", { error: deleteRoleError.message });
-        }
-        
-        const { error: insertRoleError } = await supabaseAdmin
-          .from('user_roles')
-          .insert({
-            user_id: userId,
-            role: 'premium',
-            expires_at: null,
-          });
-
-        if (insertRoleError) {
-          logStep("Error inserting role", { error: insertRoleError.message });
-        } else {
-          logStep("User role updated to premium");
-        }
-      }
-
-      // Se for novo usuário, enviar email de reset de senha via Supabase Auth nativo
-      // Isso usa o sistema de emails nativo do Supabase (gratuito)
-      if (isNewUser) {
-        const siteUrl = Deno.env.get("SITE_URL") || "https://financasai.lovable.app";
-        
-        // Usar resetPasswordForEmail que envia email via Supabase Auth nativo
-        const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(
-          customerEmail,
-          {
-            redirectTo: `${siteUrl}/reset-password`
-          }
-        );
-
-        if (resetError) {
-          logStep("Error sending password reset email", { error: resetError.message });
-        } else {
-          logStep("Password reset email sent via Supabase Auth native", { email: customerEmail });
-        }
-      }
-
-      return new Response(JSON.stringify({ 
-        success: true, 
-        userId,
-        isNewUser,
-        message: isNewUser ? "User created and subscription activated" : "Subscription activated for existing user"
-      }), {
+      return new Response(JSON.stringify(result), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Processar customer.subscription.updated
+    // ========== customer.subscription.updated ==========
     if (event.type === "customer.subscription.updated") {
       const subscription = event.data.object as Stripe.Subscription;
       logStep("Processing subscription update", { subscriptionId: subscription.id, status: subscription.status });
@@ -352,25 +303,20 @@ serve(async (req) => {
       });
     }
 
-    // Processar customer.subscription.deleted
+    // ========== customer.subscription.deleted ==========
     if (event.type === "customer.subscription.deleted") {
       const subscription = event.data.object as Stripe.Subscription;
       logStep("Processing subscription cancellation", { subscriptionId: subscription.id });
 
-      // Atualizar status para cancelled
       const { error: subError } = await supabaseAdmin
         .from('user_subscriptions')
-        .update({
-          status: 'cancelled',
-          cancelled_at: new Date().toISOString(),
-        })
+        .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
         .eq('stripe_subscription_id', subscription.id);
 
       if (subError) {
         logStep("Error cancelling subscription", { error: subError.message });
       }
 
-      // Voltar role para free
       const { data: sub } = await supabaseAdmin
         .from('user_subscriptions')
         .select('user_id')
@@ -378,12 +324,28 @@ serve(async (req) => {
         .single();
 
       if (sub?.user_id) {
-        await supabaseAdmin
-          .from('user_roles')
-          .update({ role: 'free' })
-          .eq('user_id', sub.user_id);
+        // Protection: don't downgrade master/admin
+        const { data: isMaster } = await supabaseAdmin
+          .from('master_users')
+          .select('user_id')
+          .eq('user_id', sub.user_id)
+          .maybeSingle();
         
-        logStep("User role reverted to free");
+        const { data: currentRole } = await supabaseAdmin
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', sub.user_id)
+          .maybeSingle();
+
+        if (!isMaster && currentRole?.role !== 'admin') {
+          await supabaseAdmin
+            .from('user_roles')
+            .update({ role: 'free' })
+            .eq('user_id', sub.user_id);
+          logStep("User role reverted to free");
+        } else {
+          logStep("User is master/admin - preserving role on cancellation");
+        }
       }
 
       return new Response(JSON.stringify({ success: true }), {
@@ -392,42 +354,13 @@ serve(async (req) => {
       });
     }
 
-    // Processar customer.subscription.created (quando criado via Dashboard ou API diretamente)
+    // ========== customer.subscription.created ==========
     if (event.type === "customer.subscription.created") {
       const subscription = event.data.object as Stripe.Subscription;
       const customerId = subscription.customer as string;
-      
-      logStep("Processing subscription created", { 
-        subscriptionId: subscription.id, 
-        customerId,
-        status: subscription.status 
-      });
 
-      // ========== IDEMPOTENCY CHECK ==========
-      const { data: existingSub } = await supabaseAdmin
-        .from('user_subscriptions')
-        .select('id, user_id')
-        .eq('stripe_subscription_id', subscription.id)
-        .maybeSingle();
+      logStep("Processing subscription created", { subscriptionId: subscription.id, customerId });
 
-      if (existingSub) {
-        logStep("IDEMPOTENT: Subscription already processed, skipping duplicate event", { 
-          subscriptionId: subscription.id, 
-          existingUserId: existingSub.user_id 
-        });
-        return new Response(JSON.stringify({ 
-          success: true, 
-          skipped: true,
-          reason: "subscription_already_processed",
-          userId: existingSub.user_id
-        }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      // ========== END IDEMPOTENCY CHECK ==========
-
-      // Buscar email do cliente no Stripe
       const customer = await stripe.customers.retrieve(customerId);
       if (customer.deleted) {
         logStep("Customer was deleted, skipping");
@@ -446,145 +379,24 @@ serve(async (req) => {
         });
       }
 
-      logStep("Customer email found", { email: customerEmail });
+      const result = await handleUserAndSubscription(
+        supabaseAdmin, stripe, customerEmail, customerId, subscription.id, 'stripe_subscription_created'
+      );
 
-      // Verificar se usuário já existe no Supabase
-      const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-      const user = existingUsers?.users?.find(u => u.email === customerEmail);
-
-      let userId: string;
-      let isNewUser = false;
-
-      if (user) {
-        userId = user.id;
-        logStep("User exists", { userId });
-      } else {
-        // Criar novo usuário
-        const tempPassword = crypto.randomUUID().slice(0, 12);
-        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-          email: customerEmail,
-          password: tempPassword,
-          email_confirm: true,
-          user_metadata: {
-            created_via: 'stripe_subscription_created',
-            stripe_customer_id: customerId,
-          }
-        });
-
-        if (createError) {
-          logStep("Error creating user", { error: createError.message });
-          throw createError;
-        }
-
-        userId = newUser.user.id;
-        isNewUser = true;
-        logStep("Created new user", { userId });
-
-        // Enviar email de reset de senha via Supabase Auth nativo
-        const siteUrl = Deno.env.get("SITE_URL") || "https://financasai.lovable.app";
-        const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(
-          customerEmail,
-          {
-            redirectTo: `${siteUrl}/reset-password`
-          }
-        );
-
-        if (resetError) {
-          logStep("Error sending password reset email", { error: resetError.message });
-        } else {
-          logStep("Password reset email sent via Supabase Auth native", { email: customerEmail });
-        }
-      }
-
-      // Processar detalhes da assinatura
-      const priceId = subscription.items.data[0]?.price.id;
-      const billingCycle = subscription.items.data[0]?.price.recurring?.interval === 'year' ? 'yearly' : 'monthly';
-
-      // Buscar plano correspondente
-      const { data: plan } = await supabaseAdmin
-        .from('subscription_plans')
-        .select('*')
-        .or(`stripe_price_id_monthly.eq.${priceId},stripe_price_id_yearly.eq.${priceId}`)
-        .maybeSingle();
-
-      // Criar/atualizar subscription
-      await supabaseAdmin
-        .from('user_subscriptions')
-        .upsert({
-          user_id: userId,
-          plan_id: plan?.id || null,
-          stripe_subscription_id: subscription.id,
-          stripe_customer_id: customerId,
-          stripe_price_id: priceId,
-          status: subscription.status === 'active' || subscription.status === 'trialing' ? 'active' : subscription.status,
-          billing_cycle: billingCycle,
-          current_period_start: subscription.current_period_start 
-            ? new Date(subscription.current_period_start * 1000).toISOString() 
-            : new Date().toISOString(),
-          current_period_end: subscription.current_period_end 
-            ? new Date(subscription.current_period_end * 1000).toISOString() 
-            : null,
-          payment_gateway: 'stripe',
-        }, { onConflict: 'user_id' });
-
-      // PROTEÇÃO: Verificar se usuário é master ou admin ANTES de alterar roles
-      const { data: isMasterUser2 } = await supabaseAdmin
-        .from('master_users')
-        .select('user_id')
-        .eq('user_id', userId)
-        .maybeSingle();
-      
-      const { data: existingRole2 } = await supabaseAdmin
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
-      
-      // Se é master ou já tem role admin, NÃO sobrescrever
-      if (isMasterUser2 || existingRole2?.role === 'admin') {
-        logStep("User is master/admin - skipping role update to preserve privileges", { 
-          isMaster: !!isMasterUser2, 
-          currentRole: existingRole2?.role 
-        });
-      } else {
-        // Atualizar role para premium (DELETE + INSERT para evitar conflito)
-        await supabaseAdmin
-          .from('user_roles')
-          .delete()
-          .eq('user_id', userId);
-        
-        await supabaseAdmin
-          .from('user_roles')
-          .insert({
-            user_id: userId,
-            role: 'premium',
-            expires_at: null,
-          });
-        
-        logStep("User role updated to premium");
-      }
-
-      logStep("Subscription and role created/updated", { userId, isNewUser });
-
-      return new Response(JSON.stringify({ success: true, userId, isNewUser }), {
+      return new Response(JSON.stringify(result), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Processar invoice.paid (confirma pagamento bem-sucedido)
+    // ========== invoice.paid ==========
     if (event.type === "invoice.paid") {
       const invoice = event.data.object as Stripe.Invoice;
       const subscriptionId = invoice.subscription as string;
       
-      logStep("Processing invoice paid", { 
-        invoiceId: invoice.id, 
-        subscriptionId,
-        amountPaid: invoice.amount_paid 
-      });
+      logStep("Processing invoice paid", { invoiceId: invoice.id, subscriptionId });
 
       if (subscriptionId) {
-        // Garantir que status está ativo após pagamento
         const { error } = await supabaseAdmin
           .from('user_subscriptions')
           .update({ status: 'active' })
@@ -603,22 +415,18 @@ serve(async (req) => {
       });
     }
 
-    // Processar invoice.payment_failed (falha no pagamento)
+    // ========== invoice.payment_failed ==========
     if (event.type === "invoice.payment_failed") {
       const invoice = event.data.object as Stripe.Invoice;
       const subscriptionId = invoice.subscription as string;
       
-      logStep("Processing invoice payment failed", { 
-        invoiceId: invoice.id, 
-        subscriptionId 
-      });
+      logStep("Processing invoice payment failed", { invoiceId: invoice.id, subscriptionId });
 
       if (subscriptionId) {
         await supabaseAdmin
           .from('user_subscriptions')
           .update({ status: 'past_due' })
           .eq('stripe_subscription_id', subscriptionId);
-
         logStep("Subscription marked as past_due");
       }
 
@@ -628,7 +436,7 @@ serve(async (req) => {
       });
     }
 
-    // Evento não tratado
+    // Unhandled event
     logStep("Unhandled event type", { type: event.type });
     return new Response(JSON.stringify({ received: true }), {
       status: 200,
