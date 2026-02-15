@@ -122,6 +122,12 @@ export default function ResetPassword() {
       const result = await updatePassword(password);
       
       if (result && !result.error) {
+        // Mark password as set in profile and user_metadata
+        if (user) {
+          await supabase.from('profiles').update({ password_set: true } as any).eq('user_id', user.id);
+          await supabase.auth.updateUser({ data: { password_set: true } });
+        }
+        
         setTimeout(() => {
           navigate('/boas-vindas');
         }, 2000);

@@ -17,6 +17,9 @@ import { Loader2 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useSubscriptionGuard } from "@/hooks/useSubscriptionGuard";
+import { GracePeriodBanner } from "@/components/GracePeriodBanner";
+import SubscriptionInactive from "@/pages/SubscriptionInactive";
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -299,37 +302,62 @@ const LandingPage = () => {
   );
 };
 
+// Protected wrapper that checks password_set and subscription status
+const ProtectedDashboard = () => {
+  const navigate = useNavigate();
+  const guard = useSubscriptionGuard();
+
+  if (guard.loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Must set password first
+  if (guard.needsPassword) {
+    navigate('/set-password', { replace: true });
+    return null;
+  }
+
+  // Subscription inactive and not in grace period
+  if (!guard.canAccessDashboard && !guard.isMasterOrAdmin) {
+    return <SubscriptionInactive />;
+  }
+
+  return (
+    <>
+      {guard.isInGracePeriod && (
+        <GracePeriodBanner gracePeriodEndsAt={guard.gracePeriodEndsAt} />
+      )}
+      <FinancialDashboard />
+    </>
+  );
+};
+
 const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [checkingFirstLogin, setCheckingFirstLogin] = useState(true);
-  const hasCheckedRef = useRef(false); // useRef persiste entre re-renders sem causar loops
-  
-  // 🔥 DETECTAR PENDING CHECKOUT E VERIFICAR PRIMEIRO LOGIN
+  const hasCheckedRef = useRef(false);
+
   useEffect(() => {
-    // PRIMEIRO: Verificar se estamos na rota correta
     if (window.location.pathname !== '/') {
       setCheckingFirstLogin(false);
       return;
     }
-    
-    // Se ainda está carregando auth, aguardar
     if (loading) return;
-    
-    // Se não está logado, mostrar landing page
     if (!user) {
       setCheckingFirstLogin(false);
       return;
     }
-    
-    // Evitar múltiplas execuções usando useRef (persiste entre re-mounts)
     if (hasCheckedRef.current) {
       setCheckingFirstLogin(false);
       return;
     }
     
-    // VERIFICAÇÃO SÍNCRONA - se já completou onboarding OU já foi redirecionado
     const onboardingCompleted = sessionStorage.getItem('onboarding_completed') === 'true';
     const alreadyRedirected = sessionStorage.getItem('redirected_to_welcome') === 'true';
     
@@ -340,27 +368,19 @@ const Index = () => {
     }
     
     const checkUserStatus = async () => {
-      hasCheckedRef.current = true; // Marcar ANTES de qualquer async
+      hasCheckedRef.current = true;
       
       const params = new URLSearchParams(window.location.search);
       const pendingCheckout = params.get('pending_checkout') === 'true';
       const storedPending = sessionStorage.getItem('pending_checkout') === 'true';
       
       if (pendingCheckout || storedPending) {
-        console.log('[CHECKOUT] Detectado pending_checkout após confirmação de email');
-        
-        // Limpar flags e URL
         sessionStorage.removeItem('pending_checkout');
         sessionStorage.removeItem('checkout_cycle');
         window.history.replaceState({}, '', window.location.pathname);
-        
-        toast({
-          title: "✅ Conta confirmada!",
-          description: "Bem-vindo ao Dona Wilma!",
-        });
+        toast({ title: "✅ Conta confirmada!", description: "Bem-vindo ao Dona Wilma!" });
       }
       
-      // Verificar se já existe sessão WhatsApp válida
       const { data: whatsappSession } = await supabase
         .from('whatsapp_sessions')
         .select('id')
@@ -369,8 +389,7 @@ const Index = () => {
         .maybeSingle();
       
       if (!whatsappSession) {
-        console.log('[FIRST LOGIN] Usuário sem WhatsApp, redirecionando para /boas-vindas');
-        sessionStorage.setItem('redirected_to_welcome', 'true'); // Marcar ANTES de redirecionar
+        sessionStorage.setItem('redirected_to_welcome', 'true');
         navigate('/boas-vindas', { replace: true });
         return;
       }
@@ -393,7 +412,7 @@ const Index = () => {
     return <LandingPage />;
   }
   
-  return <FinancialDashboard />;
+  return <ProtectedDashboard />;
 };
 
 export default Index;

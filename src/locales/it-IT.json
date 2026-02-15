@@ -166,5 +166,20 @@
     "setPassword": "Imposta Password",
     "settingPassword": "Impostazione password...",
     "backToLogin": "Torna al Login"
+  },
+  "subscription": {
+    "status": "Stato Abbonamento",
+    "active": "Attivo",
+    "inactive": "Inattivo",
+    "pastDue": "Scaduto",
+    "cancelled": "Cancellato",
+    "renewsAt": "Rinnova il: {{date}}",
+    "expiresAt": "Scade il: {{date}}",
+    "manageSubscription": "Gestisci abbonamento",
+    "regularize": "Regolarizza ora",
+    "inactiveTitle": "Il tuo abbonamento è inattivo",
+    "inactiveDesc": "Regolarizza il tuo abbonamento per continuare a usare Dona Wilma.",
+    "gracePeriodTitle": "Il tuo abbonamento è scaduto",
+    "gracePeriodDesc": "Regolarizza entro il {{date}} per evitare il blocco dell'accesso."
   }
 }

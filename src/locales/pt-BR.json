@@ -638,5 +638,20 @@
     "setPassword": "Definir Senha",
     "settingPassword": "Definindo senha...",
     "backToLogin": "Voltar ao Login"
+  },
+  "subscription": {
+    "status": "Status da Assinatura",
+    "active": "Ativa",
+    "inactive": "Inativa",
+    "pastDue": "Em atraso",
+    "cancelled": "Cancelada",
+    "renewsAt": "Renova em: {{date}}",
+    "expiresAt": "Expira em: {{date}}",
+    "manageSubscription": "Gerenciar assinatura",
+    "regularize": "Regularizar agora",
+    "inactiveTitle": "Sua assinatura está inativa",
+    "inactiveDesc": "Regularize sua assinatura para continuar usando o Dona Wilma.",
+    "gracePeriodTitle": "Sua assinatura está em atraso",
+    "gracePeriodDesc": "Regularize até {{date}} para evitar o bloqueio do acesso."
   }
 }

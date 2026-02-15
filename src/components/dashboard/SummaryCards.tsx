@@ -1,8 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DollarSign, TrendingUp, TrendingDown, CheckCircle2, Calendar, ExternalLink } from "lucide-react";
+import { DollarSign, TrendingUp, TrendingDown, CheckCircle2, Calendar, ExternalLink, AlertTriangle, XCircle } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useSubscriptionGuard } from "@/hooks/useSubscriptionGuard";
 import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -19,6 +20,7 @@ interface SummaryCardsProps {
 export function SummaryCards({ balance, totalIncome, totalExpenses }: SummaryCardsProps) {
   const isNegative = balance < 0;
   const { isPremium } = useSubscription();
+  const guard = useSubscriptionGuard();
   const [managingSubscription, setManagingSubscription] = useState(false);
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -44,6 +46,26 @@ export function SummaryCards({ balance, totalIncome, totalExpenses }: SummaryCar
       setManagingSubscription(false);
     }
   };
+
+  // Subscription status display
+  const getStatusConfig = () => {
+    if (guard.isMasterOrAdmin) {
+      return { label: t('summary.active', 'Ativo'), color: 'text-success', bgColor: 'bg-success/10', borderColor: 'border-success/50', icon: CheckCircle2, detail: t('summary.fullAccess', 'Acesso completo') };
+    }
+    switch (guard.subscriptionStatus) {
+      case 'active':
+        return { label: t('summary.active', 'Ativo'), color: 'text-success', bgColor: 'bg-success/10', borderColor: 'border-success/50', icon: CheckCircle2, detail: guard.subscriptionEndDate ? t('subscription.renewsAt', 'Renova em: {{date}}', { date: format(guard.subscriptionEndDate, 'dd/MM/yyyy') }) : t('summary.fullAccess') };
+      case 'past_due':
+        return { label: t('subscription.pastDue', 'Em atraso'), color: 'text-yellow-600', bgColor: 'bg-yellow-500/10', borderColor: 'border-yellow-500/50', icon: AlertTriangle, detail: t('subscription.regularize', 'Regularizar agora') };
+      case 'cancelled':
+        return { label: t('subscription.cancelled', 'Cancelada'), color: 'text-destructive', bgColor: 'bg-destructive/10', borderColor: 'border-destructive/50', icon: XCircle, detail: guard.subscriptionEndDate ? t('subscription.expiresAt', 'Expira em: {{date}}', { date: format(guard.subscriptionEndDate, 'dd/MM/yyyy') }) : '' };
+      default:
+        return { label: t('subscription.inactive', 'Inativa'), color: 'text-muted-foreground', bgColor: 'bg-muted/10', borderColor: 'border-muted/50', icon: XCircle, detail: '' };
+    }
+  };
+
+  const statusConfig = getStatusConfig();
+  const StatusIcon = statusConfig.icon;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -97,31 +119,29 @@ export function SummaryCards({ balance, totalIncome, totalExpenses }: SummaryCar
 
       <Card className="bg-gradient-card shadow-card border-0">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">{t('summary.yourAccess', 'Seu Acesso')}</CardTitle>
-          <CheckCircle2 className="h-4 w-4 text-success" />
+          <CardTitle className="text-sm font-medium">{t('subscription.status', 'Status da Assinatura')}</CardTitle>
+          <StatusIcon className={`h-4 w-4 ${statusConfig.color}`} />
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs border-success/50 text-success bg-success/10">
-              ● {t('summary.active', 'Ativo')}
+            <Badge variant="outline" className={`text-xs ${statusConfig.borderColor} ${statusConfig.color} ${statusConfig.bgColor}`}>
+              ● {statusConfig.label}
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            {t('summary.fullAccess', 'Acesso completo')}
+            {statusConfig.detail}
           </p>
           
-          {isPremium && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="w-full mt-3"
-              onClick={handleManageSubscription}
-              disabled={managingSubscription}
-            >
-              <ExternalLink className="h-3 w-3 mr-2" />
-              {managingSubscription ? t('common.loading', 'Carregando...') : t('summary.manageSubscription', 'Gerenciar assinatura')}
-            </Button>
-          )}
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full mt-3"
+            onClick={handleManageSubscription}
+            disabled={managingSubscription}
+          >
+            <ExternalLink className="h-3 w-3 mr-2" />
+            {managingSubscription ? t('common.loading', 'Carregando...') : t('subscription.manageSubscription', 'Gerenciar assinatura')}
+          </Button>
         </CardContent>
       </Card>
     </div>
