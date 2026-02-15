@@ -24,5 +24,3 @@ verify_jwt = false
 [functions.make-webhook]
 verify_jwt = false
 
-[functions.custom-auth-emails]
-verify_jwt = false
