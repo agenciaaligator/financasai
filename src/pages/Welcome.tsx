@@ -188,7 +188,7 @@ export default function Welcome() {
         .upsert({
           user_id: user?.id,
           phone_number: phoneNumber,
-          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
+          expires_at: new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000).toISOString(), // 10 years (permanent)
           last_activity: new Date().toISOString(),
         }, {
           onConflict: 'user_id',
@@ -408,20 +408,12 @@ export default function Welcome() {
             size="lg"
             className="w-full"
             onClick={handleGoToDashboard}
+            disabled={step !== 'connected'}
           >
             Ir para o sistema
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
           
-          {step !== 'connected' && (
-            <Button
-              variant="ghost"
-              onClick={handleGoToDashboard}
-              className="text-muted-foreground"
-            >
-              Pular por agora
-            </Button>
-          )}
         </div>
       </div>
     </div>
