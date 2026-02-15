@@ -612,5 +612,25 @@
         "dpo": { "title": "9. Contato do Encarregado (DPO)", "content": "Para questões relacionadas à privacidade e proteção de dados, entre em contato: contato@donawilma.com.br" }
       }
     }
+  },
+  "paymentSuccess": {
+    "title": "Pagamento Confirmado!",
+    "subtitle": "Enviamos um email para você definir sua senha e acessar sua conta.",
+    "subtitleLoggedIn": "Sua assinatura foi ativada com sucesso. Vamos configurar seu WhatsApp?",
+    "processing": "Processando seu pagamento...",
+    "goToLogin": "Ir para o Login",
+    "configureWhatsApp": "Configurar WhatsApp",
+    "skipToDashboard": "Pular e ir para o Dashboard",
+    "checkSpam": "Verifique sua caixa de entrada e spam. O email pode levar alguns minutos para chegar."
+  },
+  "resetPassword": {
+    "title": "Defina sua Senha",
+    "subtitle": "Crie uma senha para acessar sua conta",
+    "validating": "Validando seu link...",
+    "newPassword": "Nova Senha",
+    "confirmPassword": "Confirmar Senha",
+    "setPassword": "Definir Senha",
+    "settingPassword": "Definindo senha...",
+    "backToLogin": "Voltar ao Login"
   }
 }
