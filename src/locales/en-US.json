@@ -632,5 +632,20 @@
     "setPassword": "Set Password",
     "settingPassword": "Setting password...",
     "backToLogin": "Back to Login"
+  },
+  "subscription": {
+    "status": "Subscription Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "pastDue": "Past due",
+    "cancelled": "Cancelled",
+    "renewsAt": "Renews on: {{date}}",
+    "expiresAt": "Expires on: {{date}}",
+    "manageSubscription": "Manage subscription",
+    "regularize": "Regularize now",
+    "inactiveTitle": "Your subscription is inactive",
+    "inactiveDesc": "Regularize your subscription to continue using Dona Wilma.",
+    "gracePeriodTitle": "Your subscription is past due",
+    "gracePeriodDesc": "Regularize by {{date}} to avoid access being blocked."
   }
 }

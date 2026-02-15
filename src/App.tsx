@@ -12,6 +12,7 @@ import PaymentCancelled from "./pages/PaymentCancelled";
 import NotFound from "./pages/NotFound";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import SubscriptionInactive from "./pages/SubscriptionInactive";
 import { AdminPanel } from "@/components/admin/AdminPanel";
 import { useUserRole } from "@/hooks/useUserRole";
 import { SignUpForm } from "@/components/auth/SignUpForm";
@@ -52,6 +53,7 @@ const App = () => {
             <Route path="/set-password" element={<ResetPassword />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
             <Route path="/payment-cancelled" element={<PaymentCancelled />} />
+            <Route path="/subscription-inactive" element={<SubscriptionInactive />} />
             <Route path="/termos" element={<Terms />} />
             <Route path="/privacidade" element={<Privacy />} />
             <Route path="*" element={<NotFound />} />

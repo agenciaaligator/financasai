@@ -397,15 +397,41 @@ serve(async (req) => {
       logStep("Processing invoice paid", { invoiceId: invoice.id, subscriptionId });
 
       if (subscriptionId) {
-        const { error } = await supabaseAdmin
+        // Update subscription status to active
+        const { data: sub, error } = await supabaseAdmin
           .from('user_subscriptions')
           .update({ status: 'active' })
-          .eq('stripe_subscription_id', subscriptionId);
+          .eq('stripe_subscription_id', subscriptionId)
+          .select('user_id')
+          .maybeSingle();
 
         if (error) {
           logStep("Error updating subscription status", { error: error.message });
         } else {
           logStep("Subscription confirmed as active after payment");
+
+          // Restore premium role (with master/admin protection)
+          if (sub?.user_id) {
+            const { data: isMaster } = await supabaseAdmin
+              .from('master_users')
+              .select('user_id')
+              .eq('user_id', sub.user_id)
+              .maybeSingle();
+
+            const { data: currentRole } = await supabaseAdmin
+              .from('user_roles')
+              .select('role')
+              .eq('user_id', sub.user_id)
+              .maybeSingle();
+
+            if (!isMaster && currentRole?.role !== 'admin') {
+              await supabaseAdmin.from('user_roles').delete().eq('user_id', sub.user_id);
+              await supabaseAdmin.from('user_roles').insert({ user_id: sub.user_id, role: 'premium', expires_at: null });
+              logStep("User role restored to premium after payment", { userId: sub.user_id });
+            } else {
+              logStep("User is master/admin - preserving role on payment", { userId: sub.user_id });
+            }
+          }
         }
       }
 
