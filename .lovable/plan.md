@@ -1,90 +1,139 @@
 
-# Reformulacao do Fluxo Pos-Pagamento
 
-## Situacao Atual
+# Fluxo Stripe-First Seguro e Sem Duplicidade
 
-1. **stripe-webhook**: Cria usuario com `email_confirm: true` e envia `resetPasswordForEmail()` -- que usa o template **padrao de recovery** do Supabase (generico, em ingles, com linguagem de "reset")
-2. **PaymentSuccess.tsx**: Tela confusa com textos sobre "confirmar email", campo para reenviar confirmacao, e multiplos passos desnecessarios
-3. **ResetPassword.tsx**: Usa linguagem de "recuperacao de senha" em vez de "definir senha" -- apos sucesso redireciona para `/` (login) em vez de `/boas-vindas`
-4. **Nao existe** edge function `custom-auth-emails` para personalizar o email enviado
-5. **Nenhuma** dessas paginas esta internacionalizada (i18n)
+## Resumo das Mudancas
 
-## Plano de Implementacao
+Substituir o fluxo atual (createUser + resetPasswordForEmail) por `inviteUserByEmail()`, adicionar validacao inteligente de usuarios existentes, e criar rota `/set-password`.
 
-### 1. Criar Edge Function `custom-auth-emails`
+## Mudancas Detalhadas
 
-Nova edge function que intercepta emails do Supabase Auth e envia email personalizado em portugues.
+### 1. `supabase/functions/stripe-webhook/index.ts`
 
-- Recebe o hook do Supabase Auth para tipo `recovery`
-- Envia email com:
-  - Assunto: "Sua conta Dona Wilma foi criada -- Defina sua senha"
-  - Corpo profissional com botao "Definir minha senha"
-  - Link apontando para `/reset-password` com os tokens
-- Usa o Supabase Auth Hook (Send Email) ja configurado na migration existente
-- **Custo**: Zero (usa SMTP nativo do Supabase, nao precisa de Resend)
+Reescrever a logica do `checkout.session.completed` e `customer.subscription.created`:
 
-**Importante**: O hook `custom-auth-emails` ja esta habilitado na migration `20250712234716`, mas a funcao nao existe. Precisamos cria-la.
+**Antes:**
+- `admin.createUser()` com senha temporaria
+- `resetPasswordForEmail()` para enviar email
 
-### 2. Simplificar `PaymentSuccess.tsx`
+**Depois:**
+- Buscar usuario com `admin.listUsers()` (ja existe)
+- Se NAO existir: usar `admin.inviteUserByEmail()` com `redirectTo: https://donawilma.lovable.app/set-password`
+- Se JA existir:
+  - Verificar assinatura em `user_subscriptions`
+  - Se ativa: apenas atualizar `stripe_customer_id` se necessario, NAO enviar email
+  - Se cancelada/expirada: reativar assinatura, atualizar registro
+- Manter idempotencia (check por `stripe_subscription_id`)
+- Remover toda referencia a `resetPasswordForEmail`
+- Corrigir URL do SITE_URL para `https://donawilma.lovable.app`
 
-Remover todo o conteudo complexo. Nova tela simples:
+A mesma logica sera aplicada ao handler `customer.subscription.created` (linhas 396-573).
 
-- Icone de sucesso (check verde)
-- Titulo: "Pagamento Confirmado!"
-- Subtitulo: "Enviamos um email para voce definir sua senha e acessar sua conta."
-- Botao: "Ir para o Login" (para usuarios que ja definiram a senha)
-- Rodape: "Verifique sua caixa de entrada e spam"
+### 2. `supabase/functions/custom-auth-emails/index.ts`
 
-**Remover**:
-- Campo de email para reenvio
-- Textos sobre "confirmar email"
-- Secao de passos (KeyRound, Mail, MessageCircle)
-- Botao "Reenviar Email de Confirmacao"
+Atualizar para tratar o tipo `invite` (que e o tipo enviado por `inviteUserByEmail`):
 
-Para usuarios ja logados: manter redirecionamento para `/boas-vindas`.
+- Adicionar funcao `generateInviteEmail()` com o mesmo design profissional do recovery
+- Assunto: "Sua conta Dona Wilma foi criada -- Defina sua senha"
+- Link apontando para `/set-password` com token
+- Manter tratamento de `recovery` para cenario de "Esqueci minha senha" real
 
-### 3. Atualizar `ResetPassword.tsx`
+### 3. `src/App.tsx`
 
-Mudar linguagem de "recuperacao" para "definicao de senha":
+Adicionar rota `/set-password` como alias para `ResetPassword`:
 
-- Titulo: "Defina sua Senha" (em vez de "Nova Senha")
-- Subtitulo: "Crie uma senha para acessar sua conta"
-- Botao: "Definir Senha" (em vez de "Alterar Senha")
-- Loading: "Definindo senha..." (em vez de "Alterando senha...")
-- Apos sucesso: redirecionar para `/boas-vindas` (em vez de `/`)
+```
+<Route path="/set-password" element={<ResetPassword />} />
+```
 
-### 4. Internacionalizar ambas as paginas
+### 4. `src/pages/ResetPassword.tsx`
 
-Adicionar chaves i18n para `PaymentSuccess` e `ResetPassword` nos 5 locales.
+Adicionar deteccao da rota atual para ajustar textos:
+- Se `/set-password`: usar textos de "Definir senha" (novo usuario)
+- Se `/reset-password`: usar textos de "Redefinir senha" (usuario existente)
 
-### 5. Registrar a edge function no `config.toml`
+### 5. `src/pages/PaymentSuccess.tsx`
 
-Adicionar `[functions.custom-auth-emails]` com `verify_jwt = false`.
+Adicionar terceiro estado para usuario existente com assinatura ativa:
+- Detectar via query param `?existing=true` (passado pela URL de retorno do Stripe)
+- Mostrar: "Este email ja possui uma assinatura ativa. Faca login para acessar sua conta."
+- Botao: "Ir para o Login"
+
+### 6. `supabase/functions/create-checkout/index.ts`
+
+Atualizar `success_url` para incluir parametro quando usuario ja existe:
+- URL padrao: `{origin}/payment-success`
+- Nao requer mudanca aqui pois o parametro sera baseado no estado do webhook
+
+Na verdade, o Stripe success_url e estatico. A deteccao de "usuario ja ativo" sera feita no PaymentSuccess via `check-subscription` que ja e chamado la.
+
+### 7. `src/pages/PaymentSuccess.tsx` (deteccao inteligente)
+
+Em vez de query param, usar logica no proprio componente:
+- Se usuario logado E ja tem assinatura ativa: mostrar mensagem "Ja possui assinatura"
+- Se usuario logado sem assinatura: redirecionar para `/boas-vindas`
+- Se usuario novo (sem sessao): mostrar "Verifique seu email para definir senha"
+
+### 8. Internacionalizacao
+
+Adicionar chaves i18n para os novos textos:
+- `paymentSuccess.alreadyActive` / `paymentSuccess.alreadyActiveSubtitle`
+- `resetPassword.setPasswordTitle` / `resetPassword.setPasswordSubtitle`
+
+Em todos os 5 locales.
 
 ## Arquivos Modificados
 
 | Arquivo | Acao |
 |---------|------|
-| `supabase/functions/custom-auth-emails/index.ts` | **Criar** -- edge function para emails personalizados |
-| `supabase/config.toml` | Adicionar entrada para `custom-auth-emails` |
-| `src/pages/PaymentSuccess.tsx` | Simplificar para tela limpa e profissional |
-| `src/pages/ResetPassword.tsx` | Mudar linguagem para "definir senha", redirecionar para `/boas-vindas` |
-| `src/locales/pt-BR.json` | Adicionar chaves `paymentSuccess.*` e `resetPassword.*` |
-| `src/locales/en-US.json` | Adicionar chaves traduzidas |
-| `src/locales/es-ES.json` | Adicionar chaves traduzidas |
-| `src/locales/it-IT.json` | Adicionar chaves traduzidas |
-| `src/locales/pt-PT.json` | Adicionar chaves traduzidas |
+| `supabase/functions/stripe-webhook/index.ts` | Substituir createUser por inviteUserByEmail, adicionar validacao de usuario existente |
+| `supabase/functions/custom-auth-emails/index.ts` | Adicionar handler para tipo `invite` |
+| `src/App.tsx` | Adicionar rota `/set-password` |
+| `src/pages/ResetPassword.tsx` | Detectar rota para ajustar textos |
+| `src/pages/PaymentSuccess.tsx` | Adicionar estado para usuario com assinatura ativa |
+| `src/locales/pt-BR.json` | Novas chaves i18n |
+| `src/locales/en-US.json` | Novas chaves i18n |
+| `src/locales/es-ES.json` | Novas chaves i18n |
+| `src/locales/it-IT.json` | Novas chaves i18n |
+| `src/locales/pt-PT.json` | Novas chaves i18n |
 
 ## O que NAO muda
 
-- `stripe-webhook/index.ts` -- ja cria usuario com `email_confirm: true` e envia `resetPasswordForEmail()` corretamente
-- Logica de criacao de conta automatica
-- Logica de assinatura e roles
+- `check-subscription`: ja verifica `status: active` corretamente
+- Logica de roles (master/admin protegidos)
 - Fluxo do Stripe Checkout
-- Desktop/mobile layout
+- `create-checkout`: permanece igual
+- `customer-portal`: permanece igual
 
-## Consideracao sobre o Email
+## Fluxo Final
 
-O Supabase Auth Hook "Send Email" ja esta configurado para apontar para `custom-auth-emails`. A edge function recebera o evento com `type: "recovery"`, o email do usuario e o token. Ela deve retornar o email formatado em HTML com o link correto.
+```text
+Checkout Stripe
+      |
+      v
+stripe-webhook recebe checkout.session.completed
+      |
+      +-- Usuario NAO existe?
+      |     |
+      |     v
+      |   inviteUserByEmail(redirectTo: /set-password)
+      |     |
+      |     v
+      |   custom-auth-emails envia email "Definir senha"
+      |     |
+      |     v
+      |   Usuario clica link -> /set-password -> define senha -> /boas-vindas
+      |
+      +-- Usuario JA existe + assinatura ATIVA?
+      |     |
+      |     v
+      |   Apenas atualiza stripe_customer_id
+      |   PaymentSuccess mostra "Ja possui assinatura, faca login"
+      |
+      +-- Usuario JA existe + assinatura CANCELADA?
+            |
+            v
+          Reativa assinatura, atualiza role para premium
+          PaymentSuccess mostra "Assinatura reativada, faca login"
+```
 
-Como o projeto usa SMTP nativo do Supabase (sem Resend), a edge function precisa usar a API admin do Supabase ou retornar o HTML para o hook processar. A abordagem mais simples e o hook retornar o email customizado que o Supabase envia via seu SMTP interno.
