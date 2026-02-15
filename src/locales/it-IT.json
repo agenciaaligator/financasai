@@ -151,7 +151,12 @@
     "skipToDashboard": "Vai alla Dashboard",
     "checkSpam": "Controlla la posta in arrivo e lo spam. L'email potrebbe richiedere alcuni minuti.",
     "alreadyActiveTitle": "Abbonamento già attivo",
-    "alreadyActiveSubtitle": "Questa email ha già un abbonamento attivo. Accedi per usare il tuo account."
+    "alreadyActiveSubtitle": "Questa email ha già un abbonamento attivo. Accedi per usare il tuo account.",
+    "emailSentMessage": "Ti abbiamo inviato un'email per creare la tua password e accedere al sistema. Controlla la posta.",
+    "nextSteps": "Prossimi passi:",
+    "step1CheckEmail": "Controlla la tua email e clicca sul link ricevuto",
+    "step2SetPassword": "Imposta la tua password di accesso",
+    "step3ConnectWhatsApp": "Connetti il tuo WhatsApp per iniziare"
   },
   "resetPassword": {
     "title": "Imposta la tua Password",

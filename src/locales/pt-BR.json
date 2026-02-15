@@ -623,7 +623,12 @@
     "skipToDashboard": "Pular e ir para o Dashboard",
     "checkSpam": "Verifique sua caixa de entrada e spam. O email pode levar alguns minutos para chegar.",
     "alreadyActiveTitle": "Assinatura já ativa",
-    "alreadyActiveSubtitle": "Este email já possui uma assinatura ativa. Faça login para acessar sua conta."
+    "alreadyActiveSubtitle": "Este email já possui uma assinatura ativa. Faça login para acessar sua conta.",
+    "emailSentMessage": "Enviamos um email para você criar sua senha e acessar o sistema. Verifique sua caixa de entrada.",
+    "nextSteps": "Próximos passos:",
+    "step1CheckEmail": "Verifique seu email e clique no link recebido",
+    "step2SetPassword": "Defina sua senha de acesso",
+    "step3ConnectWhatsApp": "Conecte seu WhatsApp para começar"
   },
   "resetPassword": {
     "title": "Defina sua Senha",

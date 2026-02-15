@@ -617,7 +617,12 @@
     "skipToDashboard": "Skip to Dashboard",
     "checkSpam": "Check your inbox and spam folder. The email may take a few minutes to arrive.",
     "alreadyActiveTitle": "Subscription already active",
-    "alreadyActiveSubtitle": "This email already has an active subscription. Log in to access your account."
+    "alreadyActiveSubtitle": "This email already has an active subscription. Log in to access your account.",
+    "emailSentMessage": "We sent you an email to create your password and access the system. Check your inbox.",
+    "nextSteps": "Next steps:",
+    "step1CheckEmail": "Check your email and click the link received",
+    "step2SetPassword": "Set your access password",
+    "step3ConnectWhatsApp": "Connect your WhatsApp to get started"
   },
   "resetPassword": {
     "title": "Set Your Password",

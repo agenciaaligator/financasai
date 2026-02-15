@@ -465,7 +465,12 @@
     "skipToDashboard": "Saltar al Dashboard",
     "checkSpam": "Revisa tu bandeja de entrada y spam. El email puede tardar unos minutos.",
     "alreadyActiveTitle": "Suscripción ya activa",
-    "alreadyActiveSubtitle": "Este email ya tiene una suscripción activa. Inicia sesión para acceder a tu cuenta."
+    "alreadyActiveSubtitle": "Este email ya tiene una suscripción activa. Inicia sesión para acceder a tu cuenta.",
+    "emailSentMessage": "Te enviamos un email para crear tu contraseña y acceder al sistema. Revisa tu bandeja de entrada.",
+    "nextSteps": "Próximos pasos:",
+    "step1CheckEmail": "Revisa tu email y haz clic en el enlace recibido",
+    "step2SetPassword": "Define tu contraseña de acceso",
+    "step3ConnectWhatsApp": "Conecta tu WhatsApp para empezar"
   },
   "resetPassword": {
     "title": "Define tu Contraseña",

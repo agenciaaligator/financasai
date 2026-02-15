@@ -14,10 +14,6 @@ const logStep = (step: string, details?: any) => {
 
 const SITE_URL = "https://donawilma.lovable.app";
 
-/**
- * Handles user creation/lookup and subscription setup after a Stripe event.
- * Uses inviteUserByEmail for new users (never resetPasswordForEmail).
- */
 async function handleUserAndSubscription(
   supabaseAdmin: any,
   stripe: any,
@@ -37,18 +33,17 @@ async function handleUserAndSubscription(
     logStep("IDEMPOTENT: Subscription already processed", { subscriptionId, userId: existingSub.user_id });
     return { success: true, skipped: true, userId: existingSub.user_id, isNewUser: false };
   }
-  // ========== END IDEMPOTENCY CHECK ==========
 
-  // ========== USER LOOKUP ==========
+  // ========== USER LOOKUP (getUserByEmail - not listUsers) ==========
   let userId: string;
   let isNewUser = false;
 
-  // Use getUserByEmail (more efficient than listUsers)
-  const { data: existingUserData, error: lookupError } = await supabaseAdmin.auth.admin.listUsers();
-  const existingUser = existingUserData?.users?.find((u: any) => u.email === customerEmail);
+  const { data: existingUserData, error: lookupError } = await supabaseAdmin.auth.admin.getUserByEmail(customerEmail);
 
-  if (existingUser) {
+  if (existingUserData?.user) {
+    const existingUser = existingUserData.user;
     userId = existingUser.id;
+    isNewUser = false;
     logStep("User already exists", { userId, email: customerEmail });
 
     // Check existing subscription
@@ -61,7 +56,6 @@ async function handleUserAndSubscription(
     if (userSub?.status === 'active') {
       logStep("User already has active subscription - updating stripe_customer_id only", { userId });
       
-      // Update stripe_customer_id if needed
       if (userSub.stripe_customer_id !== stripeCustomerId) {
         await supabaseAdmin
           .from('user_subscriptions')
@@ -73,7 +67,6 @@ async function handleUserAndSubscription(
       return { success: true, skipped: false, userId, isNewUser: false, alreadyActive: true };
     }
 
-    // User exists but subscription is cancelled/expired - will reactivate below
     logStep("User exists with inactive subscription - will reactivate", { 
       userId, 
       currentStatus: userSub?.status || 'none' 
@@ -111,7 +104,6 @@ async function handleUserAndSubscription(
   const priceId = subscription.items.data[0]?.price.id;
   const billingCycle = subscription.items.data[0]?.price.recurring?.interval === 'year' ? 'yearly' : 'monthly';
 
-  // Period dates
   const periodStart = subscription.current_period_start || subscription.billing_cycle_anchor || subscription.created;
   let periodEnd = subscription.current_period_end;
   
@@ -145,29 +137,68 @@ async function handleUserAndSubscription(
     .or(`stripe_price_id_monthly.eq.${priceId},stripe_price_id_yearly.eq.${priceId}`)
     .maybeSingle();
 
-  logStep("Subscription details", { subscriptionId, priceId, billingCycle, periodStart: currentPeriodStartISO, periodEnd: currentPeriodEndISO });
+  logStep("Subscription details", { subscriptionId, priceId, billingCycle, planFound: !!plan, periodStart: currentPeriodStartISO, periodEnd: currentPeriodEndISO });
 
-  // Upsert subscription
-  const { error: subError } = await supabaseAdmin
-    .from('user_subscriptions')
-    .upsert({
-      user_id: userId,
-      plan_id: plan?.id || null,
-      stripe_subscription_id: subscriptionId,
-      stripe_customer_id: stripeCustomerId,
-      stripe_price_id: priceId,
-      status: subscription.status === 'active' || subscription.status === 'trialing' ? 'active' : subscription.status,
-      billing_cycle: billingCycle,
-      current_period_start: currentPeriodStartISO,
-      current_period_end: currentPeriodEndISO,
-      payment_gateway: 'stripe',
-      cancelled_at: null, // Clear cancelled_at on reactivation
-    }, { onConflict: 'user_id' });
+  if (!plan) {
+    logStep("WARNING: No matching plan found for priceId, trying fallback to first active premium plan");
+    const { data: fallbackPlan } = await supabaseAdmin
+      .from('subscription_plans')
+      .select('*')
+      .eq('role', 'premium')
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle();
+    
+    if (!fallbackPlan) {
+      logStep("ERROR: No fallback plan found either");
+      // Still proceed with role update even if subscription upsert fails
+    } else {
+      logStep("Using fallback plan", { planId: fallbackPlan.id, planName: fallbackPlan.name });
+      
+      const { error: subError } = await supabaseAdmin
+        .from('user_subscriptions')
+        .upsert({
+          user_id: userId,
+          plan_id: fallbackPlan.id,
+          stripe_subscription_id: subscriptionId,
+          stripe_customer_id: stripeCustomerId,
+          stripe_price_id: priceId,
+          status: subscription.status === 'active' || subscription.status === 'trialing' ? 'active' : subscription.status,
+          billing_cycle: billingCycle,
+          current_period_start: currentPeriodStartISO,
+          current_period_end: currentPeriodEndISO,
+          payment_gateway: 'stripe',
+          cancelled_at: null,
+        }, { onConflict: 'user_id' });
 
-  if (subError) {
-    logStep("Error upserting subscription", { error: subError.message });
+      if (subError) {
+        logStep("Error upserting subscription with fallback plan", { error: subError.message });
+      } else {
+        logStep("Subscription created/updated with fallback plan");
+      }
+    }
   } else {
-    logStep("Subscription created/updated successfully");
+    const { error: subError } = await supabaseAdmin
+      .from('user_subscriptions')
+      .upsert({
+        user_id: userId,
+        plan_id: plan.id,
+        stripe_subscription_id: subscriptionId,
+        stripe_customer_id: stripeCustomerId,
+        stripe_price_id: priceId,
+        status: subscription.status === 'active' || subscription.status === 'trialing' ? 'active' : subscription.status,
+        billing_cycle: billingCycle,
+        current_period_start: currentPeriodStartISO,
+        current_period_end: currentPeriodEndISO,
+        payment_gateway: 'stripe',
+        cancelled_at: null,
+      }, { onConflict: 'user_id' });
+
+    if (subError) {
+      logStep("Error upserting subscription", { error: subError.message });
+    } else {
+      logStep("Subscription created/updated successfully");
+    }
   }
 
   // ========== ROLE UPDATE (with master/admin protection) ==========
@@ -324,7 +355,6 @@ serve(async (req) => {
         .single();
 
       if (sub?.user_id) {
-        // Protection: don't downgrade master/admin
         const { data: isMaster } = await supabaseAdmin
           .from('master_users')
           .select('user_id')
@@ -397,7 +427,6 @@ serve(async (req) => {
       logStep("Processing invoice paid", { invoiceId: invoice.id, subscriptionId });
 
       if (subscriptionId) {
-        // Update subscription status to active
         const { data: sub, error } = await supabaseAdmin
           .from('user_subscriptions')
           .update({ status: 'active' })
@@ -410,7 +439,6 @@ serve(async (req) => {
         } else {
           logStep("Subscription confirmed as active after payment");
 
-          // Restore premium role (with master/admin protection)
           if (sub?.user_id) {
             const { data: isMaster } = await supabaseAdmin
               .from('master_users')
