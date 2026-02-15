@@ -140,5 +140,25 @@
         "dpo": { "title": "9. Responsabile della Protezione dei Dati (DPO)", "content": "Per questioni relative alla privacy e alla protezione dei dati, contattaci: contato@donawilma.com.br" }
       }
     }
+  },
+  "paymentSuccess": {
+    "title": "Pagamento Confermato!",
+    "subtitle": "Ti abbiamo inviato un'email per impostare la tua password e accedere al tuo account.",
+    "subtitleLoggedIn": "Il tuo abbonamento è stato attivato. Configuriamo il tuo WhatsApp?",
+    "processing": "Elaborazione del pagamento...",
+    "goToLogin": "Vai al Login",
+    "configureWhatsApp": "Configura WhatsApp",
+    "skipToDashboard": "Vai alla Dashboard",
+    "checkSpam": "Controlla la posta in arrivo e lo spam. L'email potrebbe richiedere alcuni minuti."
+  },
+  "resetPassword": {
+    "title": "Imposta la tua Password",
+    "subtitle": "Crea una password per accedere al tuo account",
+    "validating": "Validazione del link...",
+    "newPassword": "Nuova Password",
+    "confirmPassword": "Conferma Password",
+    "setPassword": "Imposta Password",
+    "settingPassword": "Impostazione password...",
+    "backToLogin": "Torna al Login"
   }
 }

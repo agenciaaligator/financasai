@@ -8,6 +8,7 @@ import { Eye, EyeOff, Lock, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useTranslation } from "react-i18next";
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('');
@@ -20,6 +21,7 @@ export default function ResetPassword() {
   const navigate = useNavigate();
   const { updatePassword, user, session } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   useEffect(() => {
     const initializeResetFlow = async () => {
@@ -138,9 +140,9 @@ export default function ResetPassword() {
       const result = await updatePassword(password);
       
       if (result && !result.error) {
-        // Sucesso - redirecionar para dashboard
+        // Sucesso - redirecionar para boas-vindas
         setTimeout(() => {
-          navigate('/');
+          navigate('/boas-vindas');
         }, 2000);
       }
     } finally {
@@ -159,7 +161,7 @@ export default function ResetPassword() {
         <Card className="w-full max-w-md bg-gradient-card shadow-primary border-0">
           <CardContent className="flex flex-col items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
-            <p className="text-muted-foreground">Validando link de recuperação...</p>
+            <p className="text-muted-foreground">{t('resetPassword.validating')}</p>
           </CardContent>
         </Card>
       </div>
@@ -176,16 +178,16 @@ export default function ResetPassword() {
             </div>
           </div>
           <CardTitle className="text-2xl font-bold">
-            Nova Senha
+            {t('resetPassword.title')}
           </CardTitle>
           <p className="text-muted-foreground">
-            Digite sua nova senha para finalizar a recuperação
+            {t('resetPassword.subtitle')}
           </p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="new-password">Nova Senha</Label>
+              <Label htmlFor="new-password">{t('resetPassword.newPassword')}</Label>
               <div className="relative">
                 <Input
                   id="new-password"
@@ -212,7 +214,7 @@ export default function ResetPassword() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirm-new-password">Confirmar Nova Senha</Label>
+              <Label htmlFor="confirm-new-password">{t('resetPassword.confirmPassword')}</Label>
               <Input
                 id="confirm-new-password"
                 type="password"
@@ -232,12 +234,12 @@ export default function ResetPassword() {
                 {isLoading ? (
                   <div className="flex items-center">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Alterando senha...
+                    {t('resetPassword.settingPassword')}
                   </div>
                 ) : (
                   <div className="flex items-center">
                     <Lock className="h-4 w-4 mr-2" />
-                    Alterar Senha
+                    {t('resetPassword.setPassword')}
                   </div>
                 )}
               </Button>
@@ -249,7 +251,7 @@ export default function ResetPassword() {
                 className="w-full"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Voltar ao Login
+                {t('resetPassword.backToLogin')}
               </Button>
             </div>
           </form>

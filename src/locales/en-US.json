@@ -606,5 +606,25 @@
         "dpo": { "title": "9. Data Protection Officer (DPO)", "content": "For questions related to privacy and data protection, contact: contato@donawilma.com.br" }
       }
     }
+  },
+  "paymentSuccess": {
+    "title": "Payment Confirmed!",
+    "subtitle": "We sent you an email to set your password and access your account.",
+    "subtitleLoggedIn": "Your subscription has been activated. Let's set up your WhatsApp?",
+    "processing": "Processing your payment...",
+    "goToLogin": "Go to Login",
+    "configureWhatsApp": "Set up WhatsApp",
+    "skipToDashboard": "Skip to Dashboard",
+    "checkSpam": "Check your inbox and spam folder. The email may take a few minutes to arrive."
+  },
+  "resetPassword": {
+    "title": "Set Your Password",
+    "subtitle": "Create a password to access your account",
+    "validating": "Validating your link...",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "setPassword": "Set Password",
+    "settingPassword": "Setting password...",
+    "backToLogin": "Back to Login"
   }
 }
