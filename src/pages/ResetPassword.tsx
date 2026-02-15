@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,71 +19,69 @@ export default function ResetPassword() {
   const [sessionEstablished, setSessionEstablished] = useState(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { updatePassword, user, session } = useAuth();
   const { toast } = useToast();
   const { t } = useTranslation();
 
+  // Detect if this is "set password" (new user) or "reset password" (existing user)
+  const isSetPassword = location.pathname === '/set-password';
+
   useEffect(() => {
     const initializeResetFlow = async () => {
       try {
-        // Verificar todos os parâmetros da URL para debug
         const accessToken = searchParams.get('access_token');
         const refreshToken = searchParams.get('refresh_token');
         const type = searchParams.get('type');
         
-        console.log('Parâmetros da URL:', {
-          accessToken: accessToken ? 'presente' : 'ausente',
-          refreshToken: refreshToken ? 'presente' : 'ausente',
+        console.log('URL params:', {
+          accessToken: accessToken ? 'present' : 'absent',
+          refreshToken: refreshToken ? 'present' : 'absent',
           type,
-          allParams: Object.fromEntries(searchParams.entries())
+          path: location.pathname
         });
 
-        // Primeiro, verificar se o usuário já está logado (comum após recovery)
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         
         if (currentSession?.user) {
-          console.log('Usuário já possui sessão ativa - pode redefinir senha');
+          console.log('User already has active session');
           setSessionEstablished(true);
           return;
         }
 
-        // Se não há sessão, tentar estabelecer com tokens da URL
         if (accessToken && refreshToken) {
-          console.log('Tokens encontrados na URL - estabelecendo sessão');
+          console.log('Tokens found - establishing session');
           const { error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken
           });
 
           if (error) {
-            console.error('Erro ao estabelecer sessão:', error);
+            console.error('Error establishing session:', error);
             toast({
               title: "❌ Link inválido",
-              description: "O link de redefinição de senha é inválido ou expirou. Solicite um novo link.",
+              description: "O link é inválido ou expirou. Solicite um novo.",
               variant: "destructive",
             });
             navigate('/');
             return;
           }
 
-          console.log('Sessão estabelecida com sucesso');
           setSessionEstablished(true);
         } else {
-          // Sem tokens válidos e sem sessão ativa
-          console.log('Sem tokens na URL e sem sessão ativa');
           toast({
             title: "❌ Acesso negado",
-            description: "É necessário um link válido de redefinição de senha para acessar esta página.",
+            description: "É necessário um link válido para acessar esta página.",
             variant: "destructive",
           });
           navigate('/');
           return;
         }
       } catch (error) {
-        console.error('Erro no processo de reset:', error);
+        console.error('Error in reset flow:', error);
         toast({
           title: "💥 Erro inesperado",
-          description: "Ocorreu um erro ao processar o link de redefinição. Tente novamente.",
+          description: "Ocorreu um erro ao processar o link. Tente novamente.",
           variant: "destructive",
         });
         navigate('/');
@@ -93,44 +91,28 @@ export default function ResetPassword() {
     };
 
     initializeResetFlow();
-  }, [searchParams, navigate, toast]);
+  }, [searchParams, navigate, toast, location.pathname]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!sessionEstablished) {
-      toast({
-        title: "❌ Sessão inválida",
-        description: "Por favor, solicite um novo link de recuperação.",
-        variant: "destructive"
-      });
+      toast({ title: "❌ Sessão inválida", description: "Solicite um novo link.", variant: "destructive" });
       return;
     }
     
     if (!password || !confirmPassword) {
-      toast({
-        title: "⚠️ Campos obrigatórios",
-        description: "Preencha todos os campos.",
-        variant: "destructive"
-      });
+      toast({ title: "⚠️ Campos obrigatórios", description: "Preencha todos os campos.", variant: "destructive" });
       return;
     }
 
     if (password !== confirmPassword) {
-      toast({
-        title: "❌ Senhas não coincidem",
-        description: "As senhas devem ser iguais.",
-        variant: "destructive"
-      });
+      toast({ title: "❌ Senhas não coincidem", description: "As senhas devem ser iguais.", variant: "destructive" });
       return;
     }
 
     if (password.length < 6) {
-      toast({
-        title: "🔒 Senha muito fraca",
-        description: "A senha deve ter pelo menos 6 caracteres.",
-        variant: "destructive"
-      });
+      toast({ title: "🔒 Senha muito fraca", description: "A senha deve ter pelo menos 6 caracteres.", variant: "destructive" });
       return;
     }
 
@@ -140,7 +122,6 @@ export default function ResetPassword() {
       const result = await updatePassword(password);
       
       if (result && !result.error) {
-        // Sucesso - redirecionar para boas-vindas
         setTimeout(() => {
           navigate('/boas-vindas');
         }, 2000);
@@ -150,11 +131,6 @@ export default function ResetPassword() {
     }
   };
 
-  const handleBackToLogin = () => {
-    navigate('/');
-  };
-
-  // Mostrar loading enquanto inicializa
   if (isInitializing) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20 flex items-center justify-center p-4">
@@ -178,10 +154,10 @@ export default function ResetPassword() {
             </div>
           </div>
           <CardTitle className="text-2xl font-bold">
-            {t('resetPassword.title')}
+            {isSetPassword ? t('resetPassword.setPasswordTitle') : t('resetPassword.resetPasswordTitle')}
           </CardTitle>
           <p className="text-muted-foreground">
-            {t('resetPassword.subtitle')}
+            {isSetPassword ? t('resetPassword.setPasswordSubtitle') : t('resetPassword.resetPasswordSubtitle')}
           </p>
         </CardHeader>
         <CardContent>
@@ -204,11 +180,7 @@ export default function ResetPassword() {
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
             </div>
@@ -247,7 +219,7 @@ export default function ResetPassword() {
               <Button
                 type="button"
                 variant="ghost"
-                onClick={handleBackToLogin}
+                onClick={() => navigate('/')}
                 className="w-full"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />

@@ -149,11 +149,17 @@
     "goToLogin": "Vai al Login",
     "configureWhatsApp": "Configura WhatsApp",
     "skipToDashboard": "Vai alla Dashboard",
-    "checkSpam": "Controlla la posta in arrivo e lo spam. L'email potrebbe richiedere alcuni minuti."
+    "checkSpam": "Controlla la posta in arrivo e lo spam. L'email potrebbe richiedere alcuni minuti.",
+    "alreadyActiveTitle": "Abbonamento già attivo",
+    "alreadyActiveSubtitle": "Questa email ha già un abbonamento attivo. Accedi per usare il tuo account."
   },
   "resetPassword": {
     "title": "Imposta la tua Password",
     "subtitle": "Crea una password per accedere al tuo account",
+    "setPasswordTitle": "Imposta la tua Password",
+    "setPasswordSubtitle": "Crea una password per il tuo nuovo account",
+    "resetPasswordTitle": "Reimposta Password",
+    "resetPasswordSubtitle": "Crea una nuova password per il tuo account",
     "validating": "Validazione del link...",
     "newPassword": "Nuova Password",
     "confirmPassword": "Conferma Password",

@@ -463,11 +463,17 @@
     "goToLogin": "Ir al Login",
     "configureWhatsApp": "Configurar WhatsApp",
     "skipToDashboard": "Saltar al Dashboard",
-    "checkSpam": "Revisa tu bandeja de entrada y spam. El email puede tardar unos minutos."
+    "checkSpam": "Revisa tu bandeja de entrada y spam. El email puede tardar unos minutos.",
+    "alreadyActiveTitle": "Suscripción ya activa",
+    "alreadyActiveSubtitle": "Este email ya tiene una suscripción activa. Inicia sesión para acceder a tu cuenta."
   },
   "resetPassword": {
     "title": "Define tu Contraseña",
     "subtitle": "Crea una contraseña para acceder a tu cuenta",
+    "setPasswordTitle": "Define tu Contraseña",
+    "setPasswordSubtitle": "Crea una contraseña para tu nueva cuenta",
+    "resetPasswordTitle": "Restablecer Contraseña",
+    "resetPasswordSubtitle": "Crea una nueva contraseña para tu cuenta",
     "validating": "Validando tu enlace...",
     "newPassword": "Nueva Contraseña",
     "confirmPassword": "Confirmar Contraseña",

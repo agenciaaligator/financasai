@@ -49,6 +49,7 @@ const App = () => {
             } />
             <Route path="/admin" element={<AdminRoute />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/set-password" element={<ResetPassword />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
             <Route path="/payment-cancelled" element={<PaymentCancelled />} />
             <Route path="/termos" element={<Terms />} />
