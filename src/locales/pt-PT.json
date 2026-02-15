@@ -177,7 +177,12 @@
     "skipToDashboard": "Saltar para o Dashboard",
     "checkSpam": "Verifique a sua caixa de entrada e spam. O email pode demorar alguns minutos.",
     "alreadyActiveTitle": "Subscrição já ativa",
-    "alreadyActiveSubtitle": "Este email já possui uma subscrição ativa. Faça login para aceder à sua conta."
+    "alreadyActiveSubtitle": "Este email já possui uma subscrição ativa. Faça login para aceder à sua conta.",
+    "emailSentMessage": "Enviámos um email para criar a sua palavra-passe e aceder ao sistema. Verifique a sua caixa de entrada.",
+    "nextSteps": "Próximos passos:",
+    "step1CheckEmail": "Verifique o seu email e clique no link recebido",
+    "step2SetPassword": "Defina a sua palavra-passe de acesso",
+    "step3ConnectWhatsApp": "Conecte o seu WhatsApp para começar"
   },
   "resetPassword": {
     "title": "Defina a sua Palavra-passe",
