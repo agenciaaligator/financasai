@@ -1,58 +1,90 @@
 
-# Correcao: Navegacao "Criar conta" + i18n para Termos e Privacidade
+# Reformulacao do Fluxo Pos-Pagamento
 
-## Problema 1: 404 ao clicar "Criar conta"
+## Situacao Atual
 
-O `LoginForm.tsx` usa `navigate('/plans')` nas linhas 134 e 169, mas a rota correta no `App.tsx` e `/choose-plan`. Isso causa o erro 404 mostrado no screenshot.
+1. **stripe-webhook**: Cria usuario com `email_confirm: true` e envia `resetPasswordForEmail()` -- que usa o template **padrao de recovery** do Supabase (generico, em ingles, com linguagem de "reset")
+2. **PaymentSuccess.tsx**: Tela confusa com textos sobre "confirmar email", campo para reenviar confirmacao, e multiplos passos desnecessarios
+3. **ResetPassword.tsx**: Usa linguagem de "recuperacao de senha" em vez de "definir senha" -- apos sucesso redireciona para `/` (login) em vez de `/boas-vindas`
+4. **Nao existe** edge function `custom-auth-emails` para personalizar o email enviado
+5. **Nenhuma** dessas paginas esta internacionalizada (i18n)
 
-### Correcao
+## Plano de Implementacao
 
-- Linha 134: `navigate('/plans')` -> `navigate('/choose-plan')`
-- Linha 169: `navigate('/plans')` -> `navigate('/choose-plan')`
+### 1. Criar Edge Function `custom-auth-emails`
 
-## Problema 2: Termos e Privacidade sem traducao
+Nova edge function que intercepta emails do Supabase Auth e envia email personalizado em portugues.
 
-As paginas `Terms.tsx` e `Privacy.tsx` tem todo o conteudo hardcoded em portugues. Precisam ser internacionalizadas com `t()`.
+- Recebe o hook do Supabase Auth para tipo `recovery`
+- Envia email com:
+  - Assunto: "Sua conta Dona Wilma foi criada -- Defina sua senha"
+  - Corpo profissional com botao "Definir minha senha"
+  - Link apontando para `/reset-password` com os tokens
+- Usa o Supabase Auth Hook (Send Email) ja configurado na migration existente
+- **Custo**: Zero (usa SMTP nativo do Supabase, nao precisa de Resend)
 
-### Correcao
+**Importante**: O hook `custom-auth-emails` ja esta habilitado na migration `20250712234716`, mas a funcao nao existe. Precisamos cria-la.
 
-1. Adicionar chaves `legal.terms.*` e `legal.privacy.*` nos 5 arquivos de locale (pt-BR, pt-PT, en-US, es-ES, it-IT)
-2. Atualizar `Terms.tsx` e `Privacy.tsx` para usar `useTranslation()` e `t()` em todos os textos
-3. O botao "Voltar" tambem sera traduzido
+### 2. Simplificar `PaymentSuccess.tsx`
 
-### Chaves a adicionar (exemplo da estrutura)
+Remover todo o conteudo complexo. Nova tela simples:
 
-```
-legal.terms.title
-legal.terms.lastUpdated
-legal.terms.sections.acceptance.title / .content
-legal.terms.sections.description.title / .content
-... (9 secoes para termos)
+- Icone de sucesso (check verde)
+- Titulo: "Pagamento Confirmado!"
+- Subtitulo: "Enviamos um email para voce definir sua senha e acessar sua conta."
+- Botao: "Ir para o Login" (para usuarios que ja definiram a senha)
+- Rodape: "Verifique sua caixa de entrada e spam"
 
-legal.privacy.title
-legal.privacy.lastUpdated
-legal.privacy.sections.dataCollected.title / .content
-... (9 secoes para privacidade)
+**Remover**:
+- Campo de email para reenvio
+- Textos sobre "confirmar email"
+- Secao de passos (KeyRound, Mail, MessageCircle)
+- Botao "Reenviar Email de Confirmacao"
 
-legal.backButton
-```
+Para usuarios ja logados: manter redirecionamento para `/boas-vindas`.
 
-## Arquivos modificados
+### 3. Atualizar `ResetPassword.tsx`
+
+Mudar linguagem de "recuperacao" para "definicao de senha":
+
+- Titulo: "Defina sua Senha" (em vez de "Nova Senha")
+- Subtitulo: "Crie uma senha para acessar sua conta"
+- Botao: "Definir Senha" (em vez de "Alterar Senha")
+- Loading: "Definindo senha..." (em vez de "Alterando senha...")
+- Apos sucesso: redirecionar para `/boas-vindas` (em vez de `/`)
+
+### 4. Internacionalizar ambas as paginas
+
+Adicionar chaves i18n para `PaymentSuccess` e `ResetPassword` nos 5 locales.
+
+### 5. Registrar a edge function no `config.toml`
+
+Adicionar `[functions.custom-auth-emails]` com `verify_jwt = false`.
+
+## Arquivos Modificados
 
 | Arquivo | Acao |
 |---------|------|
-| `src/components/auth/LoginForm.tsx` | Corrigir `/plans` para `/choose-plan` (2 ocorrencias) |
-| `src/pages/Terms.tsx` | Usar `t()` para todos os textos |
-| `src/pages/Privacy.tsx` | Usar `t()` para todos os textos |
-| `src/locales/pt-BR.json` | Adicionar chaves `legal.*` |
-| `src/locales/pt-PT.json` | Adicionar chaves `legal.*` |
-| `src/locales/en-US.json` | Adicionar chaves `legal.*` |
-| `src/locales/es-ES.json` | Adicionar chaves `legal.*` |
-| `src/locales/it-IT.json` | Adicionar chaves `legal.*` |
+| `supabase/functions/custom-auth-emails/index.ts` | **Criar** -- edge function para emails personalizados |
+| `supabase/config.toml` | Adicionar entrada para `custom-auth-emails` |
+| `src/pages/PaymentSuccess.tsx` | Simplificar para tela limpa e profissional |
+| `src/pages/ResetPassword.tsx` | Mudar linguagem para "definir senha", redirecionar para `/boas-vindas` |
+| `src/locales/pt-BR.json` | Adicionar chaves `paymentSuccess.*` e `resetPassword.*` |
+| `src/locales/en-US.json` | Adicionar chaves traduzidas |
+| `src/locales/es-ES.json` | Adicionar chaves traduzidas |
+| `src/locales/it-IT.json` | Adicionar chaves traduzidas |
+| `src/locales/pt-PT.json` | Adicionar chaves traduzidas |
 
 ## O que NAO muda
 
-- Rotas no App.tsx (ja estao corretas)
-- Logica de autenticacao
-- Estilo visual das paginas
-- Desktop language selector
+- `stripe-webhook/index.ts` -- ja cria usuario com `email_confirm: true` e envia `resetPasswordForEmail()` corretamente
+- Logica de criacao de conta automatica
+- Logica de assinatura e roles
+- Fluxo do Stripe Checkout
+- Desktop/mobile layout
+
+## Consideracao sobre o Email
+
+O Supabase Auth Hook "Send Email" ja esta configurado para apontar para `custom-auth-emails`. A edge function recebera o evento com `type: "recovery"`, o email do usuario e o token. Ela deve retornar o email formatado em HTML com o link correto.
+
+Como o projeto usa SMTP nativo do Supabase (sem Resend), a edge function precisa usar a API admin do Supabase ou retornar o HTML para o hook processar. A abordagem mais simples e o hook retornar o email customizado que o Supabase envia via seu SMTP interno.
