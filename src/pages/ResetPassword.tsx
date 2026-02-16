@@ -225,7 +225,10 @@ export default function ResetPassword() {
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => navigate('/')}
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  navigate('/');
+                }}
                 className="w-full"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />

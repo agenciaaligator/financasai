@@ -8,6 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Eye, EyeOff, LogIn, AlertCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { ForgotPasswordModal } from "@/components/ForgotPasswordModal";
+import { supabase } from "@/integrations/supabase/client";
 
 export function LoginForm() {
   const navigate = useNavigate();
@@ -33,6 +34,11 @@ export function LoginForm() {
       const result = await signIn(email, password);
       
       if (result && !result.error) {
+        // If user logged in with password, ensure password_set = true
+        const { data: { user: loggedUser } } = await supabase.auth.getUser();
+        if (loggedUser) {
+          await supabase.from('profiles').update({ password_set: true }).eq('user_id', loggedUser.id);
+        }
         setPassword('');
         setErrorMessage(null);
       } else if (result?.error) {
