@@ -624,7 +624,9 @@
     "emailExists": "⚠️ Email already registered",
     "emailExistsDesc": "An account with this email already exists. Log in to access it.",
     "weakPassword": "🔒 Weak password",
-    "weakPasswordDesc": "Password must be at least 6 characters."
+    "weakPasswordDesc": "Password must be at least 6 characters.",
+    "rateLimitTitle": "⏳ Please wait",
+    "rateLimitDesc": "Too many attempts. Please wait a few minutes and try again."
   },
   "paymentSuccess": {
     "title": "Payment Confirmed!",

@@ -630,7 +630,9 @@
     "emailExists": "⚠️ Email já cadastrado",
     "emailExistsDesc": "Já existe uma conta com este email. Faça login para acessar.",
     "weakPassword": "🔒 Senha muito fraca",
-    "weakPasswordDesc": "A senha deve ter pelo menos 6 caracteres."
+    "weakPasswordDesc": "A senha deve ter pelo menos 6 caracteres.",
+    "rateLimitTitle": "⏳ Aguarde um momento",
+    "rateLimitDesc": "Muitas tentativas seguidas. Aguarde alguns minutos e tente novamente."
   },
   "paymentSuccess": {
     "title": "Pagamento Confirmado!",

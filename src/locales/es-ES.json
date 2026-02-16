@@ -472,7 +472,9 @@
     "emailExists": "⚠️ Email ya registrado",
     "emailExistsDesc": "Ya existe una cuenta con este email. Inicia sesión para acceder.",
     "weakPassword": "🔒 Contraseña débil",
-    "weakPasswordDesc": "La contraseña debe tener al menos 6 caracteres."
+    "weakPasswordDesc": "La contraseña debe tener al menos 6 caracteres.",
+    "rateLimitTitle": "⏳ Espera un momento",
+    "rateLimitDesc": "Demasiados intentos. Espera unos minutos e inténtalo de nuevo."
   },
   "paymentSuccess": {
     "title": "¡Pago Confirmado!",
