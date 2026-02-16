@@ -331,38 +331,25 @@ export function ProfileSettings() {
           .eq('user_id', user.id);
       }
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/whatsapp-agent`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const { data, error } = await supabase.functions.invoke('whatsapp-agent', {
+        body: {
+          action: 'send-validation-code',
+          phone_number: phoneNumber.trim(),
+          userId: user?.id,
         },
-        body: JSON.stringify({
-          phone_number: phoneNumber,
-          action: 'auth'
-        })
       });
 
-      const result = await response.json();
-      
-      if (result.success) {
-        if (result.response.includes('não encontrado') || result.response.includes('não está registrado')) {
-          toast({
-            title: "Número não cadastrado",
-            description: "Atualize seu número no perfil e tente novamente",
-            variant: "destructive"
-          });
-        } else {
-          toast({
-            title: "Código enviado!",
-            description: "Verifique o código gerado e insira abaixo para validar",
-          });
-        }
-      } else {
-        throw new Error(result.error || 'Falha ao enviar código');
+      if (error) throw error;
+
+      if (!data?.success) {
+        throw new Error(data?.error || 'Falha ao enviar código');
       }
 
-      await checkAuthenticationStatus();
-      await checkRecentWhatsAppActivity();
+      setCodeSent(true);
+      toast({
+        title: "📱 Código enviado!",
+        description: `Verifique seu WhatsApp (${phoneNumber}) para o código de verificação`,
+      });
     } catch (error) {
       toast({
         title: "Erro",
@@ -386,33 +373,42 @@ export function ProfileSettings() {
 
     setWhatsappLoading(true);
     try {
-      const response = await fetch(`${supabaseUrl}/functions/v1/whatsapp-agent`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const { data, error } = await supabase.functions.invoke('whatsapp-agent', {
+        body: {
+          action: 'validate-code',
+          phone_number: phoneNumber.trim(),
+          code: authCode,
+          userId: user?.id,
         },
-        body: JSON.stringify({
-          phone_number: phoneNumber,
-          message: {
-            body: `codigo ${authCode}`
-          }
-        })
       });
 
-      const result = await response.json();
-      
-      if (result.success && result.response.includes('sucesso')) {
-        setIsAuthenticated(true);
-        toast({
-          title: "✅ WhatsApp autenticado!",
-          description: "Agora você pode gerenciar suas finanças pelo WhatsApp",
-        });
-        setAuthCode("");
-        await checkAuthenticationStatus();
-        await checkRecentWhatsAppActivity();
-      } else {
-        throw new Error('Código inválido');
+      if (error) throw error;
+
+      if (!data?.success) {
+        throw new Error(data?.error || 'Código inválido ou expirado');
       }
+
+      // Create WhatsApp session (same as Welcome.tsx)
+      await supabase
+        .from('whatsapp_sessions')
+        .upsert({
+          user_id: user?.id,
+          phone_number: phoneNumber.trim(),
+          expires_at: new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000).toISOString(),
+          last_activity: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id',
+        });
+
+      setIsAuthenticated(true);
+      setCodeSent(false);
+      toast({
+        title: "✅ WhatsApp conectado!",
+        description: "Agora você pode gerenciar suas finanças pelo WhatsApp",
+      });
+      setAuthCode("");
+      await checkAuthenticationStatus();
+      await checkRecentWhatsAppActivity();
     } catch (error) {
       toast({
         title: "Código inválido",
