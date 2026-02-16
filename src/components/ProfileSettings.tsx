@@ -275,15 +275,54 @@ export function ProfileSettings() {
     }
   };
 
+  // Normaliza número para formato E.164 (+5511999999999)
+  const normalizePhoneNumber = (phone: string): string => {
+    let clean = phone.replace(/[\s\-()\.]/g, '');
+    
+    // Remove + se presente (vamos re-adicionar)
+    if (clean.startsWith('+')) {
+      clean = clean.substring(1);
+    }
+    
+    // 11 dígitos = número brasileiro sem código de país
+    if (/^\d{11}$/.test(clean)) {
+      return '+55' + clean;
+    }
+    // 13 dígitos começando com 55 = brasileiro com código de país
+    if (/^\d{13}$/.test(clean) && clean.startsWith('55')) {
+      return '+' + clean;
+    }
+    // Outros formatos numéricos
+    if (/^\d{10,15}$/.test(clean)) {
+      return '+' + clean;
+    }
+    // Já está ok
+    return '+' + clean;
+  };
+
+  // Formata visualmente o número para exibição
+  const formatPhoneDisplay = (phone: string): string => {
+    const normalized = normalizePhoneNumber(phone);
+    if (normalized.startsWith('+55') && normalized.length === 14) {
+      const ddd = normalized.substring(3, 5);
+      const part1 = normalized.substring(5, 10);
+      const part2 = normalized.substring(10, 14);
+      return `+55 (${ddd}) ${part1}-${part2}`;
+    }
+    return normalized;
+  };
+
   const handleRequestCode = async () => {
-    if (!phoneNumber) {
+    if (!phoneNumber || phoneNumber.replace(/\D/g, '').length < 10) {
       toast({
-        title: "Número necessário",
-        description: "Por favor, digite seu número de WhatsApp para continuar",
+        title: "Número inválido",
+        description: "Digite seu número com DDD. Exemplo: 11 91234-5678",
         variant: "destructive"
       });
       return;
     }
+
+    const normalizedPhone = normalizePhoneNumber(phoneNumber);
 
     setWhatsappLoading(true);
     try {
@@ -291,7 +330,7 @@ export function ProfileSettings() {
       const { data: existingPhone } = await supabase
         .from('profiles')
         .select('email')
-        .eq('phone_number', phoneNumber.trim())
+        .eq('phone_number', normalizedPhone)
         .neq('user_id', user?.id || '')
         .maybeSingle();
 
@@ -309,7 +348,7 @@ export function ProfileSettings() {
       const { data: activeSession } = await supabase
         .from('whatsapp_sessions')
         .select('user_id')
-        .eq('phone_number', phoneNumber.trim())
+        .eq('phone_number', normalizedPhone)
         .gt('expires_at', new Date().toISOString())
         .neq('user_id', user?.id || '')
         .maybeSingle();
@@ -324,17 +363,19 @@ export function ProfileSettings() {
         return;
       }
 
+      // Salvar número normalizado no perfil
       if (user) {
         await supabase
           .from('profiles')
-          .update({ phone_number: phoneNumber.trim() })
+          .update({ phone_number: normalizedPhone })
           .eq('user_id', user.id);
+        setPhoneNumber(normalizedPhone);
       }
 
       const { data, error } = await supabase.functions.invoke('whatsapp-agent', {
         body: {
           action: 'send-validation-code',
-          phone_number: phoneNumber.trim(),
+          phone_number: normalizedPhone,
           userId: user?.id,
         },
       });
@@ -348,12 +389,12 @@ export function ProfileSettings() {
       setCodeSent(true);
       toast({
         title: "📱 Código enviado!",
-        description: `Verifique seu WhatsApp (${phoneNumber}) para o código de verificação`,
+        description: `Verifique seu WhatsApp ${formatPhoneDisplay(normalizedPhone)} para o código`,
       });
     } catch (error) {
       toast({
-        title: "Erro",
-        description: error instanceof Error ? error.message : "Falha ao solicitar código",
+        title: "Erro ao enviar código",
+        description: error instanceof Error ? error.message : "Falha ao solicitar código. Tente novamente.",
         variant: "destructive"
       });
     } finally {
@@ -373,10 +414,13 @@ export function ProfileSettings() {
 
     setWhatsappLoading(true);
     try {
+      // Normalizar telefone para E.164 antes de enviar
+      const normalizedPhone = normalizePhoneNumber(phoneNumber);
+      
       const { data, error } = await supabase.functions.invoke('whatsapp-agent', {
         body: {
           action: 'validate-code',
-          phone_number: phoneNumber.trim(),
+          phone_number: normalizedPhone,
           code: authCode,
           userId: user?.id,
         },
@@ -384,22 +428,12 @@ export function ProfileSettings() {
 
       if (error) throw error;
 
-      if (!data?.success) {
-        throw new Error(data?.error || 'Código inválido ou expirado');
+      // Edge function returns { valid: true } not { success: true }
+      if (!data?.valid) {
+        throw new Error(data?.message || 'Código inválido ou expirado');
       }
 
-      // Create WhatsApp session (same as Welcome.tsx)
-      await supabase
-        .from('whatsapp_sessions')
-        .upsert({
-          user_id: user?.id,
-          phone_number: phoneNumber.trim(),
-          expires_at: new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000).toISOString(),
-          last_activity: new Date().toISOString(),
-        }, {
-          onConflict: 'user_id',
-        });
-
+      // Session is already created by the edge function
       setIsAuthenticated(true);
       setCodeSent(false);
       toast({
@@ -412,7 +446,7 @@ export function ProfileSettings() {
     } catch (error) {
       toast({
         title: "Código inválido",
-        description: "Verifique o código e tente novamente",
+        description: error instanceof Error ? error.message : "Verifique o código e tente novamente",
         variant: "destructive"
       });
     } finally {
@@ -685,7 +719,7 @@ export function ProfileSettings() {
                   )}
                 </div>
                 <p className="text-sm">
-                  <strong>{phoneNumber}</strong>
+                  <strong>{formatPhoneDisplay(phoneNumber)}</strong>
                 </p>
                 <Button
                   variant="destructive"
@@ -699,38 +733,74 @@ export function ProfileSettings() {
               <div className="space-y-4">
                 {/* Passo 1: Inserir número */}
                 <div className="space-y-2">
-                  <Label htmlFor="whatsappPhone">Número WhatsApp</Label>
-                  <Input
-                    id="whatsappPhone"
-                    type="text"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    disabled={codeSent}
-                    placeholder="5511999999999"
-                    className={codeSent ? "bg-muted" : ""}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Formato internacional sem + (ex: 5511999999999)
-                  </p>
+                  <Label htmlFor="whatsappPhone" className="text-base font-medium">
+                    📱 Número do seu WhatsApp
+                  </Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm pointer-events-none">
+                      +55
+                    </span>
+                    <Input
+                      id="whatsappPhone"
+                      type="tel"
+                      inputMode="numeric"
+                      value={phoneNumber.replace(/^\+?55/, '')}
+                      onChange={(e) => {
+                        // Só permite dígitos
+                        const digits = e.target.value.replace(/\D/g, '');
+                        // Limitar a 11 dígitos (DDD + 9 dígitos)
+                        const limited = digits.substring(0, 11);
+                        setPhoneNumber(limited);
+                      }}
+                      disabled={codeSent}
+                      placeholder="11 91234-5678"
+                      className={`pl-12 text-base min-h-[48px] ${codeSent ? "bg-muted" : ""}`}
+                    />
+                  </div>
+                  
+                  {/* Feedback visual do número */}
+                  {phoneNumber && (
+                    <div className={`flex items-center gap-2 text-sm ${
+                      phoneNumber.replace(/\D/g, '').length >= 10 
+                        ? "text-green-600 dark:text-green-400" 
+                        : "text-amber-600 dark:text-amber-400"
+                    }`}>
+                      {phoneNumber.replace(/\D/g, '').length >= 10 ? (
+                        <>
+                          <CheckCircle2 className="h-4 w-4" />
+                          <span>Número válido: {formatPhoneDisplay(normalizePhoneNumber(phoneNumber))}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Phone className="h-4 w-4" />
+                          <span>Digite o DDD + número ({phoneNumber.replace(/\D/g, '').length}/11 dígitos)</span>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  
+                  {!phoneNumber && (
+                    <p className="text-xs text-muted-foreground">
+                      💡 Digite apenas o DDD e o número do celular. Exemplo: 11 91234-5678
+                    </p>
+                  )}
                 </div>
 
                 {!codeSent ? (
                   <Button
-                    onClick={async () => {
-                      await handleRequestCode();
-                      setCodeSent(true);
-                    }} 
-                    disabled={whatsappLoading || !phoneNumber}
+                    onClick={handleRequestCode} 
+                    disabled={whatsappLoading || phoneNumber.replace(/\D/g, '').length < 10}
                     className="w-full"
+                    size="lg"
                   >
                     <Phone className="h-4 w-4 mr-2" />
-                    {whatsappLoading ? "Enviando..." : "📲 Enviar Código de Verificação"}
+                    {whatsappLoading ? "Enviando código..." : "📲 Enviar Código de Verificação"}
                   </Button>
                 ) : (
                   <div className="space-y-3">
                     <div className="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
                       <p className="text-sm text-green-900 dark:text-green-100">
-                        ✅ Código enviado para <strong>{phoneNumber}</strong>
+                        ✅ Código enviado para <strong>{formatPhoneDisplay(normalizePhoneNumber(phoneNumber))}</strong>
                       </p>
                     </div>
 
@@ -775,12 +845,12 @@ export function ProfileSettings() {
 
             <div className="border-t pt-4">
               <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-                <p className="text-sm font-medium">💡 Como usar</p>
+                <p className="text-sm font-medium">💡 Como conectar</p>
                 <ul className="text-xs text-muted-foreground list-disc list-inside space-y-1">
-                  <li>Digite seu número no formato internacional (sem +)</li>
-                  <li>Solicite o código de verificação</li>
-                  <li>Insira o código recebido para validar</li>
-                  <li>Pronto! Use os comandos pelo WhatsApp</li>
+                  <li>Digite seu DDD + número do celular (ex: 11 91234-5678)</li>
+                  <li>Clique em "Enviar Código" — você receberá pelo WhatsApp</li>
+                  <li>Digite o código de 6 dígitos recebido</li>
+                  <li>Pronto! Agora é só mandar mensagens para a Dona Wilma</li>
                 </ul>
               </div>
             </div>
