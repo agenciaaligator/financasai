@@ -1,101 +1,147 @@
 
-# Correcao: AuthEventHandler bloqueia renderizacao do ResetPassword
+# Correcao Definitiva: Fluxo de Recuperacao de Senha
 
-## Bug Identificado
+## Causa Raiz REAL
 
-O `AuthEventHandler` atual tem este fluxo:
+O bug NAO esta no `AuthEventHandler` nem no `ResetPassword`. Esta no **sistema de versioning** em `main.tsx`.
 
-```text
-1. Tokens chegam em /reset-password#...&type=recovery
-2. AuthEventHandler detecta type=recovery no hash -> isRecovery = true
-3. Retorna <Navigate to="/reset-password#..."> 
-4. Ja estamos em /reset-password -> React Router ignora (no-op)
-5. Mas o componente CONTINUA retornando <Navigate> em vez de {children}
-6. ResetPassword NUNCA monta!
-7. Pagina fica em branco ou "cai" no redirect padrao
-```
-
-O `isRecovery` e um `useState` que nunca muda de valor. Entao o componente SEMPRE retorna `<Navigate>` e NUNCA renderiza os children (que incluem a rota `/reset-password`).
-
-## Solucao
-
-Adicionar verificacao do `location.pathname`: so redirecionar se NAO estivermos ja em `/reset-password`.
-
-### Logica corrigida:
+### Sequencia do bug:
 
 ```text
-if (isRecovery E pathname !== '/reset-password') -> <Navigate> (redireciona)
-if (isRecovery E pathname === '/reset-password') -> renderiza children (ResetPassword monta)
-if (!isRecovery) -> renderiza children normalmente
+1. Usuario clica no link do email
+2. Supabase /verify valida token, redireciona para /reset-password#access_token=...&type=recovery
+3. App carrega em /reset-password
+4. main.tsx importa todos os modulos (Supabase client inicializa, limpa hash da URL)
+5. main.tsx executa: busca versao remota
+6. Versao mudou (porque voce acabou de publicar!) 
+7. clearAllAndReload() executa:
+   - localStorage.clear() -> destroi qualquer sessao do Supabase
+   - sessionStorage.clear() -> destroi qualquer flag
+   - window.location.replace('/?v=...') -> REDIRECIONA PARA HOME
+8. App recarrega em /  (sem tokens, sem sessao)
+9. Usuario ve a home page
 ```
 
-Isso cobre dois cenarios:
-- Tokens chegam em `/` (home): redireciona para `/reset-password`, re-render com pathname correto, children renderizam
-- Tokens chegam em `/reset-password` diretamente: children renderizam imediatamente
+Alem disso, o Supabase client (com `detectSessionInUrl: true`) limpa o hash da URL SINCRONAMENTE quando o modulo e importado, ANTES de qualquer codigo React rodar. Isso impede o `AuthEventHandler` de ver `type=recovery` no hash.
 
-## Alteracao tecnica
+## Solucao (3 arquivos)
 
-### Arquivo: `src/App.tsx`
+### 1. `index.html` - Capturar hash ANTES de tudo
 
-Adicionar `useLocation` e checar `location.pathname` no `AuthEventHandler`:
+Adicionar um `<script>` inline (nao module) ANTES do script principal. Esse script roda antes de qualquer import, antes do Supabase client inicializar:
+
+```javascript
+// Captura sincrona do hash de recovery ANTES do Supabase limpar
+if (window.location.hash && window.location.hash.includes('type=recovery')) {
+  sessionStorage.setItem('supabase_recovery', 'true');
+  sessionStorage.setItem('supabase_recovery_hash', window.location.hash);
+  sessionStorage.setItem('supabase_recovery_path', window.location.pathname);
+}
+```
+
+### 2. `src/main.tsx` - Preservar contexto de recovery no clearAllAndReload
+
+Na funcao `clearAllAndReload`, antes de limpar storages, salvar e restaurar os flags de recovery. E redirecionar para o pathname original em vez de sempre `/`:
 
 ```typescript
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
+async function clearAllAndReload(newVersion: string) {
+  // Preservar flags de recovery ANTES de limpar
+  const recoveryFlag = sessionStorage.getItem('supabase_recovery');
+  const recoveryHash = sessionStorage.getItem('supabase_recovery_hash');
+  const recoveryPath = sessionStorage.getItem('supabase_recovery_path');
 
+  // Limpar tudo
+  localStorage.clear();
+  sessionStorage.clear();
+  // ... (limpar caches, service workers)
+
+  // Restaurar flags de recovery
+  if (recoveryFlag) {
+    sessionStorage.setItem('supabase_recovery', recoveryFlag);
+    sessionStorage.setItem('supabase_recovery_hash', recoveryHash || '');
+    sessionStorage.setItem('supabase_recovery_path', recoveryPath || '/reset-password');
+  }
+
+  // Salvar nova versao
+  localStorage.setItem('app_version', newVersion);
+
+  // Redirecionar para o PATH ORIGINAL, nao para /
+  const targetPath = recoveryPath || window.location.pathname;
+  window.location.replace(targetPath + '?v=' + newVersion);
+}
+```
+
+### 3. `src/App.tsx` - AuthEventHandler le de sessionStorage
+
+```typescript
 const AuthEventHandler = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   const [isRecovery] = useState(() => {
-    const hash = window.location.hash;
-    return hash.includes('type=recovery');
+    // Ler do sessionStorage (capturado no index.html antes do Supabase limpar)
+    return sessionStorage.getItem('supabase_recovery') === 'true';
   });
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event) => {
-        if (event === 'PASSWORD_RECOVERY') {
-          navigate('/reset-password', { replace: true });
-        }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        navigate('/reset-password', { replace: true });
       }
-    );
+    });
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Redirecionar APENAS se nao estamos ja em /reset-password
   if (isRecovery && location.pathname !== '/reset-password') {
-    const hash = window.location.hash;
-    return <Navigate to={`/reset-password${hash}`} replace />;
+    return <Navigate to="/reset-password" replace />;
   }
 
   return <>{children}</>;
 };
 ```
 
-### Por que funciona:
+### 4. `src/pages/ResetPassword.tsx` - Ler hash do sessionStorage
 
-| Cenario | isRecovery | pathname | Resultado |
-|---------|-----------|----------|-----------|
-| Tokens chegam em `/` | true | `/` | Navigate para `/reset-password` |
-| Apos Navigate (re-render) | true | `/reset-password` | Renderiza children |
-| Tokens chegam em `/reset-password` | true | `/reset-password` | Renderiza children |
-| PKCE (sem hash) | false | `/reset-password` | Renderiza children |
-| Pagina normal | false | `/` | Renderiza children |
+No useEffect, mudar a captura do hash:
 
-## Arquivo alterado
+```typescript
+// ANTES:
+const savedHash = window.location.hash;
+
+// DEPOIS:
+const savedHash = sessionStorage.getItem('supabase_recovery_hash') || window.location.hash;
+```
+
+E apos sucesso no reset, limpar os flags:
+
+```typescript
+// Apos updatePassword com sucesso:
+sessionStorage.removeItem('supabase_recovery');
+sessionStorage.removeItem('supabase_recovery_hash');
+sessionStorage.removeItem('supabase_recovery_path');
+```
+
+## Por que isso funciona
+
+| Etapa | O que acontece |
+|-------|---------------|
+| Link do email clicado | Browser navega para `/reset-password#access_token=...&type=recovery` |
+| Script inline (index.html) | Captura hash e salva em sessionStorage ANTES de qualquer JS module |
+| Supabase client inicializa | Limpa hash da URL (mas sessionStorage ja tem os dados) |
+| main.tsx version check | Se versao mudou: preserva flags de recovery, redireciona para `/reset-password?v=...` (nao para `/`) |
+| App renderiza | AuthEventHandler le sessionStorage: `isRecovery = true`, pathname = `/reset-password` → renderiza children |
+| ResetPassword monta | Le hash de sessionStorage, faz `setSession()` com tokens, mostra formulario |
+| Senha redefinida | Limpa flags de sessionStorage |
+
+## Arquivos alterados
 
 | Arquivo | Alteracao |
 |---------|-----------|
-| `src/App.tsx` | Adicionar `useLocation` e condicao `pathname !== '/reset-password'` no AuthEventHandler |
+| `index.html` | Adicionar `<script>` inline para capturar hash de recovery antes dos modules |
+| `src/main.tsx` | Preservar flags de recovery no `clearAllAndReload` e redirecionar para path original |
+| `src/App.tsx` | `AuthEventHandler` le `supabase_recovery` de sessionStorage |
+| `src/pages/ResetPassword.tsx` | Ler hash de sessionStorage; limpar flags apos sucesso |
 
-## Resultado esperado
+## Nenhuma acao manual necessaria
 
-1. Usuario clica no link do email
-2. Supabase redireciona para `/reset-password` com tokens
-3. `AuthEventHandler` detecta recovery mas pathname ja e `/reset-password` -> renderiza children
-4. `ResetPassword` monta, processa tokens via `getSession()` ou listener
-5. Formulario de nova senha aparece corretamente
-
-## Importante
-
-Apos implementar, **publicar** a aplicacao e solicitar um **novo email** de recuperacao (links antigos ja foram consumidos).
+Esta correcao e 100% em codigo. Nao precisa mudar nada no Supabase Dashboard.
