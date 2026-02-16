@@ -36,8 +36,22 @@ export default function AuthCallback() {
         if (!profile?.password_set) {
           console.log('Password not set, redirecting to /set-password');
           navigate('/set-password', { replace: true });
+          return;
+        }
+
+        // Check if user has active subscription
+        const { data: sub } = await supabase
+          .from('user_subscriptions')
+          .select('status')
+          .eq('user_id', session.user.id)
+          .in('status', ['active', 'trialing'])
+          .maybeSingle();
+
+        if (!sub) {
+          console.log('No active subscription, redirecting to /choose-plan');
+          navigate('/choose-plan', { replace: true });
         } else {
-          console.log('Password already set, redirecting to /boas-vindas');
+          console.log('Active subscription found, redirecting to /boas-vindas');
           navigate('/boas-vindas', { replace: true });
         }
       } catch (err) {

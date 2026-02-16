@@ -29,6 +29,7 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,6 +113,7 @@ export default function Register() {
 
       // 3. If plan selected, redirect to Stripe checkout
       if (plan) {
+        setRedirecting(true);
         const locale = i18n.language;
         const priceId = getPriceId(plan === "yearly" ? "yearly" : "monthly", locale);
 
@@ -134,12 +136,12 @@ export default function Register() {
 
         if (checkoutError || !checkoutData?.url) {
           console.error("[REGISTER] Checkout error:", checkoutError);
+          setRedirecting(false);
           toast({
             title: t("landing.plans.errorTitle"),
             description: t("landing.plans.errorDesc"),
             variant: "destructive",
           });
-          // Still navigate to choose-plan as fallback
           navigate("/choose-plan");
           return;
         }
@@ -160,6 +162,18 @@ export default function Register() {
       setLoading(false);
     }
   };
+
+  if (redirecting) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 flex items-center justify-center p-4">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+          <p className="text-white text-lg">{t("landing.plans.redirectingToast", "Redirecionando para pagamento...")}</p>
+          <p className="text-white/60 text-sm">{t("landing.plans.redirectingToastDesc", "Aguarde enquanto preparamos seu checkout")}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950">
