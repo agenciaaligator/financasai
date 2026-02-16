@@ -99,7 +99,12 @@ export default function Register() {
         const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke(
           "create-checkout",
           {
-            body: { priceId, locale },
+            body: { 
+              priceId, 
+              locale,
+              userId: signUpData.user.id,
+              email: normalizedEmail,
+            },
           }
         );
 
