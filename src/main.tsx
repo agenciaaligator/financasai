@@ -72,10 +72,22 @@ async function fetchRemoteVersion(timeoutMs = 1500): Promise<string | null> {
 async function clearAllAndReload(newVersion: string) {
   console.log('[VERSION] Limpando caches e recarregando para versão:', newVersion);
   
+  // Preservar flags de recovery ANTES de limpar
+  const recoveryFlag = sessionStorage.getItem('supabase_recovery');
+  const recoveryHash = sessionStorage.getItem('supabase_recovery_hash');
+  const recoveryPath = sessionStorage.getItem('supabase_recovery_path');
+  
   try {
     // Limpar storage
     localStorage.clear();
     sessionStorage.clear();
+    
+    // Restaurar flags de recovery se existiam
+    if (recoveryFlag) {
+      sessionStorage.setItem('supabase_recovery', recoveryFlag);
+      sessionStorage.setItem('supabase_recovery_hash', recoveryHash || '');
+      sessionStorage.setItem('supabase_recovery_path', recoveryPath || '/reset-password');
+    }
     
     // Limpar Cache API
     if ('caches' in window) {
@@ -94,8 +106,9 @@ async function clearAllAndReload(newVersion: string) {
   } catch (e) {
     console.error('[VERSION] Erro ao limpar caches:', e);
   } finally {
-    // Hard reload com query string
-    window.location.replace('/?v=' + newVersion);
+    // Redirecionar para o path original (não sempre /)
+    const targetPath = recoveryPath || window.location.pathname || '/';
+    window.location.replace(targetPath + '?v=' + newVersion);
   }
 }
 

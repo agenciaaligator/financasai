@@ -29,8 +29,8 @@ const AuthEventHandler = ({ children }: { children: ReactNode }) => {
   const location = useLocation();
   
   const [isRecovery] = useState(() => {
-    const hash = window.location.hash;
-    return hash.includes('type=recovery');
+    return sessionStorage.getItem('supabase_recovery') === 'true' || 
+           window.location.hash.includes('type=recovery');
   });
 
   useEffect(() => {

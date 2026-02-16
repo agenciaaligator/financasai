@@ -51,6 +51,19 @@
   </head>
 
   <body>
+    <script>
+      // Captura sincrona do hash de recovery ANTES do Supabase client limpar
+      (function() {
+        var h = window.location.hash;
+        if (h && h.indexOf('type=recovery') !== -1) {
+          try {
+            sessionStorage.setItem('supabase_recovery', 'true');
+            sessionStorage.setItem('supabase_recovery_hash', h);
+            sessionStorage.setItem('supabase_recovery_path', window.location.pathname);
+          } catch(e) {}
+        }
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

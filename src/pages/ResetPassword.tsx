@@ -51,8 +51,8 @@ export default function ResetPassword() {
       navigate('/');
     };
 
-    // 1. Capturar hash IMEDIATAMENTE (síncrono) antes do Supabase limpar
-    const savedHash = window.location.hash;
+    // 1. Ler hash do sessionStorage (capturado no index.html antes do Supabase limpar) ou da URL
+    const savedHash = sessionStorage.getItem('supabase_recovery_hash') || window.location.hash;
 
     // 2. Registrar listener PRIMEIRO (síncrono) para não perder o evento
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -133,6 +133,11 @@ export default function ResetPassword() {
       const result = await updatePassword(password);
       
       if (result && !result.error) {
+        // Limpar flags de recovery do sessionStorage
+        sessionStorage.removeItem('supabase_recovery');
+        sessionStorage.removeItem('supabase_recovery_hash');
+        sessionStorage.removeItem('supabase_recovery_path');
+        
         // Mark password as set in profile and user_metadata
         if (user) {
           await supabase.from('profiles').update({ password_set: true } as any).eq('user_id', user.id);
