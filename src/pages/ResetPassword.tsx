@@ -29,7 +29,6 @@ export default function ResetPassword() {
   useEffect(() => {
     let timeout: NodeJS.Timeout;
     let resolved = false;
-    let subscription: { unsubscribe: () => void } | null = null;
 
     const resolve = () => {
       if (resolved) return;
@@ -52,18 +51,30 @@ export default function ResetPassword() {
       navigate('/');
     };
 
+    // 1. Capturar hash IMEDIATAMENTE (síncrono) antes do Supabase limpar
+    const savedHash = window.location.hash;
+
+    // 2. Registrar listener PRIMEIRO (síncrono) para não perder o evento
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, sess) => {
+        if ((event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') && sess) {
+          resolve();
+        }
+      }
+    );
+
+    // 3. Fallbacks assíncronos
     const init = async () => {
-      // 1. Verificar sessão existente (para /set-password)
+      // 3a. Verificar sessão existente (para /set-password)
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       if (currentSession?.user) {
         resolve();
         return;
       }
 
-      // 2. Tentar parsear hash fragment manualmente
-      const hash = window.location.hash;
-      if (hash) {
-        const params = new URLSearchParams(hash.substring(1));
+      // 3b. Tentar parsear hash capturado manualmente
+      if (savedHash) {
+        const params = new URLSearchParams(savedHash.substring(1));
         const accessToken = params.get('access_token');
         const refreshToken = params.get('refresh_token');
         if (accessToken && refreshToken) {
@@ -77,29 +88,19 @@ export default function ResetPassword() {
           }
         }
       }
-
-      // 3. Escutar onAuthStateChange como fallback
-      const { data: { subscription: sub } } = supabase.auth.onAuthStateChange(
-        (event, sess) => {
-          if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
-            if (sess) resolve();
-          }
-        }
-      );
-      subscription = sub;
-
-      // 4. Timeout de segurança
-      timeout = setTimeout(() => {
-        subscription?.unsubscribe();
-        reject();
-      }, 8000);
     };
 
     init();
 
+    // 4. Timeout de segurança (10s)
+    timeout = setTimeout(() => {
+      subscription.unsubscribe();
+      reject();
+    }, 10000);
+
     return () => {
       clearTimeout(timeout);
-      subscription?.unsubscribe();
+      subscription.unsubscribe();
     };
   }, [navigate, toast]);
 
