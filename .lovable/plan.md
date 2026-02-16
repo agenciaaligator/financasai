@@ -1,60 +1,46 @@
 
 
-# Corrigir Sessao WhatsApp Nao Criada + Rebranding Residual
+# Mensagem de Boas-Vindas Automatica apos Validacao do WhatsApp
 
-## Problema Raiz
+## O que muda
 
-O codigo de validacao e salvo na tabela `whatsapp_validation_codes` **sem o campo `user_id`** (sempre NULL). Quando o `validate-code` verifica o codigo, ele encontra o registro, mas como `codeValidation.user_id` e NULL, o bloco que cria a sessao WhatsApp **nunca e executado**:
+Apos o usuario validar o codigo com sucesso e a sessao ser criada, o sistema enviara automaticamente uma mensagem de boas-vindas pelo WhatsApp com:
+- Confirmacao de que a conta foi conectada
+- Instrucoes basicas de uso
+- Convite para enviar "ajuda" para ver todos os comandos
 
-```text
-if (codeValidation.user_id) {  // <-- sempre false, pois user_id e NULL
-  // criar sessao... NUNCA EXECUTA
-}
-```
+## Alteracao tecnica
 
-Resultado: o toast mostra "WhatsApp conectado!" mas nenhuma sessao e criada no banco. O `checkAuthenticationStatus()` retorna false e o status continua "Desconectado".
+### Arquivo: `supabase/functions/whatsapp-agent/index.ts`
 
-Alem disso, o menu de ajuda ainda diz "Assistente Financeiro" em vez de "Dona Wilma", e a edge function `whatsapp-agent` precisa ser re-deployada para que as mensagens corretas aparecam em producao.
-
-## Solucao
-
-### 1. Salvar `user_id` no codigo de validacao (whatsapp-agent/index.ts)
-
-No bloco `send-validation-code` (linha ~6808), adicionar `user_id` ao insert:
+No bloco `validate-code`, logo apos a sessao ser criada com sucesso (linha ~6933), adicionar o envio automatico de uma mensagem de boas-vindas usando a funcao `sendWhatsAppMessage` que ja existe no codigo:
 
 ```typescript
-.insert({
-  phone_number: cleanPhone,
-  code,
-  expires_at: expiresAt.toISOString(),
-  used: false,
-  user_id: body.userId || null  // <-- ADICIONAR
-})
+// Apos: console.log('[VALIDATE-CODE] WhatsApp session created successfully');
+
+// Enviar mensagem de boas-vindas
+const welcomePhone = cleanPhone.startsWith('+') ? cleanPhone.substring(1) : cleanPhone;
+await sendWhatsAppMessage(welcomePhone,
+  `Ola! Sou a *Dona Wilma*, sua assistente financeira pelo WhatsApp.\n\n` +
+  `Sua conta foi conectada com sucesso!\n\n` +
+  `*Como usar:*\n` +
+  `- Envie "gasto 50 mercado" para registrar uma despesa\n` +
+  `- Envie "receita 1000 salario" para registrar uma receita\n` +
+  `- Envie uma foto de nota fiscal para registro automatico\n` +
+  `- Envie "saldo" para ver seu saldo atual\n\n` +
+  `Digite *ajuda* para ver todos os comandos disponiveis.`
+);
 ```
 
-Isso garante que quando `validate-code` buscar o registro, `codeValidation.user_id` tera o valor correto e a sessao sera criada.
+O envio sera feito dentro de um try/catch para nao bloquear a resposta de validacao caso a mensagem falhe.
 
-### 2. Trocar "Assistente Financeiro" por "Dona Wilma" (whatsapp-agent/index.ts)
+### Deploy
 
-Linha ~2630: Atualizar o `getHelpMenu()`:
+Re-deploy da edge function `whatsapp-agent` para aplicar a mudanca.
 
-```typescript
-return `🤖 *Dona Wilma - WhatsApp*\n\n` +
-```
+## Resultado esperado
 
-### 3. Re-deployar a edge function whatsapp-agent
-
-Deploy obrigatorio para que todas as correcoes (branding + criacao de sessao) entrem em vigor.
-
-## Resumo de arquivos
-
-| Arquivo | Alteracao |
-|---------|-----------|
-| supabase/functions/whatsapp-agent/index.ts | Adicionar `user_id` ao insert do codigo + renomear "Assistente Financeiro" |
-
-## Resultado Esperado
-
-1. Usuario solicita codigo no perfil -> codigo salvo COM `user_id`
-2. Usuario valida codigo -> sessao WhatsApp criada automaticamente
-3. Status muda para "Conectado" imediatamente
-4. Mensagens do WhatsApp mostram "Dona Wilma" em todos os pontos
+1. Usuario valida o codigo no perfil
+2. Status muda para "Conectado" na interface
+3. Usuario recebe imediatamente uma mensagem no WhatsApp com boas-vindas e instrucoes
+4. Usuario ja sabe exatamente o que fazer a seguir
