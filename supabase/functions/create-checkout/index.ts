@@ -29,8 +29,8 @@ serve(async (req) => {
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
 
-    const { priceId, locale } = await req.json();
-    logStep("Received request", { priceId, locale });
+    const { priceId, locale, userId: bodyUserId, email: bodyEmail } = await req.json();
+    logStep("Received request", { priceId, locale, bodyUserId, bodyEmail });
 
     const getStripeLocale = (loc?: string): string | undefined => {
       if (!loc) return undefined;
@@ -40,20 +40,33 @@ serve(async (req) => {
 
     if (!priceId) throw new Error("priceId is required");
 
-    // Get authenticated user (required in new flow)
+    let userEmail: string;
+    let userId: string;
+
+    // Try auth header first, fallback to body params
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("Authentication required");
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData } = await supabaseClient.auth.getUser(token);
+    const token = authHeader?.replace("Bearer ", "");
     
-    if (!userData?.user?.email) {
-      throw new Error("User not authenticated or email not available");
+    if (token && token !== Deno.env.get("SUPABASE_ANON_KEY")) {
+      const { data: userData } = await supabaseClient.auth.getUser(token);
+      if (userData?.user?.email) {
+        userEmail = userData.user.email;
+        userId = userData.user.id;
+        logStep("User authenticated via token", { userId, email: userEmail });
+      } else if (bodyUserId && bodyEmail) {
+        userEmail = bodyEmail.toLowerCase().trim();
+        userId = bodyUserId;
+        logStep("Using body params (token invalid)", { userId, email: userEmail });
+      } else {
+        throw new Error("User not authenticated or email not available");
+      }
+    } else if (bodyUserId && bodyEmail) {
+      userEmail = bodyEmail.toLowerCase().trim();
+      userId = bodyUserId;
+      logStep("Using body params (no auth token)", { userId, email: userEmail });
+    } else {
+      throw new Error("Authentication required: provide auth token or userId/email in body");
     }
-
-    const userEmail = userData.user.email;
-    const userId = userData.user.id;
-    logStep("User authenticated", { userId, email: userEmail });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     
