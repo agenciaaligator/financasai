@@ -1,74 +1,71 @@
 
-# Correcao: Loop de Redirecionamento /set-password + UI do Telefone no /register
+# Fix: Styling Issues on /register Dark Theme
 
-## Problemas Identificados
+## Problems
+1. **Phone input country dropdown**: The native `<select>` renders white text on white background - countries are invisible
+2. **Phone number text**: Typed digits appear white inside the input but the dropdown overlay blocks visibility  
+3. **"Ja tenho conta" button**: Text only visible on hover because it's white on transparent with no contrast
+4. **Country selector overlay**: The `<select>` element creates a large white block
 
-### Problema 1: Loop infinito no /set-password
-**Causa raiz**: O perfil do admin (contato@aligator.com.br) tem `password_set = false` no banco, mesmo tendo senha definida. O fluxo e:
-1. Usuario faz login com email/senha
-2. `ProtectedDashboard` checa `useSubscriptionGuard` que ve `password_set = false`
-3. Redireciona para `/set-password`
-4. "Voltar ao Login" chama `navigate('/')` mas o usuario continua logado
-5. Volta ao passo 2 = loop infinito
+## Solution
 
-**Solucao (3 partes)**:
+### 1. Register.tsx - Phone Input Styling
+Replace the raw `PhoneInput` with properly styled version that works on dark backgrounds:
+- Add explicit dark-compatible styles to the phone input container
+- Style the country `<select>` dropdown with dark colors so items are readable
+- Ensure typed phone number text is visible (white text on dark bg)
 
-A) **Corrigir LoginForm**: Quando o usuario faz login com sucesso via senha, atualizar `password_set = true` automaticamente no profile. Se o usuario consegue fazer login com senha, ele ja TEM senha.
+### 2. Register.tsx - "Ja tenho conta" Button  
+Add visible background/border contrast so text is always readable, not just on hover.
 
-B) **Corrigir "Voltar ao Login" no ResetPassword**: Fazer logout (`supabase.auth.signOut()`) antes de navegar para `/`, quebrando o loop.
+### 3. phone-input.css - Dark Theme Support
+Add dark-theme-aware styles for the country selector dropdown:
+- Set `color: black` on `.PhoneInputCountrySelect` so dropdown items are readable
+- Ensure the select element doesn't create a white overlay
 
-C) **Corrigir dado no banco**: Atualizar o profile existente do admin para `password_set = true` via migracao.
+## Files to Modify
 
-### Problema 2: Dropdown do telefone com overlay gigante
-**Causa raiz**: O componente `PhoneInput` do `react-phone-number-input` usa um `<select>` nativo que, com os estilos atuais (opacity: 0, position: absolute), pode aparecer como um overlay branco grande em certos navegadores/temas escuros.
+| File | Change |
+|------|--------|
+| `src/pages/Register.tsx` | Fix phone input styling with dark-theme-compatible classes; fix button visibility |
+| `src/components/ui/phone-input.css` | Add color/background rules for the native select dropdown |
 
-**Solucao**: Ajustar o CSS em `phone-input.css` para garantir que o `<select>` nativo tenha aparencia controlada e nao crie overlay visual.
+## Technical Details
 
----
+### Register.tsx changes
+```tsx
+// Phone input: add explicit styling for dark bg
+<PhoneInput
+  international
+  defaultCountry="BR"
+  value={phone}
+  onChange={(value) => setPhone(value || "")}
+  className="phone-input-dark flex h-11 w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-base text-white"
+  disabled={loading}
+/>
 
-## Arquivos a Modificar
-
-| Arquivo | Mudanca |
-|---------|---------|
-| `src/components/auth/LoginForm.tsx` | Apos login com sucesso, atualizar `password_set = true` no profile |
-| `src/pages/ResetPassword.tsx` | "Voltar ao Login" faz signOut antes de navegar |
-| `src/components/ui/phone-input.css` | Corrigir z-index e aparencia do select nativo |
-| Migracao SQL | Atualizar `password_set = true` para o admin existente |
-
----
-
-## Detalhes Tecnicos
-
-### LoginForm.tsx - Auto-correcao do password_set
-```typescript
-// Apos login com sucesso:
-if (result && !result.error) {
-  // Se logou com senha, garantir que password_set = true
-  const { data: { user: loggedUser } } = await supabase.auth.getUser();
-  if (loggedUser) {
-    await supabase.from('profiles').update({ password_set: true }).eq('user_id', loggedUser.id);
-  }
-}
-```
-
-### ResetPassword.tsx - Botao "Voltar ao Login"
-```typescript
+// Button: ensure text is always visible
 <Button
-  type="button"
-  variant="ghost"
-  onClick={async () => {
-    await supabase.auth.signOut();
-    navigate('/');
-  }}
+  variant="outline"
+  onClick={() => navigate("/")}
+  className="border-white/30 text-white bg-white/10 hover:bg-white/20"
 >
 ```
 
-### phone-input.css - Correcao do overlay
-Adicionar regras para limitar o tamanho visual do select e garantir que nao crie bloco branco visivel.
+### phone-input.css additions
+```css
+/* Dark theme support for Register page */
+.phone-input-dark .PhoneInputInput {
+  color: white;
+  background: transparent;
+}
 
-### Migracao SQL
-```sql
-UPDATE public.profiles 
-SET password_set = true 
-WHERE user_id = '2efec051-aa64-4f31-8c1b-c22ac51d7d7b';
+.phone-input-dark .PhoneInputCountrySelect {
+  color: black; /* Native dropdown items need dark text */
+}
+
+.phone-input-dark .PhoneInputCountrySelectArrow {
+  color: white;
+  opacity: 0.7;
+}
 ```
