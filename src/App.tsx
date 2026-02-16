@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { useEffect, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import ChoosePlan from "./pages/ChoosePlan";
@@ -26,14 +26,15 @@ const queryClient = new QueryClient();
 
 const AuthEventHandler = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
+  
+  // Detecção SÍNCRONA durante render - antes de qualquer child montar
+  const [isRecovery] = useState(() => {
+    const hash = window.location.hash;
+    return hash.includes('type=recovery');
+  });
 
   useEffect(() => {
-    const hash = window.location.hash;
-    if (hash && hash.includes('type=recovery')) {
-      navigate('/reset-password' + hash, { replace: true });
-      return;
-    }
-
+    // Para PKCE flow (tokens em ?code=, sem hash)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event) => {
         if (event === 'PASSWORD_RECOVERY') {
@@ -44,6 +45,12 @@ const AuthEventHandler = ({ children }: { children: ReactNode }) => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  // Se recovery detectado no hash, redirecionar ANTES de renderizar children
+  if (isRecovery) {
+    const hash = window.location.hash;
+    return <Navigate to={`/reset-password${hash}`} replace />;
+  }
 
   return <>{children}</>;
 };
