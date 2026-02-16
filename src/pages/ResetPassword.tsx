@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +17,6 @@ export default function ResetPassword() {
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [sessionEstablished, setSessionEstablished] = useState(false);
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { updatePassword, user, session } = useAuth();
@@ -28,70 +27,81 @@ export default function ResetPassword() {
   const isSetPassword = location.pathname === '/set-password';
 
   useEffect(() => {
-    const initializeResetFlow = async () => {
-      try {
-        const accessToken = searchParams.get('access_token');
-        const refreshToken = searchParams.get('refresh_token');
-        const type = searchParams.get('type');
-        
-        console.log('URL params:', {
-          accessToken: accessToken ? 'present' : 'absent',
-          refreshToken: refreshToken ? 'present' : 'absent',
-          type,
-          path: location.pathname
-        });
+    let timeout: NodeJS.Timeout;
+    let resolved = false;
+    let subscription: { unsubscribe: () => void } | null = null;
 
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        
-        if (currentSession?.user) {
-          console.log('User already has active session');
-          setSessionEstablished(true);
-          return;
-        }
-
-        if (accessToken && refreshToken) {
-          console.log('Tokens found - establishing session');
-          const { error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
-          });
-
-          if (error) {
-            console.error('Error establishing session:', error);
-            toast({
-              title: "❌ Link inválido",
-              description: "O link é inválido ou expirou. Solicite um novo.",
-              variant: "destructive",
-            });
-            navigate('/');
-            return;
-          }
-
-          setSessionEstablished(true);
-        } else {
-          toast({
-            title: "❌ Acesso negado",
-            description: "É necessário um link válido para acessar esta página.",
-            variant: "destructive",
-          });
-          navigate('/');
-          return;
-        }
-      } catch (error) {
-        console.error('Error in reset flow:', error);
-        toast({
-          title: "💥 Erro inesperado",
-          description: "Ocorreu um erro ao processar o link. Tente novamente.",
-          variant: "destructive",
-        });
-        navigate('/');
-      } finally {
-        setIsInitializing(false);
-      }
+    const resolve = () => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timeout);
+      setSessionEstablished(true);
+      setIsInitializing(false);
     };
 
-    initializeResetFlow();
-  }, [searchParams, navigate, toast, location.pathname]);
+    const reject = () => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timeout);
+      toast({
+        title: "❌ Link inválido ou expirado",
+        description: "Solicite um novo link de recuperação.",
+        variant: "destructive",
+      });
+      setIsInitializing(false);
+      navigate('/');
+    };
+
+    const init = async () => {
+      // 1. Verificar sessão existente (para /set-password)
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      if (currentSession?.user) {
+        resolve();
+        return;
+      }
+
+      // 2. Tentar parsear hash fragment manualmente
+      const hash = window.location.hash;
+      if (hash) {
+        const params = new URLSearchParams(hash.substring(1));
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (!error) {
+            resolve();
+            return;
+          }
+        }
+      }
+
+      // 3. Escutar onAuthStateChange como fallback
+      const { data: { subscription: sub } } = supabase.auth.onAuthStateChange(
+        (event, sess) => {
+          if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
+            if (sess) resolve();
+          }
+        }
+      );
+      subscription = sub;
+
+      // 4. Timeout de segurança
+      timeout = setTimeout(() => {
+        subscription?.unsubscribe();
+        reject();
+      }, 8000);
+    };
+
+    init();
+
+    return () => {
+      clearTimeout(timeout);
+      subscription?.unsubscribe();
+    };
+  }, [navigate, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
