@@ -175,7 +175,7 @@ export default function Register() {
           <Button
             variant="outline"
             onClick={() => navigate("/")}
-            className="border-white/20 text-white hover:bg-white/10"
+            className="border-white/30 text-white bg-white/10 hover:bg-white/20"
           >
             <LogIn className="mr-2 h-4 w-4" />
             {t("register.alreadyHaveAccount")}
@@ -254,7 +254,7 @@ export default function Register() {
                   defaultCountry="BR"
                   value={phone}
                   onChange={(value) => setPhone(value || "")}
-                  className="flex h-11 w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-base text-white ring-offset-background"
+                  className="phone-input-dark flex h-11 w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-base text-white ring-offset-background"
                   disabled={loading}
                 />
               </div>
