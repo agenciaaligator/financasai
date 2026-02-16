@@ -1,71 +1,114 @@
 
-# Fix: Styling Issues on /register Dark Theme
+# Revisao Completa do Onboarding - Problemas e Correcoes
 
-## Problems
-1. **Phone input country dropdown**: The native `<select>` renders white text on white background - countries are invisible
-2. **Phone number text**: Typed digits appear white inside the input but the dropdown overlay blocks visibility  
-3. **"Ja tenho conta" button**: Text only visible on hover because it's white on transparent with no contrast
-4. **Country selector overlay**: The `<select>` element creates a large white block
+## Diagnostico Completo
 
-## Solution
+Tracei todo o fluxo do usuario `adwords@aligator.com.br` e encontrei **3 problemas criticos**:
 
-### 1. Register.tsx - Phone Input Styling
-Replace the raw `PhoneInput` with properly styled version that works on dark backgrounds:
-- Add explicit dark-compatible styles to the phone input container
-- Style the country `<select>` dropdown with dark colors so items are readable
-- Ensure typed phone number text is visible (white text on dark bg)
+### Problema 1: Formulario trava apos submit (Register.tsx)
+**O que acontece**: Apos `signUp`, o Supabase envia email de confirmacao. O codigo tenta imediatamente chamar `create-checkout`, mas o usuario recebeu o email de confirmacao e pode nao ter sessao valida ainda. A chamada ao checkout pode travar ou falhar silenciosamente.
 
-### 2. Register.tsx - "Ja tenho conta" Button  
-Add visible background/border contrast so text is always readable, not just on hover.
+**Causa**: O `signUp` com confirmacao por email nao cria uma sessao autenticada. O usuario fica em estado "criado mas nao confirmado". O checkout e chamado com `userId` e `email` no body (sem token valido), o que funciona. Porem, o `window.location.href = checkoutData.url` redireciona para o Stripe e o usuario PERDE o contexto do loading state. O problema e que se o checkout demora, o usuario ve o botao travado em "Criando conta..." sem feedback visual adequado.
 
-### 3. phone-input.css - Dark Theme Support
-Add dark-theme-aware styles for the country selector dropdown:
-- Set `color: black` on `.PhoneInputCountrySelect` so dropdown items are readable
-- Ensure the select element doesn't create a white overlay
+**Correcao**: Adicionar feedback visual claro de que o redirecionamento esta acontecendo e tratar o caso onde o email de confirmacao chega antes do usuario completar o checkout.
 
-## Files to Modify
+### Problema 2: Email de confirmacao redireciona para Home (nao para /payment-success)
+**O que acontece**: O usuario clica no link do email de confirmacao e vai para a home (`/`). Como nao tem assinatura ativa (nunca completou o checkout no Stripe), ve "SUA ASSINATURA ESTA INATIVA".
 
-| File | Change |
-|------|--------|
-| `src/pages/Register.tsx` | Fix phone input styling with dark-theme-compatible classes; fix button visibility |
-| `src/components/ui/phone-input.css` | Add color/background rules for the native select dropdown |
+**Causa raiz**: O Supabase Auth envia o link de confirmacao para o `SITE_URL` configurado (donawilma.lovable.app), que redireciona para `/`. O `AuthCallback.tsx` existe mas o email de confirmacao do Supabase nao usa essa rota - ele usa o redirect padrao do Supabase Auth.
 
-## Technical Details
+**Dados no banco confirmam**:
+- `user_subscriptions`: VAZIO para esse usuario (nunca completou checkout)
+- `user_roles`: role = `free` (default criado pelo trigger)
+- `profiles`: password_set = true (atualizado no registro)
 
-### Register.tsx changes
-```tsx
-// Phone input: add explicit styling for dark bg
-<PhoneInput
-  international
-  defaultCountry="BR"
-  value={phone}
-  onChange={(value) => setPhone(value || "")}
-  className="phone-input-dark flex h-11 w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-base text-white"
-  disabled={loading}
-/>
+O fluxo correto seria: apos confirmar email, o usuario deveria ser redirecionado para completar o pagamento, nao para o dashboard.
 
-// Button: ensure text is always visible
-<Button
-  variant="outline"
-  onClick={() => navigate("/")}
-  className="border-white/30 text-white bg-white/10 hover:bg-white/20"
->
+### Problema 3: "Regularizar assinatura" falha
+**O que acontece**: Na tela de "Assinatura Inativa", o botao "Regularizar" chama `customer-portal`, que busca o cliente no Stripe por email. Como o usuario NUNCA completou o checkout, nao existe cliente no Stripe.
+
+**Logs confirmam**: `[CUSTOMER-PORTAL] ERROR - "No Stripe customer found for this user"`
+
+**Correcao**: Quando nao ha cliente Stripe, oferecer checkout direto em vez do portal.
+
+---
+
+## Plano de Correcao
+
+### 1. Register.tsx - Melhorar feedback visual
+- Mostrar mensagem clara de "Redirecionando para pagamento..." apos o signUp
+- Se o checkout demorar, nao travar o formulario
+
+### 2. SubscriptionInactive.tsx - Fallback para checkout quando nao ha cliente Stripe
+Atualmente, o botao "Regularizar" so chama `customer-portal`, que falha se nao existe cliente. A correcao:
+- Tentar `customer-portal` primeiro
+- Se falhar com "No Stripe customer found", oferecer botao de checkout direto (`create-checkout`)
+- Isso resolve o caso onde o usuario confirmou o email mas nunca pagou
+
+### 3. Index.tsx (ProtectedDashboard) - Redirecionar para checkout quando usuario nao tem assinatura
+Quando o usuario tem `password_set = true` mas `subscriptionStatus = 'inactive'` e nao tem `stripe_customer_id`, o sistema deveria oferecer opcao de ir para checkout em vez de so mostrar "Regularizar" (que nao funciona sem cliente Stripe).
+
+### 4. AuthCallback.tsx - Apos confirmacao de email, verificar se tem assinatura
+Apos confirmar email, checar se o usuario tem assinatura:
+- Se tem: ir para dashboard/boas-vindas
+- Se nao tem: ir para `/choose-plan` para completar o pagamento
+
+---
+
+## Arquivos a Modificar
+
+| Arquivo | Mudanca |
+|---------|---------|
+| `src/pages/SubscriptionInactive.tsx` | Adicionar fallback: se customer-portal falha, oferecer checkout direto |
+| `src/pages/AuthCallback.tsx` | Apos confirmacao, checar assinatura e redirecionar para /choose-plan se nao tem |
+| `src/pages/Register.tsx` | Melhorar feedback visual durante redirecionamento para Stripe |
+
+---
+
+## Detalhes Tecnicos
+
+### SubscriptionInactive.tsx - Fallback para checkout
+```typescript
+const handleRegularize = async () => {
+  setLoading(true);
+  try {
+    const { data, error } = await supabase.functions.invoke('customer-portal');
+    if (error) throw error;
+    if (data?.url) {
+      window.open(data.url, '_blank');
+      return;
+    }
+    // Se retornou erro de "No Stripe customer", oferecer checkout
+    if (data?.error?.includes('No Stripe customer')) {
+      throw new Error('no_customer');
+    }
+  } catch (err) {
+    // Fallback: redirecionar para pagina de planos para fazer checkout
+    navigate('/choose-plan');
+    return;
+  } finally {
+    setLoading(false);
+  }
+};
 ```
 
-### phone-input.css additions
-```css
-/* Dark theme support for Register page */
-.phone-input-dark .PhoneInputInput {
-  color: white;
-  background: transparent;
-}
+### AuthCallback.tsx - Checar assinatura apos confirmacao
+```typescript
+// Apos confirmar password_set, verificar assinatura
+const { data: sub } = await supabase
+  .from('user_subscriptions')
+  .select('status')
+  .eq('user_id', session.user.id)
+  .eq('status', 'active')
+  .maybeSingle();
 
-.phone-input-dark .PhoneInputCountrySelect {
-  color: black; /* Native dropdown items need dark text */
-}
-
-.phone-input-dark .PhoneInputCountrySelectArrow {
-  color: white;
-  opacity: 0.7;
+if (!sub) {
+  // Sem assinatura ativa - ir para escolher plano
+  navigate('/choose-plan', { replace: true });
+} else {
+  navigate('/boas-vindas', { replace: true });
 }
 ```
+
+### Register.tsx - Feedback visual
+Adicionar estado intermediario "Redirecionando para pagamento..." com spinner apos o signUp ter sucesso, antes do redirect para Stripe.
