@@ -98,3 +98,18 @@
 .phone-input-success .PhoneInputInput:focus-visible {
   ring-color: hsl(142, 76%, 36%);
 }
+
+/* Dark theme support for Register page */
+.phone-input-dark .PhoneInputInput {
+  color: white !important;
+  background: transparent !important;
+}
+
+.phone-input-dark .PhoneInputCountrySelect {
+  color: black;
+}
+
+.phone-input-dark .PhoneInputCountrySelectArrow {
+  color: white;
+  opacity: 0.7;
+}
