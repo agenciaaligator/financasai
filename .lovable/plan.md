@@ -1,129 +1,72 @@
 
 
-# Corrigir Fluxo de Recuperacao de Senha
+# Corrigir Fluxo de Recuperacao de Senha - Race Condition
 
 ## Problema Raiz
 
-O componente `ResetPassword.tsx` usa `useSearchParams()` para buscar `access_token` e `refresh_token`. Porem, o Supabase envia esses tokens no **hash fragment** da URL (`#access_token=...`), nao nos query params (`?access_token=...`).
+O problema e uma **race condition** entre o Supabase client e o componente `ResetPassword.tsx`:
 
-Resultado:
-1. `searchParams.get('access_token')` retorna `null`
-2. `getSession()` pode retornar `null` por race condition (o Supabase client ainda nao processou o hash)
-3. O codigo cai no `else` (linha 71) e redireciona para `/` com toast "Acesso negado"
+1. Usuario clica no link do email e chega em `/reset-password#access_token=...`
+2. O Supabase client (com `detectSessionInUrl: true`) detecta os tokens do hash, processa-os e **limpa o hash da URL**
+3. O `useEffect` do `ResetPassword.tsx` executa a funcao `init()`:
+   - Chama `getSession()` (async/await) - durante esse await, o evento `PASSWORD_RECOVERY` pode ja ter sido disparado
+   - Tenta ler `window.location.hash` - mas o hash ja foi consumido e limpo pelo Supabase client
+   - So DEPOIS disso registra o listener `onAuthStateChange` - mas o evento ja passou
+4. Nenhuma das 3 estrategias funciona, o timeout de 8s dispara e redireciona para `/`
+
+Em resumo: o listener e registrado **tarde demais**, e o hash ja foi **consumido** pelo Supabase client.
 
 ## Solucao
 
-Reescrever o `useEffect` de inicializacao do `ResetPassword.tsx` para usar `onAuthStateChange` em vez de depender de query params. Essa abordagem:
+Reordenar a logica do `useEffect` no `ResetPassword.tsx`:
 
-- Escuta o evento `PASSWORD_RECOVERY` que o Supabase emite automaticamente ao processar os tokens do hash
-- Elimina a race condition
-- Funciona tanto com tokens no hash quanto no query param
-- Tambem aceita sessao ja existente (como ja faz hoje para `/set-password`)
+1. **Capturar o hash ANTES de qualquer operacao async** (salvar em variavel local antes que o Supabase client o limpe)
+2. **Registrar o `onAuthStateChange` PRIMEIRO** (sincronamente, antes de qualquer await)
+3. **Depois** verificar `getSession()` como fallback
+4. **Depois** tentar parsear o hash salvo como ultimo recurso
 
-### Logica revisada:
+### Codigo revisado (ResetPassword.tsx useEffect):
 
 ```text
-1. Verificar se ja existe sessao ativa → sessionEstablished = true
-2. Se nao, registrar listener onAuthStateChange:
-   - Evento PASSWORD_RECOVERY → sessionEstablished = true
-   - Evento SIGNED_IN → sessionEstablished = true
-3. Timeout de seguranca (5s): se nenhum evento chegar, mostrar erro e redirecionar
-4. Tambem tentar parsear hash fragment manualmente como fallback
+useEffect:
+  1. Capturar window.location.hash em variavel local (SINCRONO)
+  2. Registrar onAuthStateChange listener (SINCRONO)
+     - Se evento PASSWORD_RECOVERY ou SIGNED_IN com sessao -> resolve()
+  3. Verificar getSession() (ASYNC)
+     - Se sessao existe -> resolve()
+  4. Se hash foi capturado, tentar setSession manual (ASYNC)
+     - Se sucesso -> resolve()
+  5. Timeout 10s -> reject()
 ```
+
+Essa ordem garante que:
+- O listener esta ativo ANTES de qualquer processamento async
+- O hash e capturado ANTES do Supabase client limpa-lo
+- Nao importa a ordem dos eventos, pelo menos uma das estrategias vai funcionar
 
 ## Alteracao tecnica
 
 ### Arquivo: `src/pages/ResetPassword.tsx`
 
-Substituir o `useEffect` atual (linhas 30-94) por:
+Substituir o `useEffect` (linhas 29-104) pela nova logica reordenada.
 
-```typescript
-useEffect(() => {
-  let timeout: NodeJS.Timeout;
-  let resolved = false;
-
-  const resolve = () => {
-    if (resolved) return;
-    resolved = true;
-    clearTimeout(timeout);
-    setSessionEstablished(true);
-    setIsInitializing(false);
-  };
-
-  const reject = () => {
-    if (resolved) return;
-    resolved = true;
-    clearTimeout(timeout);
-    toast({
-      title: "Link invalido ou expirado",
-      description: "Solicite um novo link de recuperacao.",
-      variant: "destructive",
-    });
-    setIsInitializing(false);
-    navigate('/');
-  };
-
-  const init = async () => {
-    // 1. Verificar sessao existente (para /set-password)
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      resolve();
-      return;
-    }
-
-    // 2. Tentar parsear hash fragment manualmente
-    const hash = window.location.hash;
-    if (hash) {
-      const params = new URLSearchParams(hash.substring(1));
-      const accessToken = params.get('access_token');
-      const refreshToken = params.get('refresh_token');
-      if (accessToken && refreshToken) {
-        const { error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-        if (!error) {
-          resolve();
-          return;
-        }
-      }
-    }
-
-    // 3. Escutar onAuthStateChange como fallback
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
-          if (session) resolve();
-        }
-      }
-    );
-
-    // 4. Timeout de seguranca
-    timeout = setTimeout(() => {
-      subscription.unsubscribe();
-      reject();
-    }, 8000);
-  };
-
-  init();
-
-  return () => clearTimeout(timeout);
-}, [navigate, toast]);
-```
-
-### Ponto importante
-
-Para `/set-password`, o fluxo continua funcionando: o usuario ja possui sessao ativa, entao o passo 1 resolve imediatamente.
+A mudanca principal e:
+- Mover `onAuthStateChange` para ser a PRIMEIRA coisa executada
+- Salvar `window.location.hash` em variavel local imediatamente
+- Mover `getSession()` para DEPOIS do listener
+- Aumentar timeout para 10s para dar mais margem
 
 ## Arquivo alterado
 
 | Arquivo | Alteracao |
 |---------|-----------|
-| `src/pages/ResetPassword.tsx` | Reescrever logica de inicializacao para parsear hash fragment e escutar `onAuthStateChange` |
+| `src/pages/ResetPassword.tsx` | Reordenar useEffect: listener primeiro, getSession depois, hash capturado sincrono |
 
 ## Resultado esperado
 
-1. Usuario clica "Esqueci minha senha" → recebe email
-2. Clica no link do email → redirecionado para `/reset-password#access_token=...`
-3. Componente parseia hash, estabelece sessao, mostra formulario de nova senha
-4. Usuario define nova senha → redirecionado para `/boas-vindas`
+1. Usuario clica no link de recuperacao no email
+2. Chega em `/reset-password` com tokens
+3. Listener captura o evento OU getSession encontra a sessao OU hash manual funciona
+4. Formulario de nova senha aparece corretamente
+5. Usuario define nova senha e e redirecionado
+
