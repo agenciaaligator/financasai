@@ -25,14 +25,14 @@
 
 2. **Site URL:**
    ```
-   https://financasai.lovable.app
+   https://donawilma.lovable.app
    ```
 
 3. **Redirect URLs (ADICIONAR TODAS):**
    ```
-   https://financasai.lovable.app/**
-   https://financasai.lovable.app/reset-password
-   https://financasai.lovable.app/auth/callback
+   https://donawilma.lovable.app/**
+   https://donawilma.lovable.app/auth/callback
+   https://donawilma.lovable.app/set-password
    ```
 
 **⚠️ CONFIGURAÇÃO ESSENCIAL:**

@@ -69,7 +69,7 @@ serve(async (req) => {
       }
     }
 
-    const origin = req.headers.get("origin") || "https://financasai.lovable.app";
+    const origin = req.headers.get("origin") || "https://donawilma.lovable.app";
     logStep("Creating checkout session", { origin, priceId });
 
     // Configurar checkout - cupons via allow_promotion_codes (campo nativo do Stripe)
