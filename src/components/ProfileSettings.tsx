@@ -426,10 +426,15 @@ export function ProfileSettings() {
         },
       });
 
+      console.log('[WhatsApp Verify] Raw response:', { data, error, dataType: typeof data });
+      
       if (error) throw error;
 
-      // Edge function returns { valid: true } not { success: true }
-      if (!data?.valid) {
+      // Parse response - supabase.functions.invoke may return string or object
+      const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
+      console.log('[WhatsApp Verify] Parsed data:', parsedData);
+      
+      if (!parsedData?.valid) {
         throw new Error(data?.message || 'Código inválido ou expirado');
       }
 
