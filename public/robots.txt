@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://financasai.lovable.app/sitemap.xml
+Sitemap: https://donawilma.lovable.app/sitemap.xml

@@ -51,8 +51,8 @@ export default function AuthCallback() {
           console.log('No active subscription, redirecting to /choose-plan');
           navigate('/choose-plan', { replace: true });
         } else {
-          console.log('Active subscription found, redirecting to /boas-vindas');
-          navigate('/boas-vindas', { replace: true });
+          console.log('Active subscription found, redirecting to /login');
+          navigate('/login', { replace: true });
         }
       } catch (err) {
         console.error('Auth callback error:', err);
