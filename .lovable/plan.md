@@ -1,72 +1,105 @@
 
 
-# Corrigir Fluxo de Recuperacao de Senha - Race Condition
+# Corrigir Fluxo de Recuperacao de Senha - Causa Raiz Real
 
-## Problema Raiz
+## Diagnostico
 
-O problema e uma **race condition** entre o Supabase client e o componente `ResetPassword.tsx`:
+O problema nao esta no `ResetPassword.tsx`. O componente **nunca e renderizado** porque o redirecionamento do Supabase cai na pagina `/` (Index).
 
-1. Usuario clica no link do email e chega em `/reset-password#access_token=...`
-2. O Supabase client (com `detectSessionInUrl: true`) detecta os tokens do hash, processa-os e **limpa o hash da URL**
-3. O `useEffect` do `ResetPassword.tsx` executa a funcao `init()`:
-   - Chama `getSession()` (async/await) - durante esse await, o evento `PASSWORD_RECOVERY` pode ja ter sido disparado
-   - Tenta ler `window.location.hash` - mas o hash ja foi consumido e limpo pelo Supabase client
-   - So DEPOIS disso registra o listener `onAuthStateChange` - mas o evento ja passou
-4. Nenhuma das 3 estrategias funciona, o timeout de 8s dispara e redireciona para `/`
-
-Em resumo: o listener e registrado **tarde demais**, e o hash ja foi **consumido** pelo Supabase client.
-
-## Solucao
-
-Reordenar a logica do `useEffect` no `ResetPassword.tsx`:
-
-1. **Capturar o hash ANTES de qualquer operacao async** (salvar em variavel local antes que o Supabase client o limpe)
-2. **Registrar o `onAuthStateChange` PRIMEIRO** (sincronamente, antes de qualquer await)
-3. **Depois** verificar `getSession()` como fallback
-4. **Depois** tentar parsear o hash salvo como ultimo recurso
-
-### Codigo revisado (ResetPassword.tsx useEffect):
+### Fluxo atual (com bug):
 
 ```text
-useEffect:
-  1. Capturar window.location.hash em variavel local (SINCRONO)
-  2. Registrar onAuthStateChange listener (SINCRONO)
-     - Se evento PASSWORD_RECOVERY ou SIGNED_IN com sessao -> resolve()
-  3. Verificar getSession() (ASYNC)
-     - Se sessao existe -> resolve()
-  4. Se hash foi capturado, tentar setSession manual (ASYNC)
-     - Se sucesso -> resolve()
-  5. Timeout 10s -> reject()
+1. Usuario clica no link do email
+2. Supabase /verify processa o token (status 303)
+3. Supabase redireciona para Site URL padrao: https://donawilma.lovable.app/#access_token=...&type=recovery
+   (porque /reset-password nao esta na lista de Redirect URLs permitidas)
+4. Index.tsx carrega, detecta usuario logado, mostra dashboard
+5. Formulario de nova senha NUNCA aparece
 ```
 
-Essa ordem garante que:
-- O listener esta ativo ANTES de qualquer processamento async
-- O hash e capturado ANTES do Supabase client limpa-lo
-- Nao importa a ordem dos eventos, pelo menos uma das estrategias vai funcionar
+### Fluxo correto (apos correcao):
 
-## Alteracao tecnica
+```text
+1. Usuario clica no link do email
+2. Supabase /verify processa o token (status 303)
+3. Redireciona para / com tokens no hash
+4. App.tsx detecta evento PASSWORD_RECOVERY globalmente
+5. Redireciona automaticamente para /reset-password
+6. Formulario de nova senha aparece corretamente
+```
 
-### Arquivo: `src/pages/ResetPassword.tsx`
+## Solucao (duas acoes)
 
-Substituir o `useEffect` (linhas 29-104) pela nova logica reordenada.
+### Acao 1: Configuracao no Supabase Dashboard (manual)
 
-A mudanca principal e:
-- Mover `onAuthStateChange` para ser a PRIMEIRA coisa executada
-- Salvar `window.location.hash` em variavel local imediatamente
-- Mover `getSession()` para DEPOIS do listener
-- Aumentar timeout para 10s para dar mais margem
+Adicionar `https://donawilma.lovable.app/reset-password` na lista de Redirect URLs do Supabase:
+- Acessar Authentication > URL Configuration > Redirect URLs
+- Adicionar: `https://donawilma.lovable.app/reset-password`
+- Adicionar tambem: `https://id-preview--bc45aac3-c622-434f-ad58-afc37c18c6c2.lovable.app/reset-password`
 
-## Arquivo alterado
+### Acao 2: Listener global no App.tsx (codigo - defesa em profundidade)
+
+Mesmo que a configuracao do Supabase seja corrigida, adicionar um listener global no `App.tsx` que detecta o evento `PASSWORD_RECOVERY` e redireciona para `/reset-password`. Isso funciona como **fallback** caso os tokens cheguem na pagina errada.
+
+#### Alteracao em `src/App.tsx`:
+
+Criar um componente wrapper `AuthEventHandler` dentro do `BrowserRouter` que:
+
+```text
+1. Registra onAuthStateChange globalmente
+2. Se evento === 'PASSWORD_RECOVERY' -> navigate('/reset-password')
+3. Executa antes de qualquer rota ser processada
+```
+
+Codigo do componente:
+
+```typescript
+const AuthEventHandler = ({ children }) => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Verificar hash fragment ao carregar
+    const hash = window.location.hash;
+    if (hash && hash.includes('type=recovery')) {
+      // Tokens de recovery chegaram na pagina errada, redirecionar
+      navigate('/reset-password' + hash, { replace: true });
+      return;
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          navigate('/reset-password', { replace: true });
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  return children;
+};
+```
+
+Envolver as `<Routes>` com esse componente no `App.tsx`.
+
+### Ajuste no `ResetPassword.tsx`
+
+Nenhuma alteracao necessaria - o componente ja esta correto com a logica de captura de hash e listener. Ele so precisa ser **alcancado** pelo router, que e o que essa correcao garante.
+
+## Arquivos alterados
 
 | Arquivo | Alteracao |
 |---------|-----------|
-| `src/pages/ResetPassword.tsx` | Reordenar useEffect: listener primeiro, getSession depois, hash capturado sincrono |
+| `src/App.tsx` | Adicionar `AuthEventHandler` que detecta `PASSWORD_RECOVERY` e redireciona para `/reset-password` |
+
+## Acao manual do usuario
+
+Adicionar as URLs de redirect no painel do Supabase em Authentication > URL Configuration > Redirect URLs:
+- `https://donawilma.lovable.app/reset-password`
+- `https://id-preview--bc45aac3-c622-434f-ad58-afc37c18c6c2.lovable.app/reset-password`
 
 ## Resultado esperado
 
-1. Usuario clica no link de recuperacao no email
-2. Chega em `/reset-password` com tokens
-3. Listener captura o evento OU getSession encontra a sessao OU hash manual funciona
-4. Formulario de nova senha aparece corretamente
-5. Usuario define nova senha e e redirecionado
+Mesmo que o Supabase redirecione para `/` com tokens de recovery, o `AuthEventHandler` detecta e redireciona automaticamente para `/reset-password`, onde o formulario aparece corretamente.
 
