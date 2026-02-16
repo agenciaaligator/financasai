@@ -2,7 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { useEffect, type ReactNode } from "react";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import ChoosePlan from "./pages/ChoosePlan";
@@ -19,8 +20,33 @@ import AuthCallback from "./pages/AuthCallback";
 import { AdminPanel } from "@/components/admin/AdminPanel";
 import { useUserRole } from "@/hooks/useUserRole";
 import { SignUpForm } from "@/components/auth/SignUpForm";
+import { supabase } from "@/integrations/supabase/client";
 
 const queryClient = new QueryClient();
+
+const AuthEventHandler = ({ children }: { children: ReactNode }) => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && hash.includes('type=recovery')) {
+      navigate('/reset-password' + hash, { replace: true });
+      return;
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          navigate('/reset-password', { replace: true });
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  return <>{children}</>;
+};
 
 const AdminRoute = () => {
   const { isAdmin, loading } = useUserRole();
@@ -41,29 +67,31 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/choose-plan" element={<ChoosePlan />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/boas-vindas" element={<Welcome />} />
-            <Route path="/signup" element={<Navigate to="/choose-plan" replace />} />
-            <Route path="/cadastro" element={
-              <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20 flex items-center justify-center p-4">
-                <SignUpForm />
-              </div>
-            } />
-            <Route path="/admin" element={<AdminRoute />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/set-password" element={<ResetPassword />} />
-            <Route path="/payment-success" element={<PaymentSuccess />} />
-            <Route path="/payment-cancelled" element={<PaymentCancelled />} />
-            <Route path="/subscription-inactive" element={<SubscriptionInactive />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
-            <Route path="/termos" element={<Terms />} />
-            <Route path="/privacidade" element={<Privacy />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AuthEventHandler>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/choose-plan" element={<ChoosePlan />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/boas-vindas" element={<Welcome />} />
+              <Route path="/signup" element={<Navigate to="/choose-plan" replace />} />
+              <Route path="/cadastro" element={
+                <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20 flex items-center justify-center p-4">
+                  <SignUpForm />
+                </div>
+              } />
+              <Route path="/admin" element={<AdminRoute />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/set-password" element={<ResetPassword />} />
+              <Route path="/payment-success" element={<PaymentSuccess />} />
+              <Route path="/payment-cancelled" element={<PaymentCancelled />} />
+              <Route path="/subscription-inactive" element={<SubscriptionInactive />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route path="/termos" element={<Terms />} />
+              <Route path="/privacidade" element={<Privacy />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthEventHandler>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
