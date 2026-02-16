@@ -73,11 +73,35 @@ export default function Register() {
           setLoading(false);
           return;
         }
+        if (signUpError.message.includes("rate limit")) {
+          toast({
+            title: t("register.rateLimitTitle"),
+            description: t("register.rateLimitDesc"),
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
         throw signUpError;
       }
 
       if (!signUpData.user) {
         throw new Error("User creation failed");
+      }
+
+      // Detect fake signup (email confirmation enabled + duplicate email)
+      // Supabase returns 200 with empty identities array
+      if (
+        signUpData.user.identities &&
+        signUpData.user.identities.length === 0
+      ) {
+        toast({
+          title: t("register.emailExists"),
+          description: t("register.emailExistsDesc"),
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
       }
 
       // 2. Update profile: password_set = true

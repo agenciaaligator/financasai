@@ -158,7 +158,9 @@
     "emailExists": "⚠️ Email già registrata",
     "emailExistsDesc": "Esiste già un account con questa email. Accedi per usarlo.",
     "weakPassword": "🔒 Password debole",
-    "weakPasswordDesc": "La password deve avere almeno 6 caratteri."
+    "weakPasswordDesc": "La password deve avere almeno 6 caratteri.",
+    "rateLimitTitle": "⏳ Attendi un momento",
+    "rateLimitDesc": "Troppi tentativi. Attendi qualche minuto e riprova."
   },
   "paymentSuccess": {
     "title": "Pagamento Confermato!",

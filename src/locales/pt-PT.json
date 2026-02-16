@@ -184,7 +184,9 @@
     "emailExists": "⚠️ Email já registado",
     "emailExistsDesc": "Já existe uma conta com este email. Faça login para aceder.",
     "weakPassword": "🔒 Palavra-passe fraca",
-    "weakPasswordDesc": "A palavra-passe deve ter pelo menos 6 caracteres."
+    "weakPasswordDesc": "A palavra-passe deve ter pelo menos 6 caracteres.",
+    "rateLimitTitle": "⏳ Aguarde um momento",
+    "rateLimitDesc": "Demasiadas tentativas. Aguarde alguns minutos e tente novamente."
   },
   "paymentSuccess": {
     "title": "Pagamento Confirmado!",
