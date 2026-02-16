@@ -2627,7 +2627,7 @@ class WhatsAppAgent {
   }
 
   static getHelpMenu(): string {
-    return `🤖 *Assistente Financeiro WhatsApp*\n\n` +
+    return `🤖 *Dona Wilma - WhatsApp*\n\n` +
            `*✨ FALE NATURALMENTE! Eu entendo você:*\n` +
            `• "gastei 150 no mercado ontem"\n` +
            `• "quanto gastei esse mês com comida?"\n` +
@@ -6809,7 +6809,8 @@ serve(async (req) => {
           phone_number: cleanPhone,
           code,
           expires_at: expiresAt.toISOString(),
-          used: false
+          used: false,
+          user_id: body.userId || null
         });
 
       if (dbError) {
