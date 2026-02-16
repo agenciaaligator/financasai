@@ -1,68 +1,78 @@
 
+# Corrigir Envio de Codigo de Validacao WhatsApp
 
-# Substituir "FinançasAI / financasai" por "Dona Wilma / donawilma" + Criar Pagina de Login
+## Problema Diagnosticado
 
-## Problema
-Varias mensagens do sistema ainda usam o nome antigo "FinançasAI" e o dominio "financasai.lovable.app", causando confusao para os usuarios. Alem disso, apos confirmar o email, o usuario e enviado para a home sem uma pagina dedicada de login.
+Existem dois fluxos diferentes e inconsistentes para conectar o WhatsApp:
 
-## 1. Substituicoes de marca (7 arquivos)
+1. **Welcome.tsx (onboarding)**: usa `action: 'send-validation-code'` que envia o codigo via mensagem do WhatsApp e depois valida com `action: 'validate-code'` -- funciona parcialmente mas tem bug no formato do numero.
+2. **ProfileSettings.tsx (perfil)**: usa `action: 'auth'` que gera o codigo e **retorna na resposta JSON** sem enviar pelo WhatsApp. O frontend nem sequer mostra esse codigo ao usuario, entao ele nunca recebe nada.
 
-### supabase/functions/whatsapp-webhook/index.ts (linhas 911-917)
-- "FinançasAI" -> "Dona Wilma"
-- "financasai.lovable.app" -> "donawilma.lovable.app"
+Alem disso, o bloco `send-validation-code` envia o numero COM o prefixo `+` para a API do WhatsApp, que exige o numero SEM o `+`. A funcao `sendWhatsAppMessage` (usada em outros pontos) ja faz essa limpeza, mas o bloco de `send-validation-code` chama a API diretamente sem remover o `+`.
 
-### supabase/functions/whatsapp-agent/index.ts (multiplos locais)
-- Linha 6995: "Assistente Financeiro" -> "Dona Wilma"
-- Linha 6998: "financasai.lovable.app" -> "donawilma.lovable.app"
-- Linha 7030: "financasai.lovable.app/boas-vindas" -> "donawilma.lovable.app/boas-vindas"
-- Linha 7069: "FinançasAI" -> "Dona Wilma"
-- Linha 7119: "financasai.lovable.app" -> "donawilma.lovable.app"
+A mensagem do codigo tambem diz "Aligator" em vez de "Dona Wilma".
 
-### src/components/admin/AdminPanel.tsx
-- Linha 15: "Finanças AI" -> "Dona Wilma"
-- Linha 27: "Finanças AI" -> "Dona Wilma"
+## Solucao
 
-### index.html (SEO/metatags)
-- Linha 10: canonical URL -> donawilma.lovable.app
-- Linhas 15, 20, 26: og:url, og:image, twitter:image -> donawilma.lovable.app
-- Linha 35: JSON-LD url -> donawilma.lovable.app
+Unificar ambos os fluxos para usar `send-validation-code` + `validate-code`, e corrigir o bug do formato do numero.
 
-### public/sitemap.xml
-- Todas as URLs: financasai -> donawilma
+### 1. Corrigir `send-validation-code` no whatsapp-agent (index.ts)
 
-### public/robots.txt
-- Sitemap URL: financasai -> donawilma
+- **Linha 6784**: Remover o `+` antes de enviar para a API do WhatsApp:
+  ```
+  to: cleanPhone.startsWith('+') ? cleanPhone.substring(1) : cleanPhone
+  ```
+- **Linha 6787**: Trocar "Aligator" por "Dona Wilma":
+  ```
+  body: `Codigo de Verificacao Dona Wilma\n\nSeu codigo: *${code}*\n\nValido por 30 minutos.\n\nNao compartilhe este codigo.`
+  ```
 
-### CONFIGURACAO_SUPABASE.md
-- Linha 65: financasai -> donawilma
+### 2. Atualizar ProfileSettings.tsx (handleRequestCode)
 
-## 2. Criar pagina de Login dedicada (/login)
+Trocar `action: 'auth'` por `action: 'send-validation-code'` e usar `supabase.functions.invoke` em vez de fetch direto:
 
-Atualmente, o login e um modal na landing page. Para melhorar a experiencia quando o usuario clica no link de confirmacao de email, criaremos uma rota `/login` que mostra o formulario de login diretamente.
+```typescript
+const { data, error } = await supabase.functions.invoke('whatsapp-agent', {
+  body: {
+    action: 'send-validation-code',
+    phone_number: phoneNumber,
+    userId: user?.id,
+  },
+});
+```
 
-### Novo arquivo: src/pages/Login.tsx
-- Pagina simples com o componente `LoginForm` centralizado
-- Logo "Dona Wilma" no topo
-- Link "Criar conta" para /choose-plan
+### 3. Atualizar ProfileSettings.tsx (handleVerifyCode)
 
-### Alteracao em src/App.tsx
-- Adicionar rota: `<Route path="/login" element={<Login />} />`
+Trocar o envio de mensagem `codigo XXXXXX` por `action: 'validate-code'`:
 
-### Alteracao em src/pages/AuthCallback.tsx
-- Quando usuario confirma email e nao tem assinatura: redirecionar para `/choose-plan`
-- Quando tem assinatura: redirecionar para `/login` (para que faca login e entre no dashboard)
+```typescript
+const { data, error } = await supabase.functions.invoke('whatsapp-agent', {
+  body: {
+    action: 'validate-code',
+    phone_number: phoneNumber,
+    code: authCode,
+    userId: user?.id,
+  },
+});
+```
+
+Apos validacao bem-sucedida, criar/atualizar a sessao do WhatsApp (como ja faz o Welcome.tsx).
+
+### 4. Corrigir o send-validation-code.ts (arquivo separado)
+
+Mesma correcao do `+` no numero e da marca "Aligator" para "Dona Wilma". Este arquivo parece nao ser usado (o codigo duplicado esta no index.ts), mas por consistencia sera atualizado.
 
 ## Resumo de arquivos
 
-| Arquivo | Tipo de alteracao |
-|---------|------------------|
-| supabase/functions/whatsapp-webhook/index.ts | Substituicao de marca |
-| supabase/functions/whatsapp-agent/index.ts | Substituicao de marca (5 locais) |
-| src/components/admin/AdminPanel.tsx | Substituicao de marca |
-| index.html | Substituicao de URLs |
-| public/sitemap.xml | Substituicao de URLs |
-| public/robots.txt | Substituicao de URL |
-| CONFIGURACAO_SUPABASE.md | Substituicao de URL |
-| src/pages/Login.tsx | **Novo arquivo** - pagina de login dedicada |
-| src/App.tsx | Adicionar rota /login |
+| Arquivo | Alteracao |
+|---------|-----------|
+| supabase/functions/whatsapp-agent/index.ts | Remover `+` do numero na API, trocar "Aligator" por "Dona Wilma" |
+| supabase/functions/whatsapp-agent/send-validation-code.ts | Mesmas correcoes acima |
+| src/components/ProfileSettings.tsx | Usar `send-validation-code` + `validate-code` em vez de `auth` |
 
+## Resultado Esperado
+
+- Usuario solicita codigo no Perfil ou Onboarding
+- Codigo de 6 digitos chega via mensagem no WhatsApp (formatado como "Dona Wilma")
+- Usuario digita o codigo na interface
+- Sessao do WhatsApp e criada com sucesso
