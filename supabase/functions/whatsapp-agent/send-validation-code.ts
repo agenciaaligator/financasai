@@ -22,10 +22,10 @@ export async function sendValidationCode(phoneNumber: string, supabase: any, deb
       },
       body: JSON.stringify({
         messaging_product: 'whatsapp',
-        to: phoneNumber,
+        to: phoneNumber.startsWith('+') ? phoneNumber.substring(1) : phoneNumber,
         type: 'text',
         text: {
-          body: `🔐 *Código de Verificação Aligator*\n\nSeu código: *${code}*\n\nVálido por 30 minutos.\n\n_Não compartilhe este código._`
+          body: `🔐 *Código de Verificação Dona Wilma*\n\nSeu código: *${code}*\n\nVálido por 30 minutos.\n\n_Não compartilhe este código._`
         }
       })
     });
