@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { CheckCircle, Loader2, ArrowRight, LogIn, AlertCircle, Mail } from 'lucide-react';
+import { CheckCircle, Loader2, ArrowRight, AlertCircle } from 'lucide-react';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from 'react-i18next';
@@ -25,10 +25,27 @@ export default function PaymentSuccess() {
     checkAndUpdate();
   }, [refreshStatus, session]);
 
-  const alreadyActive = session && !checking && status?.subscribed;
+  // Still checking
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-background">
+        <Card className="max-w-md w-full p-8 text-center space-y-6 shadow-xl">
+          <div className="flex justify-center">
+            <div className="rounded-full bg-green-100 dark:bg-green-900/30 p-4">
+              <Loader2 className="h-16 w-16 text-green-600 dark:text-green-400 animate-spin" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold text-foreground">{t('paymentSuccess.title')}</h1>
+            <p className="text-muted-foreground">{t('paymentSuccess.processing')}</p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
-  // Logged-in user with ALREADY active subscription
-  if (session && !checking && alreadyActive) {
+  // Not logged in - should not happen in new flow, redirect to login
+  if (!session) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950 dark:to-background">
         <Card className="max-w-md w-full p-8 text-center space-y-6 shadow-xl">
@@ -38,11 +55,10 @@ export default function PaymentSuccess() {
             </div>
           </div>
           <div className="space-y-2">
-            <h1 className="text-3xl font-bold text-foreground">{t('paymentSuccess.alreadyActiveTitle')}</h1>
-            <p className="text-muted-foreground">{t('paymentSuccess.alreadyActiveSubtitle')}</p>
+            <h1 className="text-3xl font-bold text-foreground">{t('paymentSuccess.title')}</h1>
+            <p className="text-muted-foreground">{t('paymentSuccess.notLoggedIn')}</p>
           </div>
           <Button onClick={() => navigate('/')} className="w-full group" size="lg">
-            <LogIn className="mr-2 h-4 w-4" />
             {t('paymentSuccess.goToLogin')}
             <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Button>
@@ -51,76 +67,26 @@ export default function PaymentSuccess() {
     );
   }
 
-  // Logged-in user with new subscription: go to welcome
-  if (session && !checking) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-background">
-        <Card className="max-w-md w-full p-8 text-center space-y-6 shadow-xl">
-          <div className="flex justify-center">
-            <div className="rounded-full bg-green-100 dark:bg-green-900/30 p-4">
-              <CheckCircle className="h-16 w-16 text-green-600 dark:text-green-400" />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-3xl font-bold text-foreground">{t('paymentSuccess.title')}</h1>
-            <p className="text-muted-foreground">{t('paymentSuccess.subtitleLoggedIn')}</p>
-          </div>
-          <Button onClick={() => navigate('/boas-vindas')} className="w-full group" size="lg">
-            {t('paymentSuccess.configureWhatsApp')}
-            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-          </Button>
-          <Button onClick={() => navigate('/')} variant="outline" className="w-full">
-            {t('paymentSuccess.skipToDashboard')}
-          </Button>
-        </Card>
-      </div>
-    );
-  }
-
-  // New user (no session): show email sent message
+  // Logged in + subscription active -> go to welcome/whatsapp setup
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-background">
       <Card className="max-w-md w-full p-8 text-center space-y-6 shadow-xl">
         <div className="flex justify-center">
           <div className="rounded-full bg-green-100 dark:bg-green-900/30 p-4">
-            <Mail className="h-16 w-16 text-green-600 dark:text-green-400" />
+            <CheckCircle className="h-16 w-16 text-green-600 dark:text-green-400" />
           </div>
         </div>
-
         <div className="space-y-2">
           <h1 className="text-3xl font-bold text-foreground">{t('paymentSuccess.title')}</h1>
-          <p className="text-muted-foreground">{t('paymentSuccess.emailSentMessage')}</p>
+          <p className="text-muted-foreground">{t('paymentSuccess.subtitleLoggedIn')}</p>
         </div>
-
-        {checking ? (
-          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground py-4">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            {t('paymentSuccess.processing')}
-          </div>
-        ) : (
-          <div className="space-y-4 pt-2">
-            <div className="bg-muted/50 rounded-lg p-4 text-left space-y-2">
-              <p className="text-sm font-medium text-foreground">{t('paymentSuccess.nextSteps')}</p>
-              <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                <li>{t('paymentSuccess.step1CheckEmail')}</li>
-                <li>{t('paymentSuccess.step2SetPassword')}</li>
-                <li>{t('paymentSuccess.step3ConnectWhatsApp')}</li>
-              </ol>
-            </div>
-
-            <Button onClick={() => navigate('/')} className="w-full group" size="lg">
-              <LogIn className="mr-2 h-4 w-4" />
-              {t('paymentSuccess.goToLogin')}
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Button>
-
-            <div className="pt-4 border-t">
-              <p className="text-xs text-muted-foreground">
-                {t('paymentSuccess.checkSpam')}
-              </p>
-            </div>
-          </div>
-        )}
+        <Button onClick={() => navigate('/boas-vindas')} className="w-full group" size="lg">
+          {t('paymentSuccess.configureWhatsApp')}
+          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+        </Button>
+        <Button onClick={() => navigate('/')} variant="outline" className="w-full">
+          {t('paymentSuccess.skipToDashboard')}
+        </Button>
       </Card>
     </div>
   );

@@ -28,11 +28,9 @@ serve(async (req) => {
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
-    logStep("Stripe key verified");
 
-    // Extrair priceId do body - cupons são gerenciados diretamente pelo Stripe
-    const { priceId, email: providedEmail, locale } = await req.json();
-    logStep("Received request", { priceId, providedEmail: !!providedEmail, locale });
+    const { priceId, locale } = await req.json();
+    logStep("Received request", { priceId, locale });
 
     const getStripeLocale = (loc?: string): string | undefined => {
       if (!loc) return undefined;
@@ -42,40 +40,38 @@ serve(async (req) => {
 
     if (!priceId) throw new Error("priceId is required");
 
-    // Tentar obter usuário autenticado (opcional - suporta checkout sem conta)
-    let userEmail = providedEmail;
-    let userId: string | undefined;
-    
+    // Get authenticated user (required in new flow)
     const authHeader = req.headers.get("Authorization");
-    if (authHeader) {
-      const token = authHeader.replace("Bearer ", "");
-      const { data: userData } = await supabaseClient.auth.getUser(token);
-      if (userData?.user?.email) {
-        userEmail = userData.user.email;
-        userId = userData.user.id;
-        logStep("User authenticated", { userId, email: userEmail });
-      }
+    if (!authHeader) throw new Error("Authentication required");
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: userData } = await supabaseClient.auth.getUser(token);
+    
+    if (!userData?.user?.email) {
+      throw new Error("User not authenticated or email not available");
     }
+
+    const userEmail = userData.user.email;
+    const userId = userData.user.id;
+    logStep("User authenticated", { userId, email: userEmail });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     
-    // Verificar se cliente já existe no Stripe
+    // Check if customer already exists in Stripe
     let customerId: string | undefined;
-    if (userEmail) {
-      const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
-      if (customers.data.length > 0) {
-        customerId = customers.data[0].id;
-        logStep("Found existing Stripe customer", { customerId });
-      }
+    const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
+    if (customers.data.length > 0) {
+      customerId = customers.data[0].id;
+      logStep("Found existing Stripe customer", { customerId });
     }
 
     const origin = req.headers.get("origin") || "https://donawilma.lovable.app";
     logStep("Creating checkout session", { origin, priceId });
 
-    // Configurar checkout - cupons via allow_promotion_codes (campo nativo do Stripe)
     const checkoutConfig: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       customer_email: customerId ? undefined : userEmail,
+      client_reference_id: userId,
       line_items: [
         {
           price: priceId,

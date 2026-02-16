@@ -455,22 +455,35 @@
       }
     }
   },
+  "register": {
+    "title": "Crea tu cuenta",
+    "subtitle": "Completa tus datos para comenzar",
+    "name": "Nombre completo",
+    "namePlaceholder": "Ingresa tu nombre",
+    "email": "Correo electrónico",
+    "emailPlaceholder": "tu@email.com",
+    "password": "Contraseña",
+    "passwordPlaceholder": "Mínimo 6 caracteres",
+    "whatsapp": "WhatsApp",
+    "optional": "opcional",
+    "createAccount": "Crear cuenta y continuar",
+    "creating": "Creando cuenta...",
+    "alreadyHaveAccount": "Ya tengo cuenta",
+    "emailExists": "⚠️ Email ya registrado",
+    "emailExistsDesc": "Ya existe una cuenta con este email. Inicia sesión para acceder.",
+    "weakPassword": "🔒 Contraseña débil",
+    "weakPasswordDesc": "La contraseña debe tener al menos 6 caracteres."
+  },
   "paymentSuccess": {
     "title": "¡Pago Confirmado!",
-    "subtitle": "Te enviamos un email para definir tu contraseña y acceder a tu cuenta.",
     "subtitleLoggedIn": "Tu suscripción fue activada. ¿Configuramos tu WhatsApp?",
     "processing": "Procesando tu pago...",
     "goToLogin": "Ir al Login",
     "configureWhatsApp": "Configurar WhatsApp",
     "skipToDashboard": "Saltar al Dashboard",
-    "checkSpam": "Revisa tu bandeja de entrada y spam. El email puede tardar unos minutos.",
+    "notLoggedIn": "Inicia sesión para acceder a tu cuenta.",
     "alreadyActiveTitle": "Suscripción ya activa",
-    "alreadyActiveSubtitle": "Este email ya tiene una suscripción activa. Inicia sesión para acceder a tu cuenta.",
-    "emailSentMessage": "Te enviamos un email para crear tu contraseña y acceder al sistema. Revisa tu bandeja de entrada.",
-    "nextSteps": "Próximos pasos:",
-    "step1CheckEmail": "Revisa tu email y haz clic en el enlace recibido",
-    "step2SetPassword": "Define tu contraseña de acceso",
-    "step3ConnectWhatsApp": "Conecta tu WhatsApp para empezar"
+    "alreadyActiveSubtitle": "Este email ya tiene una suscripción activa. Inicia sesión para acceder a tu cuenta."
   },
   "resetPassword": {
     "title": "Define tu Contraseña",

@@ -167,22 +167,35 @@
       }
     }
   },
+  "register": {
+    "title": "Crie a sua conta",
+    "subtitle": "Preencha os seus dados para começar",
+    "name": "Nome completo",
+    "namePlaceholder": "Insira o seu nome",
+    "email": "Email",
+    "emailPlaceholder": "seu@email.com",
+    "password": "Palavra-passe",
+    "passwordPlaceholder": "Mínimo 6 caracteres",
+    "whatsapp": "WhatsApp",
+    "optional": "opcional",
+    "createAccount": "Criar conta e continuar",
+    "creating": "A criar conta...",
+    "alreadyHaveAccount": "Já tenho conta",
+    "emailExists": "⚠️ Email já registado",
+    "emailExistsDesc": "Já existe uma conta com este email. Faça login para aceder.",
+    "weakPassword": "🔒 Palavra-passe fraca",
+    "weakPasswordDesc": "A palavra-passe deve ter pelo menos 6 caracteres."
+  },
   "paymentSuccess": {
     "title": "Pagamento Confirmado!",
-    "subtitle": "Enviámos um email para definir a sua palavra-passe e aceder à sua conta.",
     "subtitleLoggedIn": "A sua subscrição foi ativada. Vamos configurar o seu WhatsApp?",
     "processing": "A processar o seu pagamento...",
     "goToLogin": "Ir para o Login",
     "configureWhatsApp": "Configurar WhatsApp",
     "skipToDashboard": "Saltar para o Dashboard",
-    "checkSpam": "Verifique a sua caixa de entrada e spam. O email pode demorar alguns minutos.",
+    "notLoggedIn": "Faça login para aceder à sua conta.",
     "alreadyActiveTitle": "Subscrição já ativa",
-    "alreadyActiveSubtitle": "Este email já possui uma subscrição ativa. Faça login para aceder à sua conta.",
-    "emailSentMessage": "Enviámos um email para criar a sua palavra-passe e aceder ao sistema. Verifique a sua caixa de entrada.",
-    "nextSteps": "Próximos passos:",
-    "step1CheckEmail": "Verifique o seu email e clique no link recebido",
-    "step2SetPassword": "Defina a sua palavra-passe de acesso",
-    "step3ConnectWhatsApp": "Conecte o seu WhatsApp para começar"
+    "alreadyActiveSubtitle": "Este email já possui uma subscrição ativa. Faça login para aceder à sua conta."
   },
   "resetPassword": {
     "title": "Defina a sua Palavra-passe",
