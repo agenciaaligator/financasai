@@ -1,46 +1,129 @@
 
 
-# Mensagem de Boas-Vindas Automatica apos Validacao do WhatsApp
+# Corrigir Fluxo de Recuperacao de Senha
 
-## O que muda
+## Problema Raiz
 
-Apos o usuario validar o codigo com sucesso e a sessao ser criada, o sistema enviara automaticamente uma mensagem de boas-vindas pelo WhatsApp com:
-- Confirmacao de que a conta foi conectada
-- Instrucoes basicas de uso
-- Convite para enviar "ajuda" para ver todos os comandos
+O componente `ResetPassword.tsx` usa `useSearchParams()` para buscar `access_token` e `refresh_token`. Porem, o Supabase envia esses tokens no **hash fragment** da URL (`#access_token=...`), nao nos query params (`?access_token=...`).
+
+Resultado:
+1. `searchParams.get('access_token')` retorna `null`
+2. `getSession()` pode retornar `null` por race condition (o Supabase client ainda nao processou o hash)
+3. O codigo cai no `else` (linha 71) e redireciona para `/` com toast "Acesso negado"
+
+## Solucao
+
+Reescrever o `useEffect` de inicializacao do `ResetPassword.tsx` para usar `onAuthStateChange` em vez de depender de query params. Essa abordagem:
+
+- Escuta o evento `PASSWORD_RECOVERY` que o Supabase emite automaticamente ao processar os tokens do hash
+- Elimina a race condition
+- Funciona tanto com tokens no hash quanto no query param
+- Tambem aceita sessao ja existente (como ja faz hoje para `/set-password`)
+
+### Logica revisada:
+
+```text
+1. Verificar se ja existe sessao ativa → sessionEstablished = true
+2. Se nao, registrar listener onAuthStateChange:
+   - Evento PASSWORD_RECOVERY → sessionEstablished = true
+   - Evento SIGNED_IN → sessionEstablished = true
+3. Timeout de seguranca (5s): se nenhum evento chegar, mostrar erro e redirecionar
+4. Tambem tentar parsear hash fragment manualmente como fallback
+```
 
 ## Alteracao tecnica
 
-### Arquivo: `supabase/functions/whatsapp-agent/index.ts`
+### Arquivo: `src/pages/ResetPassword.tsx`
 
-No bloco `validate-code`, logo apos a sessao ser criada com sucesso (linha ~6933), adicionar o envio automatico de uma mensagem de boas-vindas usando a funcao `sendWhatsAppMessage` que ja existe no codigo:
+Substituir o `useEffect` atual (linhas 30-94) por:
 
 ```typescript
-// Apos: console.log('[VALIDATE-CODE] WhatsApp session created successfully');
+useEffect(() => {
+  let timeout: NodeJS.Timeout;
+  let resolved = false;
 
-// Enviar mensagem de boas-vindas
-const welcomePhone = cleanPhone.startsWith('+') ? cleanPhone.substring(1) : cleanPhone;
-await sendWhatsAppMessage(welcomePhone,
-  `Ola! Sou a *Dona Wilma*, sua assistente financeira pelo WhatsApp.\n\n` +
-  `Sua conta foi conectada com sucesso!\n\n` +
-  `*Como usar:*\n` +
-  `- Envie "gasto 50 mercado" para registrar uma despesa\n` +
-  `- Envie "receita 1000 salario" para registrar uma receita\n` +
-  `- Envie uma foto de nota fiscal para registro automatico\n` +
-  `- Envie "saldo" para ver seu saldo atual\n\n` +
-  `Digite *ajuda* para ver todos os comandos disponiveis.`
-);
+  const resolve = () => {
+    if (resolved) return;
+    resolved = true;
+    clearTimeout(timeout);
+    setSessionEstablished(true);
+    setIsInitializing(false);
+  };
+
+  const reject = () => {
+    if (resolved) return;
+    resolved = true;
+    clearTimeout(timeout);
+    toast({
+      title: "Link invalido ou expirado",
+      description: "Solicite um novo link de recuperacao.",
+      variant: "destructive",
+    });
+    setIsInitializing(false);
+    navigate('/');
+  };
+
+  const init = async () => {
+    // 1. Verificar sessao existente (para /set-password)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      resolve();
+      return;
+    }
+
+    // 2. Tentar parsear hash fragment manualmente
+    const hash = window.location.hash;
+    if (hash) {
+      const params = new URLSearchParams(hash.substring(1));
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+      if (accessToken && refreshToken) {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (!error) {
+          resolve();
+          return;
+        }
+      }
+    }
+
+    // 3. Escutar onAuthStateChange como fallback
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
+          if (session) resolve();
+        }
+      }
+    );
+
+    // 4. Timeout de seguranca
+    timeout = setTimeout(() => {
+      subscription.unsubscribe();
+      reject();
+    }, 8000);
+  };
+
+  init();
+
+  return () => clearTimeout(timeout);
+}, [navigate, toast]);
 ```
 
-O envio sera feito dentro de um try/catch para nao bloquear a resposta de validacao caso a mensagem falhe.
+### Ponto importante
 
-### Deploy
+Para `/set-password`, o fluxo continua funcionando: o usuario ja possui sessao ativa, entao o passo 1 resolve imediatamente.
 
-Re-deploy da edge function `whatsapp-agent` para aplicar a mudanca.
+## Arquivo alterado
+
+| Arquivo | Alteracao |
+|---------|-----------|
+| `src/pages/ResetPassword.tsx` | Reescrever logica de inicializacao para parsear hash fragment e escutar `onAuthStateChange` |
 
 ## Resultado esperado
 
-1. Usuario valida o codigo no perfil
-2. Status muda para "Conectado" na interface
-3. Usuario recebe imediatamente uma mensagem no WhatsApp com boas-vindas e instrucoes
-4. Usuario ja sabe exatamente o que fazer a seguir
+1. Usuario clica "Esqueci minha senha" → recebe email
+2. Clica no link do email → redirecionado para `/reset-password#access_token=...`
+3. Componente parseia hash, estabelece sessao, mostra formulario de nova senha
+4. Usuario define nova senha → redirecionado para `/boas-vindas`
