@@ -35,16 +35,19 @@ async function handleUserAndSubscription(
   }
 
   // ========== USER LOOKUP (getUserByEmail - not listUsers) ==========
+  // Normalize email to prevent duplicates
+  const email = customerEmail.toLowerCase().trim();
+  
   let userId: string;
   let isNewUser = false;
 
-  const { data: existingUserData, error: lookupError } = await supabaseAdmin.auth.admin.getUserByEmail(customerEmail);
+  const { data: existingUserData, error: lookupError } = await supabaseAdmin.auth.admin.getUserByEmail(email);
 
   if (existingUserData?.user) {
     const existingUser = existingUserData.user;
     userId = existingUser.id;
     isNewUser = false;
-    logStep("User already exists", { userId, email: customerEmail });
+    logStep("USER_ALREADY_EXISTS", { userId, email });
 
     // Check existing subscription
     const { data: userSub } = await supabaseAdmin
@@ -76,9 +79,9 @@ async function handleUserAndSubscription(
     const siteUrl = Deno.env.get("SITE_URL") || SITE_URL;
     
     const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-      customerEmail,
+      email,
       {
-        redirectTo: `${siteUrl}/set-password`,
+        redirectTo: `${siteUrl}/auth/callback`,
         data: {
           created_via: source,
           stripe_customer_id: stripeCustomerId,
@@ -93,7 +96,7 @@ async function handleUserAndSubscription(
 
     userId = inviteData.user.id;
     isNewUser = true;
-    logStep("New user invited via inviteUserByEmail", { userId, email: customerEmail });
+    logStep("New user invited via inviteUserByEmail", { userId, email });
   }
 
   // ========== SUBSCRIPTION SETUP ==========
