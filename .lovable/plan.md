@@ -1,86 +1,74 @@
 
+# Correcao: Loop de Redirecionamento /set-password + UI do Telefone no /register
 
-# Correcao Definitiva: Bloqueio de Duplicidade + URLs Corretas
+## Problemas Identificados
 
-## Resumo
+### Problema 1: Loop infinito no /set-password
+**Causa raiz**: O perfil do admin (contato@aligator.com.br) tem `password_set = false` no banco, mesmo tendo senha definida. O fluxo e:
+1. Usuario faz login com email/senha
+2. `ProtectedDashboard` checa `useSubscriptionGuard` que ve `password_set = false`
+3. Redireciona para `/set-password`
+4. "Voltar ao Login" chama `navigate('/')` mas o usuario continua logado
+5. Volta ao passo 2 = loop infinito
 
-Tres correcoes criticas: (1) normalizar email e adicionar UNIQUE constraints para impedir duplicatas, (2) corrigir fallback URL no create-checkout, (3) corrigir redirectTo no invite para usar /auth/callback.
+**Solucao (3 partes)**:
 
----
+A) **Corrigir LoginForm**: Quando o usuario faz login com sucesso via senha, atualizar `password_set = true` automaticamente no profile. Se o usuario consegue fazer login com senha, ele ja TEM senha.
 
-## 1. Migracao SQL: UNIQUE constraints
+B) **Corrigir "Voltar ao Login" no ResetPassword**: Fazer logout (`supabase.auth.signOut()`) antes de navegar para `/`, quebrando o loop.
 
-Adicionar constraints para garantir integridade no banco:
+C) **Corrigir dado no banco**: Atualizar o profile existente do admin para `password_set = true` via migracao.
 
-```sql
--- Garantir unicidade de user_id em profiles
-ALTER TABLE public.profiles 
-  ADD CONSTRAINT profiles_user_id_unique UNIQUE (user_id);
+### Problema 2: Dropdown do telefone com overlay gigante
+**Causa raiz**: O componente `PhoneInput` do `react-phone-number-input` usa um `<select>` nativo que, com os estilos atuais (opacity: 0, position: absolute), pode aparecer como um overlay branco grande em certos navegadores/temas escuros.
 
--- Garantir unicidade de user_id em user_subscriptions  
-ALTER TABLE public.user_subscriptions 
-  ADD CONSTRAINT user_subscriptions_user_id_unique UNIQUE (user_id);
-```
-
-Isso impede fisicamente que o webhook crie registros duplicados, mesmo em cenarios de race condition.
-
----
-
-## 2. stripe-webhook: Normalizar email
-
-Adicionar normalizacao no inicio da funcao `handleUserAndSubscription`:
-
-```typescript
-const email = customerEmail.toLowerCase().trim();
-```
-
-E usar `email` (normalizado) em todas as chamadas subsequentes (getUserByEmail, inviteUserByEmail). Atualmente o webhook ja usa getUserByEmail corretamente, mas sem normalizacao.
-
-Tambem alterar o `redirectTo` de `/set-password` para `/auth/callback` para que o Supabase envie o token de sessao para a rota de callback que detecta e redireciona corretamente.
+**Solucao**: Ajustar o CSS em `phone-input.css` para garantir que o `<select>` nativo tenha aparencia controlada e nao crie overlay visual.
 
 ---
 
-## 3. create-checkout: Corrigir fallback URL
-
-Linha 72 atual:
-```typescript
-const origin = req.headers.get("origin") || "https://financasai.lovable.app";
-```
-
-Corrigir para:
-```typescript
-const origin = req.headers.get("origin") || "https://donawilma.lovable.app";
-```
-
-O dominio antigo `financasai.lovable.app` esta incorreto.
-
----
-
-## 4. Configuracao manual do Supabase Dashboard
-
-Acoes que voce precisa fazer manualmente:
-
-- **Authentication - URL Configuration - Site URL**: `https://donawilma.lovable.app`
-- **Redirect URLs** (adicionar todas):
-  - `https://donawilma.lovable.app/**`
-  - `https://donawilma.lovable.app/auth/callback`
-  - `https://donawilma.lovable.app/set-password`
-
----
-
-## Arquivos Modificados
+## Arquivos a Modificar
 
 | Arquivo | Mudanca |
 |---------|---------|
-| Migracao SQL | UNIQUE constraints em `profiles.user_id` e `user_subscriptions.user_id` |
-| `supabase/functions/stripe-webhook/index.ts` | Normalizar email + redirectTo para `/auth/callback` |
-| `supabase/functions/create-checkout/index.ts` | Corrigir fallback URL para `donawilma.lovable.app` |
+| `src/components/auth/LoginForm.tsx` | Apos login com sucesso, atualizar `password_set = true` no profile |
+| `src/pages/ResetPassword.tsx` | "Voltar ao Login" faz signOut antes de navegar |
+| `src/components/ui/phone-input.css` | Corrigir z-index e aparencia do select nativo |
+| Migracao SQL | Atualizar `password_set = true` para o admin existente |
 
-## O que ja esta correto e NAO muda
+---
 
-- `AuthCallback.tsx`: ja detecta sessao e redireciona baseado em `password_set`
-- `PaymentSuccess.tsx`: ja mostra mensagens corretas para novo usuario vs existente
-- `ResetPassword.tsx`: ja atualiza `password_set = true`
-- `useSubscriptionGuard.ts`: ja protege rotas
-- Supabase client: ja tem `detectSessionInUrl: true`
+## Detalhes Tecnicos
 
+### LoginForm.tsx - Auto-correcao do password_set
+```typescript
+// Apos login com sucesso:
+if (result && !result.error) {
+  // Se logou com senha, garantir que password_set = true
+  const { data: { user: loggedUser } } = await supabase.auth.getUser();
+  if (loggedUser) {
+    await supabase.from('profiles').update({ password_set: true }).eq('user_id', loggedUser.id);
+  }
+}
+```
+
+### ResetPassword.tsx - Botao "Voltar ao Login"
+```typescript
+<Button
+  type="button"
+  variant="ghost"
+  onClick={async () => {
+    await supabase.auth.signOut();
+    navigate('/');
+  }}
+>
+```
+
+### phone-input.css - Correcao do overlay
+Adicionar regras para limitar o tamanho visual do select e garantir que nao crie bloco branco visivel.
+
+### Migracao SQL
+```sql
+UPDATE public.profiles 
+SET password_set = true 
+WHERE user_id = '2efec051-aa64-4f31-8c1b-c22ac51d7d7b';
+```
