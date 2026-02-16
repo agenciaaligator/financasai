@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Check, Loader2, CreditCard, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +15,7 @@ import {
 export function PlansSection() {
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const [loadingCycle, setLoadingCycle] = useState<'monthly' | 'yearly' | null>(null);
 
   const locale = i18n.language;
@@ -24,6 +26,15 @@ export function PlansSection() {
   const handleCheckout = async (cycle: 'monthly' | 'yearly') => {
     setLoadingCycle(cycle);
     try {
+      // Check if user is logged in
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        // Not logged in — redirect to register with plan info
+        navigate(`/register?plan=${cycle}`);
+        return;
+      }
+
       toast({
         title: t('landing.plans.redirectingToast'),
         description: t('landing.plans.redirectingToastDesc'),
