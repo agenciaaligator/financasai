@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.5";
 const WHATSAPP_API_URL = `https://graph.facebook.com/v17.0/${Deno.env.get('WHATSAPP_PHONE_NUMBER_ID')}/messages`;
 const WHATSAPP_ACCESS_TOKEN = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
 
-export async function sendValidationCode(phoneNumber: string, supabase: any, debug = false) {
+export async function sendValidationCode(phoneNumber: string, supabase: any, debug = false, userId?: string) {
   try {
     // Gerar código de 6 dígitos
     const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -50,7 +50,8 @@ export async function sendValidationCode(phoneNumber: string, supabase: any, deb
         phone_number: phoneNumber,
         code,
         expires_at: expiresAt.toISOString(),
-        used: false
+        used: false,
+        user_id: userId || null
       });
 
     if (dbError) {
