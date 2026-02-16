@@ -20,9 +20,18 @@ export default function SubscriptionInactive() {
     try {
       const { data, error } = await supabase.functions.invoke('customer-portal');
       if (error) throw error;
-      if (data?.url) window.open(data.url, '_blank');
+      if (data?.url) {
+        window.open(data.url, '_blank');
+        return;
+      }
+      // If no Stripe customer exists, fallback to checkout
+      if (data?.error?.includes('No Stripe customer')) {
+        navigate('/choose-plan', { replace: true });
+        return;
+      }
     } catch {
-      toast({ title: t('common.error'), description: t('common.genericError'), variant: "destructive" });
+      // Fallback: redirect to plan selection for fresh checkout
+      navigate('/choose-plan', { replace: true });
     } finally {
       setLoading(false);
     }
