@@ -1,32 +1,68 @@
 
 
-# Controlar Email de Confirmacao e Fluxo de Registro
+# Substituir "FinançasAI / financasai" por "Dona Wilma / donawilma" + Criar Pagina de Login
 
-## Problema Atual
-O `supabase.auth.signUp()` dispara o email de confirmacao imediatamente, antes do usuario completar o checkout no Stripe. Isso causa confusao porque o usuario recebe um email "ative sua conta" enquanto ainda esta na tela de pagamento.
+## Problema
+Varias mensagens do sistema ainda usam o nome antigo "FinançasAI" e o dominio "financasai.lovable.app", causando confusao para os usuarios. Alem disso, apos confirmar o email, o usuario e enviado para a home sem uma pagina dedicada de login.
 
-## Sobre o Erro do Cupom
-O erro "Ocorreu um erro. Tente novamente." ao aplicar o cupom `ALIGATO26` e um problema no **Stripe Dashboard**, nao no codigo. Verifique:
-- Se o promotion code `ALIGATO26` existe e esta ativo no Stripe Dashboard (Coupons > Promotion Codes)
-- Se a moeda do cupom corresponde a moeda do preco (BRL)
-- Se o cupom nao expirou
+## 1. Substituicoes de marca (7 arquivos)
 
-Nenhuma alteracao de codigo e necessaria para isso.
+### supabase/functions/whatsapp-webhook/index.ts (linhas 911-917)
+- "FinançasAI" -> "Dona Wilma"
+- "financasai.lovable.app" -> "donawilma.lovable.app"
 
-## Opcoes para o Email de Confirmacao
+### supabase/functions/whatsapp-agent/index.ts (multiplos locais)
+- Linha 6995: "Assistente Financeiro" -> "Dona Wilma"
+- Linha 6998: "financasai.lovable.app" -> "donawilma.lovable.app"
+- Linha 7030: "financasai.lovable.app/boas-vindas" -> "donawilma.lovable.app/boas-vindas"
+- Linha 7069: "FinançasAI" -> "Dona Wilma"
+- Linha 7119: "financasai.lovable.app" -> "donawilma.lovable.app"
 
-### Opcao A: Manter como esta (recomendado)
-O email chega antes do pagamento, mas com as correcoes ja feitas no `AuthCallback.tsx`, se o usuario clicar no link antes de pagar, sera redirecionado para `/choose-plan`. Fluxo funcional, sem alteracoes adicionais.
+### src/components/admin/AdminPanel.tsx
+- Linha 15: "Finanças AI" -> "Dona Wilma"
+- Linha 27: "Finanças AI" -> "Dona Wilma"
 
-### Opcao B: Desabilitar auto-confirm e enviar email apos pagamento
-Isso requer:
-1. Desabilitar "Confirm email" no Supabase Auth settings
-2. Criar uma edge function que envia o email de confirmacao manualmente apos o webhook do Stripe confirmar o pagamento
-3. Mudancas significativas na arquitetura de autenticacao
+### index.html (SEO/metatags)
+- Linha 10: canonical URL -> donawilma.lovable.app
+- Linhas 15, 20, 26: og:url, og:image, twitter:image -> donawilma.lovable.app
+- Linha 35: JSON-LD url -> donawilma.lovable.app
 
-**Recomendacao**: Opcao A. O fluxo atual ja funciona corretamente com as correcoes implementadas. O email de confirmacao antes do pagamento e o comportamento padrao de praticamente todos os SaaS.
+### public/sitemap.xml
+- Todas as URLs: financasai -> donawilma
 
-## Alteracao Proposta (nenhuma)
-Nenhuma alteracao de codigo e necessaria. Os dois problemas reportados sao:
-1. Cupom: resolver no Stripe Dashboard
-2. Email antecipado: comportamento esperado, ja tratado pelas correcoes anteriores
+### public/robots.txt
+- Sitemap URL: financasai -> donawilma
+
+### CONFIGURACAO_SUPABASE.md
+- Linha 65: financasai -> donawilma
+
+## 2. Criar pagina de Login dedicada (/login)
+
+Atualmente, o login e um modal na landing page. Para melhorar a experiencia quando o usuario clica no link de confirmacao de email, criaremos uma rota `/login` que mostra o formulario de login diretamente.
+
+### Novo arquivo: src/pages/Login.tsx
+- Pagina simples com o componente `LoginForm` centralizado
+- Logo "Dona Wilma" no topo
+- Link "Criar conta" para /choose-plan
+
+### Alteracao em src/App.tsx
+- Adicionar rota: `<Route path="/login" element={<Login />} />`
+
+### Alteracao em src/pages/AuthCallback.tsx
+- Quando usuario confirma email e nao tem assinatura: redirecionar para `/choose-plan`
+- Quando tem assinatura: redirecionar para `/login` (para que faca login e entre no dashboard)
+
+## Resumo de arquivos
+
+| Arquivo | Tipo de alteracao |
+|---------|------------------|
+| supabase/functions/whatsapp-webhook/index.ts | Substituicao de marca |
+| supabase/functions/whatsapp-agent/index.ts | Substituicao de marca (5 locais) |
+| src/components/admin/AdminPanel.tsx | Substituicao de marca |
+| index.html | Substituicao de URLs |
+| public/sitemap.xml | Substituicao de URLs |
+| public/robots.txt | Substituicao de URL |
+| CONFIGURACAO_SUPABASE.md | Substituicao de URL |
+| src/pages/Login.tsx | **Novo arquivo** - pagina de login dedicada |
+| src/App.tsx | Adicionar rota /login |
+
