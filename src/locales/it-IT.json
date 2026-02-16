@@ -141,22 +141,35 @@
       }
     }
   },
+  "register": {
+    "title": "Crea il tuo account",
+    "subtitle": "Compila i tuoi dati per iniziare",
+    "name": "Nome completo",
+    "namePlaceholder": "Inserisci il tuo nome",
+    "email": "Email",
+    "emailPlaceholder": "tua@email.com",
+    "password": "Password",
+    "passwordPlaceholder": "Minimo 6 caratteri",
+    "whatsapp": "WhatsApp",
+    "optional": "opzionale",
+    "createAccount": "Crea account e continua",
+    "creating": "Creazione account...",
+    "alreadyHaveAccount": "Ho già un account",
+    "emailExists": "⚠️ Email già registrata",
+    "emailExistsDesc": "Esiste già un account con questa email. Accedi per usarlo.",
+    "weakPassword": "🔒 Password debole",
+    "weakPasswordDesc": "La password deve avere almeno 6 caratteri."
+  },
   "paymentSuccess": {
     "title": "Pagamento Confermato!",
-    "subtitle": "Ti abbiamo inviato un'email per impostare la tua password e accedere al tuo account.",
     "subtitleLoggedIn": "Il tuo abbonamento è stato attivato. Configuriamo il tuo WhatsApp?",
     "processing": "Elaborazione del pagamento...",
     "goToLogin": "Vai al Login",
     "configureWhatsApp": "Configura WhatsApp",
     "skipToDashboard": "Vai alla Dashboard",
-    "checkSpam": "Controlla la posta in arrivo e lo spam. L'email potrebbe richiedere alcuni minuti.",
+    "notLoggedIn": "Accedi per usare il tuo account.",
     "alreadyActiveTitle": "Abbonamento già attivo",
-    "alreadyActiveSubtitle": "Questa email ha già un abbonamento attivo. Accedi per usare il tuo account.",
-    "emailSentMessage": "Ti abbiamo inviato un'email per creare la tua password e accedere al sistema. Controlla la posta.",
-    "nextSteps": "Prossimi passi:",
-    "step1CheckEmail": "Controlla la tua email e clicca sul link ricevuto",
-    "step2SetPassword": "Imposta la tua password di accesso",
-    "step3ConnectWhatsApp": "Connetti il tuo WhatsApp per iniziare"
+    "alreadyActiveSubtitle": "Questa email ha già un abbonamento attivo. Accedi per usare il tuo account."
   },
   "resetPassword": {
     "title": "Imposta la tua Password",

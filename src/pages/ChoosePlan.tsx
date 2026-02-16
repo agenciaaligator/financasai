@@ -1,13 +1,9 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Calendar, Check, Loader2, CreditCard, Star } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { Calendar, Check, CreditCard, Star } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { 
   getCurrencyFromLocale,
-  getPriceId,
   getDisplayPrice,
   getYearlyMonthlyEquivalent,
   formatPrice,
@@ -15,48 +11,15 @@ import {
 
 export default function ChoosePlan() {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { t, i18n } = useTranslation();
-  const [loadingCycle, setLoadingCycle] = useState<'monthly' | 'yearly' | null>(null);
 
   const locale = i18n.language;
   const currency = getCurrencyFromLocale(locale);
 
   const featureKeys = [0, 1, 2, 3, 4, 5];
 
-  const handleCheckout = async (cycle: 'monthly' | 'yearly') => {
-    setLoadingCycle(cycle);
-    try {
-      toast({
-        title: t('landing.plans.redirectingToast'),
-        description: t('landing.plans.redirectingToastDesc'),
-      });
-
-      const priceId = getPriceId(cycle, locale);
-      
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceId, locale },
-      });
-
-      if (error) {
-        console.error('[CHECKOUT] Error:', error);
-        throw error;
-      }
-
-      if (!data?.url) {
-        throw new Error('URL de checkout não retornada');
-      }
-
-      window.location.href = data.url;
-    } catch (error) {
-      console.error('[CHECKOUT] Error:', error);
-      toast({
-        title: t('landing.plans.errorTitle'),
-        description: t('landing.plans.errorDesc'),
-        variant: "destructive",
-      });
-      setLoadingCycle(null);
-    }
+  const handleSelectPlan = (cycle: 'monthly' | 'yearly') => {
+    navigate(`/register?plan=${cycle === 'yearly' ? 'yearly' : 'monthly'}`);
   };
 
   return (
@@ -112,21 +75,11 @@ export default function ChoosePlan() {
             </ul>
 
             <button
-              onClick={() => handleCheckout('monthly')}
-              disabled={loadingCycle !== null}
-              className="w-full py-3 px-6 rounded-xl bg-white/20 text-white font-semibold border border-white/30 hover:bg-white/30 hover:scale-[1.02] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              onClick={() => handleSelectPlan('monthly')}
+              className="w-full py-3 px-6 rounded-xl bg-white/20 text-white font-semibold border border-white/30 hover:bg-white/30 hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-2"
             >
-              {loadingCycle === 'monthly' ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  {t('landing.plans.redirecting')}
-                </>
-              ) : (
-                <>
-                  <CreditCard className="h-5 w-5" />
-                  {t('landing.plans.startNow')}
-                </>
-              )}
+              <CreditCard className="h-5 w-5" />
+              {t('landing.plans.startNow')}
             </button>
 
             <div className="mt-4 text-center space-y-1">
@@ -176,21 +129,11 @@ export default function ChoosePlan() {
             </ul>
 
             <button
-              onClick={() => handleCheckout('yearly')}
-              disabled={loadingCycle !== null}
-              className="w-full py-3 px-6 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 hover:scale-[1.02] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              onClick={() => handleSelectPlan('yearly')}
+              className="w-full py-3 px-6 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-2"
             >
-              {loadingCycle === 'yearly' ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  {t('landing.plans.redirecting')}
-                </>
-              ) : (
-                <>
-                  <CreditCard className="h-5 w-5" />
-                  {t('landing.plans.startNow')}
-                </>
-              )}
+              <CreditCard className="h-5 w-5" />
+              {t('landing.plans.startNow')}
             </button>
 
             <p className="mt-4 text-center text-sm text-white/50">

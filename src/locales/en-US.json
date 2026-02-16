@@ -607,22 +607,35 @@
       }
     }
   },
+  "register": {
+    "title": "Create your account",
+    "subtitle": "Fill in your details to get started",
+    "name": "Full name",
+    "namePlaceholder": "Enter your name",
+    "email": "Email",
+    "emailPlaceholder": "your@email.com",
+    "password": "Password",
+    "passwordPlaceholder": "Minimum 6 characters",
+    "whatsapp": "WhatsApp",
+    "optional": "optional",
+    "createAccount": "Create account and continue",
+    "creating": "Creating account...",
+    "alreadyHaveAccount": "Already have an account",
+    "emailExists": "⚠️ Email already registered",
+    "emailExistsDesc": "An account with this email already exists. Log in to access it.",
+    "weakPassword": "🔒 Weak password",
+    "weakPasswordDesc": "Password must be at least 6 characters."
+  },
   "paymentSuccess": {
     "title": "Payment Confirmed!",
-    "subtitle": "We sent you an email to set your password and access your account.",
     "subtitleLoggedIn": "Your subscription has been activated. Let's set up your WhatsApp?",
     "processing": "Processing your payment...",
     "goToLogin": "Go to Login",
     "configureWhatsApp": "Set up WhatsApp",
     "skipToDashboard": "Skip to Dashboard",
-    "checkSpam": "Check your inbox and spam folder. The email may take a few minutes to arrive.",
+    "notLoggedIn": "Log in to access your account.",
     "alreadyActiveTitle": "Subscription already active",
-    "alreadyActiveSubtitle": "This email already has an active subscription. Log in to access your account.",
-    "emailSentMessage": "We sent you an email to create your password and access the system. Check your inbox.",
-    "nextSteps": "Next steps:",
-    "step1CheckEmail": "Check your email and click the link received",
-    "step2SetPassword": "Set your access password",
-    "step3ConnectWhatsApp": "Connect your WhatsApp to get started"
+    "alreadyActiveSubtitle": "This email already has an active subscription. Log in to access your account."
   },
   "resetPassword": {
     "title": "Set Your Password",

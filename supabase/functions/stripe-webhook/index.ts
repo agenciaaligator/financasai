@@ -12,16 +12,28 @@ const logStep = (step: string, details?: any) => {
   console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
 };
 
-const SITE_URL = "https://donawilma.lovable.app";
-
-async function handleUserAndSubscription(
+async function handleCheckoutCompleted(
   supabaseAdmin: any,
   stripe: any,
-  customerEmail: string,
-  stripeCustomerId: string,
-  subscriptionId: string,
-  source: string
+  session: any
 ) {
+  const subscriptionId = session.subscription as string;
+  const customerEmail = (session.customer_email || session.customer_details?.email || '').toLowerCase().trim();
+  const clientReferenceId = session.client_reference_id;
+  const stripeCustomerId = session.customer as string;
+
+  logStep("Processing checkout session", { 
+    sessionId: session.id, 
+    email: customerEmail,
+    clientReferenceId,
+    customerId: stripeCustomerId
+  });
+
+  if (!subscriptionId) {
+    logStep("No subscription ID - one-time payment?");
+    return { success: true, message: "No subscription to process" };
+  }
+
   // ========== IDEMPOTENCY CHECK ==========
   const { data: existingSub } = await supabaseAdmin
     .from('user_subscriptions')
@@ -31,72 +43,51 @@ async function handleUserAndSubscription(
 
   if (existingSub) {
     logStep("IDEMPOTENT: Subscription already processed", { subscriptionId, userId: existingSub.user_id });
-    return { success: true, skipped: true, userId: existingSub.user_id, isNewUser: false };
+    return { success: true, skipped: true, userId: existingSub.user_id };
   }
 
-  // ========== USER LOOKUP (getUserByEmail - not listUsers) ==========
-  // Normalize email to prevent duplicates
-  const email = customerEmail.toLowerCase().trim();
-  
-  let userId: string;
-  let isNewUser = false;
+  // ========== FIND USER ==========
+  let userId: string | null = null;
 
-  const { data: existingUserData, error: lookupError } = await supabaseAdmin.auth.admin.getUserByEmail(email);
-
-  if (existingUserData?.user) {
-    const existingUser = existingUserData.user;
-    userId = existingUser.id;
-    isNewUser = false;
-    logStep("USER_ALREADY_EXISTS", { userId, email });
-
-    // Check existing subscription
-    const { data: userSub } = await supabaseAdmin
-      .from('user_subscriptions')
-      .select('id, status, stripe_customer_id')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (userSub?.status === 'active') {
-      logStep("User already has active subscription - updating stripe_customer_id only", { userId });
-      
-      if (userSub.stripe_customer_id !== stripeCustomerId) {
-        await supabaseAdmin
-          .from('user_subscriptions')
-          .update({ stripe_customer_id: stripeCustomerId })
-          .eq('id', userSub.id);
-        logStep("Updated stripe_customer_id", { old: userSub.stripe_customer_id, new: stripeCustomerId });
-      }
-
-      return { success: true, skipped: false, userId, isNewUser: false, alreadyActive: true };
+  // Priority 1: client_reference_id (set by our create-checkout)
+  if (clientReferenceId) {
+    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(clientReferenceId);
+    if (userData?.user) {
+      userId = userData.user.id;
+      logStep("User found via client_reference_id", { userId });
     }
+  }
 
-    logStep("User exists with inactive subscription - will reactivate", { 
-      userId, 
-      currentStatus: userSub?.status || 'none' 
-    });
-  } else {
-    // ========== NEW USER: Use inviteUserByEmail ==========
-    const siteUrl = Deno.env.get("SITE_URL") || SITE_URL;
-    
-    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-      email,
-      {
-        redirectTo: `${siteUrl}/auth/callback`,
-        data: {
-          created_via: source,
-          stripe_customer_id: stripeCustomerId,
-        }
-      }
-    );
-
-    if (inviteError) {
-      logStep("Error inviting user", { error: inviteError.message });
-      throw inviteError;
+  // Priority 2: email lookup
+  if (!userId && customerEmail) {
+    const { data: existingUserData } = await supabaseAdmin.auth.admin.getUserByEmail(customerEmail);
+    if (existingUserData?.user) {
+      userId = existingUserData.user.id;
+      logStep("User found via email", { userId, email: customerEmail });
     }
+  }
 
-    userId = inviteData.user.id;
-    isNewUser = true;
-    logStep("New user invited via inviteUserByEmail", { userId, email });
+  if (!userId) {
+    logStep("ERROR: No user found for checkout", { email: customerEmail, clientReferenceId });
+    throw new Error(`No user found for checkout. Email: ${customerEmail}, clientReferenceId: ${clientReferenceId}`);
+  }
+
+  // ========== CHECK EXISTING SUBSCRIPTION ==========
+  const { data: userSub } = await supabaseAdmin
+    .from('user_subscriptions')
+    .select('id, status, stripe_customer_id')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (userSub?.status === 'active') {
+    logStep("User already has active subscription - updating stripe_customer_id only", { userId });
+    if (userSub.stripe_customer_id !== stripeCustomerId) {
+      await supabaseAdmin
+        .from('user_subscriptions')
+        .update({ stripe_customer_id: stripeCustomerId })
+        .eq('id', userSub.id);
+    }
+    return { success: true, userId, alreadyActive: true };
   }
 
   // ========== SUBSCRIPTION SETUP ==========
@@ -134,58 +125,35 @@ async function handleUserAndSubscription(
     : null;
 
   // Find matching plan
+  let planId: string | null = null;
   const { data: plan } = await supabaseAdmin
     .from('subscription_plans')
     .select('*')
     .or(`stripe_price_id_monthly.eq.${priceId},stripe_price_id_yearly.eq.${priceId}`)
     .maybeSingle();
 
-  logStep("Subscription details", { subscriptionId, priceId, billingCycle, planFound: !!plan, periodStart: currentPeriodStartISO, periodEnd: currentPeriodEndISO });
-
-  if (!plan) {
-    logStep("WARNING: No matching plan found for priceId, trying fallback to first active premium plan");
+  if (plan) {
+    planId = plan.id;
+  } else {
+    logStep("WARNING: No matching plan for priceId, using fallback");
     const { data: fallbackPlan } = await supabaseAdmin
       .from('subscription_plans')
-      .select('*')
+      .select('id')
       .eq('role', 'premium')
       .eq('is_active', true)
       .limit(1)
       .maybeSingle();
-    
-    if (!fallbackPlan) {
-      logStep("ERROR: No fallback plan found either");
-      // Still proceed with role update even if subscription upsert fails
-    } else {
-      logStep("Using fallback plan", { planId: fallbackPlan.id, planName: fallbackPlan.name });
-      
-      const { error: subError } = await supabaseAdmin
-        .from('user_subscriptions')
-        .upsert({
-          user_id: userId,
-          plan_id: fallbackPlan.id,
-          stripe_subscription_id: subscriptionId,
-          stripe_customer_id: stripeCustomerId,
-          stripe_price_id: priceId,
-          status: subscription.status === 'active' || subscription.status === 'trialing' ? 'active' : subscription.status,
-          billing_cycle: billingCycle,
-          current_period_start: currentPeriodStartISO,
-          current_period_end: currentPeriodEndISO,
-          payment_gateway: 'stripe',
-          cancelled_at: null,
-        }, { onConflict: 'user_id' });
+    planId = fallbackPlan?.id;
+  }
 
-      if (subError) {
-        logStep("Error upserting subscription with fallback plan", { error: subError.message });
-      } else {
-        logStep("Subscription created/updated with fallback plan");
-      }
-    }
-  } else {
+  logStep("Subscription details", { subscriptionId, priceId, billingCycle, planFound: !!planId });
+
+  if (planId) {
     const { error: subError } = await supabaseAdmin
       .from('user_subscriptions')
       .upsert({
         user_id: userId,
-        plan_id: plan.id,
+        plan_id: planId,
         stripe_subscription_id: subscriptionId,
         stripe_customer_id: stripeCustomerId,
         stripe_price_id: priceId,
@@ -218,14 +186,14 @@ async function handleUserAndSubscription(
     .maybeSingle();
 
   if (isMasterUser || existingRole?.role === 'admin') {
-    logStep("User is master/admin - preserving privileges", { isMaster: !!isMasterUser, currentRole: existingRole?.role });
+    logStep("User is master/admin - preserving privileges");
   } else {
     await supabaseAdmin.from('user_roles').delete().eq('user_id', userId);
     await supabaseAdmin.from('user_roles').insert({ user_id: userId, role: 'premium', expires_at: null });
     logStep("User role updated to premium");
   }
 
-  return { success: true, skipped: false, userId, isNewUser, alreadyActive: false };
+  return { success: true, userId, alreadyActive: false };
 }
 
 serve(async (req) => {
@@ -275,31 +243,7 @@ serve(async (req) => {
     // ========== checkout.session.completed ==========
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
-      const subscriptionId = session.subscription as string;
-      const customerEmail = session.customer_email || session.customer_details?.email;
-
-      logStep("Processing checkout session", { 
-        sessionId: session.id, 
-        email: customerEmail,
-        customerId: session.customer
-      });
-
-      if (!customerEmail) {
-        throw new Error("No customer email in checkout session");
-      }
-
-      if (!subscriptionId) {
-        logStep("No subscription ID in checkout session - one-time payment?");
-        return new Response(JSON.stringify({ success: true, message: "No subscription to process" }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const result = await handleUserAndSubscription(
-        supabaseAdmin, stripe, customerEmail, session.customer as string, subscriptionId, 'stripe_checkout'
-      );
-
+      const result = await handleCheckoutCompleted(supabaseAdmin, stripe, session);
       return new Response(JSON.stringify(result), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -325,11 +269,8 @@ serve(async (req) => {
         })
         .eq('stripe_subscription_id', subscription.id);
 
-      if (error) {
-        logStep("Error updating subscription", { error: error.message });
-      } else {
-        logStep("Subscription updated successfully");
-      }
+      if (error) logStep("Error updating subscription", { error: error.message });
+      else logStep("Subscription updated successfully");
 
       return new Response(JSON.stringify({ success: true }), {
         status: 200,
@@ -342,14 +283,10 @@ serve(async (req) => {
       const subscription = event.data.object as Stripe.Subscription;
       logStep("Processing subscription cancellation", { subscriptionId: subscription.id });
 
-      const { error: subError } = await supabaseAdmin
+      await supabaseAdmin
         .from('user_subscriptions')
         .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
         .eq('stripe_subscription_id', subscription.id);
-
-      if (subError) {
-        logStep("Error cancelling subscription", { error: subError.message });
-      }
 
       const { data: sub } = await supabaseAdmin
         .from('user_subscriptions')
@@ -376,47 +313,10 @@ serve(async (req) => {
             .update({ role: 'free' })
             .eq('user_id', sub.user_id);
           logStep("User role reverted to free");
-        } else {
-          logStep("User is master/admin - preserving role on cancellation");
         }
       }
 
       return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // ========== customer.subscription.created ==========
-    if (event.type === "customer.subscription.created") {
-      const subscription = event.data.object as Stripe.Subscription;
-      const customerId = subscription.customer as string;
-
-      logStep("Processing subscription created", { subscriptionId: subscription.id, customerId });
-
-      const customer = await stripe.customers.retrieve(customerId);
-      if (customer.deleted) {
-        logStep("Customer was deleted, skipping");
-        return new Response(JSON.stringify({ success: true, skipped: true }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const customerEmail = customer.email;
-      if (!customerEmail) {
-        logStep("No email found for customer, skipping");
-        return new Response(JSON.stringify({ success: true, skipped: true }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const result = await handleUserAndSubscription(
-        supabaseAdmin, stripe, customerEmail, customerId, subscription.id, 'stripe_subscription_created'
-      );
-
-      return new Response(JSON.stringify(result), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -437,31 +337,23 @@ serve(async (req) => {
           .select('user_id')
           .maybeSingle();
 
-        if (error) {
-          logStep("Error updating subscription status", { error: error.message });
-        } else {
-          logStep("Subscription confirmed as active after payment");
+        if (!error && sub?.user_id) {
+          const { data: isMaster } = await supabaseAdmin
+            .from('master_users')
+            .select('user_id')
+            .eq('user_id', sub.user_id)
+            .maybeSingle();
 
-          if (sub?.user_id) {
-            const { data: isMaster } = await supabaseAdmin
-              .from('master_users')
-              .select('user_id')
-              .eq('user_id', sub.user_id)
-              .maybeSingle();
+          const { data: currentRole } = await supabaseAdmin
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', sub.user_id)
+            .maybeSingle();
 
-            const { data: currentRole } = await supabaseAdmin
-              .from('user_roles')
-              .select('role')
-              .eq('user_id', sub.user_id)
-              .maybeSingle();
-
-            if (!isMaster && currentRole?.role !== 'admin') {
-              await supabaseAdmin.from('user_roles').delete().eq('user_id', sub.user_id);
-              await supabaseAdmin.from('user_roles').insert({ user_id: sub.user_id, role: 'premium', expires_at: null });
-              logStep("User role restored to premium after payment", { userId: sub.user_id });
-            } else {
-              logStep("User is master/admin - preserving role on payment", { userId: sub.user_id });
-            }
+          if (!isMaster && currentRole?.role !== 'admin') {
+            await supabaseAdmin.from('user_roles').delete().eq('user_id', sub.user_id);
+            await supabaseAdmin.from('user_roles').insert({ user_id: sub.user_id, role: 'premium', expires_at: null });
+            logStep("User role restored to premium after payment");
           }
         }
       }
