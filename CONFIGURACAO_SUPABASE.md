@@ -62,7 +62,7 @@ Após configurar, teste:
 
 ✅ Emails em português com design personalizado
 ✅ Links funcionando corretamente
-✅ Redirecionamentos para `financasai.lovable.app`
+✅ Redirecionamentos para `donawilma.lovable.app`
 ✅ Menu mobile funcionando sem tela branca
 
 ---

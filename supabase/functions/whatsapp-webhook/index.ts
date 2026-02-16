@@ -910,8 +910,8 @@ const handler = async (req: Request): Promise<Response> => {
           await sendWhatsAppMessage(
             from,
             `👋 Olá! Ainda não encontramos uma conta associada a este número.\n\n` +
-            `Para usar o FinançasAI, você precisa:\n` +
-            `1️⃣ Acesse nosso site: financasai.lovable.app\n` +
+            `Para usar a Dona Wilma, você precisa:\n` +
+            `1️⃣ Acesse nosso site: donawilma.lovable.app\n` +
             `2️⃣ Escolha seu plano e complete o cadastro\n` +
             `3️⃣ Conecte seu WhatsApp no sistema\n\n` +
             `💡 Após conectar, você poderá registrar despesas, consultar saldos e muito mais - tudo pelo WhatsApp!`

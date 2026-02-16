@@ -6992,10 +6992,10 @@ serve(async (req) => {
       console.log('❌ User not registered - redirecting to signup');
       return new Response(JSON.stringify({
         success: true,
-        response: `👋 *Bem-vindo ao Assistente Financeiro!*\n\n` +
+        response: `👋 *Bem-vinda à Dona Wilma!*\n\n` +
                  `Para usar este WhatsApp, você precisa:\n\n` +
                  `*1.* Criar sua conta (se ainda não tem):\n` +
-                 `🔗 https://financasai.lovable.app\n\n` +
+                 `🔗 https://donawilma.lovable.app\n\n` +
                  `*2.* Vincular seu WhatsApp:\n` +
                  `• Acesse *Perfil* na plataforma\n` +
                  `• Preencha o campo *WhatsApp* com: ${cleanPhone}\n` +
@@ -7027,7 +7027,7 @@ serve(async (req) => {
       // Enviar mensagem orientando o usuário a validar pelo site
       const welcomeMessage = `👋 Olá! Seu número está cadastrado mas ainda não foi validado.\n\n` +
         `Para começar a usar o sistema:\n` +
-        `1️⃣ Acesse: https://financasai.lovable.app/boas-vindas\n` +
+        `1️⃣ Acesse: https://donawilma.lovable.app/boas-vindas\n` +
         `2️⃣ Digite seu número e clique em "Enviar código"\n` +
         `3️⃣ Digite aqui o código de 6 dígitos que você vai receber\n\n` +
         `Após validar, você poderá usar todos os comandos! 🎉`;
@@ -7066,7 +7066,7 @@ serve(async (req) => {
           // Mensagem de boas-vindas completa e amigável
           return new Response(JSON.stringify({
             success: true,
-            response: `🎉 *Bem-vindo ao FinançasAI!*\n\n` +
+            response: `🎉 *Bem-vinda à Dona Wilma!*\n\n` +
                      `✅ WhatsApp conectado com sucesso!\n\n` +
                      `📋 *COMO USAR:*\n` +
                      `💸 *Finanças:* "gastei 50" ou "recebi 2000"\n` +
@@ -7116,7 +7116,7 @@ serve(async (req) => {
               success: true,
               response: `❌ *Usuário não encontrado*\n\n` +
                        `Cadastre-se gratuitamente em:\n` +
-                       `https://financasai.lovable.app`
+                       `https://donawilma.lovable.app`
             }), {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });

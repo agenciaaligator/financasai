@@ -12,7 +12,7 @@ export function AdminPanel() {
   const activeTab = searchParams.get('tab') || 'stats';
 
   useEffect(() => {
-    document.title = "Painel Administrativo | Finanças AI";
+    document.title = "Painel Administrativo | Dona Wilma";
 
     const setMeta = (name: string, content: string) => {
       let tag = document.querySelector(`meta[name="${name}"]`);
@@ -24,7 +24,7 @@ export function AdminPanel() {
       tag.setAttribute("content", content);
     };
 
-    setMeta("description", "Administração do Finanças AI: gerencie usuários, assinaturas e estatísticas.");
+    setMeta("description", "Administração da Dona Wilma: gerencie usuários, assinaturas e estatísticas.");
 
     let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
     if (!canonical) {
