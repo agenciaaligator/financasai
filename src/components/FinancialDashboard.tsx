@@ -37,9 +37,7 @@ export function FinancialDashboard() {
     transactions: t('dashboard.transactions', 'Transações'),
     categories: t('dashboard.categories', 'Categorias'),
     reports: t('dashboard.reports', 'Relatórios'),
-    recurring: t('dashboard.recurring', 'Contas Fixas'),
     whatsapp: t('dashboard.whatsapp', 'WhatsApp'),
-    future: t('dashboard.future', 'Novidades'),
     profile: t('dashboard.profile', 'Perfil'),
     admin: t('dashboard.admin', 'Painel Administrativo'),
   };

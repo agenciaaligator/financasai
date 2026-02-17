@@ -1,21 +1,12 @@
-import { useState } from "react";
 import {
   DollarSign,
   TrendingUp,
   Tags,
   BarChart,
-  Rocket,
   User,
   Plus,
-  Menu,
-  X,
-  MessageSquare,
   Shield,
-  Repeat,
-  ChevronDown,
-  RefreshCw
 } from "lucide-react";
-import { useLocation } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTranslation } from "react-i18next";
 
@@ -28,13 +19,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
-  SidebarTrigger,
   useSidebar,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
-  SidebarMenuSubButton,
 } from "@/components/ui/sidebar";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface AppSidebarProps {
   currentTab: string;
@@ -44,54 +30,6 @@ interface AppSidebarProps {
   isOwner?: boolean;
   isAdmin?: boolean;
 }
-
-const sidebarItems = [
-  { 
-    id: "dashboard", 
-    title: "Dashboard", 
-    icon: DollarSign,
-    description: "Visão geral financeira"
-  },
-  { 
-    id: "transactions", 
-    title: "Transações", 
-    icon: TrendingUp,
-    description: "Lançamentos e movimentações"
-  },
-  { 
-    id: "categories", 
-    title: "Categorias", 
-    icon: Tags,
-    description: "Gerenciar categorias"
-  },
-  { 
-    id: "reports", 
-    title: "Relatórios", 
-    icon: BarChart,
-    description: "Análises e gráficos"
-  },
-  { 
-    id: "future", 
-    title: "Novidades", 
-    icon: Rocket,
-    description: "Próximas funcionalidades"
-  },
-  { 
-    id: "profile", 
-    title: "Perfil", 
-    icon: User,
-    description: "Configurações pessoais"
-  },
-];
-
-const adminItems = [
-  { 
-    id: "admin", 
-    title: "Admin", 
-    icon: Shield,
-    description: "Painel administrativo"
-  },
-];
 
 export function AppSidebar({ 
   currentTab, 
@@ -105,16 +43,12 @@ export function AppSidebar({
   const isMobile = useIsMobile();
   const isAdmin = !!isAdminProp;
   const { t } = useTranslation();
-  const [transactionsOpen, setTransactionsOpen] = useState(
-    isMobile ? true : (currentTab === 'transactions' || currentTab === 'recurring')
-  );
 
   const sidebarItemsLocal = [
     { id: "dashboard", title: t('sidebar.dashboard', 'Dashboard'), icon: DollarSign, description: t('sidebar.dashboardDesc', 'Visão geral financeira') },
     { id: "transactions", title: t('sidebar.transactions', 'Transações'), icon: TrendingUp, description: t('sidebar.transactionsDesc', 'Lançamentos e movimentações') },
     { id: "categories", title: t('sidebar.categories', 'Categorias'), icon: Tags, description: t('sidebar.categoriesDesc', 'Gerenciar categorias') },
     { id: "reports", title: t('sidebar.reports', 'Relatórios'), icon: BarChart, description: t('sidebar.reportsDesc', 'Análises e gráficos') },
-    { id: "future", title: t('sidebar.future', 'Novidades'), icon: Rocket, description: t('sidebar.futureDesc', 'Próximas funcionalidades') },
     { id: "profile", title: t('sidebar.profile', 'Perfil'), icon: User, description: t('sidebar.profileDesc', 'Configurações pessoais') },
   ];
 
@@ -122,12 +56,11 @@ export function AppSidebar({
     { id: "admin", title: t('sidebar.admin', 'Admin'), icon: Shield, description: t('sidebar.adminDesc', 'Painel administrativo') },
   ];
 
+  const allItems = [...sidebarItemsLocal, ...(isAdmin ? adminItemsLocal : [])];
 
-  // Para uso mobile, renderiza apenas o conteúdo sem wrapper Sidebar
   if (isMobile) {
     return (
       <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
-        {/* Header do mobile */}
         <div className="border-b border-sidebar-border p-4 bg-sidebar">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
@@ -135,14 +68,12 @@ export function AppSidebar({
             </div>
             <div>
               <h2 className="font-bold text-lg text-sidebar-primary">Dona Wilma</h2>
-               <p className="text-xs text-sidebar-foreground/60">{t('sidebar.subtitle')}</p>
+              <p className="text-xs text-sidebar-foreground/60">{t('sidebar.subtitle')}</p>
             </div>
           </div>
         </div>
         
-        {/* Conteúdo do mobile */}
         <div className="flex-1 px-3 py-4 bg-sidebar">
-          {/* Botão de adicionar transação */}
           <div className="mb-4">
             <button
               onClick={() => onToggleForm()}
@@ -153,62 +84,8 @@ export function AppSidebar({
             </button>
           </div>
 
-          {/* Menu de navegação */}
           <div className="space-y-1">
-            {[...sidebarItemsLocal, ...(isAdmin ? adminItemsLocal : [])].map((item) => {
-              // Para "Transações", criar submenu
-              if (item.id === 'transactions') {
-                const isTransactionsActive = currentTab === 'transactions' || currentTab === 'recurring';
-                return (
-                  <div key={item.id} className="space-y-1">
-                    <button
-                      onClick={() => setTransactionsOpen(!transactionsOpen)}
-                      className={`w-full h-12 transition-all duration-200 rounded-lg flex items-center justify-between px-4 ${
-                        isTransactionsActive 
-                          ? "bg-sidebar-accent text-sidebar-primary font-medium border-l-4 border-primary" 
-                          : "hover:bg-sidebar-accent/50 text-sidebar-foreground"
-                      }`}
-                    >
-                      <div className="flex items-center">
-                        <item.icon className={`h-5 w-5 ${isTransactionsActive ? "text-primary" : ""}`} />
-                        <div className="ml-3 text-left">
-                          <div className="font-medium text-sidebar-foreground">{item.title}</div>
-                        </div>
-                      </div>
-                      <ChevronDown className={`h-4 w-4 transition-transform ${transactionsOpen ? 'rotate-180' : ''}`} />
-                    </button>
-                    
-                    {transactionsOpen && (
-                      <div className="ml-4 space-y-1">
-                        <button
-                          onClick={() => onTabChange('transactions')}
-                          className={`w-full h-10 transition-all duration-200 rounded-lg flex items-center justify-start px-4 ${
-                            currentTab === 'transactions'
-                              ? "bg-sidebar-accent text-sidebar-primary font-medium"
-                              : "hover:bg-sidebar-accent/50 text-sidebar-foreground"
-                          }`}
-                        >
-                          <TrendingUp className={`h-4 w-4 ${currentTab === 'transactions' ? "text-primary" : ""}`} />
-                          <span className="ml-2 text-sm">{t('sidebar.lancamentos', 'Lançamentos')}</span>
-                        </button>
-                        
-                        <button
-                          onClick={() => onTabChange('recurring')}
-                          className={`w-full h-10 transition-all duration-200 rounded-lg flex items-center justify-start px-4 ${
-                            currentTab === 'recurring'
-                              ? "bg-sidebar-accent text-sidebar-primary font-medium"
-                              : "hover:bg-sidebar-accent/50 text-sidebar-foreground"
-                          }`}
-                        >
-                          <Repeat className={`h-4 w-4 ${currentTab === 'recurring' ? "text-primary" : ""}`} />
-                          <span className="ml-2 text-sm">{t('sidebar.contasFixas', 'Contas Fixas')}</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-              
+            {allItems.map((item) => {
               const isActive = currentTab === item.id;
               return (
                 <button
@@ -236,7 +113,6 @@ export function AppSidebar({
     );
   }
 
-  // Para desktop, usa o componente Sidebar completo
   return (
     <Sidebar className="border-r border-sidebar-border">
       <SidebarHeader className="border-b border-sidebar-border p-4">
@@ -256,7 +132,6 @@ export function AppSidebar({
       <SidebarContent className="px-2 py-4">
         <SidebarGroup>
           <SidebarGroupContent>
-            {/* Botão de adicionar transação */}
             <div className="mb-4">
               <SidebarMenuButton
                 onClick={onToggleForm}
@@ -270,64 +145,7 @@ export function AppSidebar({
             </div>
 
             <SidebarMenu>
-              {[...sidebarItemsLocal, ...(isAdmin ? adminItemsLocal : [])].map((item) => {
-                // Para "Transações", criar submenu com Collapsible
-                if (item.id === 'transactions') {
-                  const isTransactionsActive = currentTab === 'transactions' || currentTab === 'recurring';
-                  return (
-                    <Collapsible
-                      key={item.id}
-                      open={transactionsOpen}
-                      onOpenChange={setTransactionsOpen}
-                      className="group/collapsible"
-                    >
-                      <SidebarMenuItem>
-                        <CollapsibleTrigger asChild>
-                          <SidebarMenuButton
-                            className={`w-full h-12 transition-all duration-200 ${
-                              isTransactionsActive 
-                                ? "bg-sidebar-accent text-sidebar-primary font-medium border-l-4 border-primary" 
-                                : "hover:bg-sidebar-accent/50 text-sidebar-foreground"
-                            } ${!open ? "justify-center px-2" : "justify-start px-4"}`}
-                          >
-                            <item.icon className={`h-5 w-5 ${isTransactionsActive ? "text-primary" : ""}`} />
-                            {open && (
-                              <>
-                                <div className="ml-3 text-left flex-1">
-                                  <div className="font-medium">{item.title}</div>
-                                </div>
-                                <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                              </>
-                            )}
-                          </SidebarMenuButton>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <SidebarMenuSub>
-                            <SidebarMenuSubItem>
-                              <SidebarMenuSubButton
-                                onClick={() => onTabChange('transactions')}
-                                className={currentTab === 'transactions' ? "bg-sidebar-accent text-sidebar-primary" : ""}
-                              >
-                                <TrendingUp className="h-4 w-4" />
-                                {open && <span>{t('sidebar.lancamentos', 'Lançamentos')}</span>}
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                            <SidebarMenuSubItem>
-                              <SidebarMenuSubButton
-                                onClick={() => onTabChange('recurring')}
-                                className={currentTab === 'recurring' ? "bg-sidebar-accent text-sidebar-primary" : ""}
-                              >
-                                <Repeat className="h-4 w-4" />
-                                {open && <span>{t('sidebar.contasFixas', 'Contas Fixas')}</span>}
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          </SidebarMenuSub>
-                        </CollapsibleContent>
-                      </SidebarMenuItem>
-                    </Collapsible>
-                  );
-                }
-                
+              {allItems.map((item) => {
                 const isActive = currentTab === item.id;
                 return (
                   <SidebarMenuItem key={item.id}>

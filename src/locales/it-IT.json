@@ -9,8 +9,6 @@
     "reports": "Rapporti",
     "profile": "Profilo",
     "admin": "Pannello Admin",
-    "future": "Novità",
-    "recurring": "Conti Fissi",
     "whatsapp": "WhatsApp",
     "hello": "Ciao",
     "balanceAlert": {
@@ -29,7 +27,7 @@
     }
   },
   "summary": { "monthBalance": "Saldo del Mese", "yourAccess": "Il Tuo Accesso", "active": "Attivo", "fullAccess": "Accesso completo", "limitedAccess": "Accesso limitato", "manageSubscription": "Gestisci abbonamento" },
-  "sidebar": { "dashboard": "Dashboard", "dashboardDesc": "Panoramica finanziaria", "transactions": "Transazioni", "transactionsDesc": "Movimenti e registrazioni", "lancamentos": "Movimenti", "contasFixas": "Conti Fissi", "categories": "Categorie", "categoriesDesc": "Gestisci categorie", "reports": "Rapporti", "reportsDesc": "Analisi e grafici", "future": "Novità", "futureDesc": "Prossime funzionalità", "profile": "Profilo", "profileDesc": "Impostazioni personali", "admin": "Admin", "adminDesc": "Pannello amministrativo", "newTransaction": "Nuova Transazione", "subtitle": "La tua assistente personale" },
+  "sidebar": { "dashboard": "Dashboard", "dashboardDesc": "Panoramica finanziaria", "transactions": "Transazioni", "transactionsDesc": "Movimenti e registrazioni", "categories": "Categorie", "categoriesDesc": "Gestisci categorie", "reports": "Rapporti", "reportsDesc": "Analisi e grafici", "profile": "Profilo", "profileDesc": "Impostazioni personali", "admin": "Admin", "adminDesc": "Pannello amministrativo", "newTransaction": "Nuova Transazione", "subtitle": "La tua assistente personale" },
   "chart": { "incomeVsExpenses": "Entrate vs Spese", "byCategory": "Per Categoria", "noCategory": "Senza Categoria", "addTransactions": "Aggiungi transazioni per vedere i grafici", "financialChart": "Grafico Finanziario" },
   "transactionList": { "noTransactions": "Nessuna transazione trovata", "activeFilters": "Hai filtri attivi", "filtersHiding": "Le transazioni potrebbero essere nascoste dai filtri applicati.", "clearAllFilters": "Cancella tutti i filtri", "totalTransactions": "Ci sono {{count}} transazioni in totale", "tryReload": "Prova a ricaricare per vedere le transazioni più recenti.", "reloadTransactions": "Ricarica transazioni", "showing": "Mostrando {{start}}-{{end}} di {{total}} transazioni", "allTransactions": "Tutte le Transazioni", "ofTotal": "{{filtered}} di {{total}} transazioni", "activeFiltersInfo": "Filtri attivi:", "showingFiltered": "Mostrando {{filtered}} di {{total}} transazioni", "clearFilters": "Cancella filtri", "latestTransactions": "Ultime Transazioni", "recentTransactions": "Transazioni Recenti" },
   "filters": { "filters": "Filtri", "activeFilter": "filtro attivo", "activeFilters": "filtri attivi", "clearFilters": "Cancella filtri", "period": "Periodo", "all": "Tutti", "today": "Oggi", "week": "Settimana", "month": "Mese", "year": "Anno", "custom": "Personalizzato", "type": "Tipo", "allTransactions": "Tutte le transazioni", "onlyIncome": "Solo Entrate", "onlyExpenses": "Solo Spese", "source": "Fonte", "allSources": "Tutte", "manual": "Manuale", "categories": "Categorie", "allCategories": "Tutte le categorie", "selected": "selezionata", "selectedPlural": "selezionate", "searchCategory": "Cerca categoria...", "noCategoryFound": "Nessuna categoria trovata.", "search": "Cerca", "searchPlaceholder": "Cerca per titolo o descrizione...", "startDate": "Data Iniziale", "endDate": "Data Finale", "selectDate": "Seleziona la data" },

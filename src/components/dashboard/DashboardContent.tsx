@@ -7,7 +7,7 @@ import { CategoryManager } from "../CategoryManager";
 import { ProfileSettings } from "../ProfileSettings";
 import { ReportsPage } from "../ReportsPage";
 
-import { FutureFeatures } from "../FutureFeatures";
+
 import { AdminPanel } from "../admin/AdminPanel";
 import { BalanceAlert } from "./BalanceAlert";
 import { SummaryCards } from "./SummaryCards";
@@ -36,7 +36,7 @@ import { toZonedTime } from "date-fns-tz";
 import { ErrorBoundary } from "../ErrorBoundary";
 import { WhatsAppPage } from "./WhatsAppPage";
 import { useTranslation } from "react-i18next";
-import { RecurringTransactionsManager } from "../RecurringTransactionsManager";
+
 
 const TIMEZONE = 'America/Sao_Paulo';
 const ITEMS_PER_PAGE = 10;
@@ -431,13 +431,7 @@ export function DashboardContent({
     );
   }
 
-  if (currentTab === "recurring") {
-    return (
-      <ErrorBoundary>
-        <RecurringTransactionsManager categories={categories} />
-      </ErrorBoundary>
-    );
-  }
+
 
   if (currentTab === "categories") {
     return (
@@ -464,9 +458,7 @@ export function DashboardContent({
     return <ReportsPage />;
   }
 
-  if (currentTab === "future") {
-    return <FutureFeatures />;
-  }
+
 
   if (currentTab === "profile") {
     return <ProfileSettings />;
