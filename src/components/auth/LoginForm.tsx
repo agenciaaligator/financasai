@@ -175,7 +175,7 @@ export function LoginForm() {
               onClick={() => navigate('/choose-plan')}
               className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
             >
-              Criar conta grátis
+              Criar conta
             </Button>
           </div>
         </form>

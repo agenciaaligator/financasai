@@ -100,7 +100,7 @@ export function UsersManagement() {
           full_name: profile.full_name || 'Sem nome',
           created_at: profile.created_at,
           role: validRole,
-          planName: (subscription?.subscription_plans as any)?.name || 'Gratuito',
+          planName: (subscription?.subscription_plans as any)?.name || 'Sem assinatura',
           subscriptionStatus: subscription?.status || 'inactive',
           trialExpiresAt: trialRole?.expires_at || null,
           isMaster: masterUserIds.has(profile.user_id),
@@ -271,7 +271,7 @@ export function UsersManagement() {
       admin: { icon: Shield, color: 'bg-destructive text-destructive-foreground', label: 'Admin' },
       premium: { icon: Crown, color: 'bg-success text-success-foreground', label: 'Premium' },
       trial: { icon: Star, color: 'bg-accent text-accent-foreground', label: 'Trial' },
-      free: { icon: UserIcon, color: 'bg-muted text-muted-foreground', label: 'Gratuito' },
+      free: { icon: UserIcon, color: 'bg-muted text-muted-foreground', label: 'Sem assinatura' },
     };
 
     const badge = badges[role as keyof typeof badges] || badges.free;
