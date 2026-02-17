@@ -4,13 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Mail, Lock, Crown, Calendar, Check, X, ExternalLink, RefreshCw, Bug, Shield, MessageSquare, Phone, BarChart3, CheckCircle2 } from "lucide-react";
+import { User, Mail, Lock, Crown, Calendar, Check, X, ExternalLink, Shield, MessageSquare, Phone, BarChart3, CheckCircle2 } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
-import { useFeatureLimits } from "@/hooks/useFeatureLimits";
+
 import { UpgradeModal } from "./UpgradeModal";
 import { useOrganizationPermissions } from "@/hooks/useOrganizationPermissions";
 import { profileSchema } from "@/lib/validations";
@@ -40,7 +40,7 @@ export function ProfileSettings() {
   const { toast } = useToast();
   const { t } = useTranslation();
   const { subscription, planName, isFreePlan, isTrial, isPremium, planLimits, stripeStatus } = useSubscription();
-  const { currentUsage, getTransactionProgress, getCategoryProgress } = useFeatureLimits();
+  
   const [managingSubscription, setManagingSubscription] = useState(false);
   
   const { organization_id } = useOrganizationPermissions();
@@ -534,43 +534,6 @@ export function ProfileSettings() {
     }
   };
 
-  const handleForceUpdate = async () => {
-    console.log('[FORCE UPDATE] Limpando todos os caches...');
-    
-    try {
-      // Limpar storage
-      localStorage.clear();
-      sessionStorage.clear();
-      
-      // Limpar Cache API
-      if ('caches' in window) {
-        const names = await caches.keys();
-        await Promise.all(names.map(n => caches.delete(n)));
-        console.log('[FORCE UPDATE] Cache API limpo');
-      }
-      
-      // Unregister Service Workers
-      if ('serviceWorker' in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(registrations.map(r => r.unregister()));
-        console.log('[FORCE UPDATE] Service Workers removidos');
-      }
-      
-      toast({
-        title: "🔄 Atualizando app...",
-        description: "Recarregando com versão mais recente",
-      });
-    } catch (e) {
-      console.error('[FORCE UPDATE] Erro ao limpar:', e);
-    }
-    
-    // Hard reload com cache busting
-    setTimeout(() => {
-      const timestamp = Date.now();
-      console.log('[FORCE UPDATE] Forçando reload com timestamp:', timestamp);
-      window.location.replace(window.location.pathname + '?force_update=' + timestamp);
-    }, 500);
-  };
 
   return (
     <div className="space-y-6">
@@ -932,72 +895,6 @@ export function ProfileSettings() {
             )}
           </div>
 
-          <div className="space-y-4">
-            <h4 className="font-semibold text-sm">Uso do Plano</h4>
-            
-            {getTransactionProgress() && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span>Transações</span>
-                  <span className="font-medium">
-                    {currentUsage.transactions}/{getTransactionProgress()?.limit || '∞'}
-                  </span>
-                </div>
-                <Progress value={getTransactionProgress()?.percentage || 0} className="h-2" />
-              </div>
-            )}
-
-            {getCategoryProgress() && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span>Categorias</span>
-                  <span className="font-medium">
-                    {currentUsage.categories}/{getCategoryProgress()?.limit || '∞'}
-                  </span>
-                </div>
-                <Progress value={getCategoryProgress()?.percentage || 0} className="h-2" />
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-4">
-            <h4 className="font-semibold text-sm">Recursos Disponíveis</h4>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex items-center gap-2 text-sm">
-                {planLimits?.hasWhatsapp ? (
-                  <Check className="h-4 w-4 text-success" />
-                ) : (
-                  <X className="h-4 w-4 text-muted-foreground" />
-                )}
-                <span>WhatsApp</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                {planLimits?.hasAiReports ? (
-                  <Check className="h-4 w-4 text-success" />
-                ) : (
-                  <X className="h-4 w-4 text-muted-foreground" />
-                )}
-                <span>IA Reports</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                {planLimits?.hasBankIntegration ? (
-                  <Check className="h-4 w-4 text-success" />
-                ) : (
-                  <X className="h-4 w-4 text-muted-foreground" />
-                )}
-                <span>Integração Bancária</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                {planLimits?.hasPrioritySupport ? (
-                  <Check className="h-4 w-4 text-success" />
-                ) : (
-                  <X className="h-4 w-4 text-muted-foreground" />
-                )}
-                <span>Suporte Prioritário</span>
-              </div>
-            </div>
-          </div>
-
           <div className="space-y-3">
 
             {isPremium && stripeStatus?.stripe_customer_id && (
@@ -1017,46 +914,6 @@ export function ProfileSettings() {
                 ID da Assinatura: {stripeStatus.stripe_subscription_id}
               </p>
             )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Manutenção do Sistema */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <RefreshCw className="h-5 w-5" />
-            Manutenção do Sistema
-          </CardTitle>
-          <CardDescription>
-            Ferramentas para resolver problemas de cache e atualização
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col gap-3">
-            <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
-              <Bug className="h-5 w-5 text-muted-foreground mt-0.5" />
-              <div className="flex-1">
-                <p className="text-sm font-medium">Atualizar App</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Limpa todos os caches e força o carregamento da versão mais recente. 
-                  Use se notar comportamento inesperado ou dados desatualizados.
-                </p>
-              </div>
-            </div>
-            
-            <Button
-              onClick={handleForceUpdate}
-              variant="outline"
-              className="w-full"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Forçar Atualização Completa
-            </Button>
-            
-            <p className="text-xs text-muted-foreground text-center">
-              ⚠️ Isso limpará todos os dados armazenados localmente e recarregará a página
-            </p>
           </div>
         </CardContent>
       </Card>
