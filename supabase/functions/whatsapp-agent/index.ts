@@ -1117,21 +1117,25 @@ class ReceiptOCR {
           content: [
             {
               type: 'text',
-              text: `Analise esta nota fiscal brasileira e extraia as seguintes informações:
+              text: `Analise esta imagem de documento financeiro brasileiro e extraia as seguintes informações:
 
 1. Valor total (apenas número, ex: 87.50)
-2. Nome do estabelecimento
+2. Nome do estabelecimento ou empresa
 3. Categoria provável (escolha UMA das opções: Alimentação, Transporte, Moradia, Saúde, Entretenimento, Educação, Vestuário, Outros)
-4. Data (formato DD/MM/AAAA, se visível)
+4. Data do documento (formato DD/MM/AAAA)
+5. Tipo de documento: "receipt" (cupom fiscal, comprovante de compra) ou "bill" (conta de luz/água/gás/telefone, boleto, fatura)
+6. Se for uma CONTA (bill): extraia a DATA DE VENCIMENTO (formato DD/MM/AAAA)
 
 IMPORTANTE:
-- Para "valor", retorne APENAS o número decimal (use ponto como separador)
-- Para "merchant", retorne o nome do estabelecimento
+- Para "amount", retorne APENAS o número decimal (use ponto como separador)
+- Para "merchant", retorne o nome do estabelecimento ou concessionária
 - Para "category", escolha UMA categoria da lista acima
-- Para "date", use formato DD/MM/AAAA ou deixe vazio se não encontrar
+- Para "date", use formato DD/MM/AAAA (data da compra ou emissão)
+- Para "document_type", use "receipt" para cupons/comprovantes ou "bill" para contas/boletos/faturas
+- Para "due_date", APENAS se for uma conta (bill): extraia a data de VENCIMENTO no formato DD/MM/AAAA. Procure por campos como "Vencimento", "Data de vencimento", "Vence em". Se não encontrar, deixe vazio.
 
 Retorne APENAS um JSON válido no formato:
-{"amount": 87.50, "merchant": "Nome do Local", "category": "Alimentação", "date": "07/10/2025"}`
+{"amount": 87.50, "merchant": "Nome do Local", "category": "Alimentação", "date": "07/10/2025", "document_type": "receipt", "due_date": ""}`
             },
             {
               type: 'image_url',
@@ -2768,11 +2772,17 @@ class WhatsAppAgent {
         session_data: updatedSessionData
       });
 
-      const response = `📸 *Nota Fiscal Analisada!*\n\n` +
+      const isBill = ocrData.document_type === 'bill';
+      const headerText = isBill ? '📸 *Conta Analisada!*' : '📸 *Nota Fiscal Analisada!*';
+      const locationLabel = isBill ? '🏪 Empresa' : '🏪 Local';
+      const dateLabel = isBill && ocrData.due_date ? '📅 Vencimento' : '📅 Data';
+      const dateValue = isBill && ocrData.due_date ? ocrData.due_date : ocrData.date;
+      
+      const response = `${headerText}\n\n` +
                       `💰 Valor: R$ ${ocrData.amount.toFixed(2)}\n` +
-                      `🏪 Local: ${ocrData.merchant}\n` +
+                      `${locationLabel}: ${ocrData.merchant}\n` +
                       `📂 Categoria: ${ocrData.category}\n` +
-                      `${ocrData.date ? `📅 Data: ${ocrData.date}\n` : ''}\n` +
+                      `${dateValue ? `${dateLabel}: ${dateValue}\n` : ''}\n` +
                       `Salvar essa despesa? *(sim/não)*`;
 
       return {
@@ -2822,8 +2832,11 @@ class WhatsAppAgent {
     const negative = ['não', 'nao', 'n', 'no', 'cancelar'];
 
     if (affirmative.includes(messageText.toLowerCase().trim())) {
-      // Parsear data se existir
-      let parsedDate = ocrData.date ? DateParser.parseDate(ocrData.date) : null;
+      // Para contas (bill), priorizar due_date; para comprovantes, usar date
+      const isBill = ocrData.document_type === 'bill';
+      const preferredDate = (isBill && ocrData.due_date) ? ocrData.due_date : ocrData.date;
+      
+      let parsedDate = preferredDate ? DateParser.parseDate(preferredDate) : null;
       
       // Usar data de hoje se não encontrou
       if (!parsedDate) {
@@ -3650,20 +3663,23 @@ class WhatsAppAgent {
         console.log('Category matched:', categoryInfo);
       }
 
-      // HEURÍSTICA DE DATA: Se data do recibo for muito antiga (>35 dias), usar data atual
+      // HEURÍSTICA DE DATA: Aceitar datas de até 60 dias no passado e 90 dias no futuro
       let finalDate = transaction.date;
       let dateNote = '';
       
       if (transaction.date) {
         const receiptDate = new Date(transaction.date);
         const today = new Date();
-        const daysDiff = Math.floor((today.getTime() - receiptDate.getTime()) / (1000 * 60 * 60 * 24));
+        const diffMs = today.getTime() - receiptDate.getTime();
+        const daysDiff = Math.floor(diffMs / (1000 * 60 * 60 * 24));
         
-        if (daysDiff > 35) {
+        // daysDiff > 0 = passado, daysDiff < 0 = futuro
+        if (daysDiff > 60 || daysDiff < -90) {
           finalDate = today.toISOString().split('T')[0];
-          dateNote = `Data do recibo: ${receiptDate.toLocaleDateString('pt-BR')}`;
-          console.log(`📅 [saveTransaction] Receipt date is ${daysDiff} days old, using today's date instead`);
-          console.log(`📅 [saveTransaction] Original: ${transaction.date}, New: ${finalDate}`);
+          dateNote = `Data original do documento: ${receiptDate.toLocaleDateString('pt-BR')}`;
+          console.log(`📅 [saveTransaction] Date ${transaction.date} is out of range (${daysDiff} days), using today's date`);
+        } else {
+          console.log(`📅 [saveTransaction] Date ${transaction.date} is within acceptable range (${daysDiff} days)`);
         }
       }
       
@@ -3754,10 +3770,21 @@ class WhatsAppAgent {
         `📅 *Data:* ${new Date(transaction.date!).toLocaleDateString('pt-BR')}\n\n` +
         `💰 *Saldo atual:* R$ ${currentBalance.toFixed(2)}\n\n` +
         `📊 Para visualizar mais detalhes e relatórios, acesse a plataforma:\n` +
-        `🔗 https://bc45aac3-c622-434f-ad58-afc37c18c6c2.lovableproject.com`;
+        `🔗 https://donawilma.lovable.app`;
 
       // 💡 Detectar se a transação parece recorrente
-      const recurringKeywords = ['luz', 'agua', 'água', 'aluguel', 'internet', 'netflix', 'spotify', 'assinatura', 'condominio', 'condomínio', 'seguro', 'plano', 'telefone', 'celular', 'academia', 'escola', 'faculdade', 'mensalidade', 'iptu', 'ipva'];
+      const recurringKeywords = [
+        // Originais
+        'luz', 'agua', 'água', 'aluguel', 'internet', 'netflix', 'spotify', 'assinatura', 'condominio', 'condomínio', 'seguro', 'plano', 'telefone', 'celular', 'academia', 'escola', 'faculdade', 'mensalidade', 'iptu', 'ipva',
+        // Energia
+        'energia', 'eletricidade', 'enel', 'eletropaulo', 'cpfl', 'cemig', 'light', 'equatorial', 'celesc', 'copel', 'energisa', 'neoenergia', 'coelba',
+        // Gás
+        'gas', 'gás', 'comgas', 'comgás', 'naturgy',
+        // Saneamento
+        'saneamento', 'sabesp', 'cedae', 'copasa', 'sanepar', 'embasa',
+        // Outros serviços
+        'lixo', 'taxa', 'parcela', 'financiamento', 'consorcio', 'consórcio', 'streaming', 'hbo', 'amazon', 'disney', 'youtube', 'deezer', 'apple'
+      ];
       const titleLower = (transaction.title || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       const isRecurring = recurringKeywords.some(kw => {
         const kwNorm = kw.normalize('NFD').replace(/[\u0300-\u036f]/g, '');

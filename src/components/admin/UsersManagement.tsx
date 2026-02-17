@@ -1,25 +1,17 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Shield, Crown, Star, User as UserIcon, Sparkles, Trash2 } from "lucide-react";
+import { Shield, Crown, Star, User as UserIcon, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 interface User {
@@ -35,6 +27,7 @@ interface User {
 }
 
 export function UsersManagement() {
+  const { t } = useTranslation();
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,7 +48,6 @@ export function UsersManagement() {
 
       const userIds = profiles?.map(p => p.user_id) || [];
 
-      // Buscar master users
       const { data: masterUsers } = await supabase
         .from('master_users')
         .select('user_id')
@@ -63,27 +55,23 @@ export function UsersManagement() {
 
       const masterUserIds = new Set(masterUsers?.map(m => m.user_id) || []);
       
-      // Buscar role via RPC (highest priority role)
       const rolesPromises = userIds.map(async (userId) => {
         const { data } = await supabase.rpc('get_user_role', { _user_id: userId });
         return { user_id: userId, role: data || 'free' };
       });
       const roles = await Promise.all(rolesPromises);
 
-      // Buscar subscriptions
       const { data: subscriptions } = await supabase
         .from('user_subscriptions')
         .select('user_id, plan_id, status, current_period_end, subscription_plans(name)')
         .in('user_id', userIds);
 
-      // Buscar trial expiration
       const { data: trialRoles } = await supabase
         .from('user_roles')
         .select('user_id, expires_at')
         .in('user_id', userIds)
         .eq('role', 'trial');
 
-      // Combinar dados
       const usersData = profiles?.map(profile => {
         const userRole = roles?.find(r => r.user_id === profile.user_id);
         const roleValue = userRole?.role || 'free';
@@ -96,11 +84,11 @@ export function UsersManagement() {
         
         return {
           id: profile.user_id,
-          email: profile.email || 'Sem email',
-          full_name: profile.full_name || 'Sem nome',
+          email: profile.email || t('admin.noEmail'),
+          full_name: profile.full_name || t('admin.noName'),
           created_at: profile.created_at,
           role: validRole,
-          planName: (subscription?.subscription_plans as any)?.name || 'Sem assinatura',
+          planName: (subscription?.subscription_plans as any)?.name || t('admin.noSubscription'),
           subscriptionStatus: subscription?.status || 'inactive',
           trialExpiresAt: trialRole?.expires_at || null,
           isMaster: masterUserIds.has(profile.user_id),
@@ -109,37 +97,29 @@ export function UsersManagement() {
 
       setUsers(usersData);
     } catch (error) {
-      console.error('Erro ao buscar usuários:', error);
-      toast.error('Erro ao carregar usuários');
+      console.error('Error fetching users:', error);
+      toast.error(t('admin.loadUsersError'));
     } finally {
       setLoading(false);
     }
   };
 
   const handleRoleChange = async (userId: string, newRole: 'free' | 'premium' | 'admin', userEmail: string) => {
-    console.log('[UsersManagement] Alterando role:', { userId, newRole, userEmail });
-
     try {
-      // Verificar se é master user
       const { data: isMaster } = await supabase.rpc('is_master_user', { _user_id: userId });
       
       if (isMaster && newRole !== 'admin') {
-        toast.error('❌ Não é possível alterar a role do usuário master. O master deve sempre ser admin.');
+        toast.error(`❌ ${t('admin.cannotChangeMaster')}`);
         return;
       }
 
-      // Deletar TODAS as roles antigas do usuário
       const { error: deleteError } = await supabase
         .from('user_roles')
         .delete()
         .eq('user_id', userId);
 
-      if (deleteError) {
-        console.error('[UsersManagement] Erro ao deletar roles antigas:', deleteError);
-        throw new Error(`Erro ao deletar roles: ${deleteError.message}`);
-      }
+      if (deleteError) throw new Error(deleteError.message);
 
-      // Inserir nova role
       const { error: insertError } = await supabase
         .from('user_roles')
         .insert({ 
@@ -148,17 +128,12 @@ export function UsersManagement() {
           expires_at: newRole === 'admin' ? null : undefined
         });
 
-      if (insertError) {
-        console.error('[UsersManagement] Erro ao inserir nova role:', insertError);
-        throw new Error(`Erro ao inserir role: ${insertError.message}`);
-      }
+      if (insertError) throw new Error(insertError.message);
 
-      console.log('[UsersManagement] ✅ Role alterada com sucesso para:', newRole);
-      toast.success(`✅ Role alterada para ${newRole} com sucesso!`);
+      toast.success(`✅ ${t('admin.roleChanged', { role: newRole })}`);
       fetchUsers();
     } catch (error: any) {
-      console.error('[UsersManagement] ❌ Erro ao atualizar permissão:', error);
-      toast.error(`❌ ${error.message || 'Falha ao atualizar permissão'}`);
+      toast.error(`❌ ${error.message || t('admin.roleChangeError')}`);
     }
   };
 
@@ -167,100 +142,61 @@ export function UsersManagement() {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       
-      // Chamar edge function activate-trial como admin para outro usuário
       const { error } = await supabase.functions.invoke('activate-trial', {
-        headers: {
-          Authorization: `Bearer ${sessionData.session?.access_token}`
-        },
+        headers: { Authorization: `Bearer ${sessionData.session?.access_token}` },
         body: { user_id: userId }
       });
 
       if (error) throw error;
 
-      toast.success('Trial de 14 dias ativado com sucesso!');
+      toast.success(t('admin.trialActivated'));
       fetchUsers();
     } catch (error: any) {
-      console.error('Erro ao ativar trial:', error);
-      toast.error(error.message || 'Erro ao ativar trial');
+      toast.error(error.message || t('admin.trialActivateError'));
     } finally {
       setActivatingTrial(null);
     }
   };
 
   const handleDeleteUser = async (userId: string, userEmail: string) => {
-    console.log(`[DELETE USER] Iniciando exclusão de ${userEmail} (${userId})`);
-    
-    // 1. VERIFICAÇÕES DE SEGURANÇA
     if (userId === currentUser?.id) {
-      toast.error('❌ Você não pode excluir sua própria conta pelo admin panel');
+      toast.error(`❌ ${t('admin.cannotDeleteSelf')}`);
       return;
     }
     
-    // Verificar se é master
     const { data: isMaster } = await supabase.rpc('is_master_user', { _user_id: userId });
     if (isMaster) {
-      toast.error('❌ Não é possível excluir o usuário master');
+      toast.error(`❌ ${t('admin.cannotDeleteMaster')}`);
       return;
     }
     
-    // 2. CONFIRMAÇÃO DO USUÁRIO
     const confirmed = window.confirm(
-      `⚠️ ATENÇÃO: Você está prestes a EXCLUIR permanentemente:\n\n` +
-      `Email: ${userEmail}\n` +
-      `ID: ${userId}\n\n` +
-      `Isso irá APAGAR:\n` +
-      `- Todas as transações\n` +
-      `- Todos os compromissos\n` +
-      `- Todas as categorias\n` +
-      `- Conexões do WhatsApp e Google Calendar\n` +
-      `- Membros de organizações\n` +
-      `- TODOS os dados do usuário\n\n` +
-      `Esta ação é IRREVERSÍVEL!\n\n` +
-      `Deseja continuar?`
+      `⚠️ ${t('admin.deleteConfirmTitle')}\n\n` +
+      `${t('admin.deleteConfirmEmail', { email: userEmail })}\n` +
+      `${t('admin.deleteConfirmId', { id: userId })}\n\n` +
+      t('admin.deleteConfirmWarning')
     );
     
-    if (!confirmed) {
-      console.log('[DELETE USER] Exclusão cancelada pelo usuário');
-      return;
-    }
+    if (!confirmed) return;
     
     setLoading(true);
     
     try {
-      // 3. CHAMAR EDGE FUNCTION (substitui toda a lógica de exclusão manual)
-      console.log('[DELETE USER] Chamando edge function delete-user-admin...');
-      
       const { data: sessionData } = await supabase.auth.getSession();
       
       const { data, error } = await supabase.functions.invoke('delete-user-admin', {
-        headers: {
-          Authorization: `Bearer ${sessionData.session?.access_token}`
-        },
+        headers: { Authorization: `Bearer ${sessionData.session?.access_token}` },
         body: { user_id: userId }
       });
       
-      if (error) {
-        console.error('[DELETE USER] Erro retornado pela edge function:', error);
-        throw new Error(error.message || 'Falha ao excluir usuário');
-      }
+      if (error) throw new Error(error.message || t('admin.deleteError'));
+      if (!data?.success) throw new Error(data?.error || t('admin.deleteError'));
       
-      if (!data?.success) {
-        console.error('[DELETE USER] Edge function retornou falha:', data);
-        throw new Error(data?.error || 'Falha ao excluir usuário');
-      }
-      
-      console.log(`[DELETE USER] ✅ Usuário ${userEmail} excluído com sucesso!`);
-      toast.success(`✅ Usuário ${userEmail} excluído permanentemente`);
-      
-      // Remover imediatamente da lista local para feedback visual instantâneo
+      toast.success(`✅ ${t('admin.userDeleted', { email: userEmail })}`);
       setUsers(prevUsers => prevUsers.filter(u => u.id !== userId));
-      
-      // Depois buscar lista completa para garantir sincronia
       await fetchUsers();
-      
     } catch (error: any) {
-      console.error('[DELETE USER] ❌ Erro durante exclusão:', error);
-      toast.error(`❌ Erro ao excluir usuário: ${error.message}`);
+      toast.error(`❌ ${t('admin.deleteError')}: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -268,10 +204,10 @@ export function UsersManagement() {
 
   const getRoleBadge = (role: string) => {
     const badges = {
-      admin: { icon: Shield, color: 'bg-destructive text-destructive-foreground', label: 'Admin' },
-      premium: { icon: Crown, color: 'bg-success text-success-foreground', label: 'Premium' },
-      trial: { icon: Star, color: 'bg-accent text-accent-foreground', label: 'Trial' },
-      free: { icon: UserIcon, color: 'bg-muted text-muted-foreground', label: 'Sem assinatura' },
+      admin: { icon: Shield, color: 'bg-destructive text-destructive-foreground', label: t('admin.admin_role') },
+      premium: { icon: Crown, color: 'bg-success text-success-foreground', label: t('admin.premium') },
+      trial: { icon: Star, color: 'bg-accent text-accent-foreground', label: t('admin.trial') },
+      free: { icon: UserIcon, color: 'bg-muted text-muted-foreground', label: t('admin.noSubscription') },
     };
 
     const badge = badges[role as keyof typeof badges] || badges.free;
@@ -289,7 +225,7 @@ export function UsersManagement() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Carregando usuários...</CardTitle>
+          <CardTitle>{t('admin.loadingUsers')}</CardTitle>
         </CardHeader>
       </Card>
     );
@@ -298,17 +234,17 @@ export function UsersManagement() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Gerenciamento de Usuários</CardTitle>
+        <CardTitle>{t('admin.userManagement')}</CardTitle>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Cadastro</TableHead>
-              <TableHead>Ações</TableHead>
+              <TableHead>{t('admin.name')}</TableHead>
+              <TableHead>{t('admin.email')}</TableHead>
+              <TableHead>{t('admin.status')}</TableHead>
+              <TableHead>{t('admin.registration')}</TableHead>
+              <TableHead>{t('admin.actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -318,7 +254,7 @@ export function UsersManagement() {
                   {user.full_name}
                   {user.isMaster && (
                     <Badge variant="secondary" className="ml-2 bg-purple-500 text-white">
-                      Master
+                      {t('admin.master')}
                     </Badge>
                   )}
                 </TableCell>
@@ -328,7 +264,7 @@ export function UsersManagement() {
                     {getRoleBadge(user.role)}
                     {user.role === 'trial' && user.trialExpiresAt && (
                       <span className="text-xs text-muted-foreground">
-                        Expira: {new Date(user.trialExpiresAt).toLocaleDateString('pt-BR')}
+                        {t('admin.expires')}: {new Date(user.trialExpiresAt).toLocaleDateString('pt-BR')}
                       </span>
                     )}
                     {user.subscriptionStatus === 'active' && (
@@ -352,9 +288,9 @@ export function UsersManagement() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="free">Gratuito</SelectItem>
-                        <SelectItem value="premium">Premium</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="free">{t('admin.free')}</SelectItem>
+                        <SelectItem value="premium">{t('admin.premium')}</SelectItem>
+                        <SelectItem value="admin">{t('admin.admin_role')}</SelectItem>
                       </SelectContent>
                     </Select>
 
@@ -364,7 +300,7 @@ export function UsersManagement() {
                         variant="destructive"
                         onClick={() => handleDeleteUser(user.id, user.email)}
                         disabled={loading}
-                        title="Excluir usuário permanentemente"
+                        title={t('admin.deleteUserTitle')}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
