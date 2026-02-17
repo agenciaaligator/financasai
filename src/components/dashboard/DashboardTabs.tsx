@@ -26,9 +26,7 @@ import {
   endOfWeek, 
   startOfMonth, 
   endOfMonth, 
-  startOfYear, 
-  endOfYear,
-  subDays,
+  subMonths,
   isWithinInterval,
   parseISO
 } from "date-fns";
@@ -59,10 +57,7 @@ export function DashboardTabs({
   
   const [filters, setFilters] = useState<TransactionFiltersState>({
     period: 'all',
-    customDateRange: { start: null, end: null },
     type: 'all',
-    categories: [],
-    source: 'all',
     searchText: '',
   });
 
@@ -88,26 +83,12 @@ export function DashboardTabs({
             startDate = startOfMonth(now);
             endDate = endOfMonth(now);
             break;
-          case '30days':
-            startDate = startOfDay(subDays(now, 30));
-            endDate = endOfDay(now);
+          case 'last_month': {
+            const lastMonth = subMonths(now, 1);
+            startDate = startOfMonth(lastMonth);
+            endDate = endOfMonth(lastMonth);
             break;
-          case '90days':
-            startDate = startOfDay(subDays(now, 90));
-            endDate = endOfDay(now);
-            break;
-          case 'year':
-            startDate = startOfYear(now);
-            endDate = endOfYear(now);
-            break;
-          case 'custom':
-            if (filters.customDateRange.start && filters.customDateRange.end) {
-              startDate = startOfDay(toZonedTime(filters.customDateRange.start, TIMEZONE));
-              endDate = endOfDay(toZonedTime(filters.customDateRange.end, TIMEZONE));
-            } else {
-              return true;
-            }
-            break;
+          }
           default:
             return true;
         }
@@ -118,16 +99,6 @@ export function DashboardTabs({
       }
 
       if (filters.type !== 'all' && transaction.type !== filters.type) {
-        return false;
-      }
-
-      if (filters.categories.length > 0 && transaction.category_id) {
-        if (!filters.categories.includes(transaction.category_id)) {
-          return false;
-        }
-      }
-
-      if (filters.source !== 'all' && transaction.source !== filters.source) {
         return false;
       }
 
@@ -176,29 +147,27 @@ export function DashboardTabs({
       </TabsList>
 
       <TabsContent value="dashboard" className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="bg-gradient-card shadow-card border-0">
-            <CardHeader>
-              <CardTitle>Gráfico Financeiro</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <FinancialChart transactions={transactions} />
-            </CardContent>
-          </Card>
+        <Card className="bg-gradient-card shadow-card border-0">
+          <CardHeader>
+            <CardTitle>Gráfico Financeiro</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <FinancialChart transactions={transactions} />
+          </CardContent>
+        </Card>
 
-          <Card className="bg-gradient-card shadow-card border-0">
-            <CardHeader>
-              <CardTitle>Transações Recentes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <TransactionList 
-                transactions={transactions.slice(0, 10)} 
-                onDelete={onDelete}
-                onEdit={onEdit}
-              />
-            </CardContent>
-          </Card>
-        </div>
+        <Card className="bg-gradient-card shadow-card border-0">
+          <CardHeader>
+            <CardTitle>Transações Recentes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TransactionList 
+              transactions={transactions.slice(0, 5)} 
+              onDelete={onDelete}
+              onEdit={onEdit}
+            />
+          </CardContent>
+        </Card>
       </TabsContent>
 
       <TabsContent value="transactions" className="space-y-4">

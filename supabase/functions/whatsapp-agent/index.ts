@@ -1213,39 +1213,14 @@ class PersonalizedResponses {
     const typeEmoji = transaction.type === 'income' ? '💰' : '💸';
     const typeText = transaction.type === 'income' ? 'Receita' : 'Despesa';
 
-    // Templates SUPER CONVERSACIONAIS (inspirado no MeuAssessor)
     const templates = [
-      `${typeEmoji} Anotado! Gastou R$ ${transaction.amount.toFixed(2)} com ${transaction.title.toLowerCase()} ${emoji}\n\n💰 Seu saldo agora: R$ ${balance.total.toFixed(2)}`,
+      `✅ Anotei! ${typeText} de R$ ${transaction.amount.toFixed(2)} em ${transaction.category_name || transaction.title} ${emoji}\n\n💰 Saldo atual: R$ ${balance.total.toFixed(2)}`,
       
-      `Pronto, ${greeting}! ${typeEmoji} Registrei R$ ${transaction.amount.toFixed(2)} em ${transaction.category_name || transaction.title} ${emoji}\n\n📊 Resumo do mês:\n💚 Receitas: R$ ${balance.income.toFixed(2)}\n💸 Despesas: R$ ${balance.expense.toFixed(2)}\n💰 Saldo: R$ ${balance.total.toFixed(2)}`,
+      `Pronto, ${greeting}! ${typeEmoji} ${typeText} de R$ ${transaction.amount.toFixed(2)} → ${transaction.category_name || transaction.title} ${emoji}\n\n📊 Resumo do mês:\n💚 Receitas: R$ ${balance.income.toFixed(2)}\n💸 Despesas: R$ ${balance.expense.toFixed(2)}\n💰 Saldo: R$ ${balance.total.toFixed(2)}`,
       
-      `Feito! ${typeEmoji} ${typeText} de R$ ${transaction.amount.toFixed(2)} → ${transaction.category_name || transaction.title} ${emoji}\n\nSaldo atual: R$ ${balance.total.toFixed(2)}`,
-      
-      `✅ Salvei! R$ ${transaction.amount.toFixed(2)} em ${transaction.title.toLowerCase()} já está no sistema ${emoji}\n\n💰 Saldo: R$ ${balance.total.toFixed(2)}`
+      `${typeEmoji} Feito! R$ ${transaction.amount.toFixed(2)} em ${transaction.title.toLowerCase()} ${emoji}\n\nSaldo atual: R$ ${balance.total.toFixed(2)}`
     ];
 
-    // Template especial para despesas altas
-    if (transaction.type === 'expense' && transaction.amount > 200) {
-      templates.push(
-        `Opa! ${typeEmoji} Despesa grande aqui: R$ ${transaction.amount.toFixed(2)} em ${transaction.title.toLowerCase()} ${emoji}\n\n📊 Esse mês:\n💸 Despesas: R$ ${balance.expense.toFixed(2)}\n💰 Saldo: R$ ${balance.total.toFixed(2)}\n\n💡 Quer ver onde mais você gastou? Pergunte "quanto gastei com ${transaction.category_name?.toLowerCase() || 'outros'}?"`
-      );
-    }
-
-    // Template especial para receitas
-    if (transaction.type === 'income') {
-      templates.push(
-        `Uhul! 🎉 Receita de R$ ${transaction.amount.toFixed(2)} registrada! ${emoji}\n\n💚 Total de receitas: R$ ${balance.income.toFixed(2)}\n💰 Saldo atual: R$ ${balance.total.toFixed(2)}\n\nBom ver o dinheiro entrando! 💪`
-      );
-    }
-
-    // Template especial para pequenos gastos (< R$ 30)
-    if (transaction.type === 'expense' && transaction.amount < 30) {
-      templates.push(
-        `${typeEmoji} Beleza! Anotei R$ ${transaction.amount.toFixed(2)} em ${transaction.title.toLowerCase()} ${emoji}\n\nOs pequenos gastos também contam! 😉\nSaldo: R$ ${balance.total.toFixed(2)}`
-      );
-    }
-
-    // Escolher template aleatório
     const randomIndex = Math.floor(Math.random() * templates.length);
     return templates[randomIndex];
   }
@@ -2498,12 +2473,11 @@ class WhatsAppAgent {
 
     // Resposta padrão para mensagens não compreendidas
     return {
-      response: `❓ *Não compreendi a mensagem.*\n\n` +
-               `*Comandos disponíveis:*\n` +
-               `• Adicionar: "gasto 50 mercado"\n` +
-               `• Ver saldo: "saldo"\n` +
-               `• Ver relatório: "relatorio"\n` +
-               `• Ver comandos: "ajuda"\n\n` +
+      response: `❓ *Não entendi direito.*\n\n` +
+               `Tente assim:\n` +
+               `• "gastei 30 no mercado"\n` +
+               `• "recebi 500 de freelance"\n` +
+               `• "saldo"\n\n` +
                `💡 Digite *"ajuda"* para ver todos os comandos.`,
       sessionData
     };
@@ -2632,74 +2606,33 @@ class WhatsAppAgent {
 
   static getHelpMenu(): string {
     return `🤖 *Dona Wilma - WhatsApp*\n\n` +
-           `*✨ FALE NATURALMENTE! Eu entendo você:*\n` +
-           `• "gastei 150 no mercado ontem"\n` +
-           `• "quanto gastei esse mês com comida?"\n` +
-           `• "recebi 5000 de salário"\n` +
-           `• "paguei 80 de uber hoje"\n` +
+           `*✨ FALE NATURALMENTE:*\n` +
+           `• "gastei 50 no mercado"\n` +
+           `• "recebi 500 de freelance"\n` +
            `• "qual meu saldo?"\n\n` +
            
-           `*📝 Outras formas de adicionar:*\n` +
+           `*📝 ADICIONAR TRANSAÇÕES:*\n` +
            `• gasto 50 mercado\n` +
            `• receita 1000 salario\n` +
            `• +100 freelance\n` +
-           `• -30 lanche hoje\n\n` +
+           `• -30 lanche\n\n` +
            
-           `*📸 Enviar Nota Fiscal:*\n` +
-           `• Tire uma foto da nota fiscal\n` +
-           `• Envie a imagem aqui\n` +
+           `*📸 ENVIAR NOTA FISCAL:*\n` +
+           `• Tire uma foto e envie aqui\n` +
            `• Eu extraio os dados automaticamente!\n\n` +
            
-           `*💳 Consultas (fale como quiser):*\n` +
-           `• "qual meu saldo?"\n` +
-           `• "quanto gastei com alimentação?"\n` +
-           `• "quanto recebi esse mês?"\n` +
-           `• "me mostra o extrato"\n\n` +
-           
-           `*📊 Relatórios:*\n` +
-           `• *hoje* - movimentações de hoje\n` +
+           `*📊 CONSULTAS:*\n` +
+           `• *saldo* - saldo atual\n` +
+           `• *hoje* - relatório do dia\n` +
            `• *semana* - últimos 7 dias\n` +
-           `• *relatorio* ou *mes* - mensal\n` +
-           `• *ano* - relatório anual\n\n` +
+           `• *gastos* - despesas do mês\n` +
+           `• *relatorio* - resumo mensal\n\n` +
            
-           `*🔄 Contas Fixas/Recorrentes:*\n` +
-           `• "conta fixa 150 internet dia 10"\n` +
-           `• "assinatura 50 netflix"\n` +
-           `• "minhas contas" ou "contas fixas"\n` +
-           `• "paguei internet" - dar baixa\n` +
-           `• "adiar conta luz para dia 20"\n\n` +
-           
-           `*📅 Agenda - Comandos Inteligentes:*\n` +
-           `• "agendar dentista amanhã 14h"\n` +
-           `• "compromisso reunião sexta 10h"\n` +
-           `• "meus compromissos" - listar todos\n\n` +
-           
-           `*✏️ Editar Compromissos:*\n` +
-           `• "editar compromisso" - lista todos\n` +
-           `• "editar compromisso 3" - edita o nº 3\n` +
-           `• "editar compromisso dia 25/10"\n` +
-           `• "editar compromisso dentista"\n` +
-           `• "remarcar compromisso" (igual editar)\n\n` +
-           
-           `*🗑️ Cancelar Compromissos:*\n` +
-           `• "cancelar compromisso" - lista todos\n` +
-           `• "cancelar compromisso 2" - cancela o nº 2\n` +
-           `• "cancelar compromisso dia 15/10"\n` +
-           `• "apagar evento reunião"\n\n` +
-           
-           `*✏️ Editar/Excluir Transações:*\n` +
+           `*✏️ EDITAR/EXCLUIR:*\n` +
            `• *editar última*\n` +
            `• *excluir última*\n\n` +
            
-           `*🤖 Inteligência Artificial:*\n` +
-           `Uso IA para entender o que você escreve!\n` +
-           `Não precisa decorar comandos - só fale naturalmente! 😊\n\n` +
-           
-           `💡 *Exemplos práticos:*\n` +
-           `• "paguei 200 de conta de luz"\n` +
-           `• "recebi 300 de freelance"\n` +
-           `• "gastei 45 na farmácia ontem"\n` +
-           `• "conta fixa 100 internet dia 5"`;
+           `💡 Não precisa decorar comandos - só fale naturalmente! 😊`;
   }
 
   // 📸 Método para processar imagens (OCR)
