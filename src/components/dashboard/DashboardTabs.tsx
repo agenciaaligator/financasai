@@ -6,7 +6,6 @@ import { FinancialChart } from "../FinancialChart";
 import { CategoryManager } from "../CategoryManager";
 import { ProfileSettings } from "../ProfileSettings";
 import { ReportsPage } from "../ReportsPage";
-import { FutureFeatures } from "../FutureFeatures";
 import { TransactionFilters, TransactionFiltersState } from "../TransactionFilters";
 import { Transaction } from "@/hooks/useTransactions";
 import { ErrorBoundary } from "../ErrorBoundary";
@@ -17,11 +16,8 @@ import {
   Tags,
   BarChart,
   Shield,
-  Sparkles,
-  Repeat
 } from "lucide-react";
 import { AdminPanel } from "../admin/AdminPanel";
-import { RecurringTransactionsManager } from "../RecurringTransactionsManager";
 import { useUserRole } from "@/hooks/useUserRole";
 import { 
   startOfDay, 
@@ -61,7 +57,6 @@ export function DashboardTabs({
 }: DashboardTabsProps) {
   const { isAdmin, role, loading } = useUserRole();
   
-  
   const [filters, setFilters] = useState<TransactionFiltersState>({
     period: 'all',
     customDateRange: { start: null, end: null },
@@ -75,7 +70,6 @@ export function DashboardTabs({
     const now = toZonedTime(new Date(), TIMEZONE);
     
     return transactions.filter(transaction => {
-      // Filtro de período
       if (filters.period !== 'all') {
         const transactionDate = toZonedTime(parseISO(transaction.date), TIMEZONE);
         let startDate: Date;
@@ -123,24 +117,20 @@ export function DashboardTabs({
         }
       }
 
-      // Filtro de tipo
       if (filters.type !== 'all' && transaction.type !== filters.type) {
         return false;
       }
 
-      // Filtro de categoria
       if (filters.categories.length > 0 && transaction.category_id) {
         if (!filters.categories.includes(transaction.category_id)) {
           return false;
         }
       }
 
-      // Filtro de fonte
       if (filters.source !== 'all' && transaction.source !== filters.source) {
         return false;
       }
 
-      // Filtro de texto
       if (filters.searchText.trim() !== '') {
         const searchLower = filters.searchText.toLowerCase();
         const titleMatch = transaction.title.toLowerCase().includes(searchLower);
@@ -156,7 +146,7 @@ export function DashboardTabs({
 
   return (
     <Tabs value={currentTab} onValueChange={onTabChange} className="w-full">
-      <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-8' : 'grid-cols-7'} bg-muted/30`}>
+      <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-6' : 'grid-cols-5'} bg-muted/30`}>
         <TabsTrigger value="dashboard" className="flex items-center space-x-2">
           <DollarSign className="h-4 w-4" />
           <span>Dashboard</span>
@@ -165,10 +155,6 @@ export function DashboardTabs({
           <TrendingUp className="h-4 w-4" />
           <span>Transações</span>
         </TabsTrigger>
-        <TabsTrigger value="recurring" className="flex items-center space-x-2">
-          <Repeat className="h-4 w-4" />
-          <span>Contas Fixas</span>
-        </TabsTrigger>
         <TabsTrigger value="categories" className="flex items-center space-x-2">
           <Tags className="h-4 w-4" />
           <span>Categorias</span>
@@ -176,10 +162,6 @@ export function DashboardTabs({
         <TabsTrigger value="reports" className="flex items-center space-x-2">
           <BarChart className="h-4 w-4" />
           <span>Relatórios</span>
-        </TabsTrigger>
-        <TabsTrigger value="future" className="flex items-center space-x-2">
-          <Sparkles className="h-4 w-4" />
-          <span>Novidades</span>
         </TabsTrigger>
         <TabsTrigger value="profile" className="flex items-center space-x-2">
           <User className="h-4 w-4" />
@@ -244,10 +226,6 @@ export function DashboardTabs({
         </Card>
       </TabsContent>
 
-      <TabsContent value="recurring">
-        <RecurringTransactionsManager categories={categories} />
-      </TabsContent>
-
       <TabsContent value="categories">
         <CategoryManager 
           categories={categories} 
@@ -259,11 +237,6 @@ export function DashboardTabs({
 
       <TabsContent value="reports">
         <ReportsPage />
-      </TabsContent>
-
-
-      <TabsContent value="future">
-        <FutureFeatures />
       </TabsContent>
 
       <TabsContent value="profile">
