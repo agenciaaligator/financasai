@@ -918,7 +918,7 @@ export function ProfileSettings() {
                 )}
               </div>
               <Badge variant={isPremium ? "default" : isTrial ? "secondary" : "outline"}>
-                {isPremium ? 'Premium' : isTrial ? 'Trial' : 'Gratuito'}
+                {isPremium ? 'Premium' : isTrial ? 'Trial' : 'Sem assinatura'}
               </Badge>
             </div>
 

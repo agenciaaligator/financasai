@@ -97,20 +97,7 @@ serve(async (req) => {
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     
     if (customers.data.length === 0) {
-      logStep("No customer found, updating unsubscribed state");
-      
-      // Update or create user subscription record
-      const { error: upsertError } = await supabaseClient
-        .from('user_subscriptions')
-        .upsert({
-          user_id: user.id,
-          plan_id: (await supabaseClient.from('subscription_plans').select('id').eq('name', 'free').single()).data?.id,
-          status: 'inactive',
-          stripe_customer_id: null,
-          stripe_subscription_id: null,
-        }, { onConflict: 'user_id' });
-      
-      if (upsertError) logStep("Error updating subscription", { error: upsertError });
+      logStep("No customer found in Stripe - no subscription");
       
       return new Response(JSON.stringify({ subscribed: false }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -187,26 +174,7 @@ serve(async (req) => {
 
       if (roleError) logStep("Error updating role", { error: roleError });
     } else {
-      logStep("No active subscription found");
-      
-      // Update to inactive/free
-      const { data: freePlan } = await supabaseClient
-        .from('subscription_plans')
-        .select('id')
-        .eq('name', 'free')
-        .single();
-
-      const { error: upsertError } = await supabaseClient
-        .from('user_subscriptions')
-        .upsert({
-          user_id: user.id,
-          plan_id: freePlan?.id,
-          status: 'inactive',
-          stripe_customer_id: customerId,
-          stripe_subscription_id: null,
-        }, { onConflict: 'user_id' });
-
-      if (upsertError) logStep("Error updating subscription", { error: upsertError });
+      logStep("No active subscription found in Stripe");
     }
 
     return new Response(JSON.stringify({

@@ -63,7 +63,7 @@ async function sendWhatsAppMessage(to: string, message: string): Promise<void> {
       },
       body: JSON.stringify({
         messaging_product: 'whatsapp',
-        to: to,
+        to: to.startsWith('+') ? to.substring(1) : to,
         type: 'text',
         text: { body: message }
       })

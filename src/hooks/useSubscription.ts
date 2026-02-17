@@ -87,7 +87,7 @@ export function useSubscription() {
   };
 
   const getPlanDisplayName = async () => {
-    if (!user) return 'Gratuito';
+    if (!user) return 'Sem assinatura';
 
     const { data: roleData } = await supabase.rpc('get_user_role', { _user_id: user.id });
     
@@ -124,7 +124,7 @@ export function useSubscription() {
       return `${displayName} (herdado)`;
     }
 
-    return 'Gratuito';
+    return 'Sem assinatura';
   };
 
   const [planDisplayName, setPlanDisplayName] = useState<string>('Carregando...');
@@ -138,7 +138,7 @@ export function useSubscription() {
         setLoadingPlanName(false);
       });
     } else {
-      setPlanDisplayName('Gratuito');
+      setPlanDisplayName('Sem assinatura');
       setLoadingPlanName(false);
     }
   }, [user, subscription]);

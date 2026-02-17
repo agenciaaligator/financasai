@@ -52,11 +52,11 @@ export async function getPlanLimits(userId: string): Promise<PlanLimits> {
       };
     }
 
-    // Retornar limites do plano free por padrão
+    // Sem assinatura ativa = bloqueio total (não existe plano free)
     return {
-      maxTransactions: 50,
-      maxCategories: 10,
-      hasWhatsapp: true,
+      maxTransactions: 0,
+      maxCategories: 0,
+      hasWhatsapp: false,
       hasAiReports: false,
       hasBankIntegration: false,
       hasPrioritySupport: false
@@ -97,7 +97,7 @@ export async function canCreateTransaction(userId: string): Promise<{
   if (count && count >= limits.maxTransactions) {
     return { 
       allowed: false, 
-      reason: `Você atingiu o limite de ${limits.maxTransactions} transações do plano Gratuito. Faça upgrade para o Premium e tenha transações ilimitadas!`,
+      reason: `Você precisa de uma assinatura Premium para criar transações. Assine agora e tenha acesso completo!`,
       currentCount: count,
       limit: limits.maxTransactions
     };
@@ -129,7 +129,7 @@ export async function canCreateCategory(userId: string): Promise<{
   if (count && count >= limits.maxCategories) {
     return { 
       allowed: false, 
-      reason: `Você atingiu o limite de ${limits.maxCategories} categorias do plano Gratuito. Faça upgrade para o Premium!`,
+      reason: `Você precisa de uma assinatura Premium para criar categorias. Assine agora!`,
       currentCount: count,
       limit: limits.maxCategories
     };
