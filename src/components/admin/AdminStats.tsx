@@ -147,7 +147,7 @@ export function AdminStats() {
           <CardContent>
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Gratuito</span>
+                <span className="text-sm text-muted-foreground">Sem assinatura</span>
                 <span className="font-semibold">{stats.freeUsers}</span>
               </div>
               <div className="flex justify-between items-center">
