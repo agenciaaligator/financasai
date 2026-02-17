@@ -1,97 +1,38 @@
 
+# Limpeza da Pagina de Perfil
 
-# Plano de Correcao: Eliminar Lacunas do Sistema
+## Problema
 
-## Resumo
+A pagina de Perfil exibe dois cards que confundem o usuario:
 
-Seu sistema tem **5 lacunas concretas** que precisam ser corrigidas antes do lancamento. Nenhuma exige mudancas no Supabase Dashboard.
+1. **"Minha Assinatura"** - Mostra barras de progresso de uso (transacoes/categorias), lista de recursos disponiveis (WhatsApp, IA Reports, Integracao Bancaria, Suporte Prioritario), e badge "Sem assinatura". Como o produto tem apenas o plano Premium, essas informacoes nao agregam valor e confundem.
 
----
+2. **"Manutencao do Sistema"** - Expoe um botao "Forcar Atualizacao Completa" que limpa cache e recarrega a pagina. Isso e uma ferramenta de desenvolvimento/suporte que nao deveria estar acessivel ao usuario final. Pode causar perda de dados locais se clicado por engano.
 
-## Lacuna 1: Fallback "plano free" no featureFlags.ts
+## Solucao
 
-**Problema**: Quando um usuario nao tem assinatura ativa, o sistema retorna limites de um "plano gratuito" ficticio (50 transacoes, 10 categorias). Como voce NAO tem plano free, isso nao deveria existir -- um usuario sem assinatura nao deveria conseguir criar transacoes.
+### Remover o card "Manutencao do Sistema" (linhas 1024-1062)
+- Remover completamente. Nao ha motivo para o usuario ter acesso a isso.
+- Remover os imports nao utilizados (`RefreshCw`, `Bug`) se nao forem usados em outro lugar do componente.
 
-**Arquivo**: `src/lib/featureFlags.ts` (linhas 55-63)
+### Simplificar o card "Minha Assinatura" (linhas 898-1022)
+Em vez de remover completamente, simplificar para mostrar apenas:
+- O status da assinatura (Premium Ativo / Sem assinatura)
+- Data de renovacao (se houver)
+- Botao "Gerenciar Assinatura" (link para o portal Stripe)
 
-**Correcao**: Retornar limites ZERO (bloqueio total) em vez de limites "free":
-- `maxTransactions: 0`
-- `maxCategories: 0`
-- `hasWhatsapp: false`
+Remover:
+- Barras de progresso de uso (transacoes/categorias) - nao faz sentido com limites infinitos no Premium
+- Grid de "Recursos Disponiveis" - todos sao iguais para todos, nao precisa listar
+- Badge redundante
 
-Tambem remover as mensagens "plano Gratuito" das funcoes `canCreateTransaction` e `canCreateCategory` (linhas 100, 132), trocando por mensagem generica tipo "Assine o Premium para usar".
+## Detalhes tecnicos
 
----
+**Arquivo editado**: `src/components/ProfileSettings.tsx`
 
-## Lacuna 2: check-subscription cria registro com plano "free"
+- Linhas 935-961: Remover secao "Uso do Plano" (barras de progresso)
+- Linhas 963-998: Remover secao "Recursos Disponiveis" (grid de checks)
+- Linhas 1024-1062: Remover card "Manutencao do Sistema" inteiro
+- Limpar imports nao utilizados (`Bug`, `RefreshCw`, `Progress`, etc.) e hooks (`useFeatureLimits`) se ficarem sem uso
 
-**Problema**: A edge function `check-subscription` (linhas 103-111 e 193-207) busca o plano `free` no banco e cria/atualiza `user_subscriptions` com ele quando o usuario nao tem assinatura no Stripe. Isso e inconsistente -- nao deveria criar nenhum registro de subscription para quem nao assinou.
-
-**Arquivo**: `supabase/functions/check-subscription/index.ts`
-
-**Correcao**: Quando nao ha assinatura ativa no Stripe:
-- NAO criar/upsert registro em `user_subscriptions`
-- Apenas retornar `{ subscribed: false }` sem tocar no banco
-- Remover as duas queries que buscam o plano "free"
-
----
-
-## Lacuna 3: UpgradeModal exibe planos free e trial do banco
-
-**Problema**: O `UpgradeModal` busca TODOS os planos ativos do banco e renderiza cards para free, trial e premium. Como free e trial estao `is_active: false` no banco, eles nao aparecem AGORA, mas o codigo ainda tem logica para eles (handleStartTrial chamando `activate-trial` que nao existe mais). Se alguem reativar esses planos por engano, o modal quebra.
-
-**Arquivo**: `src/components/UpgradeModal.tsx`
-
-**Correcao**: 
-- Remover toda a logica de `handleStartTrial` e `activate-trial`
-- Remover referencias a `isFreePlanRole` e `isTrialPlan`
-- Simplificar para mostrar apenas o plano Premium com os precos do `pricing.ts` (que ja tem os priceIds corretos por moeda)
-
----
-
-## Lacuna 4: Inconsistencia no telefone do whatsapp-webhook
-
-**Problema**: A funcao `sendWhatsAppMessage` no `whatsapp-webhook/index.ts` (linha 66) envia o numero `to` diretamente, sem remover o prefixo `+`. Ja no `whatsapp-agent/index.ts` (linha 22), o `+` e removido corretamente. A API do WhatsApp exige o numero SEM `+`.
-
-**Arquivo**: `supabase/functions/whatsapp-webhook/index.ts` (linha 51-79)
-
-**Correcao**: Adicionar `const cleanTo = to.startsWith('+') ? to.substring(1) : to;` e usar `cleanTo` no body, identico ao whatsapp-agent.
-
----
-
-## Lacuna 5: Textos "Gratuito" espalhados pela UI
-
-**Problema**: Varios componentes ainda exibem "Gratuito" como fallback quando nao ha assinatura:
-- `useSubscription.ts` retorna "Gratuito" (linhas 90, 127, 141)
-- `ProfileSettings.tsx` exibe badge "Gratuito" (linha 921)
-- `AdminStats.tsx` mostra contagem "Gratuito" (linha 150)
-
-Como o produto nao tem plano gratuito, esses textos confundem o usuario.
-
-**Arquivos**: `src/hooks/useSubscription.ts`, `src/components/ProfileSettings.tsx`
-
-**Correcao**: Trocar "Gratuito" por "Sem assinatura" ou "Inativo" nos componentes voltados ao usuario. Manter "free" no admin apenas como indicador tecnico de role.
-
----
-
-## Resumo das alteracoes
-
-| Arquivo | Alteracao |
-|---------|-----------|
-| `src/lib/featureFlags.ts` | Fallback com limites ZERO em vez de limites free |
-| `supabase/functions/check-subscription/index.ts` | Remover upsert com plano free quando nao ha assinatura |
-| `src/components/UpgradeModal.tsx` | Remover logica de trial/free, simplificar para Premium only |
-| `supabase/functions/whatsapp-webhook/index.ts` | Corrigir envio de telefone sem `+` |
-| `src/hooks/useSubscription.ts` | Trocar "Gratuito" por "Sem assinatura" |
-| `src/components/ProfileSettings.tsx` | Trocar badge "Gratuito" por "Sem assinatura" |
-
-## O que NAO sera alterado (conforme sua instrucao)
-
-- Compartilhamento de conta (backend pronto, UI desativada -- fica assim)
-- Agenda de compromissos e lembretes (tabelas existem, crons desativados -- fica assim)
-- Nenhuma alteracao no Supabase Dashboard necessaria
-- Nenhuma nova dependencia ou custo adicional
-
-## Resultado esperado
-
-Apos essas correcoes, o sistema reflete fielmente a estrategia comercial: **so quem tem assinatura Premium (paga ou via cupom Stripe) consegue usar o produto**. Sem vestígios de plano gratuito em nenhuma camada.
+**Resultado**: Pagina de perfil limpa, sem informacoes tecnicas ou confusas para o usuario.
