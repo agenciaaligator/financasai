@@ -48,9 +48,23 @@ export function TransactionList({
   const { user } = useAuth();
   const { t } = useTranslation();
 
-  const formatDate = (dateString: string) => {
-    const [year, month, day] = dateString.split('-');
-    return `${day}/${month}/${year}`;
+  const formatFriendlyDate = (dateString: string) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    const transactionDate = new Date(year, month - 1, day);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (transactionDate.getTime() === today.getTime()) {
+      return t('filters.today', 'Hoje');
+    }
+    if (transactionDate.getTime() === yesterday.getTime()) {
+      return t('transactionList.yesterday', 'Ontem');
+    }
+
+    const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+    return `${day} de ${months[month - 1]}`;
   };
 
   const handlePageChange = (page: number) => {
@@ -63,38 +77,19 @@ export function TransactionList({
   if (transactions.length === 0) {
     return (
       <div className="text-center py-8 space-y-4">
-        <p className="text-muted-foreground">{t('transactionList.noTransactions', 'Nenhuma transação encontrada')}</p>
-        
-        {hasActiveFilters && (
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 text-sm">
-            <p className="text-yellow-800 dark:text-yellow-200 font-medium mb-2">
-              ⚠️ {t('transactionList.activeFilters', 'Você tem filtros ativos')}
-            </p>
-            <p className="text-yellow-700 dark:text-yellow-300 mb-3">
-              {t('transactionList.filtersHiding', 'As transações podem estar ocultas pelos filtros aplicados.')}
-            </p>
+        {hasActiveFilters ? (
+          <div className="space-y-3">
+            <p className="text-muted-foreground">{t('transactionList.searchNoResults', 'Não encontramos nada. Tente outros termos.')}</p>
             {onClearFilters && (
               <Button variant="outline" size="sm" onClick={onClearFilters}>
                 {t('transactionList.clearAllFilters', 'Limpar todos os filtros')}
               </Button>
             )}
           </div>
-        )}
-
-        {!hasActiveFilters && totalTransactionsCount && totalTransactionsCount > 0 && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-sm">
-            <p className="text-blue-800 dark:text-blue-200 font-medium mb-2">
-              💡 {t('transactionList.totalTransactions', 'Existem {{count}} transações no total', { count: totalTransactionsCount })}
-            </p>
-            <p className="text-blue-700 dark:text-blue-300 mb-3">
-              {t('transactionList.tryReload', 'Tente recarregar para ver as transações mais recentes.')}
-            </p>
-            {onRefresh && (
-              <Button variant="outline" size="sm" onClick={onRefresh}>
-                {t('transactionList.reloadTransactions', 'Recarregar transações')}
-              </Button>
-            )}
-          </div>
+        ) : (
+          <p className="text-muted-foreground">
+            {t('transactionList.noTransactionsYet', 'Você ainda não tem movimentações. Que tal registrar sua primeira?')}
+          </p>
         )}
       </div>
     );
@@ -135,19 +130,14 @@ export function TransactionList({
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                     <p className="font-medium truncate">{transaction.title}</p>
-                    <div className="flex flex-wrap gap-1">
-                      {transaction.categories && (
-                        <Badge variant="outline" className="text-xs">
-                          {transaction.categories.name}
-                        </Badge>
-                      )}
-                      <Badge variant="outline" className="text-xs opacity-60">
-                        {transaction.source === 'whatsapp' ? 'WhatsApp' : 'Manual'}
+                    {transaction.categories && (
+                      <Badge variant="outline" className="text-xs w-fit">
+                        {transaction.categories.name}
                       </Badge>
-                    </div>
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {formatDate(transaction.date)}
+                    {formatFriendlyDate(transaction.date)}
                     {transaction.description && (
                       <span className="block sm:inline">
                         <span className="hidden sm:inline"> • </span>

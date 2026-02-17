@@ -1,81 +1,43 @@
-import { useState } from "react";
-import { CalendarIcon, Filter, X } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Checkbox } from "@/components/ui/checkbox";
-import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 
 export interface TransactionFiltersState {
-  period: 'all' | 'today' | 'week' | 'month' | '30days' | '90days' | 'year' | 'custom';
-  customDateRange: { start: Date | null; end: Date | null };
+  period: 'all' | 'today' | 'week' | 'month' | 'last_month';
   type: 'all' | 'income' | 'expense';
-  categories: string[];
-  source: 'all' | 'manual' | 'whatsapp';
   searchText: string;
 }
 
 interface TransactionFiltersProps {
   filters: TransactionFiltersState;
   onFiltersChange: (filters: TransactionFiltersState) => void;
-  categories: Array<{ id: string; name: string; type: string }>;
+  categories?: Array<{ id: string; name: string; type: string }>;
 }
 
 export function TransactionFilters({ 
   filters, 
   onFiltersChange, 
-  categories,
 }: TransactionFiltersProps) {
-  const [showCustomDate, setShowCustomDate] = useState(false);
-  const [categorySearchOpen, setCategorySearchOpen] = useState(false);
   const { t } = useTranslation();
 
   const activeFiltersCount = [
     filters.period !== 'all',
     filters.type !== 'all',
-    filters.categories.length > 0,
-    filters.source !== 'all',
     filters.searchText.trim() !== '',
   ].filter(Boolean).length;
-
-  const handlePeriodChange = (period: string) => {
-    const newFilters = { ...filters, period: period as TransactionFiltersState['period'] };
-    if (period !== 'custom') {
-      newFilters.customDateRange = { start: null, end: null };
-      setShowCustomDate(false);
-    } else {
-      setShowCustomDate(true);
-    }
-    onFiltersChange(newFilters);
-  };
-
-  const handleCategoryToggle = (categoryId: string) => {
-    const newCategories = filters.categories.includes(categoryId)
-      ? filters.categories.filter(id => id !== categoryId)
-      : [...filters.categories, categoryId];
-    onFiltersChange({ ...filters, categories: newCategories });
-  };
 
   const clearFilters = () => {
     onFiltersChange({
       period: 'all',
-      customDateRange: { start: null, end: null },
       type: 'all',
-      categories: [],
-      source: 'all',
       searchText: '',
     });
-    setShowCustomDate(false);
   };
 
   return (
@@ -83,7 +45,6 @@ export function TransactionFilters({
       <CardContent className="pt-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4" />
             <h3 className="font-semibold">{t('filters.filters', 'Filtros')}</h3>
             {activeFiltersCount > 0 && (
               <Badge variant="secondary" className="ml-2">
@@ -99,24 +60,17 @@ export function TransactionFilters({
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Período */}
           <div className="space-y-2">
             <Label>{t('filters.period', 'Período')}</Label>
-            <Tabs value={filters.period} onValueChange={handlePeriodChange} className="w-full">
-              <TabsList className="grid grid-cols-4 h-auto">
+            <Tabs value={filters.period} onValueChange={(value) => onFiltersChange({ ...filters, period: value as TransactionFiltersState['period'] })} className="w-full">
+              <TabsList className="grid grid-cols-5 h-auto">
                 <TabsTrigger value="all" className="text-xs">{t('filters.all', 'Todos')}</TabsTrigger>
                 <TabsTrigger value="today" className="text-xs">{t('filters.today', 'Hoje')}</TabsTrigger>
                 <TabsTrigger value="week" className="text-xs">{t('filters.week', 'Semana')}</TabsTrigger>
                 <TabsTrigger value="month" className="text-xs">{t('filters.month', 'Mês')}</TabsTrigger>
-              </TabsList>
-            </Tabs>
-            <Tabs value={filters.period} onValueChange={handlePeriodChange} className="w-full">
-              <TabsList className="grid grid-cols-4 h-auto">
-                <TabsTrigger value="30days" className="text-xs">30d</TabsTrigger>
-                <TabsTrigger value="90days" className="text-xs">90d</TabsTrigger>
-                <TabsTrigger value="year" className="text-xs">{t('filters.year', 'Ano')}</TabsTrigger>
-                <TabsTrigger value="custom" className="text-xs">{t('filters.custom', 'Custom')}</TabsTrigger>
+                <TabsTrigger value="last_month" className="text-xs">{t('filters.lastMonth', 'Último mês')}</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -136,149 +90,16 @@ export function TransactionFilters({
             </Select>
           </div>
 
-          {/* Fonte */}
-          <div className="space-y-2">
-            <Label>{t('filters.source', 'Fonte')}</Label>
-            <Select value={filters.source} onValueChange={(value) => onFiltersChange({ ...filters, source: value as TransactionFiltersState['source'] })}>
-              <SelectTrigger>
-                <SelectValue placeholder={t('filters.allSources', 'Todas')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('filters.allSources', 'Todas')}</SelectItem>
-                <SelectItem value="manual">{t('filters.manual', 'Manual')}</SelectItem>
-                <SelectItem value="whatsapp">WhatsApp</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Categorias */}
-          <div className="space-y-2">
-            <Label>{t('filters.categories', 'Categorias')}</Label>
-            <Popover open={categorySearchOpen} onOpenChange={setCategorySearchOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full justify-start">
-                  {filters.categories.length === 0 
-                    ? t('filters.allCategories', 'Todas as categorias')
-                    : `${filters.categories.length} ${filters.categories.length > 1 ? t('filters.selectedPlural', 'selecionadas') : t('filters.selected', 'selecionada')}`}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[300px] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder={t('filters.searchCategory', 'Buscar categoria...')} />
-                  <CommandList>
-                    <CommandEmpty>{t('filters.noCategoryFound', 'Nenhuma categoria encontrada.')}</CommandEmpty>
-                    <CommandGroup>
-                      {categories.map((category) => (
-                        <CommandItem
-                          key={category.id}
-                          onSelect={() => handleCategoryToggle(category.id)}
-                        >
-                          <Checkbox
-                            checked={filters.categories.includes(category.id)}
-                            className="mr-2"
-                          />
-                          <span>{category.name}</span>
-                          <Badge 
-                            variant="outline" 
-                            className="ml-auto text-xs"
-                          >
-                            {category.type === 'income' ? t('transactions.income', 'Receita') : t('transactions.expense', 'Despesa')}
-                          </Badge>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
-
           {/* Busca por texto */}
-          <div className="space-y-2 md:col-span-2 lg:col-span-2">
+          <div className="space-y-2">
             <Label>{t('filters.search', 'Buscar')}</Label>
             <Input
-              placeholder={t('filters.searchPlaceholder', 'Buscar por título ou descrição...')}
+              placeholder={t('filters.searchPlaceholder', 'Digite para buscar...')}
               value={filters.searchText}
               onChange={(e) => onFiltersChange({ ...filters, searchText: e.target.value })}
             />
           </div>
         </div>
-
-        {/* Custom Date Range */}
-        {showCustomDate && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t">
-            <div className="space-y-2">
-              <Label>{t('filters.startDate', 'Data Inicial')}</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !filters.customDateRange.start && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {filters.customDateRange.start 
-                      ? format(filters.customDateRange.start, "PPP", { locale: ptBR })
-                      : t('filters.selectDate', 'Selecione a data')}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={filters.customDateRange.start || undefined}
-                    onSelect={(date) => 
-                      onFiltersChange({ 
-                        ...filters, 
-                        customDateRange: { ...filters.customDateRange, start: date || null } 
-                      })
-                    }
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t('filters.endDate', 'Data Final')}</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !filters.customDateRange.end && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {filters.customDateRange.end 
-                      ? format(filters.customDateRange.end, "PPP", { locale: ptBR })
-                      : t('filters.selectDate', 'Selecione a data')}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={filters.customDateRange.end || undefined}
-                    onSelect={(date) => 
-                      onFiltersChange({ 
-                        ...filters, 
-                        customDateRange: { ...filters.customDateRange, end: date || null } 
-                      })
-                    }
-                    disabled={(date) => 
-                      filters.customDateRange.start ? date < filters.customDateRange.start : false
-                    }
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
