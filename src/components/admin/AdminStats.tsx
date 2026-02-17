@@ -2,13 +2,12 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, DollarSign, TrendingUp, CreditCard } from "lucide-react";
+import { Users, DollarSign, CreditCard, UserIcon } from "lucide-react";
 
 interface Stats {
   totalUsers: number;
-  freeUsers: number;
+  noSubscriptionUsers: number;
   premiumUsers: number;
-  trialUsers: number;
   totalTransactions: number;
   totalRevenue: number;
 }
@@ -17,9 +16,8 @@ export function AdminStats() {
   const { t } = useTranslation();
   const [stats, setStats] = useState<Stats>({
     totalUsers: 0,
-    freeUsers: 0,
+    noSubscriptionUsers: 0,
     premiumUsers: 0,
-    trialUsers: 0,
     totalTransactions: 0,
     totalRevenue: 0,
   });
@@ -41,9 +39,9 @@ export function AdminStats() {
         .from('user_roles')
         .select('role');
 
-      const freeUsers = roles?.filter(r => r.role === 'free').length || 0;
       const premiumUsers = roles?.filter(r => r.role === 'premium').length || 0;
-      const trialUsers = roles?.filter(r => r.role === 'trial').length || 0;
+      const adminUsers = roles?.filter(r => r.role === 'admin').length || 0;
+      const noSubscriptionUsers = (totalUsers || 0) - premiumUsers - adminUsers;
 
       const { count: totalTransactions } = await supabase
         .from('transactions')
@@ -60,9 +58,8 @@ export function AdminStats() {
 
       setStats({
         totalUsers: totalUsers || 0,
-        freeUsers,
+        noSubscriptionUsers,
         premiumUsers,
-        trialUsers,
         totalTransactions: totalTransactions || 0,
         totalRevenue,
       });
@@ -89,11 +86,11 @@ export function AdminStats() {
       bgColor: "bg-success/10",
     },
     {
-      title: t('admin.trialUsers'),
-      value: stats.trialUsers,
-      icon: TrendingUp,
-      color: "text-accent",
-      bgColor: "bg-accent/10",
+      title: t('admin.noSubscriptionUsers'),
+      value: stats.noSubscriptionUsers,
+      icon: UserIcon,
+      color: "text-muted-foreground",
+      bgColor: "bg-muted",
     },
     {
       title: t('admin.monthlyRevenue'),
@@ -144,16 +141,12 @@ export function AdminStats() {
           <CardContent>
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">{t('admin.noSubscription')}</span>
-                <span className="font-semibold">{stats.freeUsers}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Trial</span>
-                <span className="font-semibold">{stats.trialUsers}</span>
-              </div>
-              <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Premium</span>
                 <span className="font-semibold">{stats.premiumUsers}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">{t('admin.noSubscription')}</span>
+                <span className="font-semibold">{stats.noSubscriptionUsers}</span>
               </div>
             </div>
           </CardContent>
