@@ -1,80 +1,69 @@
 
 
-# Padronizacao de Nomenclaturas de Roles e Status
+# Simplificar Menu Lateral e Remover Complexidades
 
-## Situacao Atual
+## Resumo
 
-O sistema possui inconsistencias entre o que existe de fato e o que o codigo exibe:
+Remover subitens de Transacoes (Lancamentos/Contas Fixas), remover "Novidades", e transformar "Transacoes" em item direto sem submenu. O menu final tera 6 itens flat (+ Admin para admins).
 
-| Elemento | O que existe no banco | O que o codigo mostra |
-|----------|----------------------|----------------------|
-| Enum `app_role` | `admin`, `premium`, `free`, `trial` | Referencia todos os 4 |
-| Roles em uso (user_roles) | Apenas `admin` e `premium` | Mostra "Gratuito", "Trial" como opcoes |
-| Planos ativos (subscription_plans) | Apenas "Premium" | Referencia "free", "trial" em filtros |
-| Estrategia comercial | Sem plano gratuito, sem trial | Admin exibe cards de "Trial Users", dropdown com "Gratuito" |
+## Alteracoes
 
-## O que precisa mudar
+### 1. AppSidebar.tsx - Simplificar menu
 
-### 1. Admin Panel - UsersManagement.tsx
+**Remover**:
+- Toda logica de submenu Collapsible (Lancamentos + Contas Fixas)
+- Item "Novidades" (future)
+- Estado `transactionsOpen` e imports `Collapsible`, `ChevronDown`, `Repeat`
+- Chaves i18n `sidebar.lancamentos`, `sidebar.contasFixas`, `sidebar.future`, `sidebar.futureDesc`
 
-**Dropdown de roles**: Remover opcao "Gratuito" (free). As opcoes devem ser apenas:
-- **Premium** - usuario com assinatura ativa
-- **Admin** - administrador do sistema
+**Menu final** (array `sidebarItemsLocal`):
+1. Dashboard
+2. Transacoes (item direto, sem submenu - vai para tab `transactions`)
+3. Categorias
+4. Relatorios
+5. Perfil
+6. Admin (condicional)
 
-Um usuario sem assinatura nao tem role atribuida - ele simplesmente e redirecionado para a pagina de pagamento. Nao faz sentido "definir" alguem como "free" manualmente.
+Tanto no bloco mobile quanto no desktop, "Transacoes" sera um botao simples igual aos outros itens.
 
-**Coluna Status**: Simplificar os badges:
-- `admin` -> "Admin" (vermelho)
-- `premium` -> "Premium" (verde)
-- Sem role / sem assinatura -> "Sem assinatura" (cinza)
+### 2. DashboardContent.tsx - Remover tab recurring e future
 
-Remover badge e logica de "trial" e "free" como categorias visuais distintas.
+- Remover bloco `if (currentTab === "recurring")` (linhas 434-439)
+- Remover bloco `if (currentTab === "future")` (linhas 467-469)
+- Remover import `RecurringTransactionsManager`
+- Remover import `FutureFeatures`
 
-### 2. Admin Panel - AdminStats.tsx
+### 3. DashboardTabs.tsx - Remover tabs recurring e future
 
-**Remover card "Usuarios Trial"** - nao existe trial.
+- Remover `TabsTrigger` e `TabsContent` para `recurring` e `future`
+- Remover imports `Repeat`, `Sparkles`, `RecurringTransactionsManager`, `FutureFeatures`
+- Ajustar grid-cols de 7/8 para 5/6
 
-**Renomear cards**:
-- "Total de Usuarios" (manter)
-- "Assinantes Premium" (manter, renomear se necessario)
-- "Receita Mensal" (manter)
-- Substituir card Trial por "Sem Assinatura" (usuarios sem role premium/admin)
+### 4. Locales (5 arquivos) - Limpar chaves removidas
 
-**Distribuicao de Usuarios**: Remover linha "Trial", manter apenas:
-- "Sem assinatura" (count)
-- "Premium" (count)
-
-### 3. Admin Panel - SubscriptionsManagement.tsx
-
-Ja esta correto (filtra planos `free`). Apenas garantir que nao exiba referencia a trial.
-
-### 4. Locales
-
-Atualizar chaves `admin.*` nos 5 arquivos de locale:
-- Remover/ajustar chaves `admin.trial`, `admin.trialUsers`, `admin.free`
-- Renomear `admin.free` para algo como `admin.noSubscription` (ja existe)
-- Remover `admin.trialActivated`, `admin.trialActivateError` etc.
-
-### 5. Funcao handleActivateTrial
-
-Remover a funcao `handleActivateTrial` do `UsersManagement.tsx` e o estado `activatingTrial` - trial nao existe mais.
+Remover chaves:
+- `sidebar.lancamentos`
+- `sidebar.contasFixas`
+- `sidebar.future`
+- `sidebar.futureDesc`
 
 ## Arquivos a alterar
 
 | Arquivo | Alteracao |
 |---------|-----------|
-| `src/components/admin/UsersManagement.tsx` | Remover opcao "free" do dropdown, remover trial, simplificar badges |
-| `src/components/admin/AdminStats.tsx` | Remover card Trial, ajustar distribuicao |
-| `src/locales/pt-BR.json` | Ajustar chaves admin |
-| `src/locales/en-US.json` | Ajustar chaves admin |
-| `src/locales/es-ES.json` | Ajustar chaves admin |
-| `src/locales/pt-PT.json` | Ajustar chaves admin |
-| `src/locales/it-IT.json` | Ajustar chaves admin |
+| `src/components/AppSidebar.tsx` | Remover submenu, item Novidades, simplificar para lista flat |
+| `src/components/dashboard/DashboardContent.tsx` | Remover blocos recurring e future |
+| `src/components/dashboard/DashboardTabs.tsx` | Remover tabs recurring e future, ajustar grid |
+| `src/locales/pt-BR.json` | Remover chaves obsoletas |
+| `src/locales/en-US.json` | Remover chaves obsoletas |
+| `src/locales/es-ES.json` | Remover chaves obsoletas |
+| `src/locales/pt-PT.json` | Remover chaves obsoletas |
+| `src/locales/it-IT.json` | Remover chaves obsoletas |
 
 ## O que NAO sera alterado
 
-- O enum `app_role` no banco (manter `free` e `trial` para compatibilidade, mas nao exibir na UI)
-- A tabela `subscription_plans` (ja esta correta com apenas Premium)
-- Edge functions e webhooks (ja protegem admin/master corretamente)
-- Nenhuma nova dependencia
+- Os componentes `RecurringTransactionsManager`, `FutureFeatures` continuam existindo no codigo (nao serao deletados), apenas deixam de ser acessiveis pelo menu
+- O hook `useRecurringTransactions` permanece intacto
+- Nenhuma tabela no banco e alterada
+- O formulario de transacao (`TransactionForm`) continua funcionando como esta (Receita/Despesa com Valor, Descricao, Categoria, Data)
 
