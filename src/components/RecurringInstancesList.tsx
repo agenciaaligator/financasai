@@ -13,7 +13,7 @@ import {
 import { RecurringInstance, RecurringTransaction } from "@/hooks/useRecurringTransactions";
 import { format, parseISO, isPast } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Check, Clock, Pause, Calendar } from "lucide-react";
+import { Check, Calendar } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +24,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useTranslation } from "react-i18next";
 
 interface RecurringInstancesListProps {
   instances: RecurringInstance[];
@@ -38,6 +39,7 @@ export function RecurringInstancesList({
   onPayInstance,
   onPostponeInstance,
 }: RecurringInstancesListProps) {
+  const { t } = useTranslation();
   const [postponeDialog, setPostponeDialog] = useState<{
     open: boolean;
     instanceId: string;
@@ -59,16 +61,16 @@ export function RecurringInstancesList({
   const getStatusBadge = (instance: RecurringInstance) => {
     switch (instance.status) {
       case "paid":
-        return <Badge className="bg-success">Pago</Badge>;
+        return <Badge className="bg-success">{t("recurring.status.paid")}</Badge>;
       case "postponed":
-        return <Badge variant="secondary">Adiado</Badge>;
+        return <Badge variant="secondary">{t("recurring.status.postponed")}</Badge>;
       case "paused":
-        return <Badge variant="outline">Pausado</Badge>;
+        return <Badge variant="outline">{t("recurring.status.paused")}</Badge>;
       default:
         return isPast(parseISO(instance.due_date)) ? (
-          <Badge variant="destructive">Vencido</Badge>
+          <Badge variant="destructive">{t("recurring.status.overdue")}</Badge>
         ) : (
-          <Badge variant="outline">Agendado</Badge>
+          <Badge variant="outline">{t("recurring.status.scheduled")}</Badge>
         );
     }
   };
@@ -91,22 +93,22 @@ export function RecurringInstancesList({
     <>
       <Card className="bg-gradient-card shadow-card border-0">
         <CardHeader>
-          <CardTitle>Próximos Vencimentos</CardTitle>
+          <CardTitle>{t("recurring.upcomingDue")}</CardTitle>
         </CardHeader>
         <CardContent>
           {pendingInstances.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
-              Nenhum vencimento pendente
+              {t("recurring.noPendingDue")}
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Conta</TableHead>
-                  <TableHead>Vencimento</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                  <TableHead>{t("recurring.columns.bill")}</TableHead>
+                  <TableHead>{t("recurring.columns.dueDate")}</TableHead>
+                  <TableHead>{t("recurring.columns.amount")}</TableHead>
+                  <TableHead>{t("recurring.columns.status")}</TableHead>
+                  <TableHead className="text-right">{t("recurring.columns.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -147,7 +149,7 @@ export function RecurringInstancesList({
                               onClick={() => onPayInstance(instance.id)}
                             >
                               <Check className="h-4 w-4 mr-1" />
-                              Dar Baixa
+                              {t("recurring.payBill")}
                             </Button>
                             <Button
                               size="sm"
@@ -165,7 +167,7 @@ export function RecurringInstancesList({
                               }}
                             >
                               <Calendar className="h-4 w-4 mr-1" />
-                              Adiar
+                              {t("recurring.postpone")}
                             </Button>
                           </>
                         )}
@@ -179,7 +181,6 @@ export function RecurringInstancesList({
         </CardContent>
       </Card>
 
-      {/* Dialog para adiar */}
       <Dialog
         open={postponeDialog.open}
         onOpenChange={(open) =>
@@ -188,11 +189,11 @@ export function RecurringInstancesList({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Adiar Vencimento</DialogTitle>
+            <DialogTitle>{t("recurring.postponeTitle")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Nova Data de Vencimento</Label>
+              <Label>{t("recurring.postponeNewDate")}</Label>
               <Input
                 type="date"
                 value={postponeData.newDate}
@@ -202,13 +203,13 @@ export function RecurringInstancesList({
               />
             </div>
             <div className="space-y-2">
-              <Label>Observação (opcional)</Label>
+              <Label>{t("recurring.postponeNotes")}</Label>
               <Textarea
                 value={postponeData.notes}
                 onChange={(e) =>
                   setPostponeData({ ...postponeData, notes: e.target.value })
                 }
-                placeholder="Motivo do adiamento..."
+                placeholder={t("recurring.postponeReason")}
                 rows={3}
               />
             </div>
@@ -220,9 +221,9 @@ export function RecurringInstancesList({
                 setPostponeDialog({ open: false, instanceId: "", currentDate: "" })
               }
             >
-              Cancelar
+              {t("common.cancel")}
             </Button>
-            <Button onClick={handlePostpone}>Confirmar</Button>
+            <Button onClick={handlePostpone}>{t("recurring.confirm")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
