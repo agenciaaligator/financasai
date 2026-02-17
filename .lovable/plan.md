@@ -1,128 +1,86 @@
 
 
-# Plano Completo: Correcao de Datas OCR + Keywords Recorrentes + i18n Admin
+# Plano: Exclusao de Usuario + Limpeza UX de Contas Fixas + Edge Function delete-user-admin
 
-## Problema 1: OCR nao distingue contas de comprovantes
+## 1. Criar edge function `delete-user-admin`
 
-O prompt do Gemini Vision (linha 1120-1134) pede apenas "Data (formato DD/MM/AAAA, se visivel)" sem distinguir entre:
-- **Comprovante de despesa** (cupom fiscal, recibo): a data relevante e a data da compra
-- **Conta/boleto** (luz, agua, telefone): a data relevante e a data de **vencimento**
+O botao de exclusao no Admin Panel chama `supabase.functions.invoke('delete-user-admin')`, mas essa funcao **nao existe** no codigo. Precisa ser criada para que voce consiga excluir o usuario `alexandre@aligator.com.br` (e futuros usuarios de teste).
 
-Uma conta de luz tem multiplas datas (emissao, leitura anterior, leitura atual, vencimento). O prompt atual nao instrui a IA a priorizar o vencimento, e a heuristica de data (linhas 3653-3668) descarta qualquer data com mais de 35 dias de diferenca -- inclusive datas **futuras** validas.
+**Arquivo novo**: `supabase/functions/delete-user-admin/index.ts`
 
-### Correcao no prompt OCR (`analyzeReceipt`, linhas 1120-1134)
-
-Alterar o prompt para:
-
-- Adicionar campo `due_date` (data de vencimento) ao JSON de retorno
-- Adicionar campo `document_type` para classificar: `receipt` (comprovante/cupom) ou `bill` (conta/boleto/fatura)
-- Instruir a IA: "Se for uma conta (boleto, fatura, conta de luz/agua/telefone), extraia a DATA DE VENCIMENTO como `due_date`. Se for um comprovante de compra, extraia a data da compra como `date`."
-
-Novo formato de retorno:
-```json
-{
-  "amount": 132.86,
-  "merchant": "ENEL",
-  "category": "Moradia",
-  "date": "15/02/2026",
-  "due_date": "04/03/2026",
-  "document_type": "bill"
-}
-```
-
-### Correcao na logica de data ao salvar (`handleOCRConfirmation`, linhas 2824-2841)
-
-- Se `document_type === 'bill'` e `due_date` existe, usar `due_date` como data da transacao
-- Caso contrario, usar `date` (comportamento atual)
-
-### Correcao na heuristica de data (`saveTransaction`, linhas 3653-3668)
-
-Alterar de:
-- Rejeitar datas com mais de 35 dias no passado
-
-Para:
-- Aceitar datas ate **60 dias no passado**
-- Aceitar datas ate **90 dias no futuro** (contas com vencimento adiante)
-- So sobrescrever com data atual se estiver FORA dessas janelas
-
-### Correcao na exibicao ao usuario (linhas 2771-2776)
-
-Quando o documento for uma conta (`bill`), mostrar:
-```
-📸 *Conta Analisada!*
-
-💰 Valor: R$ 132.86
-🏪 Empresa: ENEL
-📂 Categoria: Moradia
-📅 Vencimento: 04/03/2026
-
-Salvar essa despesa? *(sim/nao)*
-```
-
-Em vez de "Data:", mostrar "Vencimento:" quando for uma conta.
+A funcao deve:
+- Verificar que o chamador e admin/master
+- Receber `user_id` no body
+- Deletar na ordem correta (respeitando foreign keys):
+  1. `whatsapp_sessions` (by user_id)
+  2. `whatsapp_validation_codes` (by user_id)
+  3. `whatsapp_auth_codes` (by user_id)
+  4. `recurring_instances` (via recurring_transactions do user)
+  5. `recurring_transactions` (by user_id)
+  6. `reminder_settings` (by user_id)
+  7. `work_hours` (by user_id)
+  8. `whatsapp_settings` (by user_id)
+  9. `transactions` (by user_id)
+  10. `categories` (by user_id)
+  11. `organization_members` (by user_id)
+  12. `organization_invitations` (by invited_by)
+  13. `organizations` (by owner_id)
+  14. `user_subscriptions` (by user_id)
+  15. `user_roles` (by user_id)
+  16. `profiles` (by user_id)
+  17. `auth.users` via `supabase.auth.admin.deleteUser()`
+- Retornar `{ success: true }`
 
 ---
 
-## Problema 2: Keywords de recorrencia incompletas
+## 2. Remover coluna "Contexto" (Pessoal/Empresa) das Contas Fixas
 
-A lista `recurringKeywords` (linha 3760) nao inclui concessionarias nem servicos comuns.
+O produto e single-user. A distincao "Pessoal vs Empresa" nao faz sentido e confunde. Todas as transacoes ja estao vinculadas a organizacao do usuario automaticamente.
 
-### Correcao: Expandir a lista com
+### RecurringTransactionsManager.tsx
+- Remover coluna "Contexto" da tabela (linhas 151, 191-203)
+- Remover imports `Building2`, `Home`
 
-**Energia**: `energia`, `eletricidade`, `enel`, `eletropaulo`, `cpfl`, `cemig`, `light`, `equatorial`, `celesc`, `copel`, `energisa`, `neoenergia`, `coelba`
-
-**Gas**: `gas`, `comgas`, `naturgy`
-
-**Saneamento**: `saneamento`, `sabesp`, `cedae`, `copasa`, `sanepar`, `embasa`
-
-**Outros servicos**: `lixo`, `taxa`, `parcela`, `financiamento`, `consorcio`, `streaming`, `hbo`, `amazon`, `disney`, `youtube`, `deezer`, `apple`
-
----
-
-## Problema 3: Link de producao incorreto
-
-Na linha 3757, o agente retorna o link do ambiente de preview em vez de producao.
-
-### Correcao
-
-Trocar `https://bc45aac3-c622-434f-ad58-afc37c18c6c2.lovableproject.com` para `https://donawilma.lovable.app`
+### RecurringTransactionForm.tsx
+- Remover o seletor "Pessoal / Empresa" (botoes nas linhas 111-130)
+- Remover estado `context` e logica `organization_id` baseada em context
+- Remover imports `Building2`, `Home`
+- O `organization_id` sera preenchido automaticamente pelo hook (ja faz isso)
 
 ---
 
-## Problema 4: Admin Panel sem internacionalizacao
+## 3. Internacionalizar Contas Fixas
 
-Os 4 componentes do admin (`AdminPanel.tsx`, `AdminStats.tsx`, `UsersManagement.tsx`, `SubscriptionsManagement.tsx`) tem todos os textos hardcoded em portugues.
+Todos os textos do `RecurringTransactionsManager.tsx`, `RecurringTransactionForm.tsx` e `RecurringInstancesList.tsx` estao hardcoded em portugues.
 
-### Correcao
+### Adicionar `useTranslation` nos 3 componentes
 
-Adicionar `useTranslation()` nos 4 componentes e mover todos os textos para chaves `admin.*` nos 5 arquivos de locale.
+Chaves a criar nos 5 locales (`recurring.*`):
 
-**AdminPanel.tsx**: titulo, subtitulo, tabs (Estatisticas, Usuarios, Assinaturas)
+**RecurringTransactionsManager**: "Contas Fixas", "Gerencie suas receitas e despesas recorrentes", "Nova Conta Fixa", "Contas Cadastradas", "Nenhuma conta fixa cadastrada", "Criar Primeira Conta", colunas da tabela, labels de frequencia, badges de status, dialog de exclusao
 
-**AdminStats.tsx**: nomes dos cards, secoes, labels
+**RecurringTransactionForm**: "Editar Conta Fixa", "Nova Conta Fixa", labels dos campos (Titulo, Tipo, Valor, Categoria, Frequencia, Dia do Mes, Dia da Semana, Intervalo, Data Inicio, Data Fim, Observacoes), opcoes de frequencia, dias da semana, botoes
 
-**UsersManagement.tsx**: titulo, colunas, roles, botoes, toasts, confirmacoes
-
-**SubscriptionsManagement.tsx**: titulo, colunas, badges, mensagens vazias
+**RecurringInstancesList**: "Proximos Vencimentos", "Nenhum vencimento pendente", colunas, badges de status, botoes "Dar Baixa" e "Adiar", dialog de adiamento
 
 ---
 
-## Resumo de arquivos alterados
+## Resumo de arquivos
 
 | Arquivo | Alteracao |
 |---------|-----------|
-| `supabase/functions/whatsapp-agent/index.ts` | Prompt OCR com `due_date` + `document_type`, heuristica 60d/90d, keywords expandidas, link producao |
-| `src/components/admin/AdminPanel.tsx` | i18n com `useTranslation` |
-| `src/components/admin/AdminStats.tsx` | i18n com `useTranslation` |
-| `src/components/admin/UsersManagement.tsx` | i18n com `useTranslation` |
-| `src/components/admin/SubscriptionsManagement.tsx` | i18n com `useTranslation` |
-| `src/locales/pt-BR.json` | Chaves `admin.*` |
-| `src/locales/en-US.json` | Chaves `admin.*` |
-| `src/locales/es-ES.json` | Chaves `admin.*` |
-| `src/locales/pt-PT.json` | Chaves `admin.*` |
-| `src/locales/it-IT.json` | Chaves `admin.*` |
+| `supabase/functions/delete-user-admin/index.ts` | **NOVO** - Edge function para exclusao completa de usuario |
+| `src/components/RecurringTransactionsManager.tsx` | Remover coluna Contexto, adicionar i18n |
+| `src/components/RecurringTransactionForm.tsx` | Remover seletor Pessoal/Empresa, adicionar i18n |
+| `src/components/RecurringInstancesList.tsx` | Adicionar i18n |
+| `src/locales/pt-BR.json` | Chaves `recurring.*` |
+| `src/locales/en-US.json` | Chaves `recurring.*` |
+| `src/locales/es-ES.json` | Chaves `recurring.*` |
+| `src/locales/pt-PT.json` | Chaves `recurring.*` |
+| `src/locales/it-IT.json` | Chaves `recurring.*` |
 
 ## O que NAO sera alterado
-- Nenhuma tabela no Supabase
+- Nenhuma tabela no Supabase (o campo `organization_id` continua existindo, apenas nao e mais exibido ao usuario)
 - Nenhuma nova dependencia
-- Nenhuma alteracao em componentes fora do admin e do whatsapp-agent
+- O hook `useRecurringTransactions` continua funcionando igual (ja preenche `organization_id` automaticamente)
+
