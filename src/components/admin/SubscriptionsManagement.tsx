@@ -1,16 +1,12 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { CheckCircle, XCircle, Calendar } from "lucide-react";
 
@@ -25,12 +21,12 @@ interface Subscription {
 }
 
 export function SubscriptionsManagement() {
+  const { t } = useTranslation();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchSubscriptions();
-    // Auto-refresh a cada 30 segundos
     const interval = setInterval(fetchSubscriptions, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -40,11 +36,7 @@ export function SubscriptionsManagement() {
       const { data, error } = await supabase
         .from('user_subscriptions')
         .select(`
-          id,
-          status,
-          billing_cycle,
-          current_period_end,
-          created_at,
+          id, status, billing_cycle, current_period_end, created_at,
           subscription_plans(display_name, name),
           user_id
         `)
@@ -52,13 +44,11 @@ export function SubscriptionsManagement() {
 
       if (error) throw error;
 
-      // Filtrar assinaturas "free" (não devem aparecer)
       const filteredData = data?.filter(sub => {
         const planName = (sub as any).subscription_plans?.name;
         return planName !== 'free';
       }) || [];
 
-      // Buscar nomes dos usuários
       const userIds = filteredData.map(s => (s as any).user_id);
       const { data: profiles } = await supabase
         .from('profiles')
@@ -69,7 +59,7 @@ export function SubscriptionsManagement() {
         const profile = profiles?.find(p => p.user_id === (sub as any).user_id);
         return {
           id: sub.id,
-          user_name: profile?.full_name || 'Desconhecido',
+          user_name: profile?.full_name || t('admin.unknown'),
           plan_name: (sub as any).subscription_plans?.display_name || 'N/A',
           status: sub.status,
           billing_cycle: sub.billing_cycle || 'monthly',
@@ -80,8 +70,8 @@ export function SubscriptionsManagement() {
 
       setSubscriptions(subsData);
     } catch (error) {
-      console.error('Erro ao buscar assinaturas:', error);
-      toast.error('Erro ao carregar assinaturas');
+      console.error('Error fetching subscriptions:', error);
+      toast.error(t('admin.loadSubscriptionsError'));
     } finally {
       setLoading(false);
     }
@@ -96,11 +86,11 @@ export function SubscriptionsManagement() {
 
       if (error) throw error;
 
-      toast.success('Assinatura cancelada com sucesso!');
+      toast.success(t('admin.subscriptionCanceled'));
       fetchSubscriptions();
     } catch (error) {
-      console.error('Erro ao cancelar assinatura:', error);
-      toast.error('Erro ao cancelar assinatura');
+      console.error('Error canceling subscription:', error);
+      toast.error(t('admin.cancelError'));
     }
   };
 
@@ -109,7 +99,7 @@ export function SubscriptionsManagement() {
     return (
       <Badge className={active ? 'bg-success text-success-foreground' : 'bg-destructive text-destructive-foreground'}>
         {active ? <CheckCircle className="h-3 w-3 mr-1" /> : <XCircle className="h-3 w-3 mr-1" />}
-        {active ? 'Ativa' : 'Cancelada'}
+        {active ? t('admin.active') : t('admin.canceled')}
       </Badge>
     );
   };
@@ -118,7 +108,7 @@ export function SubscriptionsManagement() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Carregando assinaturas...</CardTitle>
+          <CardTitle>{t('admin.loadingSubscriptions')}</CardTitle>
         </CardHeader>
       </Card>
     );
@@ -129,26 +119,25 @@ export function SubscriptionsManagement() {
 
   return (
     <div className="space-y-6">
-      {/* Assinaturas Ativas */}
       <Card>
         <CardHeader>
-          <CardTitle>Assinaturas Ativas</CardTitle>
+          <CardTitle>{t('admin.activeSubscriptions')}</CardTitle>
         </CardHeader>
         <CardContent>
           {activeSubscriptions.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              Nenhuma assinatura ativa no momento
+              {t('admin.noActiveSubscriptions')}
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Usuário</TableHead>
-                  <TableHead>Plano</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Ciclo</TableHead>
-                  <TableHead>Próximo Pagamento</TableHead>
-                  <TableHead>Ações</TableHead>
+                  <TableHead>{t('admin.user')}</TableHead>
+                  <TableHead>{t('admin.plan')}</TableHead>
+                  <TableHead>{t('admin.status')}</TableHead>
+                  <TableHead>{t('admin.cycle')}</TableHead>
+                  <TableHead>{t('admin.nextPayment')}</TableHead>
+                  <TableHead>{t('admin.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -158,7 +147,7 @@ export function SubscriptionsManagement() {
                     <TableCell>{sub.plan_name}</TableCell>
                     <TableCell>{getStatusBadge(sub.status)}</TableCell>
                     <TableCell className="capitalize">
-                      {sub.billing_cycle === 'monthly' ? 'Mensal' : 'Anual'}
+                      {sub.billing_cycle === 'monthly' ? t('admin.monthly') : t('admin.yearly')}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -174,7 +163,7 @@ export function SubscriptionsManagement() {
                         size="sm"
                         onClick={() => handleCancelSubscription(sub.id)}
                       >
-                        Cancelar
+                        {t('admin.cancelSubscription')}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -185,21 +174,20 @@ export function SubscriptionsManagement() {
         </CardContent>
       </Card>
 
-      {/* Assinaturas Recentes (Não Ativas) */}
       {inactiveSubscriptions.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Assinaturas Recentes (Não Ativas)</CardTitle>
+            <CardTitle>{t('admin.recentInactiveSubscriptions')}</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Usuário</TableHead>
-                  <TableHead>Plano</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Ciclo</TableHead>
-                  <TableHead>Data de Criação</TableHead>
+                  <TableHead>{t('admin.user')}</TableHead>
+                  <TableHead>{t('admin.plan')}</TableHead>
+                  <TableHead>{t('admin.status')}</TableHead>
+                  <TableHead>{t('admin.cycle')}</TableHead>
+                  <TableHead>{t('admin.creationDate')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -209,7 +197,7 @@ export function SubscriptionsManagement() {
                     <TableCell>{sub.plan_name}</TableCell>
                     <TableCell>{getStatusBadge(sub.status)}</TableCell>
                     <TableCell className="capitalize">
-                      {sub.billing_cycle === 'monthly' ? 'Mensal' : 'Anual'}
+                      {sub.billing_cycle === 'monthly' ? t('admin.monthly') : t('admin.yearly')}
                     </TableCell>
                     <TableCell>
                       {sub.created_at 

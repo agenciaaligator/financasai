@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { Users, DollarSign, TrendingUp, CreditCard } from "lucide-react";
@@ -13,6 +14,7 @@ interface Stats {
 }
 
 export function AdminStats() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<Stats>({
     totalUsers: 0,
     freeUsers: 0,
@@ -25,19 +27,16 @@ export function AdminStats() {
 
   useEffect(() => {
     fetchStats();
-    // Auto-refresh a cada 30 segundos
     const interval = setInterval(fetchStats, 30000);
     return () => clearInterval(interval);
   }, []);
 
   const fetchStats = async () => {
     try {
-      // Buscar total de usuários
       const { count: totalUsers } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true });
 
-      // Buscar usuários por role
       const { data: roles } = await supabase
         .from('user_roles')
         .select('role');
@@ -46,12 +45,10 @@ export function AdminStats() {
       const premiumUsers = roles?.filter(r => r.role === 'premium').length || 0;
       const trialUsers = roles?.filter(r => r.role === 'trial').length || 0;
 
-      // Buscar total de transações
       const { count: totalTransactions } = await supabase
         .from('transactions')
         .select('*', { count: 'exact', head: true });
 
-      // Buscar total de assinaturas ativas
       const { data: subscriptions } = await supabase
         .from('user_subscriptions')
         .select('subscription_plans(price_monthly)')
@@ -70,7 +67,7 @@ export function AdminStats() {
         totalRevenue,
       });
     } catch (error) {
-      console.error('Erro ao buscar estatísticas:', error);
+      console.error('Error fetching stats:', error);
     } finally {
       setLoading(false);
     }
@@ -78,28 +75,28 @@ export function AdminStats() {
 
   const statCards = [
     {
-      title: "Total de Usuários",
+      title: t('admin.totalUsers'),
       value: stats.totalUsers,
       icon: Users,
       color: "text-primary",
       bgColor: "bg-primary/10",
     },
     {
-      title: "Usuários Premium",
+      title: t('admin.premiumUsers'),
       value: stats.premiumUsers,
       icon: CreditCard,
       color: "text-success",
       bgColor: "bg-success/10",
     },
     {
-      title: "Usuários Trial",
+      title: t('admin.trialUsers'),
       value: stats.trialUsers,
       icon: TrendingUp,
       color: "text-accent",
       bgColor: "bg-accent/10",
     },
     {
-      title: "Receita Mensal",
+      title: t('admin.monthlyRevenue'),
       value: `R$ ${stats.totalRevenue.toFixed(2)}`,
       icon: DollarSign,
       color: "text-success",
@@ -142,12 +139,12 @@ export function AdminStats() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Distribuição de Usuários</CardTitle>
+            <CardTitle>{t('admin.userDistribution')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Sem assinatura</span>
+                <span className="text-sm text-muted-foreground">{t('admin.noSubscription')}</span>
                 <span className="font-semibold">{stats.freeUsers}</span>
               </div>
               <div className="flex justify-between items-center">
@@ -164,16 +161,16 @@ export function AdminStats() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Resumo Geral</CardTitle>
+            <CardTitle>{t('admin.generalSummary')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Total de Transações</span>
+                <span className="text-sm text-muted-foreground">{t('admin.totalTransactions')}</span>
                 <span className="font-semibold">{stats.totalTransactions}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Taxa de Conversão</span>
+                <span className="text-sm text-muted-foreground">{t('admin.conversionRate')}</span>
                 <span className="font-semibold">
                   {stats.totalUsers > 0 
                     ? ((stats.premiumUsers / stats.totalUsers) * 100).toFixed(1)
