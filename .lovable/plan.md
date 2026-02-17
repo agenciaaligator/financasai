@@ -1,86 +1,80 @@
 
 
-# Plano: Exclusao de Usuario + Limpeza UX de Contas Fixas + Edge Function delete-user-admin
+# Padronizacao de Nomenclaturas de Roles e Status
 
-## 1. Criar edge function `delete-user-admin`
+## Situacao Atual
 
-O botao de exclusao no Admin Panel chama `supabase.functions.invoke('delete-user-admin')`, mas essa funcao **nao existe** no codigo. Precisa ser criada para que voce consiga excluir o usuario `alexandre@aligator.com.br` (e futuros usuarios de teste).
+O sistema possui inconsistencias entre o que existe de fato e o que o codigo exibe:
 
-**Arquivo novo**: `supabase/functions/delete-user-admin/index.ts`
+| Elemento | O que existe no banco | O que o codigo mostra |
+|----------|----------------------|----------------------|
+| Enum `app_role` | `admin`, `premium`, `free`, `trial` | Referencia todos os 4 |
+| Roles em uso (user_roles) | Apenas `admin` e `premium` | Mostra "Gratuito", "Trial" como opcoes |
+| Planos ativos (subscription_plans) | Apenas "Premium" | Referencia "free", "trial" em filtros |
+| Estrategia comercial | Sem plano gratuito, sem trial | Admin exibe cards de "Trial Users", dropdown com "Gratuito" |
 
-A funcao deve:
-- Verificar que o chamador e admin/master
-- Receber `user_id` no body
-- Deletar na ordem correta (respeitando foreign keys):
-  1. `whatsapp_sessions` (by user_id)
-  2. `whatsapp_validation_codes` (by user_id)
-  3. `whatsapp_auth_codes` (by user_id)
-  4. `recurring_instances` (via recurring_transactions do user)
-  5. `recurring_transactions` (by user_id)
-  6. `reminder_settings` (by user_id)
-  7. `work_hours` (by user_id)
-  8. `whatsapp_settings` (by user_id)
-  9. `transactions` (by user_id)
-  10. `categories` (by user_id)
-  11. `organization_members` (by user_id)
-  12. `organization_invitations` (by invited_by)
-  13. `organizations` (by owner_id)
-  14. `user_subscriptions` (by user_id)
-  15. `user_roles` (by user_id)
-  16. `profiles` (by user_id)
-  17. `auth.users` via `supabase.auth.admin.deleteUser()`
-- Retornar `{ success: true }`
+## O que precisa mudar
 
----
+### 1. Admin Panel - UsersManagement.tsx
 
-## 2. Remover coluna "Contexto" (Pessoal/Empresa) das Contas Fixas
+**Dropdown de roles**: Remover opcao "Gratuito" (free). As opcoes devem ser apenas:
+- **Premium** - usuario com assinatura ativa
+- **Admin** - administrador do sistema
 
-O produto e single-user. A distincao "Pessoal vs Empresa" nao faz sentido e confunde. Todas as transacoes ja estao vinculadas a organizacao do usuario automaticamente.
+Um usuario sem assinatura nao tem role atribuida - ele simplesmente e redirecionado para a pagina de pagamento. Nao faz sentido "definir" alguem como "free" manualmente.
 
-### RecurringTransactionsManager.tsx
-- Remover coluna "Contexto" da tabela (linhas 151, 191-203)
-- Remover imports `Building2`, `Home`
+**Coluna Status**: Simplificar os badges:
+- `admin` -> "Admin" (vermelho)
+- `premium` -> "Premium" (verde)
+- Sem role / sem assinatura -> "Sem assinatura" (cinza)
 
-### RecurringTransactionForm.tsx
-- Remover o seletor "Pessoal / Empresa" (botoes nas linhas 111-130)
-- Remover estado `context` e logica `organization_id` baseada em context
-- Remover imports `Building2`, `Home`
-- O `organization_id` sera preenchido automaticamente pelo hook (ja faz isso)
+Remover badge e logica de "trial" e "free" como categorias visuais distintas.
 
----
+### 2. Admin Panel - AdminStats.tsx
 
-## 3. Internacionalizar Contas Fixas
+**Remover card "Usuarios Trial"** - nao existe trial.
 
-Todos os textos do `RecurringTransactionsManager.tsx`, `RecurringTransactionForm.tsx` e `RecurringInstancesList.tsx` estao hardcoded em portugues.
+**Renomear cards**:
+- "Total de Usuarios" (manter)
+- "Assinantes Premium" (manter, renomear se necessario)
+- "Receita Mensal" (manter)
+- Substituir card Trial por "Sem Assinatura" (usuarios sem role premium/admin)
 
-### Adicionar `useTranslation` nos 3 componentes
+**Distribuicao de Usuarios**: Remover linha "Trial", manter apenas:
+- "Sem assinatura" (count)
+- "Premium" (count)
 
-Chaves a criar nos 5 locales (`recurring.*`):
+### 3. Admin Panel - SubscriptionsManagement.tsx
 
-**RecurringTransactionsManager**: "Contas Fixas", "Gerencie suas receitas e despesas recorrentes", "Nova Conta Fixa", "Contas Cadastradas", "Nenhuma conta fixa cadastrada", "Criar Primeira Conta", colunas da tabela, labels de frequencia, badges de status, dialog de exclusao
+Ja esta correto (filtra planos `free`). Apenas garantir que nao exiba referencia a trial.
 
-**RecurringTransactionForm**: "Editar Conta Fixa", "Nova Conta Fixa", labels dos campos (Titulo, Tipo, Valor, Categoria, Frequencia, Dia do Mes, Dia da Semana, Intervalo, Data Inicio, Data Fim, Observacoes), opcoes de frequencia, dias da semana, botoes
+### 4. Locales
 
-**RecurringInstancesList**: "Proximos Vencimentos", "Nenhum vencimento pendente", colunas, badges de status, botoes "Dar Baixa" e "Adiar", dialog de adiamento
+Atualizar chaves `admin.*` nos 5 arquivos de locale:
+- Remover/ajustar chaves `admin.trial`, `admin.trialUsers`, `admin.free`
+- Renomear `admin.free` para algo como `admin.noSubscription` (ja existe)
+- Remover `admin.trialActivated`, `admin.trialActivateError` etc.
 
----
+### 5. Funcao handleActivateTrial
 
-## Resumo de arquivos
+Remover a funcao `handleActivateTrial` do `UsersManagement.tsx` e o estado `activatingTrial` - trial nao existe mais.
+
+## Arquivos a alterar
 
 | Arquivo | Alteracao |
 |---------|-----------|
-| `supabase/functions/delete-user-admin/index.ts` | **NOVO** - Edge function para exclusao completa de usuario |
-| `src/components/RecurringTransactionsManager.tsx` | Remover coluna Contexto, adicionar i18n |
-| `src/components/RecurringTransactionForm.tsx` | Remover seletor Pessoal/Empresa, adicionar i18n |
-| `src/components/RecurringInstancesList.tsx` | Adicionar i18n |
-| `src/locales/pt-BR.json` | Chaves `recurring.*` |
-| `src/locales/en-US.json` | Chaves `recurring.*` |
-| `src/locales/es-ES.json` | Chaves `recurring.*` |
-| `src/locales/pt-PT.json` | Chaves `recurring.*` |
-| `src/locales/it-IT.json` | Chaves `recurring.*` |
+| `src/components/admin/UsersManagement.tsx` | Remover opcao "free" do dropdown, remover trial, simplificar badges |
+| `src/components/admin/AdminStats.tsx` | Remover card Trial, ajustar distribuicao |
+| `src/locales/pt-BR.json` | Ajustar chaves admin |
+| `src/locales/en-US.json` | Ajustar chaves admin |
+| `src/locales/es-ES.json` | Ajustar chaves admin |
+| `src/locales/pt-PT.json` | Ajustar chaves admin |
+| `src/locales/it-IT.json` | Ajustar chaves admin |
 
 ## O que NAO sera alterado
-- Nenhuma tabela no Supabase (o campo `organization_id` continua existindo, apenas nao e mais exibido ao usuario)
+
+- O enum `app_role` no banco (manter `free` e `trial` para compatibilidade, mas nao exibir na UI)
+- A tabela `subscription_plans` (ja esta correta com apenas Premium)
+- Edge functions e webhooks (ja protegem admin/master corretamente)
 - Nenhuma nova dependencia
-- O hook `useRecurringTransactions` continua funcionando igual (ja preenche `organization_id` automaticamente)
 
