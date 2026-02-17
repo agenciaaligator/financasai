@@ -18,7 +18,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { RecurringTransaction } from "@/hooks/useRecurringTransactions";
-import { Building2, Home } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface RecurringTransactionFormProps {
   open: boolean;
@@ -35,6 +35,7 @@ export function RecurringTransactionForm({
   categories,
   editData,
 }: RecurringTransactionFormProps) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -48,12 +49,8 @@ export function RecurringTransactionForm({
     start_date: new Date().toISOString().split("T")[0],
     end_date: "",
     is_active: true,
-    organization_id: "",
   });
 
-  const [context, setContext] = useState<"personal" | "business">("personal");
-
-  // Reset formData quando o dialog abre ou editData muda
   useEffect(() => {
     if (open) {
       setFormData({
@@ -69,9 +66,7 @@ export function RecurringTransactionForm({
         start_date: editData?.start_date || new Date().toISOString().split("T")[0],
         end_date: editData?.end_date || "",
         is_active: editData?.is_active ?? true,
-        organization_id: editData?.organization_id || "",
       });
-      setContext(editData?.organization_id ? "business" : "personal");
     }
   }, [open, editData]);
 
@@ -85,8 +80,7 @@ export function RecurringTransactionForm({
       day_of_week: formData.frequency === "weekly" ? parseInt(formData.day_of_week) : null,
       interval_days: formData.frequency === "custom" ? parseInt(formData.interval_days) : null,
       end_date: formData.end_date || null,
-      reminders: [1440, 60], // 24h e 1h antes
-      organization_id: context === "business" ? formData.organization_id || null : null,
+      reminders: [1440, 60],
     };
 
     await onSubmit(data);
@@ -97,46 +91,34 @@ export function RecurringTransactionForm({
     (cat) => cat.type === formData.type
   );
 
+  const weekdays = [
+    { value: "0", label: t("recurring.form.sunday") },
+    { value: "1", label: t("recurring.form.monday") },
+    { value: "2", label: t("recurring.form.tuesday") },
+    { value: "3", label: t("recurring.form.wednesday") },
+    { value: "4", label: t("recurring.form.thursday") },
+    { value: "5", label: t("recurring.form.friday") },
+    { value: "6", label: t("recurring.form.saturday") },
+  ];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {editData ? "Editar Conta Fixa" : "Nova Conta Fixa"}
+            {editData ? t("recurring.edit") : t("recurring.add")}
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Contexto */}
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              type="button"
-              variant={context === "personal" ? "default" : "outline"}
-              onClick={() => setContext("personal")}
-              className="flex items-center gap-2"
-            >
-              <Home className="h-4 w-4" />
-              Pessoal
-            </Button>
-            <Button
-              type="button"
-              variant={context === "business" ? "default" : "outline"}
-              onClick={() => setContext("business")}
-              className="flex items-center gap-2"
-            >
-              <Building2 className="h-4 w-4" />
-              Empresa
-            </Button>
-          </div>
-
           {/* Título */}
           <div className="space-y-2">
-            <Label htmlFor="title">Título *</Label>
+            <Label htmlFor="title">{t("recurring.form.title")} *</Label>
             <Input
               id="title"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="Ex: Aluguel, Mensalidade..."
+              placeholder={t("recurring.form.titlePlaceholder")}
               required
             />
           </div>
@@ -144,7 +126,7 @@ export function RecurringTransactionForm({
           {/* Tipo e Valor */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="type">Tipo *</Label>
+              <Label htmlFor="type">{t("recurring.form.type")} *</Label>
               <Select
                 value={formData.type}
                 onValueChange={(value: "income" | "expense") =>
@@ -155,21 +137,21 @@ export function RecurringTransactionForm({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="expense">Despesa</SelectItem>
-                  <SelectItem value="income">Receita</SelectItem>
+                  <SelectItem value="expense">{t("recurring.type.expense")}</SelectItem>
+                  <SelectItem value="income">{t("recurring.type.income")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="amount">Valor (R$) *</Label>
+              <Label htmlFor="amount">{t("recurring.form.amount")} *</Label>
               <Input
                 id="amount"
                 type="number"
                 step="0.01"
                 value={formData.amount}
                 onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                placeholder="0,00"
+                placeholder={t("recurring.form.amountPlaceholder")}
                 required
               />
             </div>
@@ -177,7 +159,7 @@ export function RecurringTransactionForm({
 
           {/* Categoria */}
           <div className="space-y-2">
-            <Label htmlFor="category">Categoria</Label>
+            <Label htmlFor="category">{t("recurring.form.category")}</Label>
             <Select
               value={formData.category_id}
               onValueChange={(value) =>
@@ -185,7 +167,7 @@ export function RecurringTransactionForm({
               }
             >
               <SelectTrigger>
-                <SelectValue placeholder="Selecione uma categoria" />
+                <SelectValue placeholder={t("recurring.form.categoryPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
                 {filteredCategories.map((cat) => (
@@ -199,7 +181,7 @@ export function RecurringTransactionForm({
 
           {/* Frequência */}
           <div className="space-y-2">
-            <Label htmlFor="frequency">Frequência *</Label>
+            <Label htmlFor="frequency">{t("recurring.form.frequencyLabel")} *</Label>
             <Select
               value={formData.frequency}
               onValueChange={(value) =>
@@ -210,19 +192,18 @@ export function RecurringTransactionForm({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="daily">Diária</SelectItem>
-                <SelectItem value="weekly">Semanal</SelectItem>
-                <SelectItem value="monthly">Mensal</SelectItem>
-                <SelectItem value="yearly">Anual</SelectItem>
-                <SelectItem value="custom">Personalizada</SelectItem>
+                <SelectItem value="daily">{t("recurring.frequency.daily")}</SelectItem>
+                <SelectItem value="weekly">{t("recurring.frequency.weekly")}</SelectItem>
+                <SelectItem value="monthly">{t("recurring.frequency.monthly")}</SelectItem>
+                <SelectItem value="yearly">{t("recurring.frequency.yearly")}</SelectItem>
+                <SelectItem value="custom">{t("recurring.frequency.custom")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Configurações específicas de frequência */}
           {formData.frequency === "monthly" && (
             <div className="space-y-2">
-              <Label htmlFor="day_of_month">Dia do Mês *</Label>
+              <Label htmlFor="day_of_month">{t("recurring.form.dayOfMonth")} *</Label>
               <Input
                 id="day_of_month"
                 type="number"
@@ -239,7 +220,7 @@ export function RecurringTransactionForm({
 
           {formData.frequency === "weekly" && (
             <div className="space-y-2">
-              <Label htmlFor="day_of_week">Dia da Semana *</Label>
+              <Label htmlFor="day_of_week">{t("recurring.form.dayOfWeek")} *</Label>
               <Select
                 value={formData.day_of_week}
                 onValueChange={(value) =>
@@ -250,13 +231,11 @@ export function RecurringTransactionForm({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="0">Domingo</SelectItem>
-                  <SelectItem value="1">Segunda</SelectItem>
-                  <SelectItem value="2">Terça</SelectItem>
-                  <SelectItem value="3">Quarta</SelectItem>
-                  <SelectItem value="4">Quinta</SelectItem>
-                  <SelectItem value="5">Sexta</SelectItem>
-                  <SelectItem value="6">Sábado</SelectItem>
+                  {weekdays.map((day) => (
+                    <SelectItem key={day.value} value={day.value}>
+                      {day.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -264,7 +243,7 @@ export function RecurringTransactionForm({
 
           {formData.frequency === "custom" && (
             <div className="space-y-2">
-              <Label htmlFor="interval_days">Intervalo (dias) *</Label>
+              <Label htmlFor="interval_days">{t("recurring.form.intervalDays")} *</Label>
               <Input
                 id="interval_days"
                 type="number"
@@ -281,7 +260,7 @@ export function RecurringTransactionForm({
           {/* Datas */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="start_date">Data Início *</Label>
+              <Label htmlFor="start_date">{t("recurring.form.startDate")} *</Label>
               <Input
                 id="start_date"
                 type="date"
@@ -294,7 +273,7 @@ export function RecurringTransactionForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="end_date">Data Fim (opcional)</Label>
+              <Label htmlFor="end_date">{t("recurring.form.endDate")}</Label>
               <Input
                 id="end_date"
                 type="date"
@@ -308,24 +287,24 @@ export function RecurringTransactionForm({
 
           {/* Descrição */}
           <div className="space-y-2">
-            <Label htmlFor="description">Observações</Label>
+            <Label htmlFor="description">{t("recurring.form.notes")}</Label>
             <Textarea
               id="description"
               value={formData.description}
               onChange={(e) =>
                 setFormData({ ...formData, description: e.target.value })
               }
-              placeholder="Informações adicionais..."
+              placeholder={t("recurring.form.notesPlaceholder")}
               rows={3}
             />
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
+              {t("common.cancel")}
             </Button>
             <Button type="submit">
-              {editData ? "Salvar Alterações" : "Criar Conta Fixa"}
+              {editData ? t("recurring.form.saveChanges") : t("recurring.form.createBill")}
             </Button>
           </DialogFooter>
         </form>

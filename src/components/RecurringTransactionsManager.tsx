@@ -13,7 +13,7 @@ import {
 import { useRecurringTransactions } from "@/hooks/useRecurringTransactions";
 import { RecurringTransactionForm } from "./RecurringTransactionForm";
 import { RecurringInstancesList } from "./RecurringInstancesList";
-import { Plus, Pause, Play, Pencil, Trash2, Building2, Home } from "lucide-react";
+import { Plus, Pause, Play, Pencil, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useTranslation } from "react-i18next";
 
 interface RecurringTransactionsManagerProps {
   categories: any[];
@@ -32,6 +33,7 @@ interface RecurringTransactionsManagerProps {
 export function RecurringTransactionsManager({
   categories,
 }: RecurringTransactionsManagerProps) {
+  const { t } = useTranslation();
   const {
     recurringTransactions,
     instances,
@@ -71,34 +73,20 @@ export function RecurringTransactionsManager({
     setDeleteDialog({ open: false, id: "" });
   };
 
-  const getFrequencyLabel = (frequency: string) => {
-    const labels: Record<string, string> = {
-      daily: "Diária",
-      weekly: "Semanal",
-      monthly: "Mensal",
-      yearly: "Anual",
-      custom: "Personalizada",
-    };
-    return labels[frequency] || frequency;
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">Carregando contas fixas...</p>
+        <p className="text-muted-foreground">{t("recurring.loading")}</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header com botão de adicionar */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Contas Fixas</h2>
-          <p className="text-muted-foreground">
-            Gerencie suas receitas e despesas recorrentes
-          </p>
+          <h2 className="text-2xl font-bold">{t("recurring.title")}</h2>
+          <p className="text-muted-foreground">{t("recurring.description")}</p>
         </div>
         <Button
           onClick={() => {
@@ -107,11 +95,10 @@ export function RecurringTransactionsManager({
           }}
         >
           <Plus className="h-4 w-4 mr-2" />
-          Nova Conta Fixa
+          {t("recurring.add")}
         </Button>
       </div>
 
-      {/* Lista de próximos vencimentos */}
       <RecurringInstancesList
         instances={instances}
         recurringTransactions={recurringTransactions}
@@ -119,16 +106,15 @@ export function RecurringTransactionsManager({
         onPostponeInstance={postponeInstance}
       />
 
-      {/* Lista de contas fixas cadastradas */}
       <Card className="bg-gradient-card shadow-card border-0">
         <CardHeader>
-          <CardTitle>Contas Cadastradas</CardTitle>
+          <CardTitle>{t("recurring.registeredBills")}</CardTitle>
         </CardHeader>
         <CardContent>
           {recurringTransactions.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground mb-4">
-                Nenhuma conta fixa cadastrada
+                {t("recurring.noBills")}
               </p>
               <Button
                 onClick={() => {
@@ -137,20 +123,19 @@ export function RecurringTransactionsManager({
                 }}
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Criar Primeira Conta
+                {t("recurring.createFirst")}
               </Button>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Título</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Frequência</TableHead>
-                  <TableHead>Contexto</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                  <TableHead>{t("recurring.columns.title")}</TableHead>
+                  <TableHead>{t("recurring.columns.type")}</TableHead>
+                  <TableHead>{t("recurring.columns.amount")}</TableHead>
+                  <TableHead>{t("recurring.columns.frequency")}</TableHead>
+                  <TableHead>{t("recurring.columns.status")}</TableHead>
+                  <TableHead className="text-right">{t("recurring.columns.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -167,7 +152,7 @@ export function RecurringTransactionsManager({
                             : "default"
                         }
                       >
-                        {transaction.type === "expense" ? "Despesa" : "Receita"}
+                        {transaction.type === "expense" ? t("recurring.type.expense") : t("recurring.type.income")}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -186,24 +171,11 @@ export function RecurringTransactionsManager({
                       </span>
                     </TableCell>
                     <TableCell>
-                      {getFrequencyLabel(transaction.frequency)}
-                    </TableCell>
-                    <TableCell>
-                      {transaction.organization_id ? (
-                        <div className="flex items-center gap-1 text-muted-foreground">
-                          <Building2 className="h-4 w-4" />
-                          <span className="text-sm">Empresa</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1 text-muted-foreground">
-                          <Home className="h-4 w-4" />
-                          <span className="text-sm">Pessoal</span>
-                        </div>
-                      )}
+                      {t(`recurring.frequency.${transaction.frequency}`)}
                     </TableCell>
                     <TableCell>
                       <Badge variant={transaction.is_active ? "default" : "secondary"}>
-                        {transaction.is_active ? "Ativa" : "Pausada"}
+                        {transaction.is_active ? t("recurring.status.active") : t("recurring.status.paused")}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -249,7 +221,6 @@ export function RecurringTransactionsManager({
         </CardContent>
       </Card>
 
-      {/* Form Dialog */}
       <RecurringTransactionForm
         open={formOpen}
         onOpenChange={(open) => {
@@ -261,23 +232,21 @@ export function RecurringTransactionsManager({
         editData={editingTransaction}
       />
 
-      {/* Delete Dialog */}
       <AlertDialog
         open={deleteDialog.open}
         onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remover Conta Fixa</AlertDialogTitle>
+            <AlertDialogTitle>{t("recurring.deleteConfirmTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja remover esta conta fixa? Todas as instâncias
-              pendentes também serão removidas. Esta ação não pode ser desfeita.
+              {t("recurring.deleteConfirmDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete}>
-              Remover
+              {t("recurring.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
