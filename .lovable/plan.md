@@ -1,147 +1,97 @@
 
-# Correcao Definitiva: Fluxo de Recuperacao de Senha
 
-## Causa Raiz REAL
+# Plano de Correcao: Eliminar Lacunas do Sistema
 
-O bug NAO esta no `AuthEventHandler` nem no `ResetPassword`. Esta no **sistema de versioning** em `main.tsx`.
+## Resumo
 
-### Sequencia do bug:
+Seu sistema tem **5 lacunas concretas** que precisam ser corrigidas antes do lancamento. Nenhuma exige mudancas no Supabase Dashboard.
 
-```text
-1. Usuario clica no link do email
-2. Supabase /verify valida token, redireciona para /reset-password#access_token=...&type=recovery
-3. App carrega em /reset-password
-4. main.tsx importa todos os modulos (Supabase client inicializa, limpa hash da URL)
-5. main.tsx executa: busca versao remota
-6. Versao mudou (porque voce acabou de publicar!) 
-7. clearAllAndReload() executa:
-   - localStorage.clear() -> destroi qualquer sessao do Supabase
-   - sessionStorage.clear() -> destroi qualquer flag
-   - window.location.replace('/?v=...') -> REDIRECIONA PARA HOME
-8. App recarrega em /  (sem tokens, sem sessao)
-9. Usuario ve a home page
-```
+---
 
-Alem disso, o Supabase client (com `detectSessionInUrl: true`) limpa o hash da URL SINCRONAMENTE quando o modulo e importado, ANTES de qualquer codigo React rodar. Isso impede o `AuthEventHandler` de ver `type=recovery` no hash.
+## Lacuna 1: Fallback "plano free" no featureFlags.ts
 
-## Solucao (3 arquivos)
+**Problema**: Quando um usuario nao tem assinatura ativa, o sistema retorna limites de um "plano gratuito" ficticio (50 transacoes, 10 categorias). Como voce NAO tem plano free, isso nao deveria existir -- um usuario sem assinatura nao deveria conseguir criar transacoes.
 
-### 1. `index.html` - Capturar hash ANTES de tudo
+**Arquivo**: `src/lib/featureFlags.ts` (linhas 55-63)
 
-Adicionar um `<script>` inline (nao module) ANTES do script principal. Esse script roda antes de qualquer import, antes do Supabase client inicializar:
+**Correcao**: Retornar limites ZERO (bloqueio total) em vez de limites "free":
+- `maxTransactions: 0`
+- `maxCategories: 0`
+- `hasWhatsapp: false`
 
-```javascript
-// Captura sincrona do hash de recovery ANTES do Supabase limpar
-if (window.location.hash && window.location.hash.includes('type=recovery')) {
-  sessionStorage.setItem('supabase_recovery', 'true');
-  sessionStorage.setItem('supabase_recovery_hash', window.location.hash);
-  sessionStorage.setItem('supabase_recovery_path', window.location.pathname);
-}
-```
+Tambem remover as mensagens "plano Gratuito" das funcoes `canCreateTransaction` e `canCreateCategory` (linhas 100, 132), trocando por mensagem generica tipo "Assine o Premium para usar".
 
-### 2. `src/main.tsx` - Preservar contexto de recovery no clearAllAndReload
+---
 
-Na funcao `clearAllAndReload`, antes de limpar storages, salvar e restaurar os flags de recovery. E redirecionar para o pathname original em vez de sempre `/`:
+## Lacuna 2: check-subscription cria registro com plano "free"
 
-```typescript
-async function clearAllAndReload(newVersion: string) {
-  // Preservar flags de recovery ANTES de limpar
-  const recoveryFlag = sessionStorage.getItem('supabase_recovery');
-  const recoveryHash = sessionStorage.getItem('supabase_recovery_hash');
-  const recoveryPath = sessionStorage.getItem('supabase_recovery_path');
+**Problema**: A edge function `check-subscription` (linhas 103-111 e 193-207) busca o plano `free` no banco e cria/atualiza `user_subscriptions` com ele quando o usuario nao tem assinatura no Stripe. Isso e inconsistente -- nao deveria criar nenhum registro de subscription para quem nao assinou.
 
-  // Limpar tudo
-  localStorage.clear();
-  sessionStorage.clear();
-  // ... (limpar caches, service workers)
+**Arquivo**: `supabase/functions/check-subscription/index.ts`
 
-  // Restaurar flags de recovery
-  if (recoveryFlag) {
-    sessionStorage.setItem('supabase_recovery', recoveryFlag);
-    sessionStorage.setItem('supabase_recovery_hash', recoveryHash || '');
-    sessionStorage.setItem('supabase_recovery_path', recoveryPath || '/reset-password');
-  }
+**Correcao**: Quando nao ha assinatura ativa no Stripe:
+- NAO criar/upsert registro em `user_subscriptions`
+- Apenas retornar `{ subscribed: false }` sem tocar no banco
+- Remover as duas queries que buscam o plano "free"
 
-  // Salvar nova versao
-  localStorage.setItem('app_version', newVersion);
+---
 
-  // Redirecionar para o PATH ORIGINAL, nao para /
-  const targetPath = recoveryPath || window.location.pathname;
-  window.location.replace(targetPath + '?v=' + newVersion);
-}
-```
+## Lacuna 3: UpgradeModal exibe planos free e trial do banco
 
-### 3. `src/App.tsx` - AuthEventHandler le de sessionStorage
+**Problema**: O `UpgradeModal` busca TODOS os planos ativos do banco e renderiza cards para free, trial e premium. Como free e trial estao `is_active: false` no banco, eles nao aparecem AGORA, mas o codigo ainda tem logica para eles (handleStartTrial chamando `activate-trial` que nao existe mais). Se alguem reativar esses planos por engano, o modal quebra.
 
-```typescript
-const AuthEventHandler = ({ children }: { children: ReactNode }) => {
-  const navigate = useNavigate();
-  const location = useLocation();
+**Arquivo**: `src/components/UpgradeModal.tsx`
 
-  const [isRecovery] = useState(() => {
-    // Ler do sessionStorage (capturado no index.html antes do Supabase limpar)
-    return sessionStorage.getItem('supabase_recovery') === 'true';
-  });
+**Correcao**: 
+- Remover toda a logica de `handleStartTrial` e `activate-trial`
+- Remover referencias a `isFreePlanRole` e `isTrialPlan`
+- Simplificar para mostrar apenas o plano Premium com os precos do `pricing.ts` (que ja tem os priceIds corretos por moeda)
 
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        navigate('/reset-password', { replace: true });
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+---
 
-  if (isRecovery && location.pathname !== '/reset-password') {
-    return <Navigate to="/reset-password" replace />;
-  }
+## Lacuna 4: Inconsistencia no telefone do whatsapp-webhook
 
-  return <>{children}</>;
-};
-```
+**Problema**: A funcao `sendWhatsAppMessage` no `whatsapp-webhook/index.ts` (linha 66) envia o numero `to` diretamente, sem remover o prefixo `+`. Ja no `whatsapp-agent/index.ts` (linha 22), o `+` e removido corretamente. A API do WhatsApp exige o numero SEM `+`.
 
-### 4. `src/pages/ResetPassword.tsx` - Ler hash do sessionStorage
+**Arquivo**: `supabase/functions/whatsapp-webhook/index.ts` (linha 51-79)
 
-No useEffect, mudar a captura do hash:
+**Correcao**: Adicionar `const cleanTo = to.startsWith('+') ? to.substring(1) : to;` e usar `cleanTo` no body, identico ao whatsapp-agent.
 
-```typescript
-// ANTES:
-const savedHash = window.location.hash;
+---
 
-// DEPOIS:
-const savedHash = sessionStorage.getItem('supabase_recovery_hash') || window.location.hash;
-```
+## Lacuna 5: Textos "Gratuito" espalhados pela UI
 
-E apos sucesso no reset, limpar os flags:
+**Problema**: Varios componentes ainda exibem "Gratuito" como fallback quando nao ha assinatura:
+- `useSubscription.ts` retorna "Gratuito" (linhas 90, 127, 141)
+- `ProfileSettings.tsx` exibe badge "Gratuito" (linha 921)
+- `AdminStats.tsx` mostra contagem "Gratuito" (linha 150)
 
-```typescript
-// Apos updatePassword com sucesso:
-sessionStorage.removeItem('supabase_recovery');
-sessionStorage.removeItem('supabase_recovery_hash');
-sessionStorage.removeItem('supabase_recovery_path');
-```
+Como o produto nao tem plano gratuito, esses textos confundem o usuario.
 
-## Por que isso funciona
+**Arquivos**: `src/hooks/useSubscription.ts`, `src/components/ProfileSettings.tsx`
 
-| Etapa | O que acontece |
-|-------|---------------|
-| Link do email clicado | Browser navega para `/reset-password#access_token=...&type=recovery` |
-| Script inline (index.html) | Captura hash e salva em sessionStorage ANTES de qualquer JS module |
-| Supabase client inicializa | Limpa hash da URL (mas sessionStorage ja tem os dados) |
-| main.tsx version check | Se versao mudou: preserva flags de recovery, redireciona para `/reset-password?v=...` (nao para `/`) |
-| App renderiza | AuthEventHandler le sessionStorage: `isRecovery = true`, pathname = `/reset-password` → renderiza children |
-| ResetPassword monta | Le hash de sessionStorage, faz `setSession()` com tokens, mostra formulario |
-| Senha redefinida | Limpa flags de sessionStorage |
+**Correcao**: Trocar "Gratuito" por "Sem assinatura" ou "Inativo" nos componentes voltados ao usuario. Manter "free" no admin apenas como indicador tecnico de role.
 
-## Arquivos alterados
+---
+
+## Resumo das alteracoes
 
 | Arquivo | Alteracao |
 |---------|-----------|
-| `index.html` | Adicionar `<script>` inline para capturar hash de recovery antes dos modules |
-| `src/main.tsx` | Preservar flags de recovery no `clearAllAndReload` e redirecionar para path original |
-| `src/App.tsx` | `AuthEventHandler` le `supabase_recovery` de sessionStorage |
-| `src/pages/ResetPassword.tsx` | Ler hash de sessionStorage; limpar flags apos sucesso |
+| `src/lib/featureFlags.ts` | Fallback com limites ZERO em vez de limites free |
+| `supabase/functions/check-subscription/index.ts` | Remover upsert com plano free quando nao ha assinatura |
+| `src/components/UpgradeModal.tsx` | Remover logica de trial/free, simplificar para Premium only |
+| `supabase/functions/whatsapp-webhook/index.ts` | Corrigir envio de telefone sem `+` |
+| `src/hooks/useSubscription.ts` | Trocar "Gratuito" por "Sem assinatura" |
+| `src/components/ProfileSettings.tsx` | Trocar badge "Gratuito" por "Sem assinatura" |
 
-## Nenhuma acao manual necessaria
+## O que NAO sera alterado (conforme sua instrucao)
 
-Esta correcao e 100% em codigo. Nao precisa mudar nada no Supabase Dashboard.
+- Compartilhamento de conta (backend pronto, UI desativada -- fica assim)
+- Agenda de compromissos e lembretes (tabelas existem, crons desativados -- fica assim)
+- Nenhuma alteracao no Supabase Dashboard necessaria
+- Nenhuma nova dependencia ou custo adicional
+
+## Resultado esperado
+
+Apos essas correcoes, o sistema reflete fielmente a estrategia comercial: **so quem tem assinatura Premium (paga ou via cupom Stripe) consegue usar o produto**. Sem vestígios de plano gratuito em nenhuma camada.
