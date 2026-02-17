@@ -11,7 +11,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Shield, Crown, Star, User as UserIcon, Trash2 } from "lucide-react";
+import { Shield, Crown, User as UserIcon, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 interface User {
@@ -19,7 +19,7 @@ interface User {
   email: string;
   full_name: string;
   created_at: string;
-  role: 'free' | 'trial' | 'premium' | 'admin';
+  role: 'premium' | 'admin' | 'none';
   planName: string;
   subscriptionStatus: string;
   trialExpiresAt: string | null;
@@ -31,7 +31,7 @@ export function UsersManagement() {
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activatingTrial, setActivatingTrial] = useState<string | null>(null);
+  
 
   useEffect(() => {
     fetchUsers();
@@ -57,7 +57,7 @@ export function UsersManagement() {
       
       const rolesPromises = userIds.map(async (userId) => {
         const { data } = await supabase.rpc('get_user_role', { _user_id: userId });
-        return { user_id: userId, role: data || 'free' };
+        return { user_id: userId, role: data || null };
       });
       const roles = await Promise.all(rolesPromises);
 
@@ -66,21 +66,14 @@ export function UsersManagement() {
         .select('user_id, plan_id, status, current_period_end, subscription_plans(name)')
         .in('user_id', userIds);
 
-      const { data: trialRoles } = await supabase
-        .from('user_roles')
-        .select('user_id, expires_at')
-        .in('user_id', userIds)
-        .eq('role', 'trial');
-
       const usersData = profiles?.map(profile => {
         const userRole = roles?.find(r => r.user_id === profile.user_id);
-        const roleValue = userRole?.role || 'free';
-        const validRole = ['free', 'trial', 'premium', 'admin'].includes(roleValue) 
-          ? roleValue as 'free' | 'trial' | 'premium' | 'admin'
-          : 'free';
+        const roleValue = userRole?.role;
+        const validRole = (roleValue === 'premium' || roleValue === 'admin') 
+          ? roleValue as 'premium' | 'admin'
+          : 'none' as const;
         
         const subscription = subscriptions?.find(s => s.user_id === profile.user_id);
-        const trialRole = trialRoles?.find(t => t.user_id === profile.user_id);
         
         return {
           id: profile.user_id,
@@ -90,7 +83,7 @@ export function UsersManagement() {
           role: validRole,
           planName: (subscription?.subscription_plans as any)?.name || t('admin.noSubscription'),
           subscriptionStatus: subscription?.status || 'inactive',
-          trialExpiresAt: trialRole?.expires_at || null,
+          trialExpiresAt: null,
           isMaster: masterUserIds.has(profile.user_id),
         };
       }) || [];
@@ -104,7 +97,7 @@ export function UsersManagement() {
     }
   };
 
-  const handleRoleChange = async (userId: string, newRole: 'free' | 'premium' | 'admin', userEmail: string) => {
+  const handleRoleChange = async (userId: string, newRole: 'premium' | 'admin', userEmail: string) => {
     try {
       const { data: isMaster } = await supabase.rpc('is_master_user', { _user_id: userId });
       
@@ -137,26 +130,6 @@ export function UsersManagement() {
     }
   };
 
-  const handleActivateTrial = async (userId: string) => {
-    setActivatingTrial(userId);
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      
-      const { error } = await supabase.functions.invoke('activate-trial', {
-        headers: { Authorization: `Bearer ${sessionData.session?.access_token}` },
-        body: { user_id: userId }
-      });
-
-      if (error) throw error;
-
-      toast.success(t('admin.trialActivated'));
-      fetchUsers();
-    } catch (error: any) {
-      toast.error(error.message || t('admin.trialActivateError'));
-    } finally {
-      setActivatingTrial(null);
-    }
-  };
 
   const handleDeleteUser = async (userId: string, userEmail: string) => {
     if (userId === currentUser?.id) {
@@ -206,11 +179,10 @@ export function UsersManagement() {
     const badges = {
       admin: { icon: Shield, color: 'bg-destructive text-destructive-foreground', label: t('admin.admin_role') },
       premium: { icon: Crown, color: 'bg-success text-success-foreground', label: t('admin.premium') },
-      trial: { icon: Star, color: 'bg-accent text-accent-foreground', label: t('admin.trial') },
-      free: { icon: UserIcon, color: 'bg-muted text-muted-foreground', label: t('admin.noSubscription') },
+      none: { icon: UserIcon, color: 'bg-muted text-muted-foreground', label: t('admin.noSubscription') },
     };
 
-    const badge = badges[role as keyof typeof badges] || badges.free;
+    const badge = badges[role as keyof typeof badges] || badges.none;
     const Icon = badge.icon;
 
     return (
@@ -261,12 +233,7 @@ export function UsersManagement() {
                 <TableCell className="text-muted-foreground">{user.email}</TableCell>
                 <TableCell>
                   <div className="flex flex-col gap-1">
-                    {getRoleBadge(user.role)}
-                    {user.role === 'trial' && user.trialExpiresAt && (
-                      <span className="text-xs text-muted-foreground">
-                        {t('admin.expires')}: {new Date(user.trialExpiresAt).toLocaleDateString('pt-BR')}
-                      </span>
-                    )}
+                   {getRoleBadge(user.role)}
                     {user.subscriptionStatus === 'active' && (
                       <Badge variant="outline" className="ml-2 bg-success/10 text-success text-xs">
                         {user.planName}
@@ -280,15 +247,14 @@ export function UsersManagement() {
                 <TableCell>
                   <div className="flex gap-2">
                     <Select
-                      value={user.role === 'trial' ? 'free' : user.role}
-                      onValueChange={(value) => handleRoleChange(user.id, value as 'free' | 'premium' | 'admin', user.email)}
+                      value={user.role}
+                      onValueChange={(value) => handleRoleChange(user.id, value as 'premium' | 'admin', user.email)}
                       disabled={user.isMaster}
                     >
                       <SelectTrigger className="w-32">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="free">{t('admin.free')}</SelectItem>
                         <SelectItem value="premium">{t('admin.premium')}</SelectItem>
                         <SelectItem value="admin">{t('admin.admin_role')}</SelectItem>
                       </SelectContent>
