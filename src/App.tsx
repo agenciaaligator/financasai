@@ -24,6 +24,13 @@ import { supabase } from "@/integrations/supabase/client";
 
 const queryClient = new QueryClient();
 
+// ⚠️ RECOVERY FLOW (3/4) — Este componente faz parte de uma cadeia de 4 arquivos:
+//   index.html → main.tsx → App.tsx → ResetPassword.tsx
+// AuthEventHandler escuta eventos PASSWORD_RECOVERY do Supabase e redireciona
+// para /reset-password. Também lê flags de recovery do sessionStorage (salvas
+// pelo index.html) para cobrir cenários onde o evento já foi emitido antes
+// do listener ser registrado.
+// NÃO altere este componente sem verificar os outros 3 arquivos.
 const AuthEventHandler = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const location = useLocation();

@@ -1,3 +1,10 @@
+// ⚠️ RECOVERY FLOW (4/4) — Este componente faz parte de uma cadeia de 4 arquivos:
+//   index.html → main.tsx → App.tsx → ResetPassword.tsx
+// Lê o hash de recovery do sessionStorage (capturado pelo index.html),
+// registra um listener de auth, e como fallback usa setSession() com tokens
+// manuais extraídos do hash.
+// NÃO altere este componente sem verificar os outros 3 arquivos.
+
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -38,15 +45,23 @@ export default function ResetPassword() {
       setIsInitializing(false);
     };
 
-    const reject = () => {
+    const reject = (reason: 'timeout' | 'invalid') => {
       if (resolved) return;
       resolved = true;
       clearTimeout(timeout);
-      toast({
-        title: "❌ Link inválido ou expirado",
-        description: "Solicite um novo link de recuperação.",
-        variant: "destructive",
-      });
+      if (reason === 'timeout') {
+        toast({
+          title: "Estamos demorando para validar seu link",
+          description: "Verifique sua conexão e tente novamente clicando no link do email.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Link inválido ou expirado",
+          description: "Solicite um novo link de recuperação.",
+          variant: "destructive",
+        });
+      }
       setIsInitializing(false);
       navigate('/');
     };
@@ -73,6 +88,11 @@ export default function ResetPassword() {
       }
 
       // 3b. Tentar parsear hash capturado manualmente
+      // ⚠️ WORKAROUND: O Supabase SDK limpa o hash da URL antes do app React montar,
+      // então precisamos ler o hash salvo pelo index.html no sessionStorage e chamar
+      // setSession() manualmente com os tokens extraídos. Isso pode quebrar se o
+      // Supabase SDK mudar o formato do hash ou o comportamento de setSession().
+      // Monitorar ao atualizar @supabase/supabase-js.
       if (savedHash) {
         const params = new URLSearchParams(savedHash.substring(1));
         const accessToken = params.get('access_token');
@@ -92,11 +112,11 @@ export default function ResetPassword() {
 
     init();
 
-    // 4. Timeout de segurança (10s)
+    // 4. Timeout de segurança (15s — margem extra para conexões lentas no Brasil)
     timeout = setTimeout(() => {
       subscription.unsubscribe();
-      reject();
-    }, 10000);
+      reject('timeout');
+    }, 15000);
 
     return () => {
       clearTimeout(timeout);
@@ -140,7 +160,7 @@ export default function ResetPassword() {
         
         // Mark password as set in profile and user_metadata
         if (user) {
-          await supabase.from('profiles').update({ password_set: true } as any).eq('user_id', user.id);
+          await supabase.from('profiles').update({ password_set: true }).eq('user_id', user.id);
           await supabase.auth.updateUser({ data: { password_set: true } });
         }
         

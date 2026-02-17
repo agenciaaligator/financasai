@@ -68,46 +68,64 @@ async function fetchRemoteVersion(timeoutMs = 1500): Promise<string | null> {
   }
 }
 
+// ⚠️ RECOVERY FLOW (2/4) — Este arquivo faz parte de uma cadeia de 4 arquivos:
+//   index.html → main.tsx → App.tsx → ResetPassword.tsx
+// A função clearAllAndReload preserva flags de recovery do sessionStorage
+// durante o ciclo de limpeza de cache/storage. Se novas chaves de sessão forem
+// adicionadas ao app, inclua-as na STORAGE_PRESERVE_KEYS abaixo.
+// NÃO altere a lógica de limpeza sem verificar os outros 3 arquivos.
+
+// Chaves do sessionStorage que devem sobreviver ao ciclo de limpeza.
+// Ao adicionar novo estado persistido no sessionStorage, inclua a chave aqui
+// para que não seja perdida durante atualizações automáticas de versão.
+const STORAGE_PRESERVE_KEYS = [
+  'supabase_recovery',
+  'supabase_recovery_hash',
+  'supabase_recovery_path',
+] as const;
+
 // Função para limpar tudo e recarregar
 async function clearAllAndReload(newVersion: string) {
   console.log('[VERSION] Limpando caches e recarregando para versão:', newVersion);
-  
-  // Preservar flags de recovery ANTES de limpar
-  const recoveryFlag = sessionStorage.getItem('supabase_recovery');
-  const recoveryHash = sessionStorage.getItem('supabase_recovery_hash');
-  const recoveryPath = sessionStorage.getItem('supabase_recovery_path');
-  
+
+  // Preservar chaves da allowlist ANTES de limpar
+  const preserved: Record<string, string> = {};
+  for (const key of STORAGE_PRESERVE_KEYS) {
+    const value = sessionStorage.getItem(key);
+    if (value !== null) {
+      preserved[key] = value;
+    }
+  }
+
   try {
     // Limpar storage
     localStorage.clear();
     sessionStorage.clear();
-    
-    // Restaurar flags de recovery se existiam
-    if (recoveryFlag) {
-      sessionStorage.setItem('supabase_recovery', recoveryFlag);
-      sessionStorage.setItem('supabase_recovery_hash', recoveryHash || '');
-      sessionStorage.setItem('supabase_recovery_path', recoveryPath || '/reset-password');
+
+    // Restaurar chaves preservadas
+    for (const [key, value] of Object.entries(preserved)) {
+      sessionStorage.setItem(key, value);
     }
-    
+
     // Limpar Cache API
     if ('caches' in window) {
       const names = await caches.keys();
       await Promise.all(names.map(n => caches.delete(n)));
     }
-    
+
     // Unregister Service Workers
     if ('serviceWorker' in navigator) {
       const registrations = await navigator.serviceWorker.getRegistrations();
       await Promise.all(registrations.map(r => r.unregister()));
     }
-    
+
     // Salvar nova versão
     localStorage.setItem('app_version', newVersion);
   } catch (e) {
     console.error('[VERSION] Erro ao limpar caches:', e);
   } finally {
     // Redirecionar para o path original (não sempre /)
-    const targetPath = recoveryPath || window.location.pathname || '/';
+    const targetPath = preserved['supabase_recovery_path'] || window.location.pathname || '/';
     window.location.replace(targetPath + '?v=' + newVersion);
   }
 }

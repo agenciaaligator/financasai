@@ -52,7 +52,11 @@
 
   <body>
     <script>
-      // Captura sincrona do hash de recovery ANTES do Supabase client limpar
+      // ⚠️ RECOVERY FLOW (1/4) — Este script faz parte de uma cadeia de 4 arquivos:
+      //   index.html → main.tsx → App.tsx → ResetPassword.tsx
+      // Captura o hash de recovery ANTES do Supabase SDK inicializar e limpá-lo.
+      // O hash é salvo no sessionStorage para ser lido pelos próximos elos da cadeia.
+      // NÃO altere este bloco sem verificar os outros 3 arquivos.
       (function() {
         var h = window.location.hash;
         if (h && h.indexOf('type=recovery') !== -1) {
