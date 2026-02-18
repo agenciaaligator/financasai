@@ -468,6 +468,13 @@
   "welcome": {
     "title": "¡Bienvenido{{name}}!",
     "subtitle": "Tu cuenta Premium está activa. ¿Configuramos tu WhatsApp?",
+    "congratulations": "¡Felicidades! ¡Tu cuenta Dona Wilma está activa!",
+    "connectToStart": "Solo falta conectar tu WhatsApp para empezar",
+    "stepAccountCreated": "Cuenta Creada",
+    "stepEmailConfirmed": "Email Confirmado",
+    "stepConnectWhatsApp": "Conectar WhatsApp",
+    "startUsing": "EMPEZAR A USAR DONA WILMA",
+    "allSetDesc": "¡Todo listo! Ya puedes usar Dona Wilma.",
     "connectWhatsApp": "Conectar WhatsApp",
     "connectDesc": "Registra transacciones y consulta tus finanzas por WhatsApp",
     "phoneLabel": "Número de WhatsApp",
@@ -581,11 +588,18 @@
     "subtitleLoggedIn": "Tu suscripción fue activada. ¿Configuramos tu WhatsApp?",
     "processing": "Procesando tu pago...",
     "goToLogin": "Ir al Login",
+    "emailSent": "Enviamos un email para activar tu cuenta. Haz clic en el enlace del email para empezar a usar Dona Wilma.",
+    "checkSpam": "¿No lo recibiste? Revisa la carpeta de spam.",
+    "redirecting": "Redirigiendo a tus bienvenidas...",
+    "goToWelcome": "Ir a bienvenidas",
     "configureWhatsApp": "Configurar WhatsApp",
     "skipToDashboard": "Saltar al Dashboard",
     "notLoggedIn": "Inicia sesión para acceder a tu cuenta.",
     "alreadyActiveTitle": "Suscripción ya activa",
     "alreadyActiveSubtitle": "Este email ya tiene una suscripción activa. Inicia sesión para acceder a tu cuenta."
+  },
+  "login": {
+    "emailConfirmedBanner": "✅ ¡Email confirmado con éxito! Ingresa tus datos para acceder"
   },
   "resetPassword": {
     "title": "Define tu Contraseña",

@@ -1,14 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Eye, EyeOff, LogIn, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, LogIn, AlertCircle, CheckCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { ForgotPasswordModal } from "@/components/ForgotPasswordModal";
 import { supabase } from "@/integrations/supabase/client";
+import { useTranslation } from "react-i18next";
 
 export function LoginForm() {
   const navigate = useNavigate();
@@ -18,7 +19,17 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showEmailConfirmedBanner, setShowEmailConfirmedBanner] = useState(false);
   const { signIn } = useAuth();
+  const { t } = useTranslation();
+
+  useEffect(() => {
+    const flag = sessionStorage.getItem('came_from_email_confirmation');
+    if (flag) {
+      setShowEmailConfirmedBanner(true);
+      sessionStorage.removeItem('came_from_email_confirmation');
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,6 +78,14 @@ export function LoginForm() {
         </p>
       </CardHeader>
       <CardContent>
+        {showEmailConfirmedBanner && (
+          <Alert className="mb-4 border-green-500/50 bg-green-50 dark:bg-green-950/30">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-700 dark:text-green-400">
+              {t('login.emailConfirmedBanner')}
+            </AlertDescription>
+          </Alert>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>

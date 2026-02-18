@@ -9,6 +9,8 @@ import { Calendar, Check, MessageCircle, Loader2, ArrowRight, Phone, CheckCircle
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "react-i18next";
+import { LanguageFlagSelector } from "@/components/LanguageFlagSelector";
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import '@/components/ui/phone-input.css';
@@ -17,6 +19,7 @@ export default function Welcome() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { t } = useTranslation();
   
   const [step, setStep] = useState<'phone' | 'code' | 'connected'>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -26,11 +29,10 @@ export default function Welcome() {
 
   useEffect(() => {
     if (!user) {
-      navigate('/', { replace: true }); // replace para evitar loop com botão voltar
+      navigate('/', { replace: true });
       return;
     }
 
-    // Fetch user name from profile
     const fetchProfile = async () => {
       const { data: profile } = await supabase
         .from('profiles')
@@ -42,7 +44,6 @@ export default function Welcome() {
         setUserName(profile.full_name);
       }
       
-      // Check if WhatsApp is already connected
       const { data: session } = await supabase
         .from('whatsapp_sessions')
         .select('phone_number, expires_at')
@@ -59,23 +60,21 @@ export default function Welcome() {
     };
 
     fetchProfile();
-  }, [user]); // Removido navigate das dependências
+  }, [user]);
 
   const handleSendCode = async () => {
     if (!phoneNumber || phoneNumber.length < 10) {
       toast({
-        title: "Número inválido",
-        description: "Digite um número de telefone válido com DDD",
+        title: t('welcome.invalidNumber'),
+        description: t('welcome.invalidNumberDesc'),
         variant: "destructive",
       });
       return;
     }
 
-    console.log('[Welcome] Iniciando envio de código para:', phoneNumber);
     setIsLoading(true);
     
     try {
-      // Validar se telefone já está em uso por outro usuário
       const { data: existingPhone } = await supabase
         .from('profiles')
         .select('email')
@@ -85,15 +84,14 @@ export default function Welcome() {
 
       if (existingPhone) {
         toast({
-          title: "Número já cadastrado",
-          description: `Este WhatsApp já está vinculado à conta ${existingPhone.email}. Desconecte-o primeiro.`,
+          title: t('welcome.numberAlreadyRegistered'),
+          description: t('welcome.numberAlreadyRegisteredDesc', { email: existingPhone.email }),
           variant: "destructive",
         });
         setIsLoading(false);
         return;
       }
 
-      // Verificar sessão ativa em outra conta
       const { data: activeSession } = await supabase
         .from('whatsapp_sessions')
         .select('user_id')
@@ -104,15 +102,14 @@ export default function Welcome() {
 
       if (activeSession) {
         toast({
-          title: "WhatsApp em uso",
-          description: "Este WhatsApp já está conectado em outra conta. Desconecte-o primeiro.",
+          title: t('welcome.whatsappInUse'),
+          description: t('welcome.whatsappInUseDesc'),
           variant: "destructive",
         });
         setIsLoading(false);
         return;
       }
 
-      console.log('[Welcome] Chamando whatsapp-agent com action: send-validation-code');
       const { data, error } = await supabase.functions.invoke('whatsapp-agent', {
         body: {
           action: 'send-validation-code',
@@ -121,32 +118,19 @@ export default function Welcome() {
         },
       });
 
-      console.log('[Welcome] Resposta do whatsapp-agent:', { data, error });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Falha ao enviar código');
 
-      if (error) {
-        console.error('[Welcome] Erro da edge function:', error);
-        throw error;
-      }
-
-      if (!data?.success) {
-        console.error('[Welcome] Edge function retornou falha:', data);
-        throw new Error(data?.error || 'Falha ao enviar código');
-      }
-
-      console.log('[Welcome] Código enviado com sucesso, mudando para step: code');
       toast({
-        title: "📱 Código enviado!",
-        description: `Verifique seu WhatsApp (${phoneNumber}) para o código de verificação`,
+        title: t('welcome.codeSent'),
+        description: t('welcome.codeSentDesc', { phone: phoneNumber }),
       });
       
-      // GARANTIR que setStep é chamado
       setStep('code');
-      console.log('[Welcome] Step atualizado para: code');
-      
     } catch (error) {
       console.error('[Welcome] Erro ao enviar código:', error);
       toast({
-        title: "Erro ao enviar código",
+        title: t('welcome.sendError'),
         description: error instanceof Error ? error.message : "Tente novamente",
         variant: "destructive",
       });
@@ -158,8 +142,8 @@ export default function Welcome() {
   const handleVerifyCode = async () => {
     if (!verificationCode || verificationCode.length < 4) {
       toast({
-        title: "Código inválido",
-        description: "Digite o código de 6 dígitos recebido no WhatsApp",
+        title: t('welcome.invalidCode'),
+        description: t('welcome.invalidCodeDesc'),
         variant: "destructive",
       });
       return;
@@ -177,42 +161,36 @@ export default function Welcome() {
       });
 
       if (error) throw error;
-      
-      if (!data?.success) {
-        throw new Error(data?.error || 'Código inválido ou expirado');
-      }
+      if (!data?.success) throw new Error(data?.error || 'Código inválido ou expirado');
 
-      // Create WhatsApp session
       await supabase
         .from('whatsapp_sessions')
         .upsert({
           user_id: user?.id,
           phone_number: phoneNumber,
-          expires_at: new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000).toISOString(), // 10 years (permanent)
+          expires_at: new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000).toISOString(),
           last_activity: new Date().toISOString(),
         }, {
           onConflict: 'user_id',
         });
 
-      // Update profile phone number
       await supabase
         .from('profiles')
         .update({ phone_number: phoneNumber })
         .eq('user_id', user?.id);
 
       toast({
-        title: "✅ WhatsApp conectado!",
-        description: "Você já pode usar comandos pelo WhatsApp",
+        title: t('welcome.connectedSuccess'),
+        description: t('welcome.connectedSuccessDesc'),
       });
-      // Limpar TODOS os flags de onboarding quando WhatsApp é conectado
       sessionStorage.removeItem('onboarding_completed');
       sessionStorage.removeItem('redirected_to_welcome');
       setStep('connected');
     } catch (error) {
       console.error('Error verifying code:', error);
       toast({
-        title: "Código inválido",
-        description: error instanceof Error ? error.message : "Verifique o código e tente novamente",
+        title: t('welcome.invalidCode'),
+        description: error instanceof Error ? error.message : t('welcome.invalidCodeDesc'),
         variant: "destructive",
       });
     } finally {
@@ -221,11 +199,12 @@ export default function Welcome() {
   };
 
   const handleGoToDashboard = () => {
-    // Marcar que usuário completou/pulou o onboarding para evitar loop
     sessionStorage.setItem('onboarding_completed', 'true');
-    sessionStorage.removeItem('redirected_to_welcome'); // Limpar flag de redirecionamento
-    navigate('/', { replace: true }); // replace para evitar loop com botão voltar
+    sessionStorage.removeItem('redirected_to_welcome');
+    navigate('/', { replace: true });
   };
+
+  const isWhatsAppConnected = step === 'connected';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20">
@@ -235,20 +214,67 @@ export default function Welcome() {
             <Calendar className="h-6 w-6 text-primary" />
             <span className="font-bold text-xl">Dona Wilma</span>
           </div>
+          <LanguageFlagSelector />
         </nav>
       </header>
 
-      <div className="container mx-auto px-4 py-16 max-w-2xl">
+      <div className="container mx-auto px-4 py-12 max-w-2xl">
+        {/* Progress Bar */}
+        <div className="flex items-center justify-center gap-0 mb-12">
+          {/* Step 1: Account Created */}
+          <div className="flex flex-col items-center">
+            <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white">
+              <Check className="h-5 w-5" />
+            </div>
+            <span className="text-xs mt-2 text-green-600 font-medium text-center max-w-[80px]">
+              {t('welcome.stepAccountCreated')}
+            </span>
+          </div>
+          
+          <div className="w-12 h-0.5 bg-green-500 mt-[-16px]" />
+          
+          {/* Step 2: Email Confirmed */}
+          <div className="flex flex-col items-center">
+            <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white">
+              <Check className="h-5 w-5" />
+            </div>
+            <span className="text-xs mt-2 text-green-600 font-medium text-center max-w-[80px]">
+              {t('welcome.stepEmailConfirmed')}
+            </span>
+          </div>
+          
+          <div className={`w-12 h-0.5 mt-[-16px] ${isWhatsAppConnected ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
+          
+          {/* Step 3: Connect WhatsApp */}
+          <div className="flex flex-col items-center">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+              isWhatsAppConnected 
+                ? 'bg-green-500 text-white' 
+                : 'bg-blue-500 text-white animate-pulse'
+            }`}>
+              {isWhatsAppConnected ? <Check className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
+            </div>
+            <span className={`text-xs mt-2 font-medium text-center max-w-[80px] ${
+              isWhatsAppConnected ? 'text-green-600' : 'text-blue-600'
+            }`}>
+              {t('welcome.stepConnectWhatsApp')}
+            </span>
+          </div>
+        </div>
+
         {/* Welcome Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-10">
           <div className="w-20 h-20 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center mx-auto mb-6">
             <span className="text-4xl">🎉</span>
           </div>
-          <h1 className="text-4xl font-bold mb-4">
-            Bem-vindo{userName ? `, ${userName.split(' ')[0]}` : ''}!
+          <h1 className="text-3xl font-bold mb-3">
+            {t('welcome.congratulations')}
           </h1>
           <p className="text-muted-foreground text-lg">
-            Sua conta Premium está ativa. Vamos configurar seu WhatsApp?
+            {isWhatsAppConnected 
+              ? t('welcome.allSetDesc', { defaultValue: 'Tudo pronto! Você já pode usar o Dona Wilma.' })
+              : t('welcome.connectToStart')
+            }
           </p>
         </div>
 
@@ -260,9 +286,9 @@ export default function Welcome() {
                 <MessageCircle className="h-6 w-6 text-green-600" />
               </div>
               <div>
-                <CardTitle>Conectar WhatsApp</CardTitle>
+                <CardTitle>{t('welcome.connectWhatsApp')}</CardTitle>
                 <CardDescription>
-                  Registre transações e consulte suas finanças pelo WhatsApp
+                  {t('welcome.connectDesc')}
                 </CardDescription>
               </div>
             </div>
@@ -272,7 +298,7 @@ export default function Welcome() {
             {step === 'phone' && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Número do WhatsApp</Label>
+                  <Label htmlFor="phone">{t('welcome.phoneLabel')}</Label>
                   <PhoneInput
                     international
                     defaultCountry="BR"
@@ -282,7 +308,7 @@ export default function Welcome() {
                     disabled={isLoading}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Enviaremos um código de verificação para este número
+                    {t('welcome.phoneHint')}
                   </p>
                 </div>
 
@@ -295,12 +321,12 @@ export default function Welcome() {
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Enviando...
+                      {t('welcome.sending')}
                     </>
                   ) : (
                     <>
                       <Phone className="mr-2 h-5 w-5" />
-                      Enviar código
+                      {t('welcome.sendCode')}
                     </>
                   )}
                 </Button>
@@ -310,13 +336,13 @@ export default function Welcome() {
             {step === 'code' && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="code">Código de verificação</Label>
+                  <Label htmlFor="code">{t('welcome.codeLabel')}</Label>
                   <Input
                     id="code"
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]*"
-                    placeholder="Digite o código de 6 dígitos"
+                    placeholder={t('welcome.codePlaceholder')}
                     value={verificationCode}
                     onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     disabled={isLoading}
@@ -324,7 +350,7 @@ export default function Welcome() {
                     maxLength={6}
                   />
                   <p className="text-xs text-muted-foreground">
-                    O código foi enviado para {phoneNumber}
+                    {t('welcome.codeHint', { phone: phoneNumber })}
                   </p>
                 </div>
 
@@ -335,7 +361,7 @@ export default function Welcome() {
                     disabled={isLoading}
                     className="flex-1"
                   >
-                    Voltar
+                    {t('welcome.back')}
                   </Button>
                   <Button
                     className="flex-1"
@@ -345,12 +371,12 @@ export default function Welcome() {
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                        Verificando...
+                        {t('welcome.verifying')}
                       </>
                     ) : (
                       <>
                         <Check className="mr-2 h-5 w-5" />
-                        Verificar
+                        {t('welcome.verify')}
                       </>
                     )}
                   </Button>
@@ -363,12 +389,12 @@ export default function Welcome() {
                 <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle2 className="h-8 w-8 text-green-600" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">WhatsApp conectado!</h3>
+                <h3 className="text-xl font-semibold mb-2">{t('welcome.connected')}</h3>
                 <p className="text-muted-foreground mb-2">
-                  Número: {phoneNumber}
+                  {t('welcome.number')} {phoneNumber}
                 </p>
                 <Badge variant="secondary" className="mb-4">
-                  ✓ Pronto para usar
+                  {t('welcome.readyToUse')}
                 </Badge>
               </div>
             )}
@@ -378,42 +404,41 @@ export default function Welcome() {
         {/* Quick Start Tips */}
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle className="text-lg">Dicas para começar</CardTitle>
+            <CardTitle className="text-lg">{t('welcome.tipsTitle')}</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-3 text-sm">
               <li className="flex items-start gap-2">
                 <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <span>Envie <strong>"Gastei 50 no mercado"</strong> para registrar despesas</span>
+                <span dangerouslySetInnerHTML={{ __html: t('welcome.tip1') }} />
               </li>
               <li className="flex items-start gap-2">
                 <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <span>Envie <strong>"Recebi 3000 de salário"</strong> para registrar receitas</span>
+                <span dangerouslySetInnerHTML={{ __html: t('welcome.tip2') }} />
               </li>
               <li className="flex items-start gap-2">
                 <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <span>Envie uma <strong>foto de recibo</strong> para registrar automaticamente</span>
+                <span dangerouslySetInnerHTML={{ __html: t('welcome.tip3') }} />
               </li>
               <li className="flex items-start gap-2">
                 <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <span>Pergunte <strong>"Quanto gastei este mês?"</strong> para relatórios</span>
+                <span dangerouslySetInnerHTML={{ __html: t('welcome.tip4') }} />
               </li>
             </ul>
           </CardContent>
         </Card>
 
-        {/* Action Buttons */}
+        {/* Action Button */}
         <div className="flex flex-col gap-3">
           <Button
             size="lg"
-            className="w-full"
+            className="w-full text-base font-bold"
             onClick={handleGoToDashboard}
             disabled={step !== 'connected'}
           >
-            Ir para o sistema
+            🚀 {t('welcome.startUsing')}
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
-          
         </div>
       </div>
     </div>

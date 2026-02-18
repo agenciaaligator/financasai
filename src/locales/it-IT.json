@@ -76,6 +76,13 @@
   },
   "welcome": {
     "title": "Benvenuto{{name}}!", "subtitle": "Il tuo account Premium è attivo. Configuriamo il tuo WhatsApp?",
+    "congratulations": "Congratulazioni! Il tuo account Dona Wilma è attivo!",
+    "connectToStart": "Manca solo connettere il tuo WhatsApp per iniziare",
+    "stepAccountCreated": "Account Creato",
+    "stepEmailConfirmed": "Email Confermata",
+    "stepConnectWhatsApp": "Connetti WhatsApp",
+    "startUsing": "INIZIA A USARE DONA WILMA",
+    "allSetDesc": "Tutto pronto! Ora puoi usare Dona Wilma.",
     "connectWhatsApp": "Connetti WhatsApp", "connectDesc": "Registra transazioni e consulta le tue finanze via WhatsApp",
     "phoneLabel": "Numero WhatsApp", "phoneHint": "Invieremo un codice di verifica a questo numero", "sendCode": "Invia codice", "sending": "Invio...",
     "codeLabel": "Codice di verifica", "codePlaceholder": "Inserisci il codice di 6 cifre", "codeHint": "Il codice è stato inviato a {{phone}}", "back": "Indietro", "verify": "Verifica", "verifying": "Verifica...",
@@ -165,11 +172,18 @@
     "subtitleLoggedIn": "Il tuo abbonamento è stato attivato. Configuriamo il tuo WhatsApp?",
     "processing": "Elaborazione del pagamento...",
     "goToLogin": "Vai al Login",
+    "emailSent": "Abbiamo inviato un'email per attivare il tuo account. Clicca sul link nell'email per iniziare a usare Dona Wilma.",
+    "checkSpam": "Non l'hai ricevuta? Controlla la cartella spam.",
+    "redirecting": "Reindirizzamento alla pagina di benvenuto...",
+    "goToWelcome": "Vai al benvenuto",
     "configureWhatsApp": "Configura WhatsApp",
     "skipToDashboard": "Vai alla Dashboard",
     "notLoggedIn": "Accedi per usare il tuo account.",
     "alreadyActiveTitle": "Abbonamento già attivo",
     "alreadyActiveSubtitle": "Questa email ha già un abbonamento attivo. Accedi per usare il tuo account."
+  },
+  "login": {
+    "emailConfirmedBanner": "✅ Email confermata con successo! Inserisci i tuoi dati per accedere"
   },
   "resetPassword": {
     "title": "Imposta la tua Password",

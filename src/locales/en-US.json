@@ -474,6 +474,13 @@
   "welcome": {
     "title": "Welcome{{name}}!",
     "subtitle": "Your Premium account is active. Let's set up your WhatsApp?",
+    "congratulations": "Congratulations! Your Dona Wilma account is active!",
+    "connectToStart": "Just connect your WhatsApp to get started",
+    "stepAccountCreated": "Account Created",
+    "stepEmailConfirmed": "Email Confirmed",
+    "stepConnectWhatsApp": "Connect WhatsApp",
+    "startUsing": "START USING DONA WILMA",
+    "allSetDesc": "All set! You can now use Dona Wilma.",
     "connectWhatsApp": "Connect WhatsApp",
     "connectDesc": "Record transactions and check your finances via WhatsApp",
     "phoneLabel": "WhatsApp Number",
@@ -733,11 +740,18 @@
     "subtitleLoggedIn": "Your subscription has been activated. Let's set up your WhatsApp?",
     "processing": "Processing your payment...",
     "goToLogin": "Go to Login",
+    "emailSent": "We sent an email to activate your account. Click the link in the email to start using Dona Wilma.",
+    "checkSpam": "Didn't receive it? Check your spam folder.",
+    "redirecting": "Redirecting to your welcome page...",
+    "goToWelcome": "Go to welcome",
     "configureWhatsApp": "Set up WhatsApp",
     "skipToDashboard": "Skip to Dashboard",
     "notLoggedIn": "Log in to access your account.",
     "alreadyActiveTitle": "Subscription already active",
     "alreadyActiveSubtitle": "This email already has an active subscription. Log in to access your account."
+  },
+  "login": {
+    "emailConfirmedBanner": "✅ Email confirmed successfully! Enter your credentials to access"
   },
   "resetPassword": {
     "title": "Set Your Password",
