@@ -1,194 +1,115 @@
 
 
-# Plano: Dashboard Intuitivo + Transacoes Simplificadas + WhatsApp Melhorado
+# Correcao do Onboarding - Fluxo Unico e Linear
 
-Este plano aborda 3 grandes areas de melhoria, organizadas em ordem de impacto e dependencia.
+## Fluxo Real do Usuario (caminho unico)
+
+```text
+1. Landing Page -> clica em plano
+2. /choose-plan -> escolhe mensal ou anual
+3. /register?plan=monthly -> preenche nome, email, senha
+4. Stripe Checkout (janela externa) -> paga
+5. /payment-success -> usuario NAO tem sessao (email nao confirmado ainda)
+6. Recebe email de confirmacao -> clica no link
+7. /auth/callback -> detecta sessao, verifica assinatura
+8. /boas-vindas -> conecta WhatsApp (obrigatorio)
+9. Dashboard
+```
 
 ---
 
-## PARTE 1: Dashboard Mais Claro e Intuitivo
+## Problema Atual
 
-### 1.1 SummaryCards.tsx - Cards de Metricas Simplificados
-
-**Remover**: Card "Status da Assinatura" (4o card)
-
-**3 cards restantes** com subtitulos explicativos:
-
-| Card | Titulo | Subtitulo | Icone |
-|------|--------|-----------|-------|
-| Saldo do Mes | Saldo do Mes | "Receitas menos despesas deste mes" | DollarSign |
-| Receitas | Receitas | "Total recebido este mes" | TrendingUp (verde) |
-| Despesas | Despesas | "Total gasto este mes" | TrendingDown (vermelho) |
-
-- Grid muda de `grid-cols-4` para `grid-cols-3`
-- Remover imports de `CheckCircle2`, `ExternalLink`, `AlertTriangle`, `XCircle`
-- Remover `useSubscription`, `useSubscriptionGuard`, `useState`, `supabase`, `useToast`
-- Remover funcao `handleManageSubscription` e `getStatusConfig`
-
-### 1.2 FinancialChart.tsx - Grafico Mais Intuitivo
-
-**Remover**: Grafico de barras "Por Categoria" (mover para Relatorios)
-
-**Manter**: Apenas grafico de pizza "Receitas vs Despesas"
-
-Alteracoes:
-- Titulo: "Como esta seu dinheiro este mes"
-- Legenda com fonte maior (16px, paddingTop 20px)
-- Tooltip melhorado: "Receitas: R$ X,XX (Y%)"
-- Cores ja estao corretas (#059669 verde, #dc2626 vermelho)
-
-### 1.3 DashboardContent.tsx - Secao de Transacoes Recentes
-
-Alteracoes no bloco `currentTab === "dashboard"`:
-- Limitar a **5 transacoes** (em vez de 10)
-- Titulo do card: "Suas ultimas movimentacoes"
-- Adicionar link "Ver todas as transacoes" que navega para tab `transactions`
-
-### 1.4 Locales
-
-Adicionar chaves novas em todos os 5 arquivos:
-- `summary.balanceSubtitle`: "Receitas menos despesas deste mes"
-- `summary.incomeSubtitle`: "Total recebido este mes"
-- `summary.expensesSubtitle`: "Total gasto este mes"
-- `chart.howIsYourMoney`: "Como esta seu dinheiro este mes"
-- `transactionList.yourLatestMovements`: "Suas ultimas movimentacoes"
-- `transactionList.viewAllTransactions`: "Ver todas as transacoes"
+- **PaymentSuccess** mostra botoes confusos ("Configurar WhatsApp", "Pular para dashboard") para um usuario que sequer tem sessao ativa
+- **AuthCallback** redireciona para `/login` em vez de `/boas-vindas`
+- A comunicacao entre telas nao guia o usuario de forma linear
 
 ---
 
-## PARTE 2: Transacoes Simplificadas
+## Alteracoes por Arquivo
 
-### 2.1 TransactionFilters.tsx - Filtros Essenciais
+### 1. PaymentSuccess.tsx
 
-**Remover**:
-- Filtro "Fonte" (manual/WhatsApp) - dropdown completo
-- Filtro "Categorias" - popover com Command (mover para Relatorios)
-- Periodos complexos: `30days`, `90days`, `year`, `custom` (e todo o bloco de date range)
+O usuario chega aqui apos pagar no Stripe. Na grande maioria dos casos, ele **NAO tem sessao** porque o email ainda nao foi confirmado.
 
-**Manter** (simplificado):
-- **Periodo**: Todos | Hoje | Esta semana | Este mes | Ultimo mes (novo)
-- **Tipo**: Todas | So receitas | So despesas
-- **Busca**: Input com placeholder "Digite para buscar..."
+**Novo comportamento:**
 
-O layout muda de grid 3 colunas para uma linha mais simples com 3 elementos.
+- **Estado "verificando"** (3 segundos): icone de loading + "Pagamento confirmado!"
+- **Estado "sem sessao"** (caso principal):
+  - Icone: CheckCircle verde
+  - Titulo: "Pagamento confirmado!"
+  - Mensagem: "Enviamos um email para ativar sua conta. Clique no link do email para comecar a usar o Dona Wilma."
+  - Dica: "Nao recebeu? Verifique a pasta de spam."
+  - Botao: "Ir para Login" (navega para `/login`)
+- **Estado "com sessao + assinatura"** (raro, ex: usuario ja confirmou email rapidamente):
+  - Auto-redirect para `/boas-vindas` apos 3 segundos
+  - Botao manual: "Ir para boas-vindas"
+- **Remover**: botao "Pular para dashboard" e botao "Configurar WhatsApp"
 
-Atualizar `TransactionFiltersState`:
-```
-period: 'all' | 'today' | 'week' | 'month' | 'last_month'
-type: 'all' | 'income' | 'expense'
-searchText: string
-```
+### 2. AuthCallback.tsx
 
-Remover `categories`, `source`, `customDateRange` do estado.
+O usuario chega aqui ao clicar no link de confirmacao do email.
 
-### 2.2 DashboardContent.tsx - Tab Transactions
+**Alterar redirecionamento:**
+- Quando `password_set = true` E assinatura ativa:
+  - Redirecionar para `/boas-vindas` (em vez de `/login`)
+  - Setar `sessionStorage.came_from_email_confirmation = true`
+- Quando `password_set = false`: manter redirect para `/set-password`
+- Quando sem assinatura: manter redirect para `/choose-plan`
 
-- Atualizar filtros para novo formato simplificado
-- Remover logica de `filters.source` e `filters.categories` do `filteredTransactions`
-- Remover periodos `30days`, `90days`, `year`, `custom`
-- Adicionar periodo `last_month`
+### 3. Welcome.tsx - Adicionar barra de progresso visual
 
-### 2.3 TransactionList.tsx - Lista Mais Clara
+Manter toda a logica atual de conexao WhatsApp (funciona bem). Adicionar:
 
-Alteracoes:
-- Datas em portugues amigavel: "Hoje", "Ontem", "15 de fev" (usar `formatDistanceToNow` ou logica custom)
-- Remover badge "WhatsApp" / "Manual" (source) - simplificar
-- Manter badge de categoria
-- Melhorar estados vazios:
-  - Sem transacoes: "Voce ainda nao tem movimentacoes. Que tal registrar sua primeira?"
-  - Busca vazia: "Nao encontramos nada. Tente outros termos."
+**Barra de progresso** no topo com 3 etapas:
+1. "Conta Criada" - sempre check verde
+2. "Email Confirmado" - check verde (usuario so chega aqui se confirmou)
+3. "Conectar WhatsApp" - check verde se conectado, circulo azul pulsante se pendente
 
-### 2.4 Locales
+**Titulo atualizado:** "Parabens! Sua conta Dona Wilma esta ativa!"
+**Subtitulo:** "Falta so conectar seu WhatsApp para comecar"
 
-Atualizar/adicionar chaves:
-- `filters.lastMonth`: "Ultimo mes"
-- `filters.searchPlaceholder`: "Digite para buscar..."
-- `transactionList.noTransactionsYet`: "Voce ainda nao tem movimentacoes. Que tal registrar sua primeira?"
-- `transactionList.searchNoResults`: "Nao encontramos nada. Tente outros termos."
-- `transactionList.yourTransactions`: "Suas Transacoes"
-- `transactionList.allIncomeAndExpenses`: "Todas as suas receitas e despesas"
+**Manter:**
+- WhatsApp obrigatorio (botao "Ir para o sistema" continua desabilitado ate conectar)
+- Card de dicas de uso
+- Toda a logica de phone input, OTP e verificacao
 
----
+**Botao final:** renomear de "Ir para o sistema" para "COMECAR A USAR DONA WILMA"
 
-## PARTE 3: WhatsApp Agent Melhorado
+### 4. LoginForm.tsx - Banner contextual
 
-### 3.1 Respostas Mais Humanas (PersonalizedResponses)
+- Verificar `sessionStorage.came_from_email_confirmation`
+- Se presente, mostrar banner verde acima do formulario: "Email confirmado com sucesso! Entre com seus dados para acessar"
+- Limpar flag apos exibir
+- Nota: este banner so aparece se o usuario fez logout e voltou ao login manualmente, ja que o AuthCallback agora redireciona direto para /boas-vindas
 
-Atualizar `generateSaveResponse` para respostas mais claras e padronizadas:
-- Formato consistente: "Anotei! [Tipo] de R$ X,XX em [Categoria]"
-- Sempre incluir saldo atual
-- Remover aleatoriedade excessiva (manter 2-3 templates em vez de 5+)
+### 5. Locales (5 arquivos: pt-BR, en-US, es-ES, pt-PT, it-IT)
 
-### 3.2 Menu de Ajuda Simplificado (getHelpMenu)
-
-Remover do menu:
-- Secao "Contas Fixas/Recorrentes" (removemos do UI)
-- Secao "Agenda - Comandos Inteligentes" (removemos agendamento)
-- Secao "Editar Compromissos"
-- Secao "Cancelar Compromissos"
-
-Menu final simplificado:
-```
-FALE NATURALMENTE:
-- "gastei 50 no mercado"
-- "recebi 500 de freelance"
-- "qual meu saldo?"
-
-ADICIONAR TRANSACOES:
-- "gasto 50 mercado"
-- "receita 1000 salario"
-- "+100 freelance"
-- "-30 lanche"
-
-ENVIAR NOTA FISCAL:
-- Tire foto e envie aqui
-
-CONSULTAS:
-- "saldo" - saldo atual
-- "hoje" - relatorio do dia
-- "semana" - ultimos 7 dias
-- "relatorio" - mensal
-
-EDITAR/EXCLUIR:
-- "editar ultima"
-- "excluir ultima"
-```
-
-### 3.3 Mensagens de Erro Melhores
-
-Atualizar fallback de mensagem nao compreendida (no final do processMessage):
-- De: mensagem generica
-- Para: "Nao entendi direito. Tente assim: 'gastei 30 no mercado' ou 'saldo'"
-- Sempre sugerir formato correto
-
-### 3.4 Comando "gastos" como atalho
-
-Adicionar deteccao de "gastos" como sinonimo de relatorio mensal de despesas (ja existe parcialmente via NLP, mas adicionar como comando direto).
+Novas chaves:
+- `paymentSuccess.confirmed`: "Pagamento confirmado!"
+- `paymentSuccess.emailSent`: "Enviamos um email para ativar sua conta. Clique no link do email para comecar a usar o Dona Wilma."
+- `paymentSuccess.checkSpam`: "Nao recebeu? Verifique a pasta de spam."
+- `paymentSuccess.goToLogin`: "Ir para Login"
+- `paymentSuccess.redirecting`: "Redirecionando para suas boas-vindas..."
+- `welcome.congratulations`: "Parabens! Sua conta Dona Wilma esta ativa!"
+- `welcome.connectToStart`: "Falta so conectar seu WhatsApp para comecar"
+- `welcome.stepAccountCreated`: "Conta Criada"
+- `welcome.stepEmailConfirmed`: "Email Confirmado"
+- `welcome.stepConnectWhatsApp`: "Conectar WhatsApp"
+- `welcome.startUsing`: "COMECAR A USAR DONA WILMA"
+- `login.emailConfirmedBanner`: "Email confirmado com sucesso! Entre com seus dados"
 
 ---
 
-## Arquivos a Alterar
+## O que NAO muda
 
-| Arquivo | Alteracao |
-|---------|-----------|
-| `src/components/dashboard/SummaryCards.tsx` | Remover card assinatura, adicionar subtitulos, simplificar para 3 cards |
-| `src/components/FinancialChart.tsx` | Remover grafico de barras, titulo mais claro, tooltip melhorado |
-| `src/components/dashboard/DashboardContent.tsx` | Dashboard: 5 transacoes + link "ver todas"; Transactions: filtros simplificados |
-| `src/components/TransactionFilters.tsx` | Remover fonte, categorias, periodos complexos, date range |
-| `src/components/TransactionList.tsx` | Datas amigaveis, remover badge source, estados vazios melhores |
-| `supabase/functions/whatsapp-agent/index.ts` | Help menu simplificado, respostas mais claras, erro melhor |
-| `src/locales/pt-BR.json` | Novas chaves e atualizacoes |
-| `src/locales/en-US.json` | Novas chaves e atualizacoes |
-| `src/locales/es-ES.json` | Novas chaves e atualizacoes |
-| `src/locales/pt-PT.json` | Novas chaves e atualizacoes |
-| `src/locales/it-IT.json` | Novas chaves e atualizacoes |
+- Register.tsx - fluxo de cadastro intacto
+- ChoosePlan.tsx - selecao de plano intacta
+- create-checkout edge function - success_url continua /payment-success
+- Index.tsx - ja redireciona para /boas-vindas se WhatsApp nao conectado
+- Logica de conexao WhatsApp (phone, OTP, sessao)
+- Banco de dados - nenhuma tabela ou coluna alterada
 
-## O que NAO sera alterado
+## Sobre o Email de Confirmacao
 
-- Banco de dados (nenhuma tabela ou coluna)
-- Logica de autenticacao WhatsApp
-- Edge functions alem do whatsapp-agent
-- Componentes de admin
-- Pagina de Relatorios (ReportsPage) - os graficos por categoria continuam la
-- Hook useTransactions
-
+O template do email e editado no **Supabase Dashboard** (Authentication -> Email Templates). O link do email ja aponta para `/auth/callback`. Para alterar o assunto e corpo do email, editar manualmente no painel. Apos a implementacao, fornecerei o texto sugerido para voce colar la.
