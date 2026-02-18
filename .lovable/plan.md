@@ -1,72 +1,117 @@
 
-# Correcao Definitiva do Onboarding - 3 Bugs Identificados
 
-## Bugs Encontrados
+# Correcao DEFINITIVA do Onboarding - 3 Bugs Confirmados
 
-### Bug 1: LoginForm nao navega apos login bem-sucedido
-**Arquivo**: `src/components/auth/LoginForm.tsx`
-**Problema**: Apos `signIn()` retornar sucesso (linha 47), o componente apenas limpa a senha e nao faz nada. O usuario fica preso na tela `/login` com o toast "Login realizado! Bem-vindo de volta!" mas sem redirecionamento.
-**Correcao**: Adicionar `navigate('/', { replace: true })` apos login bem-sucedido. O Index.tsx ja tem a logica de verificar WhatsApp e redirecionar para `/boas-vindas`.
+## Analise Completa
 
-### Bug 2: Index.tsx bloqueado por sessionStorage de tentativas anteriores
-**Arquivo**: `src/pages/Index.tsx`, linhas 361-368
-**Problema**: Quando o usuario tenta acessar o sistema multiplas vezes, as flags `onboarding_completed` e `redirected_to_welcome` ficam salvas no sessionStorage. Na proxima vez que o Index carrega, ele ve essas flags e pula a verificacao do WhatsApp, mandando direto para o dashboard.
-**Correcao**: Remover a verificacao de `redirected_to_welcome` como bloqueador. A unica flag que deve impedir o redirect e `onboarding_completed` (que e setada quando o usuario realmente completou o onboarding no Welcome.tsx). A flag `redirected_to_welcome` deve ser usada apenas como protecao contra loop infinito dentro da mesma execucao (usando o `hasCheckedRef` que ja existe).
-
-### Bug 3: Email de confirmacao redireciona para home
-**Problema**: O codigo do `Register.tsx` ja tem `emailRedirectTo` correto apontando para `/auth/callback`, MAS a URL `https://donawilma.lovable.app/auth/callback` precisa estar na lista de **Redirect URLs** permitidas no Supabase Dashboard (Authentication > URL Configuration). Se nao estiver, o Supabase ignora o parametro e usa o Site URL padrao (que e a raiz `/`).
-**Correcao no codigo**: Nenhuma (ja esta correto). **Correcao manual necessaria**: Adicionar `https://donawilma.lovable.app/auth/callback` na lista de Redirect URLs no Supabase Dashboard.
+Investiguei todos os arquivos envolvidos no fluxo: `LoginForm.tsx`, `Welcome.tsx`, `Index.tsx`, `AuthCallback.tsx`, `Register.tsx`, `SignUpForm.tsx`, `useAuth.ts` e `App.tsx`.
 
 ---
 
-## Alteracoes por Arquivo
+## Bug 1 (CRITICO): Welcome.tsx causa loop infinito
 
-### 1. LoginForm.tsx - Adicionar navegacao pos-login
+**Arquivo**: `src/pages/Welcome.tsx`, linha 21 e 30-33
 
-Apos login bem-sucedido (dentro do `if (result && !result.error)`), adicionar:
+**O que acontece**:
+- O `useAuth()` comeca com `user = null` e `loading = true` enquanto carrega a sessao
+- O `useEffect` verifica `if (!user)` IMEDIATAMENTE, sem esperar o loading terminar
+- Como `user` ainda e `null`, executa `navigate('/', { replace: true })`
+- O Index.tsx carrega, detecta o usuario (que agora ja carregou), ve que nao tem WhatsApp, e redireciona de volta para `/boas-vindas`
+- Welcome monta de novo, user ainda nao carregou, redireciona para `/` de novo
+- LOOP INFINITO
+
+**Correcao**:
 ```typescript
-navigate('/', { replace: true });
+// Linha 21: extrair loading
+const { user, loading } = useAuth();
+
+// Linha 30-34: adicionar guard
+useEffect(() => {
+    if (loading) return; // ESPERAR auth resolver antes de decidir
+    if (!user) {
+      navigate('/', { replace: true });
+      return;
+    }
+    // ... resto do codigo
+}, [user, loading]);
 ```
-Isso envia o usuario para Index.tsx, que verifica se tem WhatsApp conectado e redireciona para `/boas-vindas` se nao tiver.
 
-### 2. Index.tsx - Corrigir logica de sessionStorage
+---
 
-Alterar a verificacao nas linhas 361-368:
-- Manter `onboarding_completed` como unico bloqueador real
-- Remover `redirected_to_welcome` como bloqueador (essa flag impedia o redirect em tentativas subsequentes)
-- O `hasCheckedRef` ja protege contra loop infinito na mesma renderizacao
+## Bug 2 (CRITICO): LoginForm.tsx - navigate fica bloqueado se profile update falhar
 
-Codigo corrigido:
+**Arquivo**: `src/components/auth/LoginForm.tsx`, linhas 47-55
+
+**O que acontece**:
+- Apos `signIn` com sucesso, o codigo faz `await supabase.auth.getUser()` e `await profiles.update()`
+- Se qualquer um desses `await` falhar (erro de rede, RLS, timeout), o codigo pula direto para o bloco `finally`
+- O `navigate('/', { replace: true })` na linha 55 NUNCA executa
+- O usuario ve o toast "Bem-vindo de volta!" mas fica preso na tela de login
+
+**Correcao**: Mover o `navigate` para ANTES das operacoes de background:
 ```typescript
-const onboardingCompleted = sessionStorage.getItem('onboarding_completed') === 'true';
+if (result && !result.error) {
+    setPassword('');
+    setErrorMessage(null);
+    navigate('/', { replace: true }); // PRIMEIRO: navegar
 
-if (onboardingCompleted) {
-  hasCheckedRef.current = true;
-  setCheckingFirstLogin(false);
-  return;
+    // DEPOIS: atualizar profile em background (nao bloqueia)
+    supabase.auth.getUser().then(({ data: { user: loggedUser } }) => {
+      if (loggedUser) {
+        supabase.from('profiles')
+          .update({ password_set: true })
+          .eq('user_id', loggedUser.id);
+      }
+    });
 }
 ```
 
-### 3. Acao Manual no Supabase Dashboard (OBRIGATORIA)
+---
 
-Acessar Authentication > URL Configuration e adicionar estas URLs na lista de Redirect URLs:
-- `https://donawilma.lovable.app/auth/callback`
-- `https://id-preview--bc45aac3-c622-434f-ad58-afc37c18c6c2.lovable.app/auth/callback`
+## Bug 3: useAuth.ts tem emailRedirectTo apontando para raiz `/`
 
-Sem isso, o Supabase ignora o `emailRedirectTo` e o link do email sempre vai para a home.
+**Arquivo**: `src/hooks/useAuth.ts`, linhas 37-46
+
+**O que acontece**:
+- A funcao `signUp` do `useAuth` define `emailRedirectTo` como `https://donawilma.lovable.app/` (raiz)
+- O `Register.tsx` NAO usa essa funcao (ele chama `supabase.auth.signUp` diretamente com a URL correta `/auth/callback`)
+- Porem, se qualquer outro componente usar `useAuth().signUp` no futuro, o link do email vai apontar para a home
+
+**Correcao**: Alinhar o `emailRedirectTo` para `/auth/callback`:
+```typescript
+const redirectUrl = `${window.location.origin}/auth/callback`;
+```
+
+---
+
+## Resumo das Alteracoes
+
+| Arquivo | Alteracao | Linhas |
+|---------|-----------|--------|
+| `src/pages/Welcome.tsx` | Adicionar `loading` do useAuth e guard no useEffect | 21, 30-34, 62 |
+| `src/components/auth/LoginForm.tsx` | Mover navigate para antes do profile update, converter update em background task | 47-55 |
+| `src/hooks/useAuth.ts` | Corrigir emailRedirectTo para `/auth/callback` | 37-46 |
+
+---
+
+## Sobre o link do email
+
+O template HTML esta correto (ambos os links usam `{{ .ConfirmationURL }}`). O `Register.tsx` ja envia `emailRedirectTo: /auth/callback` corretamente. As URLs de redirect estao configuradas no Supabase.
+
+**Ponto importante**: Os links de emails enviados ANTES desta publicacao usam a URL antiga. Para testar o link do email corretamente, e necessario criar uma conta NOVA apos publicar esta versao.
 
 ---
 
 ## O que NAO muda
 
-- Register.tsx - emailRedirectTo ja esta correto
-- AuthCallback.tsx - logica de redirecionamento para /boas-vindas ja esta correta
-- Welcome.tsx - barra de progresso e WhatsApp obrigatorio ja estao corretos
-- PaymentSuccess.tsx - tela de confirmacao ja esta correta (conforme screenshot)
-- Edge functions, banco de dados, locales
+- Register.tsx (ja esta correto)
+- AuthCallback.tsx (logica de redirecionamento correta)
+- Index.tsx (corrigido na versao anterior)
+- SignUpForm.tsx, edge functions, banco de dados, locales
 
 ## Resultado Esperado
 
-1. Apos login: usuario vai para `/` -> Index verifica WhatsApp -> sem sessao -> redireciona para `/boas-vindas`
-2. Apos confirmacao de email: link vai para `/auth/callback` -> detecta assinatura -> redireciona para `/boas-vindas`
-3. Sem bloqueio por flags de sessoes anteriores
+1. Login: toast + navigate IMEDIATO para `/` (sem depender de profile update)
+2. Index: verifica WhatsApp -> sem sessao -> redireciona para `/boas-vindas`
+3. Welcome: ESPERA auth carregar -> exibe tela normalmente -> sem loop
+4. Email (conta nova): link vai para `/auth/callback` -> redireciona para `/boas-vindas`
