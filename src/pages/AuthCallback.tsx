@@ -10,7 +10,6 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // Supabase client with detectSessionInUrl will auto-detect tokens from URL hash
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
         if (sessionError) {
@@ -51,8 +50,10 @@ export default function AuthCallback() {
           console.log('No active subscription, redirecting to /choose-plan');
           navigate('/choose-plan', { replace: true });
         } else {
-          console.log('Active subscription found, redirecting to /login');
-          navigate('/login', { replace: true });
+          // Set flag for email confirmation banner (used by LoginForm if user goes there)
+          sessionStorage.setItem('came_from_email_confirmation', 'true');
+          console.log('Active subscription found, redirecting to /boas-vindas');
+          navigate('/boas-vindas', { replace: true });
         }
       } catch (err) {
         console.error('Auth callback error:', err);
