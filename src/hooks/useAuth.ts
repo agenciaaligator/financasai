@@ -33,10 +33,7 @@ export function useAuth() {
 
   const signUp = async (email: string, password: string, fullName: string) => {
 
-    // Usar URL da aplicação publicada ou localhost se em desenvolvimento
-    const redirectUrl = window.location.hostname === 'localhost' 
-      ? `${window.location.origin}/`
-      : `https://${window.location.hostname}/`;
+    const redirectUrl = `${window.location.origin}/auth/callback`;
     
     try {
       const { data, error } = await supabase.auth.signUp({

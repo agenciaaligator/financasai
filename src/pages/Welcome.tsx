@@ -18,7 +18,7 @@ import '@/components/ui/phone-input.css';
 export default function Welcome() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const { t } = useTranslation();
   
   const [step, setStep] = useState<'phone' | 'code' | 'connected'>('phone');
@@ -28,6 +28,7 @@ export default function Welcome() {
   const [userName, setUserName] = useState('');
 
   useEffect(() => {
+    if (loading) return;
     if (!user) {
       navigate('/', { replace: true });
       return;
@@ -59,7 +60,7 @@ export default function Welcome() {
     };
 
     fetchProfile();
-  }, [user]);
+  }, [user, loading]);
 
   const handleSendCode = async () => {
     if (!phoneNumber || phoneNumber.length < 10) {
