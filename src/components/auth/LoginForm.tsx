@@ -52,6 +52,7 @@ export function LoginForm() {
         }
         setPassword('');
         setErrorMessage(null);
+        navigate('/', { replace: true });
       } else if (result?.error) {
         if (result.error.message.includes('Invalid login credentials')) {
           setErrorMessage('invalid_credentials');

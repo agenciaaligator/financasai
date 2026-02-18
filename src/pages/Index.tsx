@@ -359,9 +359,8 @@ const Index = () => {
     }
     
     const onboardingCompleted = sessionStorage.getItem('onboarding_completed') === 'true';
-    const alreadyRedirected = sessionStorage.getItem('redirected_to_welcome') === 'true';
     
-    if (onboardingCompleted || alreadyRedirected) {
+    if (onboardingCompleted) {
       hasCheckedRef.current = true;
       setCheckingFirstLogin(false);
       return;
