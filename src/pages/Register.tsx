@@ -44,6 +44,7 @@ export default function Register() {
         email: normalizedEmail,
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
             full_name: name.trim(),
             phone_number: phone || undefined,

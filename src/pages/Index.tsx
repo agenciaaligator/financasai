@@ -385,7 +385,6 @@ const Index = () => {
         .from('whatsapp_sessions')
         .select('id')
         .eq('user_id', user.id)
-        .gt('expires_at', new Date().toISOString())
         .maybeSingle();
       
       if (!whatsappSession) {
