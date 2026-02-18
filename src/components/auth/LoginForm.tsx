@@ -45,14 +45,16 @@ export function LoginForm() {
       const result = await signIn(email, password);
       
       if (result && !result.error) {
-        // If user logged in with password, ensure password_set = true
-        const { data: { user: loggedUser } } = await supabase.auth.getUser();
-        if (loggedUser) {
-          await supabase.from('profiles').update({ password_set: true }).eq('user_id', loggedUser.id);
-        }
         setPassword('');
         setErrorMessage(null);
         navigate('/', { replace: true });
+
+        // Background: update password_set (non-blocking)
+        supabase.auth.getUser().then(({ data: { user: loggedUser } }) => {
+          if (loggedUser) {
+            supabase.from('profiles').update({ password_set: true }).eq('user_id', loggedUser.id);
+          }
+        });
       } else if (result?.error) {
         if (result.error.message.includes('Invalid login credentials')) {
           setErrorMessage('invalid_credentials');
