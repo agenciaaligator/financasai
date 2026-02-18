@@ -15,13 +15,13 @@ export default function AuthCallback() {
         if (sessionError) {
           console.error('Auth callback session error:', sessionError);
           setError(sessionError.message);
-          setTimeout(() => navigate('/'), 3000);
+          setTimeout(() => navigate('/login'), 3000);
           return;
         }
 
         if (!session?.user) {
           console.log('No session found in callback, redirecting to login');
-          navigate('/', { replace: true });
+          navigate('/login', { replace: true });
           return;
         }
 
@@ -58,7 +58,7 @@ export default function AuthCallback() {
       } catch (err) {
         console.error('Auth callback error:', err);
         setError('Erro ao processar autenticação');
-        setTimeout(() => navigate('/'), 3000);
+        setTimeout(() => navigate('/login'), 3000);
       }
     };
 

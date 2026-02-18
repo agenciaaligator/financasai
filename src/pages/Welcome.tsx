@@ -48,7 +48,6 @@ export default function Welcome() {
         .from('whatsapp_sessions')
         .select('phone_number, expires_at')
         .eq('user_id', user.id)
-        .gt('expires_at', new Date().toISOString())
         .maybeSingle();
       
       if (session) {
@@ -96,7 +95,6 @@ export default function Welcome() {
         .from('whatsapp_sessions')
         .select('user_id')
         .eq('phone_number', phoneNumber)
-        .gt('expires_at', new Date().toISOString())
         .neq('user_id', user?.id || '')
         .maybeSingle();
 
