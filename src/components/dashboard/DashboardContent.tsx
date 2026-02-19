@@ -198,9 +198,36 @@ export function DashboardContent({
     window.dispatchEvent(new CustomEvent('switchTab', { detail: 'transactions' }));
   };
 
+  const [showWelcomeBanner, setShowWelcomeBanner] = useState(() => {
+    return !localStorage.getItem('first_dashboard_seen');
+  });
+
+  const dismissWelcomeBanner = () => {
+    localStorage.setItem('first_dashboard_seen', 'true');
+    setShowWelcomeBanner(false);
+  };
+
   if (currentTab === "dashboard") {
     return (
       <div className="space-y-6">
+        {showWelcomeBanner && (
+          <Card className="bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20">
+            <CardContent className="pt-6">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold text-foreground">🎉 {t('dashboard.welcomeTitle', 'Bem-vindo ao Dona Wilma!')}</h3>
+                  <p className="text-sm text-muted-foreground">{t('dashboard.welcomeDesc', 'Envie mensagens pelo WhatsApp para registrar suas finanças:')}</p>
+                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                    <li>{t('dashboard.welcomeTip1', '"Gastei 50 no mercado"')}</li>
+                    <li>{t('dashboard.welcomeTip2', '"Recebi 3000 de salário"')}</li>
+                    <li>{t('dashboard.welcomeTip3', '"Reunião amanhã às 14h"')}</li>
+                  </ul>
+                </div>
+                <Button variant="ghost" size="sm" onClick={dismissWelcomeBanner}>✕</Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         <BalanceAlert isNegative={isNegative} />
         
         <SummaryCards

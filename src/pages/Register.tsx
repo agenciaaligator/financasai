@@ -48,6 +48,7 @@ export default function Register() {
           data: {
             full_name: name.trim(),
             phone_number: phone || undefined,
+            password_set: true,
           },
         },
       });
@@ -106,11 +107,14 @@ export default function Register() {
         return;
       }
 
-      // 2. Update profile: password_set = true
-      await supabase
+      // 2. Update profile: password_set = true (best-effort, trigger already handles this)
+      supabase
         .from("profiles")
         .update({ password_set: true })
-        .eq("user_id", signUpData.user.id);
+        .eq("user_id", signUpData.user.id)
+        .then(({ error: profileErr }) => {
+          if (profileErr) console.warn("[REGISTER] Profile update (non-blocking):", profileErr);
+        });
 
       // 3. If plan selected, redirect to Stripe checkout
       if (plan) {
