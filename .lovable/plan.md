@@ -1,117 +1,51 @@
 
 
-# Correcao DEFINITIVA do Onboarding - 3 Bugs Confirmados
+# Correcao: Erro de telefone duplicado no cadastro
 
-## Analise Completa
+## Causa raiz
 
-Investiguei todos os arquivos envolvidos no fluxo: `LoginForm.tsx`, `Welcome.tsx`, `Index.tsx`, `AuthCallback.tsx`, `Register.tsx`, `SignUpForm.tsx`, `useAuth.ts` e `App.tsx`.
+O trigger `handle_new_user_simple()` insere o `phone_number` no perfil do novo usuario. A tabela `profiles` tem uma constraint `UNIQUE` na coluna `phone_number`. Quando alguem tenta se cadastrar com um numero que ja existe em outra conta, o Supabase retorna erro 500 ("Database error saving new user"), e o frontend exibe a mensagem generica "Nao foi possivel completar a acao".
 
----
-
-## Bug 1 (CRITICO): Welcome.tsx causa loop infinito
-
-**Arquivo**: `src/pages/Welcome.tsx`, linha 21 e 30-33
-
-**O que acontece**:
-- O `useAuth()` comeca com `user = null` e `loading = true` enquanto carrega a sessao
-- O `useEffect` verifica `if (!user)` IMEDIATAMENTE, sem esperar o loading terminar
-- Como `user` ainda e `null`, executa `navigate('/', { replace: true })`
-- O Index.tsx carrega, detecta o usuario (que agora ja carregou), ve que nao tem WhatsApp, e redireciona de volta para `/boas-vindas`
-- Welcome monta de novo, user ainda nao carregou, redireciona para `/` de novo
-- LOOP INFINITO
-
-**Correcao**:
-```typescript
-// Linha 21: extrair loading
-const { user, loading } = useAuth();
-
-// Linha 30-34: adicionar guard
-useEffect(() => {
-    if (loading) return; // ESPERAR auth resolver antes de decidir
-    if (!user) {
-      navigate('/', { replace: true });
-      return;
-    }
-    // ... resto do codigo
-}, [user, loading]);
+Erro exato nos logs:
+```
+duplicate key value violates unique constraint "profiles_phone_number_key" (SQLSTATE 23505)
 ```
 
----
+## Solucao (2 alteracoes)
 
-## Bug 2 (CRITICO): LoginForm.tsx - navigate fica bloqueado se profile update falhar
+### 1. Register.tsx - Detectar erro de telefone duplicado
 
-**Arquivo**: `src/components/auth/LoginForm.tsx`, linhas 47-55
+Adicionar tratamento especifico no bloco `catch` para identificar quando o erro e causado por `phone_number` duplicado e exibir uma mensagem clara ao usuario:
 
-**O que acontece**:
-- Apos `signIn` com sucesso, o codigo faz `await supabase.auth.getUser()` e `await profiles.update()`
-- Se qualquer um desses `await` falhar (erro de rede, RLS, timeout), o codigo pula direto para o bloco `finally`
-- O `navigate('/', { replace: true })` na linha 55 NUNCA executa
-- O usuario ve o toast "Bem-vindo de volta!" mas fica preso na tela de login
+- Verificar se a mensagem de erro contem "profiles_phone_number_key" ou "phone_number"
+- Exibir toast: "Este numero de WhatsApp ja esta vinculado a outra conta"
+- Permitir que o usuario corrija o numero ou deixe em branco
 
-**Correcao**: Mover o `navigate` para ANTES das operacoes de background:
-```typescript
-if (result && !result.error) {
-    setPassword('');
-    setErrorMessage(null);
-    navigate('/', { replace: true }); // PRIMEIRO: navegar
+### 2. Trigger handle_new_user_simple() - Tratar phone duplicado com graciosidade
 
-    // DEPOIS: atualizar profile em background (nao bloqueia)
-    supabase.auth.getUser().then(({ data: { user: loggedUser } }) => {
-      if (loggedUser) {
-        supabase.from('profiles')
-          .update({ password_set: true })
-          .eq('user_id', loggedUser.id);
-      }
-    });
-}
-```
+Alterar o trigger no banco de dados para que, em caso de `phone_number` duplicado, o perfil seja criado SEM o numero de telefone ao inves de falhar completamente. O usuario podera adicionar o numero depois pelo painel.
 
----
+Alteracao no SQL do trigger:
+- Tentar inserir com phone_number
+- Se falhar por constraint de unicidade, inserir novamente sem o phone_number
+- Isso evita que o signup inteiro falhe por causa de um campo opcional
 
-## Bug 3: useAuth.ts tem emailRedirectTo apontando para raiz `/`
+### Resumo dos arquivos alterados
 
-**Arquivo**: `src/hooks/useAuth.ts`, linhas 37-46
+| Arquivo | Alteracao |
+|---------|-----------|
+| `src/pages/Register.tsx` | Adicionar deteccao de erro de telefone duplicado no catch com mensagem especifica |
+| Migration SQL | Alterar trigger `handle_new_user_simple` para lidar com phone_number duplicado sem falhar |
 
-**O que acontece**:
-- A funcao `signUp` do `useAuth` define `emailRedirectTo` como `https://donawilma.lovable.app/` (raiz)
-- O `Register.tsx` NAO usa essa funcao (ele chama `supabase.auth.signUp` diretamente com a URL correta `/auth/callback`)
-- Porem, se qualquer outro componente usar `useAuth().signUp` no futuro, o link do email vai apontar para a home
+### Traducoes necessarias
 
-**Correcao**: Alinhar o `emailRedirectTo` para `/auth/callback`:
-```typescript
-const redirectUrl = `${window.location.origin}/auth/callback`;
-```
+Adicionar nos 5 arquivos de locale (`pt-BR.json`, `pt-PT.json`, `en-US.json`, `es-ES.json`, `it-IT.json`):
+- `register.phoneDuplicate`: titulo do erro
+- `register.phoneDuplicateDesc`: descricao do erro
 
----
+### Resultado esperado
 
-## Resumo das Alteracoes
+- Se o numero ja existir: o usuario ve uma mensagem clara pedindo para usar outro numero ou deixar em branco
+- O trigger do banco nunca mais falha por telefone duplicado (cria o perfil sem o numero)
+- O signup continua funcionando normalmente para todos os outros cenarios
 
-| Arquivo | Alteracao | Linhas |
-|---------|-----------|--------|
-| `src/pages/Welcome.tsx` | Adicionar `loading` do useAuth e guard no useEffect | 21, 30-34, 62 |
-| `src/components/auth/LoginForm.tsx` | Mover navigate para antes do profile update, converter update em background task | 47-55 |
-| `src/hooks/useAuth.ts` | Corrigir emailRedirectTo para `/auth/callback` | 37-46 |
-
----
-
-## Sobre o link do email
-
-O template HTML esta correto (ambos os links usam `{{ .ConfirmationURL }}`). O `Register.tsx` ja envia `emailRedirectTo: /auth/callback` corretamente. As URLs de redirect estao configuradas no Supabase.
-
-**Ponto importante**: Os links de emails enviados ANTES desta publicacao usam a URL antiga. Para testar o link do email corretamente, e necessario criar uma conta NOVA apos publicar esta versao.
-
----
-
-## O que NAO muda
-
-- Register.tsx (ja esta correto)
-- AuthCallback.tsx (logica de redirecionamento correta)
-- Index.tsx (corrigido na versao anterior)
-- SignUpForm.tsx, edge functions, banco de dados, locales
-
-## Resultado Esperado
-
-1. Login: toast + navigate IMEDIATO para `/` (sem depender de profile update)
-2. Index: verifica WhatsApp -> sem sessao -> redireciona para `/boas-vindas`
-3. Welcome: ESPERA auth carregar -> exibe tela normalmente -> sem loop
-4. Email (conta nova): link vai para `/auth/callback` -> redireciona para `/boas-vindas`
