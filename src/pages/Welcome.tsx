@@ -162,21 +162,16 @@ export default function Welcome() {
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || 'Código inválido ou expirado');
 
-      await supabase
-        .from('whatsapp_sessions')
-        .upsert({
-          user_id: user?.id,
-          phone_number: phoneNumber,
-          expires_at: new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000).toISOString(),
-          last_activity: new Date().toISOString(),
-        }, {
-          onConflict: 'user_id',
-        });
+      // Sessão já foi criada pela edge function - NÃO fazer upsert aqui
 
-      await supabase
+      // Atualizar telefone no perfil (não-bloqueante)
+      supabase
         .from('profiles')
         .update({ phone_number: phoneNumber })
-        .eq('user_id', user?.id);
+        .eq('user_id', user?.id)
+        .then(({ error: profileError }) => {
+          if (profileError) console.warn('[Welcome] Profile update error:', profileError);
+        });
 
       toast({
         title: t('welcome.connectedSuccess'),
