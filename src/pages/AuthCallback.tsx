@@ -25,19 +25,6 @@ export default function AuthCallback() {
           return;
         }
 
-        // Check password_set status
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('password_set')
-          .eq('user_id', session.user.id)
-          .maybeSingle();
-
-        if (!profile?.password_set) {
-          console.log('Password not set, redirecting to /set-password');
-          navigate('/set-password', { replace: true });
-          return;
-        }
-
         // Check if user has active subscription
         const { data: sub } = await supabase
           .from('user_subscriptions')
