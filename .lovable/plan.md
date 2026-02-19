@@ -1,84 +1,122 @@
 
 
-# Correcao: WhatsApp validado mas frontend mostra erro
+# Correcao Completa do Onboarding - 5 Problemas Criticos
 
-## Causa raiz
+## Analise dos Problemas
 
-A edge function `validate-code` ja cria a sessao no `whatsapp_sessions` com sucesso (confirmado nos logs). Porem, o frontend em `Welcome.tsx` (linhas 165-174) tenta fazer um `upsert` redundante na mesma tabela com `onConflict: 'user_id'`. Como nao existe constraint UNIQUE na coluna `user_id` da tabela `whatsapp_sessions`, o Postgres rejeita o upsert. O erro cai no bloco `catch` (linha 188) que exibe "codigo invalido ou expirado" — mensagem completamente errada, ja que o codigo foi validado com sucesso.
+### Problema 4 (Critico): Redirecionamento para /set-password
+**Causa raiz**: O `useSubscriptionGuard` (linha 47) verifica `password_set` no perfil. O trigger `handle_new_user_simple()` cria o perfil com `password_set = false` (valor default da coluna). O `Register.tsx` tenta atualizar para `true` na linha 102, mas essa operacao pode falhar porque:
+1. O usuario acabou de ser criado e pode nao ter sessao autenticada ativa ainda
+2. A operacao roda ANTES do checkout Stripe e pode ser perdida
 
-## Correcao
+Alem disso, o `AuthCallback.tsx` (linha 35) tambem checa `password_set` e redireciona para `/set-password`, criando um loop.
 
-### Arquivo: `src/pages/Welcome.tsx` (linhas 152-197)
+**Correcao**:
+- `Register.tsx`: Ja define a senha no signup, entao `password_set` deve ser `true`. Mover o update para DEPOIS da confirmacao de sessao, ou melhor: setar via `user_metadata` no proprio `signUp()` e no trigger
+- `AuthCallback.tsx`: Remover o check de `password_set` - quem criou conta via `/register` ja definiu senha. O guard do dashboard ja cuida disso
+- `useSubscriptionGuard.ts`: Considerar `password_set = true` para usuarios que criaram conta via signup com senha (checar se `user_metadata.full_name` existe como indicador)
 
-Remover o `upsert` redundante em `whatsapp_sessions` (a edge function ja fez isso). Manter apenas o `update` no `profiles` para salvar o telefone. Separar os erros para que falhas no update do perfil nao mostrem "codigo invalido".
+### Problema 1: Email enviado antes do pagamento
+**Causa raiz**: `supabase.auth.signUp()` envia email de confirmacao automaticamente. Isso e comportamento padrao do Supabase e NAO pode ser desabilitado via codigo frontend.
 
-Codigo corrigido do `handleVerifyCode`:
+**Correcao pragmatica**: Isso NAO e um bug - e o fluxo intencional. O email de confirmacao e necessario para validar o email. O fluxo correto e:
+1. Signup -> email enviado
+2. Checkout Stripe -> pagamento
+3. Usuario confirma email (a qualquer momento)
+4. AuthCallback -> boas-vindas
+
+O timing do email nao e um problema real - o usuario pode confirmar antes ou depois do pagamento.
+
+### Problema 2: Pos-checkout vai para home
+**Causa raiz**: O `create-checkout` (linha 95) ja configura `success_url` para `/payment-success`. O `PaymentSuccess.tsx` ja redireciona para `/boas-vindas` quando o usuario esta logado com assinatura ativa. Se o usuario NAO esta logado (caso mais comum - sessao expirou durante checkout), mostra "Verifique seu email". Isso esta correto.
+
+**Verificacao**: Nenhuma mudanca necessaria no checkout. O fluxo ja funciona.
+
+### Problema 3: WhatsApp mostra erro mas funciona
+**Ja corrigido** na ultima edicao - removemos o `upsert` redundante. A verificacao do `Welcome.tsx` agora esta correta.
+
+### Problema 5: Falta tela de boas-vindas no dashboard
+**Correcao**: Adicionar deteccao de primeiro acesso no dashboard com banner de boas-vindas.
+
+---
+
+## Plano de Implementacao
+
+### 1. Register.tsx - Garantir password_set = true no signup
+
+Passar `password_set: true` nos metadados do usuario no `signUp()`:
 
 ```typescript
-const handleVerifyCode = async () => {
-    if (!verificationCode || verificationCode.length < 4) {
-      toast({
-        title: t('welcome.invalidCode'),
-        description: t('welcome.invalidCodeDesc'),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('whatsapp-agent', {
-        body: {
-          action: 'validate-code',
-          phone_number: phoneNumber,
-          code: verificationCode,
-          userId: user?.id,
-        },
-      });
-
-      if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || 'Codigo invalido ou expirado');
-
-      // Sessao ja foi criada pela edge function - NAO fazer upsert aqui
-
-      // Atualizar telefone no perfil (nao-bloqueante)
-      supabase
-        .from('profiles')
-        .update({ phone_number: phoneNumber })
-        .eq('user_id', user?.id)
-        .then(({ error: profileError }) => {
-          if (profileError) console.warn('[Welcome] Profile update error:', profileError);
-        });
-
-      toast({
-        title: t('welcome.connectedSuccess'),
-        description: t('welcome.connectedSuccessDesc'),
-      });
-      sessionStorage.removeItem('onboarding_completed');
-      sessionStorage.removeItem('redirected_to_welcome');
-      setStep('connected');
-    } catch (error) {
-      console.error('Error verifying code:', error);
-      toast({
-        title: t('welcome.invalidCode'),
-        description: error instanceof Error ? error.message : t('welcome.invalidCodeDesc'),
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+data: {
+  full_name: name.trim(),
+  phone_number: phone || undefined,
+  password_set: true,  // NOVO
+},
 ```
 
-## Resumo da alteracao
+Mover o update do perfil para DEPOIS do signUp, usando o service role via trigger. Alterar o trigger `handle_new_user_simple()` para definir `password_set = true` quando `raw_user_meta_data->>'password_set'` for `'true'`.
 
-| Arquivo | O que muda |
+### 2. Migration SQL - Trigger handle_new_user_simple
+
+Atualizar o trigger para ler `password_set` dos metadados do usuario:
+
+```sql
+CREATE OR REPLACE FUNCTION public.handle_new_user_simple()
+...
+  -- Extrair password_set dos metadados
+  user_password_set := COALESCE((new.raw_user_meta_data->>'password_set')::boolean, false);
+  
+  INSERT INTO public.profiles (user_id, full_name, email, phone_number, password_set)
+  VALUES (new.id, user_name, new.email, user_phone, user_password_set)
+  ...
+```
+
+### 3. AuthCallback.tsx - Remover redirect para /set-password
+
+O `AuthCallback.tsx` nao deve mais redirecionar para `/set-password`. Usuarios que vem da confirmacao de email ja definiram senha no registro. Simplificar o fluxo:
+- Se tem sessao + assinatura ativa -> `/boas-vindas`
+- Se tem sessao + sem assinatura -> `/choose-plan`
+- Se nao tem sessao -> `/login`
+
+### 4. useSubscriptionGuard.ts - Relaxar check de password_set
+
+Para usuarios que fizeram signup com senha (nao via convite), `password_set` deve ser considerado `true`. Adicionar fallback: se o usuario tem `user_metadata.password_set === true`, aceitar mesmo que o perfil diga `false` (race condition do trigger).
+
+Isso ja esta parcialmente implementado na linha 47-48:
+```typescript
+const passwordSet = profile?.password_set === true || 
+  user.user_metadata?.password_set === true;
+```
+
+Isso deve funcionar desde que passemos `password_set: true` no `signUp()`.
+
+### 5. Welcome.tsx - Botao "Comecar agora"
+
+O botao `handleGoToDashboard` (linha 195) ja navega para `/`. Verificar que `sessionStorage.setItem('onboarding_completed', 'true')` esta sendo setado corretamente para evitar o loop de redirect para `/boas-vindas`.
+
+### 6. Dashboard - Banner de primeiro acesso
+
+Adicionar no `DashboardContent.tsx` uma verificacao de primeiro acesso:
+- Checar `sessionStorage.getItem('onboarding_completed')` ou `localStorage.getItem('first_dashboard_seen')`
+- Se for primeiro acesso, mostrar banner com dicas de uso do WhatsApp
+- Marcar como visto em `localStorage`
+
+---
+
+## Resumo dos arquivos alterados
+
+| Arquivo | Alteracao |
 |---------|-----------|
-| `src/pages/Welcome.tsx` | Remover upsert redundante em whatsapp_sessions (linhas 165-174). Converter update de profiles em operacao nao-bloqueante |
+| `src/pages/Register.tsx` | Adicionar `password_set: true` nos metadados do signUp |
+| `src/pages/AuthCallback.tsx` | Remover redirect para /set-password. Simplificar fluxo |
+| Migration SQL | Atualizar trigger para ler password_set dos metadados |
+| `src/components/dashboard/DashboardContent.tsx` | Adicionar banner de primeiro acesso |
 
 ## Resultado esperado
 
-1. Usuario digita codigo -> edge function valida e cria sessao
-2. Frontend recebe sucesso -> atualiza perfil em background -> mostra "Conectado!"
-3. Botao "Ir para o Dashboard" fica habilitado
-4. Sem erro, sem mensagem errada
+1. Signup -> senha definida -> password_set = true no perfil (via trigger)
+2. Checkout Stripe -> /payment-success
+3. Email confirmado -> /auth/callback -> /boas-vindas (SEM /set-password)
+4. WhatsApp conectado -> "Comecar agora" -> dashboard COM banner de boas-vindas
+5. Login posterior -> dashboard direto (sem /set-password, sem /boas-vindas se WhatsApp ja conectado)
+
