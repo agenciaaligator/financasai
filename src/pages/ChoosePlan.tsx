@@ -30,7 +30,7 @@ export default function ChoosePlan() {
             <Calendar className="h-6 w-6 text-primary" />
             <span className="font-bold text-xl text-white">Dona Wilma</span>
           </div>
-          <Button variant="outline" onClick={() => navigate('/')} className="border-white/20 text-white hover:bg-white/10">
+          <Button variant="ghost" onClick={() => navigate('/')} className="border border-white/20 text-white hover:bg-white/10 hover:text-white">
             {t('common.back')}
           </Button>
         </nav>
