@@ -160,7 +160,7 @@ export default function Welcome() {
       });
 
       if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || 'Código inválido ou expirado');
+      if (!data?.valid && !data?.success) throw new Error(data?.message || data?.error || 'Código inválido ou expirado');
 
       // Sessão já foi criada pela edge function - NÃO fazer upsert aqui
 
