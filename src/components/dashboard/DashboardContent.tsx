@@ -6,6 +6,7 @@ import { FinancialChart } from "../FinancialChart";
 import { CategoryManager } from "../CategoryManager";
 import { ProfileSettings } from "../ProfileSettings";
 import { ReportsPage } from "../ReportsPage";
+import { MonthlyGoalsSection } from "./MonthlyGoalsSection";
 import { AdminPanel } from "../admin/AdminPanel";
 import { BalanceAlert } from "./BalanceAlert";
 import { SummaryCards } from "./SummaryCards";
