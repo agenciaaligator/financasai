@@ -164,11 +164,11 @@ export function TransactionList({
       
       <div className="space-y-3">
       {transactions.map((transaction) => (
-        <Card key={transaction.id} className={`dw-card border-0 hover:translate-x-1 hover:bg-muted/30 transition-all duration-300 ${transaction.type === 'income' ? 'border-l-4 border-l-success' : 'border-l-4 border-l-destructive'}`}>
-          <CardContent className="pt-4">
+        <Card key={transaction.id} className={`rounded-[16px] border-0 hover:translate-x-1 hover:bg-[hsl(var(--primary)/0.02)] transition-all duration-300 shadow-sm`}>
+          <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-start sm:items-center space-x-3 min-w-0 flex-1">
-                <div className="w-12 h-12 rounded-full flex-shrink-0 bg-muted/50 flex items-center justify-center">
+                <div className={`w-12 h-12 rounded-full flex-shrink-0 ${getCategoryGradient(transaction.categories?.name)} flex items-center justify-center shadow-sm`}>
                   <span className="text-xl">{getCategoryEmoji(transaction.categories?.name)}</span>
                 </div>
                 
