@@ -835,5 +835,26 @@
   "sidebar": {
     "goals": "Metas",
     "goalsDesc": "Metas mensais"
+  },
+  "reports": {
+    "title": "Relatórios Financeiros",
+    "income": "Receitas",
+    "expenses": "Despesas",
+    "balance": "Saldo do Mês",
+    "variation": "Variação vs Mês Anterior",
+    "expensesByCategory": "Despesas por Categoria (Top 5)",
+    "threeMonthComparison": "Comparativo Últimos 3 Meses",
+    "topCategories": "Top 5 Categorias de Gastos",
+    "insights": "Insights e Recomendações",
+    "noData": "Sem dados para o período selecionado",
+    "noDataDesc": "Adicione transações para visualizar relatórios detalhados.",
+    "noExpenses": "Nenhuma despesa registrada neste mês.",
+    "uncategorized": "Sem Categoria",
+    "insightLoss": "Atenção: Prejuízo identificado",
+    "insightLossDesc": "Suas despesas estão {{value}} acima das receitas. Considere revisar seus gastos.",
+    "insightProfit": "Parabéns: Resultado positivo!",
+    "insightProfitDesc": "Você teve um lucro de {{value}}. Considere investir ou criar uma reserva.",
+    "insightDecline": "Queda significativa no resultado",
+    "insightDeclineDesc": "Seu resultado caiu {{percent}}% em relação ao mês anterior."
   }
 }

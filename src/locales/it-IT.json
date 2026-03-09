@@ -261,5 +261,26 @@
   "sidebar": {
     "goals": "Obiettivi",
     "goalsDesc": "Obiettivi mensili"
+  },
+  "reports": {
+    "title": "Report Finanziari",
+    "income": "Entrate",
+    "expenses": "Spese",
+    "balance": "Saldo del Mese",
+    "variation": "vs Mese Precedente",
+    "expensesByCategory": "Spese per Categoria (Top 5)",
+    "threeMonthComparison": "Confronto Ultimi 3 Mesi",
+    "topCategories": "Top 5 Categorie di Spesa",
+    "insights": "Approfondimenti e Raccomandazioni",
+    "noData": "Nessun dato per il periodo selezionato",
+    "noDataDesc": "Aggiungi transazioni per visualizzare report dettagliati.",
+    "noExpenses": "Nessuna spesa registrata questo mese.",
+    "uncategorized": "Senza Categoria",
+    "insightLoss": "Attenzione: Perdita rilevata",
+    "insightLossDesc": "Le tue spese superano le entrate di {{value}}. Considera di rivedere le spese.",
+    "insightProfit": "Congratulazioni: Risultato positivo!",
+    "insightProfitDesc": "Hai guadagnato {{value}}. Considera di investire o creare una riserva.",
+    "insightDecline": "Calo significativo del risultato",
+    "insightDeclineDesc": "Il tuo risultato è calato del {{percent}}% rispetto al mese precedente."
   }
 }
