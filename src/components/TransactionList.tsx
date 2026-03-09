@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, TrendingDown, Trash2, Edit } from "lucide-react";
+import { Trash2, Edit } from "lucide-react";
 import { Transaction } from '@/hooks/useTransactions';
 import { useAuth } from "@/hooks/useAuth";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
