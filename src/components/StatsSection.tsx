@@ -1,4 +1,3 @@
-import { Card, CardContent } from "@/components/ui/card";
 import { Brain, Clock, Shield, Smartphone } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -6,16 +5,17 @@ export function StatsSection() {
   const { t } = useTranslation();
 
   const icons = [
-    <Smartphone className="h-8 w-8 text-primary" />,
-    <Brain className="h-8 w-8 text-primary" />,
-    <Clock className="h-8 w-8 text-primary" />,
-    <Shield className="h-8 w-8 text-primary" />
+    <Smartphone className="h-7 w-7 text-primary" />,
+    <Brain className="h-7 w-7 text-primary" />,
+    <Clock className="h-7 w-7 text-primary" />,
+    <Shield className="h-7 w-7 text-primary" />
   ];
 
   return (
-    <section className="container mx-auto px-4 py-20 bg-muted/30">
-      <div className="text-center mb-12">
-        <h2 className="text-3xl md:text-4xl font-bold mb-4">
+    <section className="container mx-auto px-4 py-20">
+      <div className="text-center mb-14 scroll-reveal">
+        <div className="section-line mx-auto mb-6" />
+        <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
           {t('landing.stats.title')}
         </h2>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -23,17 +23,22 @@ export function StatsSection() {
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
         {icons.map((icon, index) => (
-          <Card key={index} className="text-center hover:shadow-lg transition-shadow">
-            <CardContent className="p-6 space-y-3 flex flex-col items-center">
+          <div 
+            key={index} 
+            className={`modern-card text-center p-6 scroll-reveal delay-${index + 1}`}
+          >
+            <div className="icon-circle mx-auto mb-4">
               {icon}
-              <h3 className="text-lg font-semibold">{t(`landing.stats.items.${index}.title`)}</h3>
-              <p className="text-sm text-muted-foreground">
-                {t(`landing.stats.items.${index}.description`)}
-              </p>
-            </CardContent>
-          </Card>
+            </div>
+            <h3 className="font-display text-lg font-semibold mb-2">
+              {t(`landing.stats.items.${index}.title`)}
+            </h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {t(`landing.stats.items.${index}.description`)}
+            </p>
+          </div>
         ))}
       </div>
     </section>

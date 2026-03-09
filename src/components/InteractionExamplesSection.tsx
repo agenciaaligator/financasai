@@ -9,13 +9,15 @@ export function InteractionExamplesSection() {
 
   return (
     <section className="container mx-auto px-4 py-20">
-      <div className="text-center mb-12">
-        <div className="flex items-center justify-center gap-3 mb-4">
-          <MessageSquare className="h-8 w-8 text-primary" />
-          <h2 className="text-3xl md:text-4xl font-bold">
-            {t('landing.interaction.title')}
-          </h2>
+      <div className="text-center mb-14">
+        <div className="flex items-center justify-center gap-3 mb-6">
+          <div className="icon-circle">
+            <MessageSquare className="h-6 w-6 text-primary" />
+          </div>
         </div>
+        <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
+          {t('landing.interaction.title')}
+        </h2>
         <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
           {t('landing.interaction.subtitle')}
         </p>
@@ -26,15 +28,15 @@ export function InteractionExamplesSection() {
           <Badge 
             key={index}
             variant="outline"
-            className="px-4 py-2 text-sm border-2 border-primary/30 hover:border-primary hover:bg-primary/5 transition-all cursor-default"
+            className="badge-hover px-5 py-2.5 text-sm border-2 border-primary/20 bg-white/50 backdrop-blur-sm cursor-default font-medium"
           >
             {example}
           </Badge>
         ))}
       </div>
 
-      <div className="text-center mt-8">
-        <p className="text-muted-foreground">
+      <div className="text-center mt-10">
+        <p className="text-muted-foreground text-sm md:text-base">
           {t('landing.interaction.footer')}
         </p>
       </div>
