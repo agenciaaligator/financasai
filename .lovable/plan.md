@@ -1,73 +1,80 @@
 
-## Correcao Final - Fluxo de Onboarding
 
-### Bug Critico Encontrado
+## Categorização Inteligente com Aprendizado - Dona Wilma
 
-**Problema 5: Validacao do codigo WhatsApp SEMPRE falha** (mesmo com codigo correto)
+### Situação Atual
+- **WhatsApp**: `AICategorizer` usa Gemini para categorizar, mas sem histórico pessoal. `CategoryMatcher.findBestCategory()` usa heurísticas de string matching + fallback IA.
+- **Frontend**: `CategoryManager` permite CRUD de categorias. `EditTransactionModal` tem sugestão básica por correspondência de nome. `TransactionList` não tem quick-edit de categoria.
+- **Sidebar**: Já tem "Categorias" no menu.
+- Não existe tabela `user_category_patterns` nem sistema de aprendizado.
 
-A edge function `validate-code` retorna `{ valid: true, message: "Codigo valido" }`, mas o frontend (`Welcome.tsx` linha 163) verifica `data?.success`. Como `success` nao existe na resposta, o frontend interpreta como erro e mostra "Codigo invalido ou expirado" mesmo quando o codigo esta correto.
+---
 
-Isso explica tambem o Problema 4 (parece que o codigo nao funciona) e o Problema 6 (mensagem de boas-vindas nunca chega, pois o usuario nunca conclui a validacao com sucesso no frontend).
+### PARTE 1: Backend (Supabase)
 
-### Alteracoes Necessarias
-
-#### 1. Corrigir Welcome.tsx - Verificacao da resposta validate-code
-
-**Arquivo:** `src/pages/Welcome.tsx` (linha 163)
-
-Alterar de:
-```tsx
-if (!data?.success) throw new Error(data?.error || 'Codigo invalido ou expirado');
-```
-
-Para:
-```tsx
-if (!data?.valid && !data?.success) throw new Error(data?.message || data?.error || 'Codigo invalido ou expirado');
-```
-
-Isso aceita tanto `{ valid: true }` (resposta atual) quanto `{ success: true }` (se for alterado no futuro).
-
-#### 2. Limpeza de dados do usuario de teste
-
-Executar queries SQL para limpar os dados de `alexandre@aligator.com.br`:
+**Nova tabela `user_category_patterns`:**
 ```sql
-DELETE FROM whatsapp_sessions WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+CREATE TABLE public.user_category_patterns (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  keyword text NOT NULL,
+  category_id uuid REFERENCES categories(id) ON DELETE CASCADE,
+  confidence_score numeric DEFAULT 1,
+  usage_count integer DEFAULT 1,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  UNIQUE(user_id, keyword, category_id)
 );
-DELETE FROM whatsapp_validation_codes WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM user_roles WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM user_subscriptions WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM organization_members WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM organizations WHERE owner_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM profiles WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
+-- RLS: users CRUD own patterns
 ```
 
-A exclusao do usuario de `auth.users` precisa ser feita via Supabase Dashboard (Authentication > Users) ou pela edge function `delete-user-admin`.
+**Melhorar `AICategorizer.suggestCategoryWithAI()`:**
+- Antes de chamar a IA, buscar padrões do usuário na tabela `user_category_patterns`
+- Se encontrar match com confidence_score > 0.8, usar diretamente sem chamar IA (economia de tokens)
+- Se chamar IA, incluir no prompt: "Este usuário tem os seguintes padrões: uber→Transporte, mercado→Alimentação..."
 
-### Problemas 2 e 3: Email Timing e Link
+**Sistema de aprendizado no WhatsApp agent:**
+- Quando usuário corrige categoria via WhatsApp ("não, é Transporte"), extrair keywords do título e salvar em `user_category_patterns`
+- Incrementar `usage_count` e `confidence_score` em combinações repetidas
 
-**Nao ha bug de codigo aqui.** O fluxo atual e:
-1. `signUp()` envia email de confirmacao (comportamento nativo Supabase)
-2. Usuario faz checkout no Stripe
-3. Stripe webhook ativa a assinatura
-4. Usuario confirma email quando quiser
-5. Link do email vai para `/auth/callback` (ja configurado corretamente na linha 47 do Register.tsx)
-6. `/auth/callback` verifica assinatura e redireciona para `/boas-vindas`
+---
 
-O email e enviado no momento do signup porque o Supabase nao permite adiar o envio. Isso NAO e um bug - o usuario pode confirmar o email a qualquer momento, antes ou depois do checkout.
+### PARTE 2: Frontend
 
-### Resumo
+**1. Hook `useCategoryPatterns`:**
+- Fetch padrões do usuário
+- Função `learnPattern(keyword, categoryId)` que faz upsert na tabela
+- Função `suggestCategory(title)` que busca padrões locais antes de qualquer IA
 
-A unica alteracao de codigo necessaria e a correcao da verificacao da resposta em `Welcome.tsx`. O resto sao operacoes de limpeza de dados no banco.
+**2. Quick-edit de categoria no `TransactionList`:**
+- Click no badge de categoria abre um Popover com dropdown de categorias
+- Ao mudar, salva via PATCH e chama `learnPattern()` com keywords do título
+- Toast "✅ Padrão aprendido!" quando aprende nova associação
+
+**3. Sugestões no `TransactionForm`:**
+- Ao digitar título, buscar padrões aprendidos e mostrar sugestão inline
+- "Baseado no seu histórico, sugerimos: Transporte" com botão para aceitar
+
+**4. Widget "Categorias Mais Usadas" no dashboard:**
+- Novo componente pequeno mostrando top 5 categorias por número de transações do mês
+- Badge com contagem de transações sem categoria
+
+**5. Melhorar `CategoryManager`:**
+- Adicionar i18n (já está hardcoded em português)
+
+---
+
+### PARTE 3: i18n
+Adicionar chaves `categories.*` nos 5 locales para todos os textos novos.
+
+---
+
+### Arquivos a criar/modificar:
+1. **Migration SQL** — tabela `user_category_patterns` + RLS + trigger updated_at
+2. **`src/hooks/useCategoryPatterns.ts`** — CRUD + sugestão local
+3. **`src/components/TransactionList.tsx`** — Quick-edit categoria inline
+4. **`src/components/TransactionForm.tsx`** — Sugestão ao digitar título
+5. **`src/components/CategoryManager.tsx`** — i18n
+6. **`supabase/functions/whatsapp-agent/index.ts`** — Padrões pessoais no prompt + aprendizado com correções
+7. **5 arquivos de locale** — Chaves `categories.*`
+
