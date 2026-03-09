@@ -112,10 +112,10 @@ export function FinancialDashboard() {
                   />
                 </SheetContent>
               </Sheet>
-              <div>
-                <h1 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                  {tabTitleMap[currentTab] || currentTab}
-                </h1>
+               <div>
+                 <h1 className="font-heading text-xl font-semibold text-foreground">
+                   {tabTitleMap[currentTab] || currentTab}
+                 </h1>
               </div>
             </div>
             <DashboardHeader 
