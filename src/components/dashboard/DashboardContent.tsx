@@ -261,7 +261,7 @@ export function DashboardContent({
 
           <Card className="dw-card bg-card shadow-card border-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle>{t('transactionList.yourLatestMovements', 'Suas últimas movimentações')}</CardTitle>
+              <CardTitle>💬 {t('transactionList.yourLatestMovements', 'Suas últimas conversas financeiras')}</CardTitle>
               <Button
                 variant="ghost"
                 size="sm"
