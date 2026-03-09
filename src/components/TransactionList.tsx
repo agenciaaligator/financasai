@@ -55,12 +55,31 @@ export function TransactionList({
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
+    
+    const twoDaysAgo = new Date(today);
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+    
+    const threeDaysAgo = new Date(today);
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
+    const oneWeekAgo = new Date(today);
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
     if (transactionDate.getTime() === today.getTime()) {
       return t('filters.today', 'Hoje');
     }
     if (transactionDate.getTime() === yesterday.getTime()) {
       return t('transactionList.yesterday', 'Ontem');
+    }
+    if (transactionDate.getTime() === twoDaysAgo.getTime()) {
+      return '2 dias atrás';
+    }
+    if (transactionDate.getTime() === threeDaysAgo.getTime()) {
+      return '3 dias atrás';
+    }
+    if (transactionDate >= oneWeekAgo) {
+      const daysDiff = Math.floor((today.getTime() - transactionDate.getTime()) / (1000 * 60 * 60 * 24));
+      return `${daysDiff} dias atrás`;
     }
 
     const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
