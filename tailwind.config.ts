@@ -18,10 +18,11 @@ export default {
 			}
 		},
 		extend: {
-			fontFamily: {
-				heading: ['Crimson Text', 'serif'],
-				body: ['Inter', 'sans-serif'],
-			},
+		fontFamily: {
+			heading: ['Crimson Text', 'serif'],
+			body: ['Inter', 'sans-serif'],
+			display: ['Space Grotesk', 'sans-serif'],
+		},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
