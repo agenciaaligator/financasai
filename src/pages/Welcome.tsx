@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Check, MessageCircle, Loader2, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Calendar, Check, MessageCircle, Loader2, ArrowRight, CheckCircle2, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,6 +21,7 @@ export default function Welcome() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [userName, setUserName] = useState('');
 
   useEffect(() => {
@@ -58,8 +59,14 @@ export default function Welcome() {
     fetchProfile();
   }, [user, loading]);
 
+  const validatePhone = (phone: string): boolean => {
+    // Accept international format (10-15 digits) or Brazilian format (10-11 digits)
+    const digits = phone.replace(/\D/g, '');
+    return digits.length >= 10 && digits.length <= 15;
+  };
+
   const handleSendCode = async () => {
-    if (!phoneNumber || phoneNumber.length < 10) {
+    if (!validatePhone(phoneNumber)) {
       toast({
         title: t('welcome.invalidNumber'),
         description: t('welcome.invalidNumberDesc'),
@@ -114,7 +121,7 @@ export default function Welcome() {
       });
 
       if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || 'Falha ao enviar código');
+      if (!data?.success) throw new Error(data?.error || t('welcome.sendError'));
 
       toast({
         title: t('welcome.codeSent'),
@@ -126,11 +133,42 @@ export default function Welcome() {
       console.error('[Welcome] Erro ao enviar código:', error);
       toast({
         title: t('welcome.sendError'),
-        description: error instanceof Error ? error.message : "Tente novamente",
+        description: error instanceof Error ? error.message : t('common.genericError'),
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    setIsResending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('whatsapp-agent', {
+        body: {
+          action: 'send-validation-code',
+          phone_number: phoneNumber,
+          userId: user?.id,
+        },
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || t('welcome.sendError'));
+
+      toast({
+        title: t('welcome.codeSent'),
+        description: t('welcome.codeSentDesc', { phone: phoneNumber }),
+      });
+      setVerificationCode('');
+    } catch (error) {
+      console.error('[Welcome] Resend error:', error);
+      toast({
+        title: t('welcome.sendError'),
+        description: error instanceof Error ? error.message : t('common.genericError'),
+        variant: "destructive",
+      });
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -156,7 +194,7 @@ export default function Welcome() {
       });
 
       if (error) throw error;
-      if (!data?.valid && !data?.success) throw new Error(data?.message || data?.error || 'Código inválido ou expirado');
+      if (!data?.valid && !data?.success) throw new Error(data?.message || data?.error || t('welcome.invalidCodeDesc'));
 
       // Atualizar telefone no perfil (não-bloqueante)
       supabase
@@ -268,10 +306,10 @@ export default function Welcome() {
             
             {/* Título */}
             <h1 className="font-heading text-[2.5rem] text-white mb-2">
-              Parabéns, {userName || 'Usuário'}!
+              {t('welcome.congratsTitle', { name: userName || t('welcome.defaultUser') })}
             </h1>
             <p className="text-white/90 text-lg">
-              Sua conta Dona Wilma está quase pronta
+              {t('welcome.congratsSubtitle')}
             </p>
           </div>
 
@@ -288,7 +326,7 @@ export default function Welcome() {
                 {t('welcome.connectWhatsApp')}
               </h2>
               <p className="text-muted-foreground text-lg mb-8 max-w-md mx-auto">
-                É aqui que a <strong>mágica acontece</strong>! Conecte seu WhatsApp e comece a gerenciar tudo por mensagem.
+                {t('welcome.connectMagicDesc')}
               </p>
 
               {/* Formulário */}
@@ -382,6 +420,27 @@ export default function Welcome() {
                       )}
                     </Button>
                   </div>
+
+                  {/* Resend code button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleResendCode}
+                    disabled={isResending || isLoading}
+                    className="w-full text-muted-foreground hover:text-foreground"
+                  >
+                    {isResending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {t('welcome.sending')}
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        {t('welcome.resendCode')}
+                      </>
+                    )}
+                  </Button>
                 </div>
               )}
 
@@ -404,32 +463,32 @@ export default function Welcome() {
             {/* Grid de Dicas */}
             <div className="bg-[#2B5B84]/[0.03] rounded-[20px] p-8 mb-8">
               <h3 className="text-xl font-semibold text-center mb-6 flex items-center justify-center gap-2">
-                💡 Como usar no WhatsApp
+                💡 {t('welcome.tipsHowTo')}
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="bg-white rounded-[16px] p-6 text-center shadow-[0_2px_10px_rgba(43,91,132,0.05)] border border-[#E9ECEF] hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(43,91,132,0.1)] transition-all duration-300">
                   <div className="text-[2rem] mb-3">💰</div>
-                  <h4 className="font-semibold mb-2">Despesas</h4>
-                  <p className="text-sm text-muted-foreground">"Gastei 50 no mercado"</p>
+                  <h4 className="font-semibold mb-2">{t('welcome.tipExpenses')}</h4>
+                  <p className="text-sm text-muted-foreground">{t('welcome.tipExpensesExample')}</p>
                 </div>
                 
                 <div className="bg-white rounded-[16px] p-6 text-center shadow-[0_2px_10px_rgba(43,91,132,0.05)] border border-[#E9ECEF] hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(43,91,132,0.1)] transition-all duration-300">
                   <div className="text-[2rem] mb-3">📈</div>
-                  <h4 className="font-semibold mb-2">Receitas</h4>
-                  <p className="text-sm text-muted-foreground">"Recebi 1000 salário"</p>
+                  <h4 className="font-semibold mb-2">{t('welcome.tipIncome')}</h4>
+                  <p className="text-sm text-muted-foreground">{t('welcome.tipIncomeExample')}</p>
                 </div>
                 
                 <div className="bg-white rounded-[16px] p-6 text-center shadow-[0_2px_10px_rgba(43,91,132,0.05)] border border-[#E9ECEF] hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(43,91,132,0.1)] transition-all duration-300">
                   <div className="text-[2rem] mb-3">📊</div>
-                  <h4 className="font-semibold mb-2">Saldo</h4>
-                  <p className="text-sm text-muted-foreground">"Saldo do mês"</p>
+                  <h4 className="font-semibold mb-2">{t('welcome.tipBalance')}</h4>
+                  <p className="text-sm text-muted-foreground">{t('welcome.tipBalanceExample')}</p>
                 </div>
                 
                 <div className="bg-white rounded-[16px] p-6 text-center shadow-[0_2px_10px_rgba(43,91,132,0.05)] border border-[#E9ECEF] hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(43,91,132,0.1)] transition-all duration-300">
                   <div className="text-[2rem] mb-3">📸</div>
-                  <h4 className="font-semibold mb-2">Fotos</h4>
-                  <p className="text-sm text-muted-foreground">Envie foto do cupom</p>
+                  <h4 className="font-semibold mb-2">{t('welcome.tipPhotos')}</h4>
+                  <p className="text-sm text-muted-foreground">{t('welcome.tipPhotosExample')}</p>
                 </div>
               </div>
             </div>

@@ -435,9 +435,18 @@ const ProtectedDashboard = () => {
   }
 
   // Must set password first
+  useEffect(() => {
+    if (!guard.loading && guard.needsPassword) {
+      navigate('/set-password', { replace: true });
+    }
+  }, [guard.loading, guard.needsPassword, navigate]);
+
   if (guard.needsPassword) {
-    navigate('/set-password', { replace: true });
-    return null;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   // Subscription inactive and not in grace period
