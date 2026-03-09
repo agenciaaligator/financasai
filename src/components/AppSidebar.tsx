@@ -39,15 +39,15 @@ export function AppSidebar({
   const { t } = useTranslation();
 
   const sidebarItemsLocal = [
-    { id: "dashboard", title: t('sidebar.dashboard', 'Dashboard'), icon: DollarSign, description: t('sidebar.dashboardDesc', 'Visão geral financeira') },
-    { id: "transactions", title: t('sidebar.transactions', 'Transações'), icon: TrendingUp, description: t('sidebar.transactionsDesc', 'Lançamentos e movimentações') },
-    { id: "categories", title: t('sidebar.categories', 'Categorias'), icon: Tags, description: t('sidebar.categoriesDesc', 'Gerenciar categorias') },
-    { id: "reports", title: t('sidebar.reports', 'Relatórios'), icon: BarChart, description: t('sidebar.reportsDesc', 'Análises e gráficos') },
-    { id: "profile", title: t('sidebar.profile', 'Perfil'), icon: User, description: t('sidebar.profileDesc', 'Configurações pessoais') },
+    { id: "dashboard", title: t('sidebar.dashboard', 'Dashboard'), emoji: "📊", description: t('sidebar.dashboardDesc', 'Visão geral financeira') },
+    { id: "transactions", title: t('sidebar.transactions', 'Transações'), emoji: "💰", description: t('sidebar.transactionsDesc', 'Lançamentos e movimentações') },
+    { id: "categories", title: t('sidebar.categories', 'Categorias'), emoji: "📂", description: t('sidebar.categoriesDesc', 'Gerenciar categorias') },
+    { id: "reports", title: t('sidebar.reports', 'Relatórios'), emoji: "📈", description: t('sidebar.reportsDesc', 'Análises e gráficos') },
+    { id: "profile", title: t('sidebar.profile', 'Perfil'), emoji: "👤", description: t('sidebar.profileDesc', 'Configurações pessoais') },
   ];
 
   const adminItemsLocal = [
-    { id: "admin", title: t('sidebar.admin', 'Admin'), icon: Shield, description: t('sidebar.adminDesc', 'Painel administrativo') },
+    { id: "admin", title: t('sidebar.admin', 'Admin'), emoji: "🛡️", description: t('sidebar.adminDesc', 'Painel administrativo') },
   ];
 
   const allItems = [...sidebarItemsLocal, ...(isAdmin ? adminItemsLocal : [])];
