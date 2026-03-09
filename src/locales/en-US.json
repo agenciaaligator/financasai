@@ -765,7 +765,15 @@
     "alreadyActiveSubtitle": "This email already has an active subscription. Log in to access your account."
   },
   "login": {
-    "emailConfirmedBanner": "✅ Email confirmed successfully! Enter your credentials to access"
+    "emailConfirmedBanner": "✅ Email confirmed successfully! Enter your credentials to access",
+    "enterToAccess": "Sign in to access your dashboard",
+    "emailPlaceholder": "your@email.com",
+    "invalidCredentials": "Incorrect email or password",
+    "checkCredentials": "Please verify your credentials.",
+    "noAccount": "No account - Create one now",
+    "loggingIn": "Logging in...",
+    "noAccountYet": "Don't have an account yet?",
+    "createAccount": "Create account"
   },
   "resetPassword": {
     "title": "Set Your Password",

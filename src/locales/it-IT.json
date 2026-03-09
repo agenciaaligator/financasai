@@ -197,7 +197,15 @@
     "alreadyActiveSubtitle": "Questa email ha già un abbonamento attivo. Accedi per usare il tuo account."
   },
   "login": {
-    "emailConfirmedBanner": "✅ Email confermata con successo! Inserisci i tuoi dati per accedere"
+    "emailConfirmedBanner": "✅ Email confermata con successo! Inserisci i tuoi dati per accedere",
+    "enterToAccess": "Accedi per utilizzare la tua dashboard",
+    "emailPlaceholder": "tua@email.com",
+    "invalidCredentials": "Email o password errati",
+    "checkCredentials": "Verifica di aver digitato correttamente le tue credenziali.",
+    "noAccount": "Non ho un account - Creane uno",
+    "loggingIn": "Accesso in corso...",
+    "noAccountYet": "Non hai ancora un account?",
+    "createAccount": "Crea account"
   },
   "resetPassword": {
     "title": "Imposta la tua Password",

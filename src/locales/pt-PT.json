@@ -222,7 +222,15 @@
     "alreadyActiveSubtitle": "Este email já possui uma subscrição ativa. Faça login para aceder à sua conta."
   },
   "login": {
-    "emailConfirmedBanner": "✅ Email confirmado com sucesso! Introduza os seus dados para aceder"
+    "emailConfirmedBanner": "✅ Email confirmado com sucesso! Introduza os seus dados para aceder",
+    "enterToAccess": "Entre na sua conta para aceder ao dashboard",
+    "emailPlaceholder": "seu@email.com",
+    "invalidCredentials": "Email ou palavra-passe incorretos",
+    "checkCredentials": "Verifique se introduziu corretamente as suas credenciais.",
+    "noAccount": "Não tenho conta - Criar agora",
+    "loggingIn": "A entrar...",
+    "noAccountYet": "Ainda não tem uma conta?",
+    "createAccount": "Criar conta"
   },
   "resetPassword": {
     "title": "Defina a sua Palavra-passe",

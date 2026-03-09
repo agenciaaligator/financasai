@@ -771,7 +771,15 @@
     "alreadyActiveSubtitle": "Este email já possui uma assinatura ativa. Faça login para acessar sua conta."
   },
   "login": {
-    "emailConfirmedBanner": "✅ Email confirmado com sucesso! Entre com seus dados para acessar"
+    "emailConfirmedBanner": "✅ Email confirmado com sucesso! Entre com seus dados para acessar",
+    "enterToAccess": "Entre em sua conta para acessar o dashboard",
+    "emailPlaceholder": "seu@email.com",
+    "invalidCredentials": "Email ou senha incorretos",
+    "checkCredentials": "Verifique se digitou corretamente suas credenciais.",
+    "noAccount": "Não tenho conta - Criar agora",
+    "loggingIn": "Entrando...",
+    "noAccountYet": "Ainda não tem uma conta?",
+    "createAccount": "Criar conta"
   },
   "resetPassword": {
     "title": "Defina sua Senha",
