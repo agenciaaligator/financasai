@@ -11,6 +11,10 @@ const alertVariants = cva(
         default: "bg-background text-foreground",
         destructive:
           "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive",
+        success: "bg-[hsl(145_63%_42%/0.1)] border-l-4 border-l-success [&>svg]:text-success",
+        error: "bg-[hsl(0_85%_60%/0.1)] border-l-4 border-l-destructive [&>svg]:text-destructive",
+        info: "bg-[hsl(var(--primary)/0.1)] border-l-4 border-l-primary [&>svg]:text-primary",
+        warning: "bg-[hsl(var(--warning)/0.1)] border-l-4 border-l-warning [&>svg]:text-warning",
       },
     },
     defaultVariants: {

@@ -346,7 +346,7 @@ export function DashboardContent({
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <div>
-                  <span>{t('transactionList.yourTransactions', 'Suas Transações')}</span>
+                  <span className="font-heading">💬 {t('transactionList.yourConversations', 'Suas conversas financeiras')}</span>
                   <p className="text-sm font-normal text-muted-foreground mt-1">
                     {t('transactionList.allIncomeAndExpenses', 'Todas as suas receitas e despesas')}
                   </p>

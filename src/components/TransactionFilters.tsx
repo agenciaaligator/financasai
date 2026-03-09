@@ -41,19 +41,19 @@ export function TransactionFilters({
   };
 
   return (
-    <Card className="bg-gradient-card shadow-card border-0 mb-4">
+    <Card className="rounded-[20px] bg-gradient-card shadow-card border-0 mb-4">
       <CardContent className="pt-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold">{t('filters.filters', 'Filtros')}</h3>
+            <h3 className="font-semibold">💬 {t('filters.filters', 'Filtrar conversas')}</h3>
             {activeFiltersCount > 0 && (
-              <Badge variant="secondary" className="ml-2">
+              <Badge variant="secondary" className="ml-2 rounded-full">
                 {activeFiltersCount} {activeFiltersCount === 1 ? t('filters.activeFilter', 'filtro ativo') : t('filters.activeFilters', 'filtros ativos')}
               </Badge>
             )}
           </div>
           {activeFiltersCount > 0 && (
-            <Button variant="ghost" size="sm" onClick={clearFilters}>
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="rounded-[25px]">
               <X className="h-4 w-4 mr-2" />
               {t('filters.clearFilters', 'Limpar filtros')}
             </Button>
@@ -65,38 +65,39 @@ export function TransactionFilters({
           <div className="space-y-2">
             <Label>{t('filters.period', 'Período')}</Label>
             <Tabs value={filters.period} onValueChange={(value) => onFiltersChange({ ...filters, period: value as TransactionFiltersState['period'] })} className="w-full">
-              <TabsList className="grid grid-cols-5 h-auto">
-                <TabsTrigger value="all" className="text-xs">{t('filters.all', 'Todos')}</TabsTrigger>
-                <TabsTrigger value="today" className="text-xs">{t('filters.today', 'Hoje')}</TabsTrigger>
-                <TabsTrigger value="week" className="text-xs">{t('filters.week', 'Semana')}</TabsTrigger>
-                <TabsTrigger value="month" className="text-xs">{t('filters.month', 'Mês')}</TabsTrigger>
-                <TabsTrigger value="last_month" className="text-xs">{t('filters.lastMonth', 'Último mês')}</TabsTrigger>
+              <TabsList className="grid grid-cols-5 h-auto rounded-[25px] p-1">
+                <TabsTrigger value="all" className="text-xs rounded-[20px]">{t('filters.all', 'Todos')}</TabsTrigger>
+                <TabsTrigger value="today" className="text-xs rounded-[20px]">{t('filters.today', 'Hoje')}</TabsTrigger>
+                <TabsTrigger value="week" className="text-xs rounded-[20px]">{t('filters.week', 'Semana')}</TabsTrigger>
+                <TabsTrigger value="month" className="text-xs rounded-[20px]">{t('filters.month', 'Mês')}</TabsTrigger>
+                <TabsTrigger value="last_month" className="text-xs rounded-[20px]">{t('filters.lastMonth', 'Último mês')}</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
 
           {/* Tipo */}
           <div className="space-y-2">
-            <Label>{t('filters.type', 'Tipo')}</Label>
+            <Label>{t('filters.type', 'Tipo de conversa')}</Label>
             <Select value={filters.type} onValueChange={(value) => onFiltersChange({ ...filters, type: value as TransactionFiltersState['type'] })}>
-              <SelectTrigger>
-                <SelectValue placeholder={t('filters.allTransactions', 'Todas as transações')} />
+              <SelectTrigger className="rounded-[16px]">
+                <SelectValue placeholder={t('filters.allTransactions', 'Todas as conversas')} />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('filters.allTransactions', 'Todas as transações')}</SelectItem>
-                <SelectItem value="income">{t('filters.onlyIncome', 'Apenas Receitas')}</SelectItem>
-                <SelectItem value="expense">{t('filters.onlyExpenses', 'Apenas Despesas')}</SelectItem>
+              <SelectContent className="rounded-[16px]">
+                <SelectItem value="all">{t('filters.allConversations', 'Todas as conversas')}</SelectItem>
+                <SelectItem value="income">{t('filters.onlyIncome', 'Só entradas')}</SelectItem>
+                <SelectItem value="expense">{t('filters.onlyExpenses', 'Só saídas')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Busca por texto */}
           <div className="space-y-2">
-            <Label>{t('filters.search', 'Buscar')}</Label>
+            <Label>{t('filters.search', 'Buscar na conversa')}</Label>
             <Input
               placeholder={t('filters.searchPlaceholder', 'Digite para buscar...')}
               value={filters.searchText}
               onChange={(e) => onFiltersChange({ ...filters, searchText: e.target.value })}
+              className="rounded-[16px]"
             />
           </div>
         </div>

@@ -6,6 +6,7 @@ import { Transaction } from '@/hooks/useTransactions';
 import { useAuth } from "@/hooks/useAuth";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import { useTranslation } from "react-i18next";
+import { ChatSkeleton } from "@/components/ui/chat-skeleton";
 import {
   Pagination,
   PaginationContent,
@@ -29,6 +30,7 @@ interface TransactionListProps {
   hasActiveFilters?: boolean;
   onClearFilters?: () => void;
   totalTransactionsCount?: number;
+  isLoading?: boolean;
 }
 
 export function TransactionList({ 
@@ -43,7 +45,8 @@ export function TransactionList({
   onRefresh,
   hasActiveFilters,
   onClearFilters,
-  totalTransactionsCount
+  totalTransactionsCount,
+  isLoading = false
 }: TransactionListProps) {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -55,12 +58,31 @@ export function TransactionList({
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
+    
+    const twoDaysAgo = new Date(today);
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+    
+    const threeDaysAgo = new Date(today);
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
+    const oneWeekAgo = new Date(today);
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
     if (transactionDate.getTime() === today.getTime()) {
       return t('filters.today', 'Hoje');
     }
     if (transactionDate.getTime() === yesterday.getTime()) {
       return t('transactionList.yesterday', 'Ontem');
+    }
+    if (transactionDate.getTime() === twoDaysAgo.getTime()) {
+      return '2 dias atrás';
+    }
+    if (transactionDate.getTime() === threeDaysAgo.getTime()) {
+      return '3 dias atrás';
+    }
+    if (transactionDate >= oneWeekAgo) {
+      const daysDiff = Math.floor((today.getTime() - transactionDate.getTime()) / (1000 * 60 * 60 * 24));
+      return `${daysDiff} dias atrás`;
     }
 
     const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
@@ -70,13 +92,24 @@ export function TransactionList({
   const getCategoryEmoji = (categoryName?: string) => {
     if (!categoryName) return '💬';
     const name = categoryName.toLowerCase();
-    if (name.includes('alimentação') || name.includes('comida') || name.includes('mercado')) return '🍔';
+    if (name.includes('alimentação') || name.includes('comida') || name.includes('mercado')) return '🍽️';
     if (name.includes('transporte') || name.includes('uber') || name.includes('gasolina')) return '🚗';
     if (name.includes('saúde') || name.includes('médico') || name.includes('farmácia')) return '💊';
     if (name.includes('lazer') || name.includes('entretenimento') || name.includes('cinema')) return '🎮';
     if (name.includes('casa') || name.includes('moradia') || name.includes('aluguel')) return '🏠';
     if (name.includes('educação') || name.includes('curso') || name.includes('livro')) return '📚';
+    if (name.includes('trabalho') || name.includes('projeto') || name.includes('freelance')) return '💼';
     return '💬';
+  };
+
+  const getCategoryGradient = (categoryName?: string) => {
+    if (!categoryName) return 'bg-gradient-to-br from-gray-400 to-gray-500';
+    const name = categoryName.toLowerCase();
+    if (name.includes('alimentação') || name.includes('comida') || name.includes('mercado')) return 'bg-gradient-to-br from-red-400 to-red-600';
+    if (name.includes('transporte') || name.includes('uber') || name.includes('gasolina')) return 'bg-gradient-to-br from-blue-400 to-green-500';
+    if (name.includes('casa') || name.includes('moradia') || name.includes('aluguel')) return 'bg-gradient-to-br from-blue-400 to-green-500';
+    if (name.includes('trabalho') || name.includes('projeto') || name.includes('freelance')) return 'bg-gradient-to-br from-purple-400 to-purple-600';
+    return 'bg-gradient-to-br from-gray-400 to-gray-500';
   };
 
   const getTransactionSource = (transaction: Transaction) => {
@@ -90,11 +123,16 @@ export function TransactionList({
     }
   };
 
+  if (isLoading) {
+    return <ChatSkeleton />;
+  }
+
   if (transactions.length === 0) {
     return (
       <div className="text-center py-8 space-y-4">
         {hasActiveFilters ? (
           <div className="space-y-3">
+            <div className="text-6xl">💬</div>
             <p className="text-muted-foreground">{t('transactionList.searchNoResults', 'Não encontramos nada. Tente outros termos.')}</p>
             {onClearFilters && (
               <Button variant="outline" size="sm" onClick={onClearFilters}>
@@ -103,9 +141,15 @@ export function TransactionList({
             )}
           </div>
         ) : (
-          <p className="text-muted-foreground">
-            {t('transactionList.noTransactionsYet', 'Você ainda não tem movimentações. Que tal registrar sua primeira?')}
-          </p>
+          <div className="space-y-3">
+            <div className="text-6xl">💬</div>
+            <p className="text-muted-foreground font-medium">
+              Nenhuma conversa ainda...
+            </p>
+            <p className="text-sm text-muted-foreground/80">
+              Que tal enviar "gastei 50 no mercado" pelo WhatsApp?
+            </p>
+          </div>
         )}
       </div>
     );
@@ -127,11 +171,11 @@ export function TransactionList({
       
       <div className="space-y-3">
       {transactions.map((transaction) => (
-        <Card key={transaction.id} className={`dw-card border-0 hover:translate-x-1 hover:bg-muted/30 transition-all duration-300 ${transaction.type === 'income' ? 'border-l-4 border-l-success' : 'border-l-4 border-l-destructive'}`}>
-          <CardContent className="pt-4">
+        <Card key={transaction.id} className={`rounded-[16px] border-0 hover:translate-x-1 hover:bg-[hsl(var(--primary)/0.02)] transition-all duration-300 shadow-sm`}>
+          <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-start sm:items-center space-x-3 min-w-0 flex-1">
-                <div className="w-12 h-12 rounded-full flex-shrink-0 bg-muted/50 flex items-center justify-center">
+                <div className={`w-12 h-12 rounded-full flex-shrink-0 ${getCategoryGradient(transaction.categories?.name)} flex items-center justify-center shadow-sm`}>
                   <span className="text-xl">{getCategoryEmoji(transaction.categories?.name)}</span>
                 </div>
                 
