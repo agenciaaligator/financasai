@@ -8,70 +8,67 @@ Paleta de cores extraída do ícone: tons de azul com gradientes
 
 @layer base {
   :root {
-    --background: 220 20% 98%;
-    --foreground: 215 25% 15%;
+    /* Nova paleta Dona Wilma */
+    --background: 210 17% 98%; /* #F8F9FA */
+    --foreground: 210 15% 20%; /* #2C3E50 */
 
-    --card: 0 0% 100%;
-    --card-foreground: 215 25% 15%;
+    --card: 0 0% 100%; /* #FFFFFF */
+    --card-foreground: 210 15% 20%; /* #2C3E50 */
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 15%;
+    --popover-foreground: 210 15% 20%;
 
-    /* Azul principal baseado no ícone */
-    --primary: 220 90% 55%;
+    /* Azul petróleo elegante */
+    --primary: 207 50% 34%; /* #2B5B84 */
     --primary-foreground: 0 0% 100%;
-    --primary-light: 220 85% 70%;
-    --primary-dark: 220 95% 45%;
+    --primary-light: 207 45% 50%;
+    --primary-dark: 207 65% 25%; /* #1e4a6b */
 
-    /* Tons secundários do gradiente */
-    --secondary: 200 85% 85%;
-    --secondary-foreground: 215 25% 15%;
+    /* Dourado suave */
+    --secondary: 37 74% 67%; /* #E8B86D */
+    --secondary-foreground: 210 15% 20%;
 
-    --muted: 220 15% 95%;
-    --muted-foreground: 215 15% 50%;
+    --muted: 210 16% 93%; /* #E9ECEF */
+    --muted-foreground: 200 8% 50%; /* #7F8C8D */
 
-    --accent: 200 90% 60%;
+    --accent: 207 50% 34%;
     --accent-foreground: 0 0% 100%;
 
-    /* Success (receitas) */
-    --success: 145 65% 45%;
+    /* Verde natural (receitas) */
+    --success: 145 63% 42%; /* #27AE60 */
     --success-foreground: 0 0% 100%;
 
-    /* Destructive (despesas) */
+    /* Laranja brasileiro/vermelho (despesas) */
     --destructive: 0 85% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 25% 90%;
-    --input: 220 25% 95%;
-    --ring: 220 90% 55%;
+    --warning: 36 90% 51%; /* #F39C12 */
 
-    /* Gradientes inspirados no ícone */
-    --gradient-primary: linear-gradient(135deg, hsl(220 95% 45%), hsl(200 90% 60%));
-    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(220 15% 98%));
-    --gradient-header: linear-gradient(135deg, hsl(220 90% 55%), hsl(200 85% 65%));
+    --border: 210 16% 93%; /* #E9ECEF */
+    --input: 210 16% 95%;
+    --ring: 207 50% 34%;
+
+    /* Gradientes atualizados */
+    --gradient-primary: linear-gradient(135deg, hsl(207 50% 34%), hsl(207 65% 25%));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(210 16% 98%));
+    --gradient-header: linear-gradient(135deg, hsl(207 50% 34%), hsl(37 74% 67%));
     
-    /* Sombras elegantes */
-    --shadow-soft: 0 4px 20px hsla(220, 50%, 20%, 0.1);
-    --shadow-card: 0 2px 15px hsla(220, 40%, 30%, 0.08);
-    --shadow-primary: 0 8px 25px hsla(220, 90%, 55%, 0.3);
+    /* Sombras com nova paleta */
+    --shadow-soft: 0 4px 20px rgba(43, 91, 132, 0.08);
+    --shadow-card: 0 8px 25px rgba(43, 91, 132, 0.08);
+    --shadow-primary: 0 8px 25px rgba(43, 91, 132, 0.3);
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sidebar com gradiente azul petróleo */
+    --sidebar-background: 207 50% 34%; /* #2B5B84 */
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 207 50% 34%;
+    --sidebar-accent: 0 0% 100% / 0.1;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 100% / 0.1;
+    --sidebar-ring: 37 74% 67%;
   }
 
   .dark {
