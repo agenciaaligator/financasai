@@ -3925,7 +3925,7 @@ class WhatsAppAgent {
 
       const { data: transactions, error } = await supabase
         .from('transactions')
-        .select('*')
+        .select('*, categories(name)')
         .eq('user_id', userId)
         .gte('date', startDate)
         .order('date', { ascending: false });
@@ -3946,23 +3946,69 @@ class WhatsAppAgent {
 
       const balance = income - expenses;
 
+      // === Comparativo com mês anterior ===
+      let prevIncome = 0, prevExpenses = 0;
+      if (period === 'month') {
+        const prevMonth = month === 0 ? 11 : month - 1;
+        const prevYear = month === 0 ? year - 1 : year;
+        const prevStartDate = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-01`;
+        const prevEndMonth = new Date(prevYear, prevMonth + 1, 0);
+        const prevEndDate = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(prevEndMonth.getDate()).padStart(2, '0')}`;
+        
+        const { data: prevTx } = await supabase
+          .from('transactions')
+          .select('type, amount')
+          .eq('user_id', userId)
+          .gte('date', prevStartDate)
+          .lte('date', prevEndDate);
+        
+        if (prevTx) {
+          prevIncome = prevTx.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
+          prevExpenses = prevTx.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
+        }
+      }
+
+      const prevBalance = prevIncome - prevExpenses;
+      const diff = balance - prevBalance;
+      const diffPercent = prevBalance !== 0 ? ((diff / Math.abs(prevBalance)) * 100).toFixed(0) : '0';
+
+      // === Top 5 categorias de despesas ===
+      const categoryMap = new Map<string, number>();
+      transactions.filter(t => t.type === 'expense').forEach(t => {
+        const catName = (t as any).categories?.name || 'Outros';
+        categoryMap.set(catName, (categoryMap.get(catName) || 0) + Number(t.amount));
+      });
+      const topCategories = Array.from(categoryMap.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+      const totalExpTop = topCategories.reduce((s, [, v]) => s + v, 0);
+
+      const categoryEmojis: Record<string, string> = {
+        'Alimentação': '🍕', 'Transporte': '🚗', 'Lazer': '🎮', 'Moradia': '🏠',
+        'Vestuário': '👕', 'Saúde': '💊', 'Educação': '📚', 'Entretenimento': '🎮',
+        'Outros': '📦', 'Salário': '💼', 'Freelance': '💻', 'Investimentos': '📈',
+      };
+
       // Usar a função formatPeriod() para formatar o período
       const formattedPeriod = formatPeriod(period);
       
-      let report = `📊 *RELATÓRIO FINANCEIRO (${formattedPeriod})*\n\n`;
-      report += `💰 *RESUMO GERAL:*\n`;
-      report += `• Receitas: R$ ${income.toFixed(2)}\n`;
-      report += `• Despesas: R$ ${expenses.toFixed(2)}\n`;
-      report += `• Lucro: R$ ${balance.toFixed(2)}\n\n`;
+      let report = `📊 *RELATÓRIO ${formattedPeriod.toUpperCase()}*\n\n`;
+      report += `💰 Receitas: R$ ${income.toFixed(2)}\n`;
+      report += `💸 Despesas: R$ ${expenses.toFixed(2)}\n`;
+      report += `${balance >= 0 ? '💚' : '🔴'} Saldo: R$ ${balance.toFixed(2)}\n`;
 
-      // Últimas 5 transações
-      report += `*🕒 Últimas Transações:*\n`;
-      const recent = transactions.slice(0, 5);
-      recent.forEach(t => {
-        const emoji = t.type === 'income' ? '💰' : '💸';
-        const sign = t.type === 'income' ? '+' : '-';
-        report += `${emoji} ${sign}R$ ${Number(t.amount).toFixed(2)} - ${t.title}\n`;
-      });
+      if (period === 'month' && (prevIncome > 0 || prevExpenses > 0)) {
+        report += `\n📈 vs mês anterior: ${diff >= 0 ? '+' : ''}R$ ${diff.toFixed(2)} (${diff >= 0 ? '+' : ''}${diffPercent}%)\n`;
+      }
+
+      if (topCategories.length > 0) {
+        report += `\n🔝 *Maiores gastos:*\n`;
+        topCategories.forEach(([name, amount], i) => {
+          const emoji = categoryEmojis[name] || '📦';
+          const pct = totalExpTop > 0 ? ((amount / totalExpTop) * 100).toFixed(0) : '0';
+          report += `${i + 1}. ${emoji} ${name}: R$ ${amount.toFixed(2)} (${pct}%)\n`;
+        });
+      }
 
       return report;
     } catch (error) {

@@ -1,44 +1,73 @@
 
+## Correcao Final - Fluxo de Onboarding
 
-## Relatórios Mensais Avançados - Dona Wilma
+### Bug Critico Encontrado
 
-### Situação Atual
+**Problema 5: Validacao do codigo WhatsApp SEMPRE falha** (mesmo com codigo correto)
 
-- **Frontend**: `ReportsPage.tsx` já existe com cards de resumo, gráficos (linha, barra, pizza) e insights. Porém está 100% hardcoded em português, sem comparativo mensal, sem top 5 categorias destacado, e sem seletor de mês/ano específico.
-- **WhatsApp**: O comando "relatório" já funciona via `generateSimpleReport()` (L3887-3972). Mostra receitas, despesas, saldo e últimas 5 transações, mas **não inclui top categorias nem comparativo com mês anterior**.
-- **Sidebar**: "Relatórios" já está no sidebar (id: `reports`), e `DashboardContent` já renderiza `<ReportsPage />` no case `reports`.
-- **Não há tabela nova necessária** — toda a lógica usa dados da tabela `transactions` existente.
+A edge function `validate-code` retorna `{ valid: true, message: "Codigo valido" }`, mas o frontend (`Welcome.tsx` linha 163) verifica `data?.success`. Como `success` nao existe na resposta, o frontend interpreta como erro e mostra "Codigo invalido ou expirado" mesmo quando o codigo esta correto.
 
-### Plano de Implementação
+Isso explica tambem o Problema 4 (parece que o codigo nao funciona) e o Problema 6 (mensagem de boas-vindas nunca chega, pois o usuario nunca conclui a validacao com sucesso no frontend).
 
-**1. Reescrever `ReportsPage.tsx` com as features solicitadas:**
+### Alteracoes Necessarias
 
-- Seletor de mês/ano (dropdown com últimos 12 meses) em vez do seletor de período genérico atual
-- 4 cards de métricas: Receitas (verde), Despesas (vermelho), Saldo do Mês (condicional), Variação vs Mês Anterior (% + seta)
-- Gráfico pizza: gastos por categoria (top 5) com cores da marca
-- Gráfico barras: comparativo receitas vs despesas dos últimos 3 meses
-- Seção "Top 5 Categorias" com lista, valor, percentual e emoji da categoria
-- Glassmorphism style nos cards, cores da marca (#2B5B84, #E8B86D, #27AE60)
-- Loading state, empty state, responsive mobile
-- i18n em todos os textos
+#### 1. Corrigir Welcome.tsx - Verificacao da resposta validate-code
 
-**2. Atualizar `generateSimpleReport()` no whatsapp-agent:**
+**Arquivo:** `src/pages/Welcome.tsx` (linha 163)
 
-Adicionar ao relatório WhatsApp existente:
-- Comparativo com mês anterior (buscar transações do mês anterior, calcular diferença e %)
-- Top 5 categorias com maiores gastos (com percentual)
-- Formatar conforme o exemplo fornecido pelo usuário
+Alterar de:
+```tsx
+if (!data?.success) throw new Error(data?.error || 'Codigo invalido ou expirado');
+```
 
-**3. i18n:** Adicionar chaves `reports.*` nos 5 arquivos de locale.
+Para:
+```tsx
+if (!data?.valid && !data?.success) throw new Error(data?.message || data?.error || 'Codigo invalido ou expirado');
+```
 
-### Arquivos a modificar:
-1. `src/components/ReportsPage.tsx` — reescrever completamente
-2. `supabase/functions/whatsapp-agent/index.ts` — atualizar `generateSimpleReport()`
-3. 5 arquivos de locale — chaves de tradução para relatórios
+Isso aceita tanto `{ valid: true }` (resposta atual) quanto `{ success: true }` (se for alterado no futuro).
 
-### Sem mudanças necessárias:
-- Sidebar (já tem "Relatórios")
-- DashboardContent (já renderiza ReportsPage)
-- FinancialDashboard tab title map (já tem "reports")
-- Banco de dados (sem nova tabela/migration)
+#### 2. Limpeza de dados do usuario de teste
 
+Executar queries SQL para limpar os dados de `alexandre@aligator.com.br`:
+```sql
+DELETE FROM whatsapp_sessions WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM whatsapp_validation_codes WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM user_roles WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM user_subscriptions WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM organization_members WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM organizations WHERE owner_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM profiles WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+```
+
+A exclusao do usuario de `auth.users` precisa ser feita via Supabase Dashboard (Authentication > Users) ou pela edge function `delete-user-admin`.
+
+### Problemas 2 e 3: Email Timing e Link
+
+**Nao ha bug de codigo aqui.** O fluxo atual e:
+1. `signUp()` envia email de confirmacao (comportamento nativo Supabase)
+2. Usuario faz checkout no Stripe
+3. Stripe webhook ativa a assinatura
+4. Usuario confirma email quando quiser
+5. Link do email vai para `/auth/callback` (ja configurado corretamente na linha 47 do Register.tsx)
+6. `/auth/callback` verifica assinatura e redireciona para `/boas-vindas`
+
+O email e enviado no momento do signup porque o Supabase nao permite adiar o envio. Isso NAO e um bug - o usuario pode confirmar o email a qualquer momento, antes ou depois do checkout.
+
+### Resumo
+
+A unica alteracao de codigo necessaria e a correcao da verificacao da resposta em `Welcome.tsx`. O resto sao operacoes de limpeza de dados no banco.

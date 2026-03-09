@@ -829,5 +829,26 @@
   "sidebar": {
     "goals": "Goals",
     "goalsDesc": "Monthly goals"
+  },
+  "reports": {
+    "title": "Financial Reports",
+    "income": "Income",
+    "expenses": "Expenses",
+    "balance": "Monthly Balance",
+    "variation": "vs Previous Month",
+    "expensesByCategory": "Expenses by Category (Top 5)",
+    "threeMonthComparison": "Last 3 Months Comparison",
+    "topCategories": "Top 5 Expense Categories",
+    "insights": "Insights & Recommendations",
+    "noData": "No data for the selected period",
+    "noDataDesc": "Add transactions to view detailed reports.",
+    "noExpenses": "No expenses recorded this month.",
+    "uncategorized": "Uncategorized",
+    "insightLoss": "Warning: Loss detected",
+    "insightLossDesc": "Your expenses exceed income by {{value}}. Consider reviewing your spending.",
+    "insightProfit": "Congratulations: Positive result!",
+    "insightProfitDesc": "You earned {{value}} in profit. Consider investing or building a reserve.",
+    "insightDecline": "Significant result decline",
+    "insightDeclineDesc": "Your result dropped {{percent}}% compared to last month."
   }
 }

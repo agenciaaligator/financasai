@@ -1,402 +1,349 @@
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import { useTransactions } from "@/hooks/useTransactions";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { Calendar, TrendingUp, TrendingDown, DollarSign, Target, Download, Share } from "lucide-react";
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { TrendingUp, TrendingDown, DollarSign, ArrowUpRight, ArrowDownRight, BarChart3 } from "lucide-react";
+import { startOfMonth, endOfMonth, subMonths, format, parseISO } from "date-fns";
+import { ptBR, enUS, es, it, pt } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1'];
+const BRAND_COLORS = ['hsl(207, 50%, 34%)', 'hsl(37, 74%, 67%)', 'hsl(145, 63%, 42%)', 'hsl(0, 85%, 60%)', 'hsl(36, 90%, 51%)'];
+
+const CATEGORY_EMOJIS: Record<string, string> = {
+  'Alimentação': '🍕', 'Food': '🍕', 'Alimentación': '🍕', 'Alimentazione': '🍕',
+  'Transporte': '🚗', 'Transport': '🚗', 'Trasporto': '🚗',
+  'Lazer': '🎮', 'Entertainment': '🎮', 'Entretenimiento': '🎮', 'Entretenimento': '🎮', 'Intrattenimento': '🎮',
+  'Moradia': '🏠', 'Housing': '🏠', 'Vivienda': '🏠', 'Abitazione': '🏠',
+  'Vestuário': '👕', 'Clothing': '👕', 'Ropa': '👕', 'Abbigliamento': '👕',
+  'Saúde': '💊', 'Health': '💊', 'Salud': '💊', 'Salute': '💊',
+  'Educação': '📚', 'Education': '📚', 'Educación': '📚', 'Istruzione': '📚',
+  'Salário': '💼', 'Salary': '💼', 'Salario': '💼', 'Stipendio': '💼',
+  'Freelance': '💻', 'Investimentos': '📈', 'Investments': '📈', 'Inversiones': '📈', 'Investimenti': '📈',
+};
+
+function getDateLocale(lang: string) {
+  if (lang.startsWith('en')) return enUS;
+  if (lang.startsWith('es')) return es;
+  if (lang.startsWith('it')) return it;
+  if (lang === 'pt-PT') return pt;
+  return ptBR;
+}
 
 export function ReportsPage() {
-  const [period, setPeriod] = useState("month");
-  const { transactions, categories } = useTransactions();
+  const { t, i18n } = useTranslation();
+  const locale = getDateLocale(i18n.language);
 
-  const filteredData = useMemo(() => {
-    if (!transactions) return { transactions: [], summary: { income: 0, expenses: 0, profit: 0 } };
-
+  // Generate last 12 months options
+  const monthOptions = useMemo(() => {
+    const options = [];
     const now = new Date();
-    let startDate: Date;
-    let endDate: Date = now;
-
-    switch (period) {
-      case "week":
-        startDate = startOfWeek(now, { locale: ptBR });
-        endDate = endOfWeek(now, { locale: ptBR });
-        break;
-      case "month":
-        startDate = startOfMonth(now);
-        endDate = endOfMonth(now);
-        break;
-      case "year":
-        startDate = startOfYear(now);
-        endDate = endOfYear(now);
-        break;
-      case "last7":
-        startDate = subDays(now, 7);
-        break;
-      case "last30":
-        startDate = subDays(now, 30);
-        break;
-      default:
-        startDate = startOfMonth(now);
-        endDate = endOfMonth(now);
+    for (let i = 0; i < 12; i++) {
+      const d = subMonths(now, i);
+      options.push({
+        value: format(d, 'yyyy-MM'),
+        label: format(d, 'MMMM yyyy', { locale }),
+      });
     }
+    return options;
+  }, [locale]);
 
-    const filtered = transactions.filter(t => {
-      const transactionDate = parseISO(t.date);
-      return transactionDate >= startDate && transactionDate <= endDate;
-    });
+  const [selectedMonth, setSelectedMonth] = useState(monthOptions[0].value);
+  const { transactions, categories, loading } = useTransactions();
 
-    const income = filtered.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
-    const expenses = filtered.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0);
+  const selectedDate = useMemo(() => parseISO(selectedMonth + '-01'), [selectedMonth]);
+  const prevDate = useMemo(() => subMonths(selectedDate, 1), [selectedDate]);
 
-    return {
-      transactions: filtered,
-      summary: {
-        income,
-        expenses,
-        profit: income - expenses
-      }
-    };
-  }, [transactions, period]);
-
-  const chartData = useMemo(() => {
-    const categoryMap = new Map<string, { name: string; receitas: number; despesas: number }>();
-    
-    filteredData.transactions.forEach(transaction => {
-      const category = categories?.find(c => c.id === transaction.category_id);
-      const categoryName = category?.name || 'Sem Categoria';
-      
-      if (!categoryMap.has(categoryName)) {
-        categoryMap.set(categoryName, {
-          name: categoryName,
-          receitas: 0,
-          despesas: 0
-        });
-      }
-      
-      const existing = categoryMap.get(categoryName)!;
-      if (transaction.type === 'income') {
-        existing.receitas += Number(transaction.amount);
-      } else {
-        existing.despesas += Number(transaction.amount);
-      }
-    });
-
-    return Array.from(categoryMap.values());
-  }, [filteredData.transactions, categories]);
-
-  const expenseDataForPie = useMemo(() => {
-    const categoryMap = new Map<string, number>();
-    
-    filteredData.transactions
-      .filter(t => t.type === 'expense')
-      .forEach(transaction => {
-        const category = categories?.find(c => c.id === transaction.category_id);
-        const categoryName = category?.name || 'Sem Categoria';
-        
-        const current = categoryMap.get(categoryName) || 0;
-        categoryMap.set(categoryName, current + Number(transaction.amount));
-      });
-
-    return Array.from(categoryMap.entries()).map(([name, value]) => ({
-      name,
-      value
-    }));
-  }, [filteredData.transactions, categories]);
-
-  const incomeDataForPie = useMemo(() => {
-    const categoryMap = new Map<string, number>();
-    
-    filteredData.transactions
-      .filter(t => t.type === 'income')
-      .forEach(transaction => {
-        const category = categories?.find(c => c.id === transaction.category_id);
-        const categoryName = category?.name || 'Sem Categoria';
-        
-        const current = categoryMap.get(categoryName) || 0;
-        categoryMap.set(categoryName, current + Number(transaction.amount));
-      });
-
-    return Array.from(categoryMap.entries()).map(([name, value]) => ({
-      name,
-      value
-    }));
-  }, [filteredData.transactions, categories]);
-
-  const dailyData = useMemo(() => {
-    const dailyMap = new Map();
-    
-    filteredData.transactions.forEach(transaction => {
-      const date = transaction.date;
-      if (!dailyMap.has(date)) {
-        dailyMap.set(date, { date, income: 0, expenses: 0 });
-      }
-      
-      const day = dailyMap.get(date);
-      if (transaction.type === 'income') {
-        day.income += Number(transaction.amount);
-      } else {
-        day.expenses += Number(transaction.amount);
-      }
-    });
-
-    return Array.from(dailyMap.values()).sort((a, b) => a.date.localeCompare(b.date));
-  }, [filteredData.transactions]);
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
+  const filterByMonth = (date: Date) => {
+    const start = format(startOfMonth(date), 'yyyy-MM-dd');
+    const end = format(endOfMonth(date), 'yyyy-MM-dd');
+    return (transactions || []).filter(t => t.date >= start && t.date <= end);
   };
 
-  const getPeriodLabel = () => {
-    switch (period) {
-      case "week": return "Esta Semana";
-      case "month": return "Este Mês";
-      case "year": return "Este Ano";
-      case "last7": return "Últimos 7 dias";
-      case "last30": return "Últimos 30 dias";
-      default: return "Este Mês";
-    }
-  };
+  const currentTx = useMemo(() => filterByMonth(selectedDate), [transactions, selectedDate]);
+  const prevTx = useMemo(() => filterByMonth(prevDate), [transactions, prevDate]);
 
+  const summary = useMemo(() => {
+    const income = currentTx.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
+    const expenses = currentTx.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
+    const prevIncome = prevTx.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
+    const prevExpenses = prevTx.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
+    const prevBalance = prevIncome - prevExpenses;
+    const balance = income - expenses;
+    const variation = prevBalance !== 0 ? ((balance - prevBalance) / Math.abs(prevBalance)) * 100 : (balance > 0 ? 100 : 0);
+    return { income, expenses, balance, prevBalance, variation, diff: balance - prevBalance };
+  }, [currentTx, prevTx]);
+
+  const topCategories = useMemo(() => {
+    const map = new Map<string, { name: string; amount: number; color: string }>();
+    currentTx.filter(t => t.type === 'expense').forEach(tx => {
+      const cat = categories?.find(c => c.id === tx.category_id);
+      const name = cat?.name || t('reports.uncategorized');
+      const color = cat?.color || '#6B7280';
+      const existing = map.get(name) || { name, amount: 0, color };
+      existing.amount += Number(tx.amount);
+      map.set(name, existing);
+    });
+    const sorted = Array.from(map.values()).sort((a, b) => b.amount - a.amount).slice(0, 5);
+    const total = sorted.reduce((s, c) => s + c.amount, 0);
+    return sorted.map(c => ({ ...c, percent: total > 0 ? (c.amount / total) * 100 : 0 }));
+  }, [currentTx, categories, t]);
+
+  const pieData = useMemo(() =>
+    topCategories.map(c => ({ name: c.name, value: c.amount })),
+    [topCategories]
+  );
+
+  const barData = useMemo(() => {
+    const months = [];
+    for (let i = 2; i >= 0; i--) {
+      const d = subMonths(selectedDate, i);
+      const txs = filterByMonth(d);
+      const inc = txs.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
+      const exp = txs.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
+      months.push({
+        name: format(d, 'MMM', { locale }),
+        [t('reports.income')]: inc,
+        [t('reports.expenses')]: exp,
+      });
+    }
+    return months;
+  }, [selectedDate, transactions, locale, t]);
+
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat(i18n.language, { style: 'currency', currency: 'BRL' }).format(value);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-10 w-48" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Skeleton className="h-80 rounded-2xl" />
+          <Skeleton className="h-80 rounded-2xl" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold">Relatórios Financeiros</h2>
-        <div className="flex items-center space-x-4">
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="week">Esta Semana</SelectItem>
-              <SelectItem value="month">Este Mês</SelectItem>
-              <SelectItem value="year">Este Ano</SelectItem>
-              <SelectItem value="last7">Últimos 7 dias</SelectItem>
-              <SelectItem value="last30">Últimos 30 dias</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Exportar
-          </Button>
-          <Button variant="outline" size="sm">
-            <Share className="h-4 w-4 mr-2" />
-            Compartilhar
-          </Button>
-        </div>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h2 className="text-2xl sm:text-3xl font-bold text-foreground">📊 {t('reports.title')}</h2>
+        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+          <SelectTrigger className="w-52 capitalize">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {monthOptions.map(opt => (
+              <SelectItem key={opt.value} value={opt.value} className="capitalize">{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-green-600 text-sm font-medium">Receitas</p>
-                <p className="text-2xl font-bold text-green-700">
-                  {formatCurrency(filteredData.summary.income)}
-                </p>
-              </div>
-              <TrendingUp className="h-8 w-8 text-green-600" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-red-600 text-sm font-medium">Despesas</p>
-                <p className="text-2xl font-bold text-red-700">
-                  {formatCurrency(filteredData.summary.expenses)}
-                </p>
-              </div>
-              <TrendingDown className="h-8 w-8 text-red-600" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className={`bg-gradient-to-br ${filteredData.summary.profit >= 0 ? 'from-blue-50 to-blue-100 border-blue-200' : 'from-orange-50 to-orange-100 border-orange-200'}`}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className={`text-sm font-medium ${filteredData.summary.profit >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
-                  {filteredData.summary.profit >= 0 ? 'Lucro' : 'Prejuízo'}
-                </p>
-                <p className={`text-2xl font-bold ${filteredData.summary.profit >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
-                  {formatCurrency(Math.abs(filteredData.summary.profit))}
-                </p>
-              </div>
-              <DollarSign className={`h-8 w-8 ${filteredData.summary.profit >= 0 ? 'text-blue-600' : 'text-orange-600'}`} />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-purple-600 text-sm font-medium">Transações</p>
-                <p className="text-2xl font-bold text-purple-700">
-                  {filteredData.transactions.length}
-                </p>
-              </div>
-              <Target className="h-8 w-8 text-purple-600" />
-            </div>
-          </CardContent>
-        </Card>
+      {/* Metric Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard
+          label={t('reports.income')}
+          value={formatCurrency(summary.income)}
+          icon={<TrendingUp className="h-6 w-6" />}
+          variant="success"
+        />
+        <MetricCard
+          label={t('reports.expenses')}
+          value={formatCurrency(summary.expenses)}
+          icon={<TrendingDown className="h-6 w-6" />}
+          variant="danger"
+        />
+        <MetricCard
+          label={t('reports.balance')}
+          value={formatCurrency(Math.abs(summary.balance))}
+          icon={<DollarSign className="h-6 w-6" />}
+          variant={summary.balance >= 0 ? 'success' : 'danger'}
+          prefix={summary.balance < 0 ? '-' : ''}
+        />
+        <MetricCard
+          label={t('reports.variation')}
+          value={`${summary.variation >= 0 ? '+' : ''}${summary.variation.toFixed(1)}%`}
+          subtitle={`${summary.diff >= 0 ? '+' : ''}${formatCurrency(summary.diff)}`}
+          icon={summary.variation >= 0 ? <ArrowUpRight className="h-6 w-6" /> : <ArrowDownRight className="h-6 w-6" />}
+          variant={summary.variation >= 0 ? 'primary' : 'warning'}
+        />
       </div>
 
-      {/* Gráficos */}
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Gráfico de Evolução Diária */}
-        <Card>
+        {/* Pie Chart - Top 5 */}
+        <Card className="backdrop-blur-sm bg-card/80 border-border/50">
           <CardHeader>
-            <CardTitle>Evolução Diária - {getPeriodLabel()}</CardTitle>
+            <CardTitle className="text-lg">{t('reports.expensesByCategory')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={dailyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" tickFormatter={(value) => format(parseISO(value), 'dd/MM')} />
-                <YAxis tickFormatter={(value) => formatCurrency(value)} />
-                <Tooltip labelFormatter={(value) => format(parseISO(value), 'dd/MM/yyyy')} />
-                <Legend />
-                <Line type="monotone" dataKey="income" stroke="#10b981" name="Receitas" strokeWidth={2} />
-                <Line type="monotone" dataKey="expenses" stroke="#ef4444" name="Despesas" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
+            {pieData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={280}>
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={90}
+                    dataKey="value"
+                  >
+                    {pieData.map((_, i) => (
+                      <Cell key={i} fill={BRAND_COLORS[i % BRAND_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v) => formatCurrency(Number(v))} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[280px] flex items-center justify-center text-muted-foreground">
+                {t('reports.noData')}
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Gráfico de Barras por Categoria */}
-        <Card>
+        {/* Bar Chart - 3 months */}
+        <Card className="backdrop-blur-sm bg-card/80 border-border/50">
           <CardHeader>
-            <CardTitle>Receitas vs Despesas por Categoria</CardTitle>
+            <CardTitle className="text-lg">{t('reports.threeMonthComparison')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={barData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="name" />
-                <YAxis tickFormatter={(value) => formatCurrency(value)} />
-                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                <YAxis tickFormatter={v => formatCurrency(v)} />
+                <Tooltip formatter={v => formatCurrency(Number(v))} />
                 <Legend />
-                <Bar dataKey="receitas" fill="#10b981" name="Receitas" />
-                <Bar dataKey="despesas" fill="#ef4444" name="Despesas" />
+                <Bar dataKey={t('reports.income')} fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey={t('reports.expenses')} fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
-
-        {/* Pizza de Receitas */}
-        {incomeDataForPie.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Distribuição de Receitas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={incomeDataForPie}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {incomeDataForPie.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Pizza de Despesas */}
-        {expenseDataForPie.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Distribuição de Despesas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={expenseDataForPie}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {expenseDataForPie.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
-      {/* Insights e Recomendações */}
-      <Card>
+      {/* Top 5 Categories */}
+      <Card className="backdrop-blur-sm bg-card/80 border-border/50">
         <CardHeader>
-          <CardTitle>Insights e Recomendações</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <BarChart3 className="h-5 w-5 text-primary" />
+            {t('reports.topCategories')}
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {filteredData.summary.profit < 0 && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                <h4 className="font-semibold text-red-700">⚠️ Atenção: Prejuízo identificado</h4>
-                <p className="text-red-600">
-                  Suas despesas estão {formatCurrency(Math.abs(filteredData.summary.profit))} acima das receitas neste período. 
-                  Considere revisar seus gastos ou aumentar sua renda.
-                </p>
-              </div>
-            )}
-            
-            {filteredData.summary.profit > 0 && (
-              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                <h4 className="font-semibold text-green-700">✅ Parabéns: Resultado positivo!</h4>
-                <p className="text-green-600">
-                  Você teve um lucro de {formatCurrency(filteredData.summary.profit)} neste período. 
-                  Considere investir esse valor ou criar uma reserva de emergência.
-                </p>
-              </div>
-            )}
-
-            {filteredData.transactions.length === 0 && (
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 className="font-semibold text-blue-700">📊 Sem dados para o período</h4>
-                <p className="text-blue-600">
-                  Não há transações registradas para o período selecionado. 
-                  Adicione algumas transações para visualizar relatórios detalhados.
-                </p>
-              </div>
-            )}
-          </div>
+          {topCategories.length > 0 ? (
+            <div className="space-y-3">
+              {topCategories.map((cat, i) => (
+                <div key={cat.name} className="flex items-center gap-3">
+                  <span className="text-lg font-bold text-muted-foreground w-6">{i + 1}.</span>
+                  <span className="text-xl">{CATEGORY_EMOJIS[cat.name] || '📦'}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium text-foreground truncate">{cat.name}</span>
+                      <span className="text-sm font-semibold text-foreground ml-2">
+                        {formatCurrency(cat.amount)} ({cat.percent.toFixed(0)}%)
+                      </span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div
+                        className="h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${cat.percent}%`, backgroundColor: BRAND_COLORS[i % BRAND_COLORS.length] }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center py-8">{t('reports.noExpenses')}</p>
+          )}
         </CardContent>
       </Card>
+
+      {/* Insights */}
+      {currentTx.length > 0 && (
+        <Card className="backdrop-blur-sm bg-card/80 border-border/50">
+          <CardHeader>
+            <CardTitle className="text-lg">💡 {t('reports.insights')}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {summary.balance < 0 && (
+              <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20">
+                <p className="font-semibold text-destructive">⚠️ {t('reports.insightLoss')}</p>
+                <p className="text-sm text-destructive/80 mt-1">
+                  {t('reports.insightLossDesc', { value: formatCurrency(Math.abs(summary.balance)) })}
+                </p>
+              </div>
+            )}
+            {summary.balance > 0 && (
+              <div className="p-4 rounded-xl bg-[hsl(var(--success))]/10 border border-[hsl(var(--success))]/20">
+                <p className="font-semibold text-[hsl(var(--success))]">✅ {t('reports.insightProfit')}</p>
+                <p className="text-sm text-[hsl(var(--success))]/80 mt-1">
+                  {t('reports.insightProfitDesc', { value: formatCurrency(summary.balance) })}
+                </p>
+              </div>
+            )}
+            {summary.variation < -20 && (
+              <div className="p-4 rounded-xl bg-[hsl(var(--warning))]/10 border border-[hsl(var(--warning))]/20">
+                <p className="font-semibold text-[hsl(var(--warning))]">📉 {t('reports.insightDecline')}</p>
+                <p className="text-sm text-[hsl(var(--warning))]/80 mt-1">
+                  {t('reports.insightDeclineDesc', { percent: Math.abs(summary.variation).toFixed(0) })}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {currentTx.length === 0 && (
+        <Card className="backdrop-blur-sm bg-card/80 border-border/50">
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground text-lg">📊 {t('reports.noData')}</p>
+            <p className="text-muted-foreground text-sm mt-2">{t('reports.noDataDesc')}</p>
+          </CardContent>
+        </Card>
+      )}
     </div>
+  );
+}
+
+function MetricCard({ label, value, subtitle, icon, variant, prefix = '' }: {
+  label: string;
+  value: string;
+  subtitle?: string;
+  icon: React.ReactNode;
+  variant: 'success' | 'danger' | 'primary' | 'warning';
+  prefix?: string;
+}) {
+  const styles = {
+    success: 'from-[hsl(var(--success))]/10 to-[hsl(var(--success))]/5 border-[hsl(var(--success))]/20 text-[hsl(var(--success))]',
+    danger: 'from-destructive/10 to-destructive/5 border-destructive/20 text-destructive',
+    primary: 'from-primary/10 to-primary/5 border-primary/20 text-primary',
+    warning: 'from-[hsl(var(--warning))]/10 to-[hsl(var(--warning))]/5 border-[hsl(var(--warning))]/20 text-[hsl(var(--warning))]',
+  };
+
+  return (
+    <Card className={`bg-gradient-to-br ${styles[variant]} backdrop-blur-sm hover:-translate-y-0.5`}>
+      <CardContent className="p-5">
+        <div className="flex items-center justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-wide opacity-80">{label}</p>
+            <p className="text-xl sm:text-2xl font-bold mt-1 truncate">{prefix}{value}</p>
+            {subtitle && <p className="text-xs mt-1 opacity-70">{subtitle}</p>}
+          </div>
+          <div className="opacity-60">{icon}</div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
