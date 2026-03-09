@@ -125,6 +125,7 @@ export function TransactionList({
       <div className="text-center py-8 space-y-4">
         {hasActiveFilters ? (
           <div className="space-y-3">
+            <div className="text-6xl">💬</div>
             <p className="text-muted-foreground">{t('transactionList.searchNoResults', 'Não encontramos nada. Tente outros termos.')}</p>
             {onClearFilters && (
               <Button variant="outline" size="sm" onClick={onClearFilters}>
@@ -133,9 +134,15 @@ export function TransactionList({
             )}
           </div>
         ) : (
-          <p className="text-muted-foreground">
-            {t('transactionList.noTransactionsYet', 'Você ainda não tem movimentações. Que tal registrar sua primeira?')}
-          </p>
+          <div className="space-y-3">
+            <div className="text-6xl">💬</div>
+            <p className="text-muted-foreground font-medium">
+              Nenhuma conversa ainda...
+            </p>
+            <p className="text-sm text-muted-foreground/80">
+              Que tal enviar "gastei 50 no mercado" pelo WhatsApp?
+            </p>
+          </div>
         )}
       </div>
     );
