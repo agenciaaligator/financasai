@@ -201,16 +201,20 @@ export function MonthlyGoalsSection({
         editingGoal={editingGoal}
       />
 
-      <DeleteConfirmationDialog
-        open={!!deletingGoalId}
-        onConfirm={() => {
-          if (deletingGoalId) onDeleteGoal(deletingGoalId);
-          setDeletingGoalId(null);
-        }}
-        onCancel={() => setDeletingGoalId(null)}
-        title={t('goals.deleteTitle', 'Excluir Meta')}
-        description={t('goals.deleteDesc', 'Tem certeza que deseja excluir esta meta?')}
-      />
+      <AlertDialog open={!!deletingGoalId} onOpenChange={(v) => !v && setDeletingGoalId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('goals.deleteTitle', 'Excluir Meta')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('goals.deleteDesc', 'Tem certeza que deseja excluir esta meta?')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel', 'Cancelar')}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (deletingGoalId) onDeleteGoal(deletingGoalId); setDeletingGoalId(null); }}>
+              {t('common.delete', 'Excluir')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
