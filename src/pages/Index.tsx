@@ -426,22 +426,14 @@ const ProtectedDashboard = () => {
   const navigate = useNavigate();
   const guard = useSubscriptionGuard();
 
-  if (guard.loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  // Must set password first
+  // Must set password first — useEffect before any early returns
   useEffect(() => {
     if (!guard.loading && guard.needsPassword) {
       navigate('/set-password', { replace: true });
     }
   }, [guard.loading, guard.needsPassword, navigate]);
 
-  if (guard.needsPassword) {
+  if (guard.loading || guard.needsPassword) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
