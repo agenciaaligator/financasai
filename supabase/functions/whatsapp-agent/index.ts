@@ -2003,6 +2003,27 @@ class WhatsAppAgent {
       });
       
       const saveResult = await this.saveTransaction(session.user_id!, txToSave);
+
+      // 🧠 Learn pattern: associate original title keywords with the chosen category
+      if (transaction.title && saveResult) {
+        try {
+          // Get the saved transaction's category_id
+          const { data: lastTx } = await supabase
+            .from('transactions')
+            .select('category_id')
+            .eq('user_id', session.user_id!)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          
+          if (lastTx?.category_id) {
+            await CategoryMatcher.learnPattern(session.user_id!, transaction.title, lastTx.category_id);
+            console.log(`🧠 Learned category pattern from user correction: "${transaction.title}" → ${category}`);
+          }
+        } catch (err) {
+          console.error('Error learning pattern from category correction:', err);
+        }
+      }
       
       // 🔧 LIMPAR ESTADO após salvar para evitar processar próxima mensagem como comando
       await SessionManager.updateSession(session.id, {
