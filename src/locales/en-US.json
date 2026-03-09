@@ -803,5 +803,31 @@
     "inactiveDesc": "Regularize your subscription to continue using Dona Wilma.",
     "gracePeriodTitle": "Your subscription is past due",
     "gracePeriodDesc": "Regularize by {{date}} to avoid access being blocked."
+  },
+  "goals": {
+    "title": "Monthly Goals",
+    "subtitle": "Set spending limits per category and track your progress",
+    "addGoal": "Set Goal",
+    "newGoal": "New Monthly Goal",
+    "editGoal": "Edit Goal",
+    "category": "Category",
+    "selectCategory": "Select a category",
+    "monthlyLimit": "Monthly limit",
+    "emptyTitle": "No goals set",
+    "emptyDesc": "Set goals to track your spending by category",
+    "createFirst": "Create first goal",
+    "exceeded": "Exceeded!",
+    "critical": "Critical",
+    "attention": "Warning",
+    "onTrack": "On track",
+    "remaining": "{{value}} remaining",
+    "overBudget": "Over by {{value}}",
+    "tooltip": "You've spent {{spent}} out of {{total}} in this category",
+    "deleteTitle": "Delete Goal",
+    "deleteDesc": "Are you sure you want to delete this goal?"
+  },
+  "sidebar": {
+    "goals": "Goals",
+    "goalsDesc": "Monthly goals"
   }
 }

@@ -651,5 +651,31 @@
     "inactiveDesc": "Regulariza tu suscripción para seguir usando Dona Wilma.",
     "gracePeriodTitle": "Tu suscripción está vencida",
     "gracePeriodDesc": "Regulariza antes del {{date}} para evitar el bloqueo del acceso."
+  },
+  "goals": {
+    "title": "Metas Mensuales",
+    "subtitle": "Define límites de gasto por categoría y sigue tu progreso",
+    "addGoal": "Definir Meta",
+    "newGoal": "Nueva Meta Mensual",
+    "editGoal": "Editar Meta",
+    "category": "Categoría",
+    "selectCategory": "Selecciona una categoría",
+    "monthlyLimit": "Límite mensual",
+    "emptyTitle": "Sin metas definidas",
+    "emptyDesc": "Define metas para seguir tus gastos por categoría",
+    "createFirst": "Crear primera meta",
+    "exceeded": "¡Excedido!",
+    "critical": "Crítico",
+    "attention": "Atención",
+    "onTrack": "En camino",
+    "remaining": "Quedan {{value}}",
+    "overBudget": "Excedido en {{value}}",
+    "tooltip": "Ya gastaste {{spent}} de {{total}} en esta categoría",
+    "deleteTitle": "Eliminar Meta",
+    "deleteDesc": "¿Estás seguro de que deseas eliminar esta meta?"
+  },
+  "sidebar": {
+    "goals": "Metas",
+    "goalsDesc": "Metas mensuales"
   }
 }
