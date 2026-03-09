@@ -124,7 +124,7 @@ export function AppSidebar({
         </div>
       </SidebarHeader>
       
-      <SidebarContent className="px-2 py-4">
+      <SidebarContent className="px-2 py-3">
         <SidebarGroup>
           <SidebarGroupContent>
             <div className="mb-4">
