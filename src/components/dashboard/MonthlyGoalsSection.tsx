@@ -8,7 +8,16 @@ import { Plus, Trash2, Pencil } from "lucide-react";
 import { GoalModal } from "./GoalModal";
 import { GoalProgress } from "@/hooks/useMonthlyGoals";
 import { useTranslation } from "react-i18next";
-import { DeleteConfirmationDialog } from "../DeleteConfirmationDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface MonthlyGoalsSectionProps {
   goalsWithProgress: GoalProgress[];
