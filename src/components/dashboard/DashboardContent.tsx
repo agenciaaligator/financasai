@@ -440,9 +440,9 @@ export function DashboardContent({
         totalExpenses={totalExpenses}
       />
       
-      <Card className="bg-gradient-card shadow-card border-0">
+      <Card className="dw-card bg-card shadow-card border-0">
         <CardHeader>
-          <CardTitle>{t('chart.howIsYourMoney', 'Como está seu dinheiro este mês')}</CardTitle>
+          <CardTitle className="font-heading">{t('chart.howIsYourMoney', 'Como seu dinheiro se comportou')}</CardTitle>
         </CardHeader>
         <CardContent>
           <FinancialChart transactions={transactions} />
