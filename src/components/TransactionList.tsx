@@ -70,13 +70,24 @@ export function TransactionList({
   const getCategoryEmoji = (categoryName?: string) => {
     if (!categoryName) return '💬';
     const name = categoryName.toLowerCase();
-    if (name.includes('alimentação') || name.includes('comida') || name.includes('mercado')) return '🍔';
+    if (name.includes('alimentação') || name.includes('comida') || name.includes('mercado')) return '🍽️';
     if (name.includes('transporte') || name.includes('uber') || name.includes('gasolina')) return '🚗';
     if (name.includes('saúde') || name.includes('médico') || name.includes('farmácia')) return '💊';
     if (name.includes('lazer') || name.includes('entretenimento') || name.includes('cinema')) return '🎮';
     if (name.includes('casa') || name.includes('moradia') || name.includes('aluguel')) return '🏠';
     if (name.includes('educação') || name.includes('curso') || name.includes('livro')) return '📚';
+    if (name.includes('trabalho') || name.includes('projeto') || name.includes('freelance')) return '💼';
     return '💬';
+  };
+
+  const getCategoryGradient = (categoryName?: string) => {
+    if (!categoryName) return 'bg-gradient-to-br from-gray-400 to-gray-500';
+    const name = categoryName.toLowerCase();
+    if (name.includes('alimentação') || name.includes('comida') || name.includes('mercado')) return 'bg-gradient-to-br from-red-400 to-red-600';
+    if (name.includes('transporte') || name.includes('uber') || name.includes('gasolina')) return 'bg-gradient-to-br from-blue-400 to-green-500';
+    if (name.includes('casa') || name.includes('moradia') || name.includes('aluguel')) return 'bg-gradient-to-br from-blue-400 to-green-500';
+    if (name.includes('trabalho') || name.includes('projeto') || name.includes('freelance')) return 'bg-gradient-to-br from-purple-400 to-purple-600';
+    return 'bg-gradient-to-br from-gray-400 to-gray-500';
   };
 
   const getTransactionSource = (transaction: Transaction) => {
