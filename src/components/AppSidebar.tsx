@@ -1,11 +1,5 @@
 import {
-  DollarSign,
-  TrendingUp,
-  Tags,
-  BarChart,
-  User,
   Plus,
-  Shield,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTranslation } from "react-i18next";
@@ -45,42 +39,42 @@ export function AppSidebar({
   const { t } = useTranslation();
 
   const sidebarItemsLocal = [
-    { id: "dashboard", title: t('sidebar.dashboard', 'Dashboard'), icon: DollarSign, description: t('sidebar.dashboardDesc', 'Visão geral financeira') },
-    { id: "transactions", title: t('sidebar.transactions', 'Transações'), icon: TrendingUp, description: t('sidebar.transactionsDesc', 'Lançamentos e movimentações') },
-    { id: "categories", title: t('sidebar.categories', 'Categorias'), icon: Tags, description: t('sidebar.categoriesDesc', 'Gerenciar categorias') },
-    { id: "reports", title: t('sidebar.reports', 'Relatórios'), icon: BarChart, description: t('sidebar.reportsDesc', 'Análises e gráficos') },
-    { id: "profile", title: t('sidebar.profile', 'Perfil'), icon: User, description: t('sidebar.profileDesc', 'Configurações pessoais') },
+    { id: "dashboard", title: t('sidebar.dashboard', 'Dashboard'), emoji: "📊", description: t('sidebar.dashboardDesc', 'Visão geral financeira') },
+    { id: "transactions", title: t('sidebar.transactions', 'Transações'), emoji: "💰", description: t('sidebar.transactionsDesc', 'Lançamentos e movimentações') },
+    { id: "categories", title: t('sidebar.categories', 'Categorias'), emoji: "📂", description: t('sidebar.categoriesDesc', 'Gerenciar categorias') },
+    { id: "reports", title: t('sidebar.reports', 'Relatórios'), emoji: "📈", description: t('sidebar.reportsDesc', 'Análises e gráficos') },
+    { id: "profile", title: t('sidebar.profile', 'Perfil'), emoji: "👤", description: t('sidebar.profileDesc', 'Configurações pessoais') },
   ];
 
   const adminItemsLocal = [
-    { id: "admin", title: t('sidebar.admin', 'Admin'), icon: Shield, description: t('sidebar.adminDesc', 'Painel administrativo') },
+    { id: "admin", title: t('sidebar.admin', 'Admin'), emoji: "🛡️", description: t('sidebar.adminDesc', 'Painel administrativo') },
   ];
 
   const allItems = [...sidebarItemsLocal, ...(isAdmin ? adminItemsLocal : [])];
 
   if (isMobile) {
     return (
-      <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
-        <div className="border-b border-sidebar-border p-4 bg-sidebar">
+      <div className="flex flex-col h-full bg-gradient-to-br from-primary to-primary-dark text-sidebar-foreground">
+        <div className="border-b border-sidebar-border p-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-              <DollarSign className="h-5 w-5 text-white" />
+            <div className="w-10 h-10 bg-secondary/20 backdrop-blur rounded-lg flex items-center justify-center animate-float">
+              <span className="text-xl">💰</span>
             </div>
             <div>
-              <h2 className="font-bold text-lg text-sidebar-primary">Dona Wilma</h2>
-              <p className="text-xs text-sidebar-foreground/60">{t('sidebar.subtitle')}</p>
+              <h2 className="font-heading italic text-xl text-white font-semibold">Dona Wilma</h2>
+              <p className="text-xs text-white/70">Sua assistente financeira pessoal</p>
             </div>
           </div>
         </div>
         
-        <div className="flex-1 px-3 py-4 bg-sidebar">
+        <div className="flex-1 px-3 py-4">
           <div className="mb-4">
             <button
               onClick={() => onToggleForm()}
-              className="w-full h-12 text-left bg-gradient-primary hover:shadow-primary text-white hover:bg-gradient-primary transition-all duration-200 rounded-lg flex items-center justify-start px-4"
+              className="w-full h-12 text-left bg-secondary hover:bg-secondary/90 text-secondary-foreground font-medium transition-all duration-200 rounded-lg flex items-center justify-start px-4 shadow-lg"
             >
-              <Plus className="h-5 w-5" />
-              <span className="ml-2 font-medium">{t('sidebar.newTransaction', 'Nova Transação')}</span>
+              <span className="text-lg mr-2">➕</span>
+              <span className="font-medium">{t('sidebar.newTransaction', 'Nova Transação')}</span>
             </button>
           </div>
 
@@ -91,17 +85,17 @@ export function AppSidebar({
                 <button
                   key={item.id}
                   onClick={() => onTabChange(item.id)}
-                  className={`w-full h-12 transition-all duration-200 rounded-lg flex items-center justify-start px-4 ${
+                  className={`w-full h-12 transition-all duration-200 rounded-lg flex items-center justify-start px-4 hover:translate-x-1 hover:bg-white/10 hover:backdrop-blur ${
                     isActive 
-                      ? "bg-sidebar-accent text-sidebar-primary font-medium border-l-4 border-primary" 
-                      : "hover:bg-sidebar-accent/50 text-sidebar-foreground"
+                      ? "bg-white/20 backdrop-blur text-white font-medium border-l-4 border-secondary" 
+                      : "text-white/80"
                   }`}
                 >
-                  <item.icon className={`h-5 w-5 ${isActive ? "text-primary" : ""}`} />
-                  <div className="ml-3 text-left">
-                    <div className="font-medium text-sidebar-foreground">{item.title}</div>
+                  <span className="text-lg mr-3">{item.emoji}</span>
+                  <div className="text-left">
+                    <div className="font-medium">{item.title}</div>
                     {!isActive && (
-                      <div className="text-xs text-sidebar-foreground/60">{item.description}</div>
+                      <div className="text-xs text-white/60">{item.description}</div>
                     )}
                   </div>
                 </button>
@@ -114,16 +108,16 @@ export function AppSidebar({
   }
 
   return (
-    <Sidebar className="border-r border-sidebar-border">
+    <Sidebar className="border-r border-sidebar-border bg-gradient-to-br from-primary to-primary-dark">
       <SidebarHeader className="border-b border-sidebar-border p-4">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-            <DollarSign className="h-5 w-5 text-white" />
+          <div className="w-10 h-10 bg-secondary/20 backdrop-blur rounded-lg flex items-center justify-center animate-float">
+            <span className="text-xl">💰</span>
           </div>
           {open && (
             <div>
-              <h2 className="font-bold text-lg text-sidebar-primary">Dona Wilma</h2>
-              <p className="text-xs text-sidebar-foreground/60">{t('sidebar.subtitle')}</p>
+              <h2 className="font-heading italic text-xl text-white font-semibold">Dona Wilma</h2>
+              <p className="text-xs text-white/70">Sua assistente financeira pessoal</p>
             </div>
           )}
         </div>
@@ -135,11 +129,11 @@ export function AppSidebar({
             <div className="mb-4">
               <SidebarMenuButton
                 onClick={onToggleForm}
-                className={`w-full h-12 text-left bg-gradient-primary hover:shadow-primary text-white hover:bg-gradient-primary transition-all duration-200 ${
+                className={`w-full h-12 text-left bg-secondary hover:bg-secondary/90 text-secondary-foreground font-medium transition-all duration-200 shadow-lg ${
                   !open ? "justify-center px-2" : "justify-start px-4"
                 }`}
               >
-                <Plus className="h-5 w-5" />
+                <span className="text-lg">➕</span>
                 {open && <span className="ml-2 font-medium">{t('sidebar.newTransaction', 'Nova Transação')}</span>}
               </SidebarMenuButton>
             </div>
@@ -151,18 +145,18 @@ export function AppSidebar({
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
                       onClick={() => onTabChange(item.id)}
-                      className={`w-full h-12 transition-all duration-200 ${
+                      className={`w-full h-12 transition-all duration-200 hover:translate-x-1 hover:bg-white/10 hover:backdrop-blur ${
                         isActive 
-                          ? "bg-sidebar-accent text-sidebar-primary font-medium border-l-4 border-primary" 
-                          : "hover:bg-sidebar-accent/50 text-sidebar-foreground"
+                          ? "bg-white/20 backdrop-blur text-white font-medium border-l-4 border-secondary" 
+                          : "text-white/80"
                       } ${!open ? "justify-center px-2" : "justify-start px-4"}`}
                     >
-                      <item.icon className={`h-5 w-5 ${isActive ? "text-primary" : ""}`} />
+                      <span className="text-lg">{item.emoji}</span>
                       {open && (
                         <div className="ml-3 text-left">
                           <div className="font-medium">{item.title}</div>
                           {!isActive && (
-                            <div className="text-xs text-sidebar-foreground/60">{item.description}</div>
+                            <div className="text-xs text-white/60">{item.description}</div>
                           )}
                         </div>
                       )}

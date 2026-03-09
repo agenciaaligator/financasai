@@ -210,6 +210,19 @@ export function DashboardContent({
   if (currentTab === "dashboard") {
     return (
       <div className="space-y-6">
+        {/* Header Acolhedor */}
+        <Card className="relative dw-card bg-card shadow-card border-0 overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/20 rounded-full blur-3xl -translate-y-8 translate-x-8"></div>
+          <CardContent className="p-8 relative">
+            <h1 className="font-heading text-[2.5rem] font-semibold text-foreground mb-2">
+              Olá! 🎉
+            </h1>
+            <p className="text-lg text-muted-foreground">
+              Como estão suas finanças hoje? Vamos dar uma olhada...
+            </p>
+          </CardContent>
+        </Card>
+
         {showWelcomeBanner && (
           <Card className="bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20">
             <CardContent className="pt-6">
@@ -237,18 +250,18 @@ export function DashboardContent({
         />
         
         <div className="space-y-6">
-          <Card className="bg-gradient-card shadow-card border-0">
+          <Card className="dw-card bg-card shadow-card border-0">
             <CardHeader>
-              <CardTitle>{t('chart.howIsYourMoney', 'Como está seu dinheiro este mês')}</CardTitle>
+              <CardTitle className="font-heading">{t('chart.howIsYourMoney', 'Como seu dinheiro se comportou')}</CardTitle>
             </CardHeader>
             <CardContent>
               <FinancialChart transactions={currentMonthTransactions} />
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-card shadow-card border-0">
+          <Card className="dw-card bg-card shadow-card border-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle>{t('transactionList.yourLatestMovements', 'Suas últimas movimentações')}</CardTitle>
+              <CardTitle>💬 {t('transactionList.yourLatestMovements', 'Suas últimas conversas financeiras')}</CardTitle>
               <Button
                 variant="ghost"
                 size="sm"
@@ -427,9 +440,9 @@ export function DashboardContent({
         totalExpenses={totalExpenses}
       />
       
-      <Card className="bg-gradient-card shadow-card border-0">
+      <Card className="dw-card bg-card shadow-card border-0">
         <CardHeader>
-          <CardTitle>{t('chart.howIsYourMoney', 'Como está seu dinheiro este mês')}</CardTitle>
+          <CardTitle className="font-heading">{t('chart.howIsYourMoney', 'Como seu dinheiro se comportou')}</CardTitle>
         </CardHeader>
         <CardContent>
           <FinancialChart transactions={transactions} />

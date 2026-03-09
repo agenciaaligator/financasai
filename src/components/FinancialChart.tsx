@@ -7,8 +7,8 @@ interface FinancialChartProps {
 }
 
 const COLORS = {
-  income: '#059669',
-  expense: '#dc2626'
+  income: '#27AE60', // Verde natural
+  expense: '#dc2626'  // Vermelho para despesas
 };
 
 export function FinancialChart({ transactions }: FinancialChartProps) {
@@ -54,7 +54,7 @@ export function FinancialChart({ transactions }: FinancialChartProps) {
 
   return (
     <div>
-      <h3 className="text-lg font-medium mb-4">{t('chart.howIsYourMoney', 'Como está seu dinheiro este mês')}</h3>
+      <h3 className="font-heading text-lg font-medium mb-4">{t('chart.howIsYourMoney', 'Como seu dinheiro se comportou')}</h3>
       <ResponsiveContainer width="100%" height={280}>
         <PieChart>
           <Pie

@@ -1,5 +1,4 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, TrendingUp, TrendingDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface SummaryCardsProps {
@@ -14,13 +13,16 @@ export function SummaryCards({ balance, totalIncome, totalExpenses }: SummaryCar
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-      <Card className="bg-gradient-card shadow-card border-0">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">{t('summary.monthBalance', 'Saldo do Mês')}</CardTitle>
-          <DollarSign className="h-4 w-4 text-muted-foreground" />
+      <Card className="relative dw-card bg-card shadow-card border-0 animate-fadeInUp">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-primary rounded-t-[20px]"></div>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-6">
+          <CardTitle className="text-xs uppercase tracking-wider font-medium text-muted-foreground">{t('summary.monthBalance', 'Saldo do Mês')}</CardTitle>
+          <div className="w-[60px] h-[60px] bg-gradient-to-br from-primary to-primary-dark rounded-full flex items-center justify-center">
+            <span className="text-2xl">💰</span>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className={`text-2xl font-bold ${isNegative ? 'text-destructive' : 'text-success'}`}>
+          <div className={`text-[2rem] font-bold ${isNegative ? 'text-destructive' : 'text-success'}`}>
             R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
@@ -29,13 +31,16 @@ export function SummaryCards({ balance, totalIncome, totalExpenses }: SummaryCar
         </CardContent>
       </Card>
 
-      <Card className="bg-gradient-card shadow-card border-0">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">{t('dashboard.income', 'Receitas')}</CardTitle>
-          <TrendingUp className="h-4 w-4 text-success" />
+      <Card className="relative dw-card bg-card shadow-card border-0 animate-fadeInUp delay-100">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-success rounded-t-[20px]"></div>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-6">
+          <CardTitle className="text-xs uppercase tracking-wider font-medium text-muted-foreground">{t('dashboard.income', 'Receitas')}</CardTitle>
+          <div className="w-[60px] h-[60px] bg-gradient-to-br from-success to-success/80 rounded-full flex items-center justify-center">
+            <span className="text-2xl">📈</span>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-success">
+          <div className="text-[2rem] font-bold text-success">
             R$ {totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
@@ -44,13 +49,16 @@ export function SummaryCards({ balance, totalIncome, totalExpenses }: SummaryCar
         </CardContent>
       </Card>
 
-      <Card className="bg-gradient-card shadow-card border-0">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">{t('dashboard.expenses', 'Despesas')}</CardTitle>
-          <TrendingDown className="h-4 w-4 text-destructive" />
+      <Card className="relative dw-card bg-card shadow-card border-0 animate-fadeInUp delay-200">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-destructive rounded-t-[20px]"></div>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-6">
+          <CardTitle className="text-xs uppercase tracking-wider font-medium text-muted-foreground">{t('dashboard.expenses', 'Despesas')}</CardTitle>
+          <div className="w-[60px] h-[60px] bg-gradient-to-br from-destructive to-destructive/80 rounded-full flex items-center justify-center">
+            <span className="text-2xl">📉</span>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-destructive">
+          <div className="text-[2rem] font-bold text-destructive">
             R$ {totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
