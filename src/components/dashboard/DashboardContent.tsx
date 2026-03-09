@@ -18,6 +18,7 @@ import { TransactionList } from "../TransactionList";
 import { TransactionFilters, TransactionFiltersState } from "../TransactionFilters";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useFeatureLimits } from "@/hooks/useFeatureLimits";
+import { useMonthlyGoals } from "@/hooks/useMonthlyGoals";
 import { 
   startOfDay, 
   endOfDay, 
