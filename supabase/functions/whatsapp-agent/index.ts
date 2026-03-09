@@ -944,6 +944,37 @@ class AICategorizer {
 
       // Preparar lista de categorias para a IA
       const categoriesText = userCategories.map(cat => cat.name).join(', ');
+
+      // Buscar padrões aprendidos do usuário para contexto
+      let patternsContext = '';
+      try {
+        const { data: patterns } = await supabase
+          .from('user_category_patterns')
+          .select('keyword, category_id, usage_count')
+          .eq('user_id', userId)
+          .order('usage_count', { ascending: false })
+          .limit(20);
+        
+        if (patterns && patterns.length > 0) {
+          const patternMap = new Map<string, string[]>();
+          for (const p of patterns) {
+            const cat = userCategories.find(c => c.id === p.category_id);
+            if (cat) {
+              const existing = patternMap.get(cat.name) || [];
+              existing.push(p.keyword);
+              patternMap.set(cat.name, existing);
+            }
+          }
+          if (patternMap.size > 0) {
+            const entries = Array.from(patternMap.entries())
+              .map(([catName, keywords]) => `${keywords.join(', ')} → ${catName}`)
+              .join('; ');
+            patternsContext = `\n\nPadrões pessoais deste usuário (use como referência forte): ${entries}`;
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching patterns for AI context:', err);
+      }
       
       const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
       if (!LOVABLE_API_KEY) {
@@ -973,6 +1004,7 @@ IMPORTANTE:
 - "padaria", "lanche", "restaurante" devem ir para "Alimentação"
 - "uber", "ônibus", "gasolina" devem ir para "Transporte"
 - "conta de luz", "água", "aluguel" devem ir para "Moradia"
+- Se o usuário tem padrões pessoais, PRIORIZE esses padrões
 - Se nenhuma categoria se adequar bem, retorne "Outros" se existir, ou null
 
 Responda APENAS com um JSON válido no formato:
@@ -984,7 +1016,7 @@ Onde confidence é um número entre 0 e 1 indicando sua confiança na escolha.`
               role: 'user',
               content: `Mensagem do usuário: "${messageText}"
               
-Categorias disponíveis: ${categoriesText}
+Categorias disponíveis: ${categoriesText}${patternsContext}
 
 Tipo da transação: ${transactionType === 'income' ? 'receita' : 'despesa'}
 
