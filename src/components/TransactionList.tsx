@@ -45,7 +45,8 @@ export function TransactionList({
   onRefresh,
   hasActiveFilters,
   onClearFilters,
-  totalTransactionsCount
+  totalTransactionsCount,
+  isLoading = false
 }: TransactionListProps) {
   const { user } = useAuth();
   const { t } = useTranslation();
