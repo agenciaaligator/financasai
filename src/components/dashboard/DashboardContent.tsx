@@ -210,6 +210,19 @@ export function DashboardContent({
   if (currentTab === "dashboard") {
     return (
       <div className="space-y-6">
+        {/* Header Acolhedor */}
+        <Card className="relative dw-card bg-card shadow-card border-0 overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/20 rounded-full blur-3xl -translate-y-8 translate-x-8"></div>
+          <CardContent className="p-8 relative">
+            <h1 className="font-heading text-[2.5rem] font-semibold text-foreground mb-2">
+              Olá! 🎉
+            </h1>
+            <p className="text-lg text-muted-foreground">
+              Como estão suas finanças hoje? Vamos dar uma olhada...
+            </p>
+          </CardContent>
+        </Card>
+
         {showWelcomeBanner && (
           <Card className="bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20">
             <CardContent className="pt-6">
