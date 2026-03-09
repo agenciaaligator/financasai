@@ -250,16 +250,16 @@ export function DashboardContent({
         />
         
         <div className="space-y-6">
-          <Card className="bg-gradient-card shadow-card border-0">
+          <Card className="dw-card bg-card shadow-card border-0">
             <CardHeader>
-              <CardTitle>{t('chart.howIsYourMoney', 'Como está seu dinheiro este mês')}</CardTitle>
+              <CardTitle className="font-heading">{t('chart.howIsYourMoney', 'Como seu dinheiro se comportou')}</CardTitle>
             </CardHeader>
             <CardContent>
               <FinancialChart transactions={currentMonthTransactions} />
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-card shadow-card border-0">
+          <Card className="dw-card bg-card shadow-card border-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <CardTitle>{t('transactionList.yourLatestMovements', 'Suas últimas movimentações')}</CardTitle>
               <Button
