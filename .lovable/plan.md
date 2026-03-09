@@ -1,73 +1,76 @@
 
-## Correcao Final - Fluxo de Onboarding
 
-### Bug Critico Encontrado
+## Sistema de Metas Mensais - Dona Wilma
 
-**Problema 5: Validacao do codigo WhatsApp SEMPRE falha** (mesmo com codigo correto)
+### Abordagem
 
-A edge function `validate-code` retorna `{ valid: true, message: "Codigo valido" }`, mas o frontend (`Welcome.tsx` linha 163) verifica `data?.success`. Como `success` nao existe na resposta, o frontend interpreta como erro e mostra "Codigo invalido ou expirado" mesmo quando o codigo esta correto.
+Em vez de adicionar `monthly_goals` na tabela `profiles` (que mistura concerns), criarei uma tabela dedicada `monthly_goals` para manter o schema limpo e permitir queries eficientes. O cálculo de progresso será feito no frontend usando as transações já carregadas.
 
-Isso explica tambem o Problema 4 (parece que o codigo nao funciona) e o Problema 6 (mensagem de boas-vindas nunca chega, pois o usuario nunca conclui a validacao com sucesso no frontend).
+---
 
-### Alteracoes Necessarias
+### PARTE 1: Backend (Supabase)
 
-#### 1. Corrigir Welcome.tsx - Verificacao da resposta validate-code
-
-**Arquivo:** `src/pages/Welcome.tsx` (linha 163)
-
-Alterar de:
-```tsx
-if (!data?.success) throw new Error(data?.error || 'Codigo invalido ou expirado');
-```
-
-Para:
-```tsx
-if (!data?.valid && !data?.success) throw new Error(data?.message || data?.error || 'Codigo invalido ou expirado');
-```
-
-Isso aceita tanto `{ valid: true }` (resposta atual) quanto `{ success: true }` (se for alterado no futuro).
-
-#### 2. Limpeza de dados do usuario de teste
-
-Executar queries SQL para limpar os dados de `alexandre@aligator.com.br`:
+**Nova tabela `monthly_goals`:**
 ```sql
-DELETE FROM whatsapp_sessions WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+CREATE TABLE public.monthly_goals (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  organization_id uuid,
+  category_id uuid REFERENCES public.categories(id) ON DELETE CASCADE,
+  amount numeric NOT NULL,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  UNIQUE(user_id, category_id)
 );
-DELETE FROM whatsapp_validation_codes WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM user_roles WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM user_subscriptions WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM organization_members WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM organizations WHERE owner_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM profiles WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
+
+ALTER TABLE public.monthly_goals ENABLE ROW LEVEL SECURITY;
+-- RLS: users can CRUD own goals, org members can view
 ```
 
-A exclusao do usuario de `auth.users` precisa ser feita via Supabase Dashboard (Authentication > Users) ou pela edge function `delete-user-admin`.
+Não criarei uma função SQL `calculate_goal_progress` — o cálculo será feito no frontend com as transações do mês atual que já estão carregadas em memória (evita round-trip desnecessário ao DB).
 
-### Problemas 2 e 3: Email Timing e Link
+---
 
-**Nao ha bug de codigo aqui.** O fluxo atual e:
-1. `signUp()` envia email de confirmacao (comportamento nativo Supabase)
-2. Usuario faz checkout no Stripe
-3. Stripe webhook ativa a assinatura
-4. Usuario confirma email quando quiser
-5. Link do email vai para `/auth/callback` (ja configurado corretamente na linha 47 do Register.tsx)
-6. `/auth/callback` verifica assinatura e redireciona para `/boas-vindas`
+### PARTE 2: Frontend
 
-O email e enviado no momento do signup porque o Supabase nao permite adiar o envio. Isso NAO e um bug - o usuario pode confirmar o email a qualquer momento, antes ou depois do checkout.
+**Novo hook `useMonthlyGoals`:**
+- Fetch/create/update/delete goals da tabela `monthly_goals`
+- Calcula progresso comparando com transações do mês atual por `category_id`
 
-### Resumo
+**Novo componente `MonthlyGoalsSection`:**
+- Grid de cards por categoria com meta definida
+- Progress bar colorida (verde 0-70%, amarelo 70-90%, vermelho 90%+)
+- Badge vermelho quando >90%
+- Tooltip com "Você já gastou R$X de R$Y"
+- Botão "Definir Meta" abre modal
 
-A unica alteracao de codigo necessaria e a correcao da verificacao da resposta em `Welcome.tsx`. O resto sao operacoes de limpeza de dados no banco.
+**Novo componente `GoalModal`:**
+- Select com categorias de despesa existentes
+- Input numérico para valor da meta
+- Salva/atualiza na tabela `monthly_goals`
+
+**Integração no Dashboard:**
+- Adicionar item "Metas" (🎯) no `AppSidebar`
+- Adicionar case `goals` no `DashboardContent`
+- Adicionar na tab title map do `FinancialDashboard`
+
+**i18n:** Adicionar chaves `goals.*` nos 5 arquivos de locale.
+
+---
+
+### PARTE 3: WhatsApp (Não incluído)
+
+A integração do comando "metas" no WhatsApp agent requer modificar a edge function `whatsapp-agent/index.ts` que tem lógica complexa de NLP. Isso será uma etapa separada após o frontend estar funcionando.
+
+---
+
+### Arquivos a criar/modificar:
+1. **Migration SQL** — tabela `monthly_goals` + RLS + trigger updated_at
+2. **`src/hooks/useMonthlyGoals.ts`** — CRUD + cálculo de progresso
+3. **`src/components/dashboard/MonthlyGoalsSection.tsx`** — UI principal
+4. **`src/components/dashboard/GoalModal.tsx`** — Modal criar/editar meta
+5. **`src/components/AppSidebar.tsx`** — Adicionar item "Metas"
+6. **`src/components/FinancialDashboard.tsx`** — Tab title map
+7. **`src/components/dashboard/DashboardContent.tsx`** — Case `goals`
+8. **5 arquivos de locale** — Chaves de tradução
+
