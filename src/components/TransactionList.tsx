@@ -1,12 +1,19 @@
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trash2, Edit } from "lucide-react";
+import { Trash2, Edit, Sparkles } from "lucide-react";
 import { Transaction } from '@/hooks/useTransactions';
 import { useAuth } from "@/hooks/useAuth";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import { useTranslation } from "react-i18next";
 import { ChatSkeleton } from "@/components/ui/chat-skeleton";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useTransactions } from "@/hooks/useTransactions";
+import { useCategoryPatterns } from "@/hooks/useCategoryPatterns";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import {
   Pagination,
   PaginationContent,
@@ -50,6 +57,10 @@ export function TransactionList({
 }: TransactionListProps) {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const { categories } = useTransactions();
+  const { learnPattern } = useCategoryPatterns();
+  const { toast } = useToast();
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
 
   const formatFriendlyDate = (dateString: string) => {
     const [year, month, day] = dateString.split('-').map(Number);
@@ -75,14 +86,14 @@ export function TransactionList({
       return t('transactionList.yesterday', 'Ontem');
     }
     if (transactionDate.getTime() === twoDaysAgo.getTime()) {
-      return '2 dias atrás';
+      return t('categories.daysAgo', '{{count}} dias atrás', { count: 2 });
     }
     if (transactionDate.getTime() === threeDaysAgo.getTime()) {
-      return '3 dias atrás';
+      return t('categories.daysAgo', '{{count}} dias atrás', { count: 3 });
     }
     if (transactionDate >= oneWeekAgo) {
       const daysDiff = Math.floor((today.getTime() - transactionDate.getTime()) / (1000 * 60 * 60 * 24));
-      return `${daysDiff} dias atrás`;
+      return t('categories.daysAgo', '{{count}} dias atrás', { count: daysDiff });
     }
 
     const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
@@ -116,6 +127,40 @@ export function TransactionList({
     return transaction.source === 'whatsapp' ? 'WhatsApp' : 'Manual';
   };
 
+  const handleQuickCategoryChange = async (transaction: Transaction, newCategoryId: string) => {
+    try {
+      const { error } = await supabase
+        .from('transactions')
+        .update({ category_id: newCategoryId })
+        .eq('id', transaction.id);
+
+      if (error) throw error;
+
+      // Learn pattern from this correction
+      const learned = await learnPattern(transaction.title, newCategoryId);
+      
+      const selectedCategory = categories.find(c => c.id === newCategoryId);
+      
+      toast({
+        title: learned 
+          ? t('categories.patternLearned', '✅ Padrão aprendido!')
+          : t('categories.categoryChanged', 'Categoria atualizada'),
+        description: learned
+          ? t('categories.patternLearnedDesc', 'Próximas transações similares usarão "{{category}}"', { category: selectedCategory?.name || '' })
+          : undefined
+      });
+
+      setEditingCategoryId(null);
+      onRefresh?.();
+    } catch (err) {
+      toast({
+        title: t('common.error', 'Erro'),
+        description: t('categories.changeError', 'Não foi possível alterar a categoria'),
+        variant: "destructive"
+      });
+    }
+  };
+
   const handlePageChange = (page: number) => {
     if (onPageChange && page >= 1 && totalPages && page <= totalPages) {
       onPageChange(page);
@@ -144,10 +189,10 @@ export function TransactionList({
           <div className="space-y-3">
             <div className="text-6xl">💬</div>
             <p className="text-muted-foreground font-medium">
-              Nenhuma conversa ainda...
+              {t('transactionList.noTransactionsYet', 'Nenhuma conversa ainda...')}
             </p>
             <p className="text-sm text-muted-foreground/80">
-              Que tal enviar "gastei 50 no mercado" pelo WhatsApp?
+              {t('transactionList.noTransactions', 'Que tal enviar "gastei 50 no mercado" pelo WhatsApp?')}
             </p>
           </div>
         )}
@@ -183,11 +228,47 @@ export function TransactionList({
                   <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                     <p className="font-medium truncate">{transaction.title}</p>
                     <div className="flex gap-2">
-                      {transaction.categories && (
-                        <Badge variant="outline" className="text-xs w-fit">
-                          {transaction.categories.name}
-                        </Badge>
-                      )}
+                      {/* Quick-edit category badge */}
+                      <Popover 
+                        open={editingCategoryId === transaction.id} 
+                        onOpenChange={(open) => setEditingCategoryId(open ? transaction.id : null)}
+                      >
+                        <PopoverTrigger asChild>
+                          <Badge 
+                            variant="outline" 
+                            className="text-xs w-fit cursor-pointer hover:bg-accent transition-colors"
+                            title={t('categories.clickToChange', 'Clique para alterar a categoria')}
+                          >
+                            {transaction.categories?.name || t('categories.uncategorized', 'Sem categoria')}
+                          </Badge>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-56 p-2" align="start">
+                          <div className="space-y-1">
+                            <p className="text-xs font-medium text-muted-foreground px-2 py-1">
+                              {t('categories.selectCategory', 'Selecionar categoria')}
+                            </p>
+                            {categories
+                              .filter(cat => cat.type === transaction.type)
+                              .map(cat => (
+                                <button
+                                  key={cat.id}
+                                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm hover:bg-accent transition-colors text-left"
+                                  onClick={() => handleQuickCategoryChange(transaction, cat.id)}
+                                >
+                                  <div 
+                                    className="w-3 h-3 rounded-full flex-shrink-0" 
+                                    style={{ backgroundColor: cat.color }} 
+                                  />
+                                  <span>{cat.name}</span>
+                                  {transaction.category_id === cat.id && (
+                                    <span className="ml-auto text-primary">✓</span>
+                                  )}
+                                </button>
+                              ))
+                            }
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                       <Badge variant="secondary" className="text-xs w-fit">
                         {getTransactionSource(transaction)}
                       </Badge>

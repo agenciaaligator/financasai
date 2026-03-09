@@ -944,6 +944,37 @@ class AICategorizer {
 
       // Preparar lista de categorias para a IA
       const categoriesText = userCategories.map(cat => cat.name).join(', ');
+
+      // Buscar padrões aprendidos do usuário para contexto
+      let patternsContext = '';
+      try {
+        const { data: patterns } = await supabase
+          .from('user_category_patterns')
+          .select('keyword, category_id, usage_count')
+          .eq('user_id', userId)
+          .order('usage_count', { ascending: false })
+          .limit(20);
+        
+        if (patterns && patterns.length > 0) {
+          const patternMap = new Map<string, string[]>();
+          for (const p of patterns) {
+            const cat = userCategories.find(c => c.id === p.category_id);
+            if (cat) {
+              const existing = patternMap.get(cat.name) || [];
+              existing.push(p.keyword);
+              patternMap.set(cat.name, existing);
+            }
+          }
+          if (patternMap.size > 0) {
+            const entries = Array.from(patternMap.entries())
+              .map(([catName, keywords]) => `${keywords.join(', ')} → ${catName}`)
+              .join('; ');
+            patternsContext = `\n\nPadrões pessoais deste usuário (use como referência forte): ${entries}`;
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching patterns for AI context:', err);
+      }
       
       const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
       if (!LOVABLE_API_KEY) {
@@ -973,6 +1004,7 @@ IMPORTANTE:
 - "padaria", "lanche", "restaurante" devem ir para "Alimentação"
 - "uber", "ônibus", "gasolina" devem ir para "Transporte"
 - "conta de luz", "água", "aluguel" devem ir para "Moradia"
+- Se o usuário tem padrões pessoais, PRIORIZE esses padrões
 - Se nenhuma categoria se adequar bem, retorne "Outros" se existir, ou null
 
 Responda APENAS com um JSON válido no formato:
@@ -984,7 +1016,7 @@ Onde confidence é um número entre 0 e 1 indicando sua confiança na escolha.`
               role: 'user',
               content: `Mensagem do usuário: "${messageText}"
               
-Categorias disponíveis: ${categoriesText}
+Categorias disponíveis: ${categoriesText}${patternsContext}
 
 Tipo da transação: ${transactionType === 'income' ? 'receita' : 'despesa'}
 
@@ -1345,8 +1377,119 @@ class PersonalizedResponses {
 
 class CategoryMatcher {
   /**
+   * Extract keywords from a transaction title for pattern learning
+   */
+  static extractKeywords(title: string): string[] {
+    const stopWords = new Set([
+      'de', 'do', 'da', 'dos', 'das', 'em', 'no', 'na', 'nos', 'nas',
+      'um', 'uma', 'uns', 'umas', 'o', 'a', 'os', 'as', 'e', 'ou',
+      'com', 'sem', 'por', 'para', 'the', 'of', 'and', 'in', 'to',
+      'at', 'for', 'on', 'is', 'it', 'my', 'that', 'this'
+    ]);
+    return title
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .split(/\s+/)
+      .filter(w => w.length >= 3 && !stopWords.has(w));
+  }
+
+  /**
+   * Learn a pattern: save keyword->category association for this user
+   */
+  static async learnPattern(userId: string, title: string, categoryId: string): Promise<void> {
+    const keywords = this.extractKeywords(title);
+    if (keywords.length === 0) return;
+
+    for (const keyword of keywords) {
+      try {
+        const { data: existing } = await supabase
+          .from('user_category_patterns')
+          .select('id, usage_count, confidence_score')
+          .eq('user_id', userId)
+          .eq('keyword', keyword)
+          .eq('category_id', categoryId)
+          .maybeSingle();
+
+        if (existing) {
+          const newCount = (existing.usage_count || 1) + 1;
+          const newConfidence = Math.min(1, (existing.confidence_score || 1) + 0.1);
+          await supabase
+            .from('user_category_patterns')
+            .update({ usage_count: newCount, confidence_score: newConfidence })
+            .eq('id', existing.id);
+        } else {
+          await supabase
+            .from('user_category_patterns')
+            .insert({
+              user_id: userId,
+              keyword,
+              category_id: categoryId,
+              confidence_score: 1,
+              usage_count: 1
+            });
+        }
+        console.log(`🧠 Learned pattern: "${keyword}" → category ${categoryId}`);
+      } catch (err) {
+        console.error('Error learning pattern:', err);
+      }
+    }
+  }
+
+  /**
+   * Check user_category_patterns for a matching category
+   */
+  static async findPatternMatch(
+    userId: string,
+    title: string,
+    type: 'income' | 'expense',
+    categories: Array<{ id: string; name: string; type: string }>
+  ): Promise<{ category_id: string | null; category_name: string; suggested: boolean } | null> {
+    const keywords = this.extractKeywords(title);
+    if (keywords.length === 0) return null;
+
+    try {
+      const { data: patterns } = await supabase
+        .from('user_category_patterns')
+        .select('keyword, category_id, confidence_score, usage_count')
+        .eq('user_id', userId)
+        .in('keyword', keywords);
+
+      if (!patterns || patterns.length === 0) return null;
+
+      // Score each category
+      const scores = new Map<string, number>();
+      for (const p of patterns) {
+        const current = scores.get(p.category_id) || 0;
+        scores.set(p.category_id, current + (p.confidence_score * p.usage_count));
+      }
+
+      // Find best
+      let bestId = '';
+      let bestScore = 0;
+      scores.forEach((score, catId) => {
+        if (score > bestScore) {
+          bestScore = score;
+          bestId = catId;
+        }
+      });
+
+      if (bestScore >= 0.8 && bestId) {
+        const cat = categories.find(c => c.id === bestId && c.type === type);
+        if (cat) {
+          console.log(`🧠 Pattern match found: "${title}" → ${cat.name} (score: ${bestScore})`);
+          return { category_id: cat.id, category_name: cat.name, suggested: true };
+        }
+      }
+    } catch (err) {
+      console.error('Error checking patterns:', err);
+    }
+    return null;
+  }
+
+  /**
    * Busca a melhor categoria para uma transação baseada no título
-   * Prioridade: 1) Match exato, 2) Similaridade, 3) AI, 4) "Outros"
+   * Prioridade: 1) Match exato, 2) Similaridade, 3) User patterns, 4) AI, 5) "Outros"
    */
   static async findBestCategory(
     userId: string, 
@@ -1378,15 +1521,13 @@ class CategoryMatcher {
         return { category_id: exactMatch.id, category_name: exactMatch.name, suggested: false };
       }
 
-      // 2. Buscar por similaridade (palavra contida no nome da categoria ou vice-versa)
+      // 2. Buscar por similaridade
       const similarMatches = categories.filter(cat => {
         const normalizedCatName = cat.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        // Verifica se o título contém o nome da categoria ou se a categoria contém o título
         return normalizedTitle.includes(normalizedCatName) || normalizedCatName.includes(normalizedTitle);
       });
 
       if (similarMatches.length > 0) {
-        // Pegar a categoria com nome mais longo (mais específica)
         const bestMatch = similarMatches.sort((a, b) => b.name.length - a.name.length)[0];
         console.log(`Similar category match found: ${bestMatch.name} for title: ${title}`);
         return { category_id: bestMatch.id, category_name: bestMatch.name, suggested: true };
@@ -1395,45 +1536,43 @@ class CategoryMatcher {
       // 3. Heurística específica para "água"
       if (normalizedTitle.includes('agua') || normalizedTitle.includes('água')) {
         if (normalizedTitle.includes('conta') || normalizedTitle.includes('servico') || normalizedTitle.includes('serviço')) {
-          // "conta de água" vai para Moradia
-          const moradiaMatch = categories.find(cat => 
-            cat.name.toLowerCase() === 'moradia'
-          );
+          const moradiaMatch = categories.find(cat => cat.name.toLowerCase() === 'moradia');
           if (moradiaMatch) {
             console.log(`💧 "conta de água" -> Moradia`);
             return { category_id: moradiaMatch.id, category_name: moradiaMatch.name, suggested: false };
           }
         }
-        // "água" simples vai para Outros
-        const outrosMatch = categories.find(cat => 
-          cat.name.toLowerCase() === 'outros'
-        );
+        const outrosMatch = categories.find(cat => cat.name.toLowerCase() === 'outros');
         if (outrosMatch) {
           console.log(`💧 "água" simples -> Outros`);
           return { category_id: outrosMatch.id, category_name: 'Outros', suggested: false };
         }
       }
 
-      // 4. 🤖 NOVO: Usar IA para sugestão inteligente baseada no contexto
-      console.log('🤖 No exact/similar match, trying AI categorization...');
+      // 4. 🧠 NOVO: Buscar padrões aprendidos do usuário
+      const patternMatch = await this.findPatternMatch(userId, title, type, categories);
+      if (patternMatch) {
+        return patternMatch;
+      }
+
+      // 5. 🤖 Usar IA para sugestão inteligente
+      console.log('🤖 No exact/similar/pattern match, trying AI categorization...');
       const aiResult = await AICategorizer.suggestCategoryWithAI(userId, title, type);
       
       if (aiResult.category_id && aiResult.confidence > 0.7) {
         console.log(`🎯 AI suggested category with high confidence: ${aiResult.category_name}`);
+        // Learn this AI suggestion as a pattern for future use
+        await this.learnPattern(userId, title, aiResult.category_id);
         return { category_id: aiResult.category_id, category_name: aiResult.category_name, suggested: true };
       }
 
-      // 5. Buscar categoria "Outros"
-      const outrosMatch = categories.find(cat => 
-        cat.name.toLowerCase() === 'outros'
-      );
-
+      // 6. Buscar categoria "Outros"
+      const outrosMatch = categories.find(cat => cat.name.toLowerCase() === 'outros');
       if (outrosMatch) {
         console.log(`Using "Outros" category for: ${title}`);
         return { category_id: outrosMatch.id, category_name: 'Outros', suggested: false };
       }
 
-      // 5. Se não encontrou "Outros", usar primeira categoria disponível
       console.log(`No suitable category found, using first available: ${categories[0].name}`);
       return { category_id: categories[0].id, category_name: categories[0].name, suggested: false };
 
@@ -1896,6 +2035,27 @@ class WhatsAppAgent {
       });
       
       const saveResult = await this.saveTransaction(session.user_id!, txToSave);
+
+      // 🧠 Learn pattern: associate original title keywords with the chosen category
+      if (transaction.title && saveResult) {
+        try {
+          // Get the saved transaction's category_id
+          const { data: lastTx } = await supabase
+            .from('transactions')
+            .select('category_id')
+            .eq('user_id', session.user_id!)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          
+          if (lastTx?.category_id) {
+            await CategoryMatcher.learnPattern(session.user_id!, transaction.title, lastTx.category_id);
+            console.log(`🧠 Learned category pattern from user correction: "${transaction.title}" → ${category}`);
+          }
+        } catch (err) {
+          console.error('Error learning pattern from category correction:', err);
+        }
+      }
       
       // 🔧 LIMPAR ESTADO após salvar para evitar processar próxima mensagem como comando
       await SessionManager.updateSession(session.id, {

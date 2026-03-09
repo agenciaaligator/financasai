@@ -1,14 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { X, Sparkles } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useFeatureLimits } from "@/hooks/useFeatureLimits";
+import { useCategoryPatterns } from "@/hooks/useCategoryPatterns";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 import { transactionSchema } from "@/lib/validations";
 
 interface TransactionFormProps {
@@ -25,6 +28,8 @@ interface TransactionFormProps {
 }
 
 export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
+  const { t } = useTranslation();
+
   const getLocalDate = () => {
     const now = new Date();
     const brazilOffset = -3 * 60;
@@ -41,9 +46,34 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
   const [categoryId, setCategoryId] = useState("");
   const [date, setDate] = useState(getLocalDate());
   const [description, setDescription] = useState("");
+  const [suggestion, setSuggestion] = useState<{ category_id: string; category_name?: string } | null>(null);
+  
   const { categories } = useTransactions();
   const { canCreateTransaction, refetchUsage } = useFeatureLimits();
+  const { suggestCategory, learnPattern } = useCategoryPatterns();
   const { toast } = useToast();
+
+  // Auto-suggest category when title changes
+  useEffect(() => {
+    if (title.length >= 3 && !categoryId) {
+      const filteredCategories = categories.filter(c => c.type === type);
+      const result = suggestCategory(title, filteredCategories);
+      if (result) {
+        setSuggestion({ category_id: result.category_id, category_name: result.category_name });
+      } else {
+        setSuggestion(null);
+      }
+    } else {
+      setSuggestion(null);
+    }
+  }, [title, type, categoryId, categories, suggestCategory]);
+
+  const acceptSuggestion = () => {
+    if (suggestion) {
+      setCategoryId(suggestion.category_id);
+      setSuggestion(null);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,11 +93,16 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
       const limitCheck = canCreateTransaction();
       if (!limitCheck.allowed) {
         toast({
-          title: "Limite atingido",
+          title: t('categories.limitReached', 'Limite atingido'),
           description: limitCheck.reason,
           variant: "destructive"
         });
         return;
+      }
+
+      // Learn pattern if category was selected
+      if (categoryId && title) {
+        await learnPattern(title, categoryId);
       }
 
       onSubmit({
@@ -88,10 +123,11 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
       setCategoryId("");
       setDate(getLocalDate());
       setDescription("");
+      setSuggestion(null);
     } catch (error: any) {
       toast({
-        title: "Erro de validação",
-        description: error.errors?.[0]?.message || "Dados inválidos",
+        title: t('categories.validationError', 'Erro de validação'),
+        description: error.errors?.[0]?.message || t('categories.invalidData', 'Dados inválidos'),
         variant: "destructive"
       });
     }
@@ -100,7 +136,7 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
   return (
     <Card className="bg-gradient-card shadow-card border-0">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Nova Transação</CardTitle>
+        <CardTitle>{t('transactions.add', 'Nova Transação')}</CardTitle>
         <Button variant="ghost" size="sm" onClick={onCancel}>
           <X className="h-4 w-4" />
         </Button>
@@ -109,20 +145,20 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="type">Tipo</Label>
-              <Select value={type} onValueChange={(value: 'income' | 'expense') => setType(value)}>
+              <Label htmlFor="type">{t('transactions.type', 'Tipo')}</Label>
+              <Select value={type} onValueChange={(value: 'income' | 'expense') => { setType(value); setCategoryId(""); }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="income">Receita</SelectItem>
-                  <SelectItem value="expense">Despesa</SelectItem>
+                  <SelectItem value="income">{t('transactions.income', 'Receita')}</SelectItem>
+                  <SelectItem value="expense">{t('transactions.expense', 'Despesa')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="amount">Valor (R$)</Label>
+              <Label htmlFor="amount">{t('transactions.amount', 'Valor')} (R$)</Label>
               <Input
                 id="amount"
                 type="number"
@@ -136,23 +172,41 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="title">Título</Label>
+            <Label htmlFor="title">{t('transactions.title', 'Título')}</Label>
             <Input
               id="title"
               type="text"
-              placeholder="Ex: Mercado, Salário, etc."
+              placeholder={t('categories.titlePlaceholder', 'Ex: Mercado, Salário, etc.')}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
             />
+            {/* Smart suggestion */}
+            {suggestion && (
+              <div className="flex items-center gap-2 p-2 rounded-md bg-accent/50 border border-accent">
+                <Sparkles className="h-4 w-4 text-primary flex-shrink-0" />
+                <span className="text-sm text-muted-foreground">
+                  {t('categories.suggestion', 'Sugestão: {{category}}', { category: suggestion.category_name })}
+                </span>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="sm" 
+                  className="ml-auto h-6 text-xs"
+                  onClick={acceptSuggestion}
+                >
+                  {t('categories.accept', 'Aceitar')}
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="category">Categoria</Label>
+              <Label htmlFor="category">{t('transactions.category', 'Categoria')}</Label>
               <Select value={categoryId} onValueChange={setCategoryId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma categoria" />
+                  <SelectValue placeholder={t('categories.selectCategory', 'Selecione uma categoria')} />
                 </SelectTrigger>
                 <SelectContent>
                   {categories
@@ -167,7 +221,7 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="date">Data</Label>
+              <Label htmlFor="date">{t('transactions.date', 'Data')}</Label>
               <Input
                 id="date"
                 type="date"
@@ -179,10 +233,10 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Descrição (opcional)</Label>
+            <Label htmlFor="description">{t('transactions.description', 'Descrição')} ({t('categories.optional', 'opcional')})</Label>
             <Textarea
               id="description"
-              placeholder="Descrição adicional..."
+              placeholder={t('categories.descriptionPlaceholder', 'Descrição adicional...')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
@@ -194,10 +248,10 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
               type="submit" 
               className="flex-1 bg-gradient-primary hover:shadow-primary transition-all duration-200"
             >
-              Adicionar Transação
+              {t('categories.addTransaction', 'Adicionar Transação')}
             </Button>
             <Button type="button" variant="outline" onClick={onCancel}>
-              Cancelar
+              {t('common.cancel', 'Cancelar')}
             </Button>
           </div>
         </form>

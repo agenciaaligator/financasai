@@ -12,6 +12,7 @@ import { Trash2 } from "lucide-react";
 import { useFeatureLimits } from "@/hooks/useFeatureLimits";
 import { categorySchema } from "@/lib/validations";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
+import { useTranslation } from "react-i18next";
 
 interface Category {
   id: string;
@@ -34,6 +35,7 @@ export function CategoryManager({ categories, onRefresh, showForm, setShowForm }
   const { user } = useAuth();
   const { toast } = useToast();
   const { canCreateCategory, getCategoryProgress, refetchUsage } = useFeatureLimits();
+  const { t } = useTranslation();
 
   const colors = [
     "#EF4444", "#F59E0B", "#8B5CF6", "#10B981", "#EC4899",
@@ -52,7 +54,7 @@ export function CategoryManager({ categories, onRefresh, showForm, setShowForm }
       const limitCheck = canCreateCategory();
       if (!limitCheck.allowed) {
         toast({
-          title: "Limite atingido",
+          title: t('categories.limitReached', 'Limite atingido'),
           description: limitCheck.reason,
           variant: "destructive"
         });
@@ -71,8 +73,8 @@ export function CategoryManager({ categories, onRefresh, showForm, setShowForm }
       if (error) throw error;
 
       toast({
-        title: "Categoria criada!",
-        description: `Categoria "${validated.name}" adicionada com sucesso.`
+        title: t('categories.created', 'Categoria criada!'),
+        description: t('categories.createdDesc', 'Categoria "{{name}}" adicionada com sucesso.', { name: validated.name })
       });
 
       await refetchUsage();
@@ -84,8 +86,8 @@ export function CategoryManager({ categories, onRefresh, showForm, setShowForm }
       onRefresh();
     } catch (error: any) {
       toast({
-        title: "Erro ao criar categoria",
-        description: error.errors?.[0]?.message || error.message || "Erro de validação",
+        title: t('categories.createError', 'Erro ao criar categoria'),
+        description: error.errors?.[0]?.message || error.message || t('categories.validationError', 'Erro de validação'),
         variant: "destructive"
       });
     }
@@ -99,7 +101,7 @@ export function CategoryManager({ categories, onRefresh, showForm, setShowForm }
 
     if (error) {
       toast({
-        title: "Erro ao excluir categoria",
+        title: t('categories.deleteError', 'Erro ao excluir categoria'),
         description: error.message,
         variant: "destructive"
       });
@@ -107,8 +109,8 @@ export function CategoryManager({ categories, onRefresh, showForm, setShowForm }
     }
 
     toast({
-      title: "Categoria excluída",
-      description: `Categoria "${categoryName}" removida com sucesso.`
+      title: t('categories.deleted', 'Categoria excluída'),
+      description: t('categories.deletedDesc', 'Categoria "{{name}}" removida com sucesso.', { name: categoryName })
     });
 
     onRefresh();
@@ -119,10 +121,10 @@ export function CategoryManager({ categories, onRefresh, showForm, setShowForm }
   return (
     <Card className="bg-gradient-card shadow-card border-0">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Gerenciar Categorias</CardTitle>
+        <CardTitle>{t('categories.manage', 'Gerenciar Categorias')}</CardTitle>
         {categoryProgress && (
           <Badge variant={categoryProgress.isNearLimit ? "destructive" : "secondary"}>
-            {categoryProgress.current}/{categoryProgress.limit} categorias
+            {categoryProgress.current}/{categoryProgress.limit} {t('categories.categoriesCount', 'categorias')}
           </Badge>
         )}
       </CardHeader>
@@ -133,31 +135,31 @@ export function CategoryManager({ categories, onRefresh, showForm, setShowForm }
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="categoryName">Nome da Categoria</Label>
+                    <Label htmlFor="categoryName">{t('categories.name', 'Nome da Categoria')}</Label>
                     <Input
                       id="categoryName"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="Ex: Alimentação, Salário..."
+                      placeholder={t('categories.namePlaceholder', 'Ex: Alimentação, Salário...')}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="categoryType">Tipo</Label>
+                    <Label htmlFor="categoryType">{t('transactions.type', 'Tipo')}</Label>
                     <Select value={type} onValueChange={(value: 'income' | 'expense') => setType(value)}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="income">Receita</SelectItem>
-                        <SelectItem value="expense">Despesa</SelectItem>
+                        <SelectItem value="income">{t('transactions.income', 'Receita')}</SelectItem>
+                        <SelectItem value="expense">{t('transactions.expense', 'Despesa')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Cor da Categoria</Label>
+                  <Label>{t('categories.color', 'Cor da Categoria')}</Label>
                   <div className="flex flex-wrap gap-2">
                     {colors.map((colorOption) => (
                       <button
@@ -175,10 +177,10 @@ export function CategoryManager({ categories, onRefresh, showForm, setShowForm }
 
                 <div className="flex space-x-2">
                   <Button type="submit" className="bg-gradient-primary hover:shadow-primary">
-                    Criar Categoria
+                    {t('categories.createButton', 'Criar Categoria')}
                   </Button>
                   <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
-                    Cancelar
+                    {t('common.cancel', 'Cancelar')}
                   </Button>
                 </div>
               </form>
@@ -188,7 +190,7 @@ export function CategoryManager({ categories, onRefresh, showForm, setShowForm }
 
         <div className="space-y-6">
           <div>
-            <h4 className="text-lg font-semibold mb-3 text-success">Categorias de Receita</h4>
+            <h4 className="text-lg font-semibold mb-3 text-success">{t('categories.incomeCategories', 'Categorias de Receita')}</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {categories
                 .filter(cat => cat.type === 'income')
@@ -220,7 +222,7 @@ export function CategoryManager({ categories, onRefresh, showForm, setShowForm }
           </div>
 
           <div>
-            <h4 className="text-lg font-semibold mb-3 text-destructive">Categorias de Despesa</h4>
+            <h4 className="text-lg font-semibold mb-3 text-destructive">{t('categories.expenseCategories', 'Categorias de Despesa')}</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {categories
                 .filter(cat => cat.type === 'expense')
