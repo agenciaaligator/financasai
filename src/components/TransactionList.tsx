@@ -67,6 +67,22 @@ export function TransactionList({
     return `${day} de ${months[month - 1]}`;
   };
 
+  const getCategoryEmoji = (categoryName?: string) => {
+    if (!categoryName) return '💬';
+    const name = categoryName.toLowerCase();
+    if (name.includes('alimentação') || name.includes('comida') || name.includes('mercado')) return '🍔';
+    if (name.includes('transporte') || name.includes('uber') || name.includes('gasolina')) return '🚗';
+    if (name.includes('saúde') || name.includes('médico') || name.includes('farmácia')) return '💊';
+    if (name.includes('lazer') || name.includes('entretenimento') || name.includes('cinema')) return '🎮';
+    if (name.includes('casa') || name.includes('moradia') || name.includes('aluguel')) return '🏠';
+    if (name.includes('educação') || name.includes('curso') || name.includes('livro')) return '📚';
+    return '💬';
+  };
+
+  const getTransactionSource = (transaction: Transaction) => {
+    return transaction.source === 'whatsapp' ? 'WhatsApp' : 'Manual';
+  };
+
   const handlePageChange = (page: number) => {
     if (onPageChange && page >= 1 && totalPages && page <= totalPages) {
       onPageChange(page);
