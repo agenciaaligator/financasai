@@ -121,6 +121,9 @@ const LandingPage = () => {
       {showLogin && (
         <div 
           className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('auth.login')}
           onClick={(e) => e.target === e.currentTarget && setShowLogin(false)}
         >
           <div className="relative animate-fadeInUp">
