@@ -69,6 +69,7 @@ export function DashboardContent({
 }: DashboardContentProps) {
   const { planName, planLimits } = useSubscription();
   const { getTransactionProgress, getCategoryProgress } = useFeatureLimits();
+  const { goalsWithProgress, loading: goalsLoading, addGoal, deleteGoal } = useMonthlyGoals(transactions, categories);
   const { t } = useTranslation();
   
   const [filters, setFilters] = useState<TransactionFiltersState>(() => {
