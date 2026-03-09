@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, Loader2, CreditCard, Star } from "lucide-react";
+import { Check, Loader2, CreditCard, Star, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
@@ -68,44 +68,50 @@ export function PlansSection() {
   };
 
   return (
-    <div className="relative py-20 px-4">
-      {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 rounded-3xl" />
+    <div className="relative py-20 px-4 overflow-hidden">
+      {/* Background with gradient overlay */}
+      <div className="absolute inset-0 rounded-3xl overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(232,184,109,0.08)_0%,transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(39,174,96,0.06)_0%,transparent_50%)]" />
+      </div>
       
       <div className="relative max-w-5xl mx-auto">
         {/* Section header */}
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
+          <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-3">
             {t('landing.plans.sectionTitle')}
           </h2>
-          <p className="text-lg text-white/60">
+          <p className="text-lg text-white/50">
             {t('landing.plans.sectionSubtitle')}
           </p>
         </div>
 
         {/* Cards grid */}
-        <div className="grid md:grid-cols-2 gap-6 md:gap-8 items-start">
+        <div className="grid md:grid-cols-2 gap-6 md:gap-8 items-stretch">
           
           {/* Monthly Card */}
-          <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-8 flex flex-col h-full">
-            <h3 className="text-xl font-semibold text-white mb-6">
+          <div className="glass-card-dark rounded-3xl p-8 flex flex-col h-full hover:-translate-y-2 transition-all duration-400">
+            <h3 className="font-display text-xl font-semibold text-white mb-6">
               {t('landing.plans.monthlyTitle')}
             </h3>
 
             <div className="mb-6">
               <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-bold text-white">
+                <span className="font-display text-5xl font-bold text-white">
                   {formatPrice(getDisplayPrice('monthly', locale), currency)}
                 </span>
-                <span className="text-white/60">{t('landing.plans.perMonth')}</span>
+                <span className="text-white/50">{t('landing.plans.perMonth')}</span>
               </div>
             </div>
 
-            <ul className="space-y-3 mb-8 flex-1">
+            <ul className="space-y-3.5 mb-8 flex-1">
               {featureKeys.map((index) => (
-                <li key={index} className="flex items-start gap-2">
-                  <Check className="h-5 w-5 text-green-400 mt-0.5 flex-shrink-0" />
-                  <span className="text-white/90">{t(`landing.plans.features.${index}`)}</span>
+                <li key={index} className="flex items-start gap-3">
+                  <div className="p-0.5 rounded-full bg-success/20 mt-0.5">
+                    <Check className="h-4 w-4 text-success" />
+                  </div>
+                  <span className="text-white/85 text-sm">{t(`landing.plans.features.${index}`)}</span>
                 </li>
               ))}
             </ul>
@@ -113,7 +119,7 @@ export function PlansSection() {
             <button
               onClick={() => handleCheckout('monthly')}
               disabled={loadingCycle !== null}
-              className="w-full py-3 px-6 rounded-xl bg-white/20 text-white font-semibold border border-white/30 hover:bg-white/30 hover:scale-[1.02] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-3.5 px-6 rounded-2xl bg-white/10 text-white font-semibold border border-white/20 hover:bg-white/20 hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loadingCycle === 'monthly' ? (
                 <>
@@ -128,49 +134,51 @@ export function PlansSection() {
               )}
             </button>
 
-            <div className="mt-4 text-center space-y-1">
-              <p className="text-sm text-white/50">{t('landing.plans.cancelAnytime')}</p>
-              <p className="text-sm text-white/50">{t('landing.plans.noCommitment')}</p>
+            <div className="mt-5 text-center space-y-1">
+              <p className="text-sm text-white/40">{t('landing.plans.cancelAnytime')}</p>
+              <p className="text-sm text-white/40">{t('landing.plans.noCommitment')}</p>
             </div>
           </div>
 
           {/* Annual Card (highlighted) */}
-          <div className="relative bg-white/10 backdrop-blur-lg border-2 border-primary/60 rounded-2xl p-8 md:scale-105 flex flex-col h-full shadow-2xl shadow-primary/10">
+          <div className="relative glass-card-dark rounded-3xl p-8 md:scale-[1.03] flex flex-col h-full border-2 border-primary/40 shadow-[0_0_60px_rgba(43,91,132,0.3)] hover:-translate-y-2 transition-all duration-400">
             {/* Badge */}
             <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-              <div className="flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap">
-                <Star className="h-4 w-4" />
+              <div className="flex items-center gap-1.5 bg-gradient-primary text-white px-5 py-2 rounded-full text-sm font-semibold whitespace-nowrap shadow-primary">
+                <Sparkles className="h-4 w-4" />
                 {t('landing.plans.bestValue')}
               </div>
             </div>
 
-            <h3 className="text-xl font-semibold text-white mb-6 mt-2">
+            <h3 className="font-display text-xl font-semibold text-white mb-6 mt-2">
               {t('landing.plans.annualTitle')}
             </h3>
 
             <div className="mb-2">
               <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-bold text-white">
+                <span className="font-display text-5xl font-bold text-white">
                   {formatPrice(getDisplayPrice('yearly', locale), currency)}
                 </span>
-                <span className="text-white/60">{t('landing.plans.perYear')}</span>
+                <span className="text-white/50">{t('landing.plans.perYear')}</span>
               </div>
             </div>
 
             <div className="mb-6">
-              <p className="text-sm text-white/60">
+              <p className="text-sm text-white/50">
                 {t('landing.plans.equivalentTo')} {formatPrice(getYearlyMonthlyEquivalent(locale), currency)}{t('landing.plans.perMonth')}
               </p>
-              <p className="text-sm text-white/60">
+              <p className="text-sm text-white/50">
                 {t('landing.plans.chargedAnnually')}
               </p>
             </div>
 
-            <ul className="space-y-3 mb-8 flex-1">
+            <ul className="space-y-3.5 mb-8 flex-1">
               {featureKeys.map((index) => (
-                <li key={index} className="flex items-start gap-2">
-                  <Check className="h-5 w-5 text-green-400 mt-0.5 flex-shrink-0" />
-                  <span className="text-white/90">{t(`landing.plans.features.${index}`)}</span>
+                <li key={index} className="flex items-start gap-3">
+                  <div className="p-0.5 rounded-full bg-success/20 mt-0.5">
+                    <Check className="h-4 w-4 text-success" />
+                  </div>
+                  <span className="text-white/85 text-sm">{t(`landing.plans.features.${index}`)}</span>
                 </li>
               ))}
             </ul>
@@ -178,7 +186,7 @@ export function PlansSection() {
             <button
               onClick={() => handleCheckout('yearly')}
               disabled={loadingCycle !== null}
-              className="w-full py-3 px-6 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 hover:scale-[1.02] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-3.5 px-6 rounded-2xl bg-gradient-primary text-white font-semibold hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-primary"
             >
               {loadingCycle === 'yearly' ? (
                 <>
@@ -193,7 +201,7 @@ export function PlansSection() {
               )}
             </button>
 
-            <p className="mt-4 text-center text-sm text-white/50">
+            <p className="mt-5 text-center text-sm text-white/40">
               {t('landing.plans.couponHint')}
             </p>
           </div>

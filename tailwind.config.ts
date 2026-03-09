@@ -18,10 +18,11 @@ export default {
 			}
 		},
 		extend: {
-			fontFamily: {
-				heading: ['Crimson Text', 'serif'],
-				body: ['Inter', 'sans-serif'],
-			},
+		fontFamily: {
+			heading: ['Crimson Text', 'serif'],
+			body: ['Inter', 'sans-serif'],
+			display: ['Space Grotesk', 'sans-serif'],
+		},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -87,11 +88,13 @@ export default {
 				'gradient-card': 'var(--gradient-card)',
 				'gradient-header': 'var(--gradient-header)',
 			},
-			boxShadow: {
-				'soft': 'var(--shadow-soft)',
-				'card': 'var(--shadow-card)',
-				'primary': 'var(--shadow-primary)',
-			},
+		boxShadow: {
+			'soft': 'var(--shadow-soft)',
+			'card': 'var(--shadow-card)',
+			'primary': 'var(--shadow-primary)',
+			'strong': '0 20px 60px rgba(43, 91, 132, 0.18)',
+			'hero': '0 30px 80px rgba(43, 91, 132, 0.22)',
+		},
 			keyframes: {
 				'accordion-down': {
 					from: {
