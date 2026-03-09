@@ -167,6 +167,8 @@ Paleta de cores extraída do ícone: tons de azul com gradientes
   z-index: -1;
   pointer-events: none;
   overflow: hidden;
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 .animated-bg::before {
