@@ -6,6 +6,7 @@ import { Transaction } from '@/hooks/useTransactions';
 import { useAuth } from "@/hooks/useAuth";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import { useTranslation } from "react-i18next";
+import { ChatSkeleton } from "@/components/ui/chat-skeleton";
 import {
   Pagination,
   PaginationContent,
