@@ -420,6 +420,19 @@ export function DashboardContent({
     return <ReportsPage />;
   }
 
+  if (currentTab === "goals") {
+    return (
+      <MonthlyGoalsSection
+        goalsWithProgress={goalsWithProgress}
+        categories={categories}
+        existingGoalCategoryIds={goalsWithProgress.map(gp => gp.goal.category_id)}
+        onAddGoal={addGoal}
+        onDeleteGoal={deleteGoal}
+        loading={goalsLoading}
+      />
+    );
+  }
+
   if (currentTab === "profile") {
     return <ProfileSettings />;
   }
