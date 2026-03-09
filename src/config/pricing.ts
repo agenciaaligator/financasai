@@ -19,6 +19,14 @@ export const LOCALE_CURRENCY_MAP: Record<string, Currency> = {
   'pt-PT': 'EUR',
 };
 
+// Fallback mapping for short locale codes (e.g. "pt", "en", "es", "it")
+const SHORT_LOCALE_MAP: Record<string, string> = {
+  'pt': 'pt-BR',
+  'en': 'en-US',
+  'es': 'es-ES',
+  'it': 'it-IT',
+};
+
 // Preços EXATOS conforme cadastrado no Stripe
 const PRICE_MAP = {
   production: {
@@ -47,9 +55,31 @@ const PRICE_MAP = {
   },
 } as const;
 
+/**
+ * Normalizes locale strings to full format (e.g. "pt" → "pt-BR", "en" → "en-US")
+ * Handles: "pt", "pt-BR", "pt-br", "en", "en-US", etc.
+ */
+const normalizeLocale = (locale: string): string => {
+  // Already a full locale in our map
+  if (LOCALE_CURRENCY_MAP[locale]) return locale;
+  
+  // Try case-insensitive match
+  const normalized = Object.keys(LOCALE_CURRENCY_MAP).find(
+    key => key.toLowerCase() === locale.toLowerCase()
+  );
+  if (normalized) return normalized;
+  
+  // Try short code mapping (e.g. "pt" → "pt-BR")
+  const shortCode = locale.split('-')[0].toLowerCase();
+  if (SHORT_LOCALE_MAP[shortCode]) return SHORT_LOCALE_MAP[shortCode];
+  
+  return 'pt-BR'; // Ultimate fallback
+};
+
 // Helpers
 export const getCurrencyFromLocale = (locale: string): Currency => {
-  return LOCALE_CURRENCY_MAP[locale] || 'BRL';
+  const normalizedLocale = normalizeLocale(locale);
+  return LOCALE_CURRENCY_MAP[normalizedLocale] || 'BRL';
 };
 
 export const getPriceId = (cycle: 'monthly' | 'yearly', locale: string): string => {

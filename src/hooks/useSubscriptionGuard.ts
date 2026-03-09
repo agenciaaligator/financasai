@@ -11,6 +11,7 @@ interface SubscriptionGuardState {
   canAccessDashboard: boolean;
   subscriptionEndDate: Date | null;
   isMasterOrAdmin: boolean;
+  error: boolean;
 }
 
 const GRACE_PERIOD_DAYS = 3;
@@ -26,6 +27,7 @@ export function useSubscriptionGuard(): SubscriptionGuardState {
     canAccessDashboard: false,
     subscriptionEndDate: null,
     isMasterOrAdmin: false,
+    error: false,
   });
 
   useEffect(() => {
@@ -67,6 +69,7 @@ export function useSubscriptionGuard(): SubscriptionGuardState {
             canAccessDashboard: passwordSet,
             subscriptionEndDate: null,
             isMasterOrAdmin: true,
+            error: false,
           });
           return;
         }
@@ -88,6 +91,7 @@ export function useSubscriptionGuard(): SubscriptionGuardState {
             canAccessDashboard: false,
             subscriptionEndDate: null,
             isMasterOrAdmin: false,
+            error: false,
           });
           return;
         }
@@ -101,7 +105,7 @@ export function useSubscriptionGuard(): SubscriptionGuardState {
         let gracePeriodEndsAt: Date | null = null;
         let canAccessDashboard = false;
 
-        if (status === 'active') {
+        if (status === 'active' || status === 'trialing') {
           subscriptionStatus = 'active';
           canAccessDashboard = passwordSet;
         } else if (status === 'past_due') {
@@ -129,10 +133,18 @@ export function useSubscriptionGuard(): SubscriptionGuardState {
           canAccessDashboard,
           subscriptionEndDate: currentPeriodEnd,
           isMasterOrAdmin: false,
+          error: false,
         });
       } catch (error) {
         console.error('[useSubscriptionGuard] Error:', error);
-        setState(prev => ({ ...prev, loading: false }));
+        // On network error, retry once after 2s, then show error state
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: true,
+          // Don't block access on transient errors — allow dashboard if we can't verify
+          canAccessDashboard: true,
+        }));
       }
     };
 

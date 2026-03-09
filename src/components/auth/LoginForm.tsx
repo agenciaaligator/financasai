@@ -74,10 +74,10 @@ export function LoginForm() {
           </div>
         </div>
         <CardTitle className="text-2xl font-bold">
-          Entrar
+          {t('auth.login')}
         </CardTitle>
         <p className="text-muted-foreground">
-          Entre em sua conta para acessar o dashboard
+          {t('login.enterToAccess')}
         </p>
       </CardHeader>
       <CardContent>
@@ -91,11 +91,11 @@ export function LoginForm() {
         )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t('auth.email')}</Label>
             <Input
               id="email"
               type="email"
-              placeholder="seu@email.com"
+              placeholder={t('login.emailPlaceholder')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -103,7 +103,7 @@ export function LoginForm() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Senha</Label>
+            <Label htmlFor="password">{t('auth.password')}</Label>
             <div className="relative">
               <Input
                 id="password"
@@ -134,7 +134,7 @@ export function LoginForm() {
                 className="p-0 h-auto text-sm text-primary hover:text-primary-dark"
                 onClick={() => setShowForgotPassword(true)}
               >
-                Esqueci minha senha
+                {t('auth.forgotPassword')}
               </Button>
             </div>
           </div>
@@ -142,9 +142,9 @@ export function LoginForm() {
           {errorMessage === 'invalid_credentials' && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Email ou senha incorretos</AlertTitle>
+              <AlertTitle>{t('login.invalidCredentials')}</AlertTitle>
               <AlertDescription className="space-y-2">
-                <p>Verifique se digitou corretamente suas credenciais.</p>
+                <p>{t('login.checkCredentials')}</p>
                 <div className="flex flex-col gap-2 mt-3">
                   <Button
                     type="button"
@@ -153,7 +153,7 @@ export function LoginForm() {
                     onClick={() => setShowForgotPassword(true)}
                     className="w-full"
                   >
-                    Esqueci minha senha
+                    {t('auth.forgotPassword')}
                   </Button>
                   <Button
                     type="button"
@@ -162,7 +162,7 @@ export function LoginForm() {
                     onClick={() => navigate('/choose-plan')}
                     className="w-full"
                   >
-                    Não tenho conta - Criar agora
+                    {t('login.noAccount')}
                   </Button>
                 </div>
               </AlertDescription>
@@ -177,19 +177,19 @@ export function LoginForm() {
             {isLoading ? (
               <div className="flex items-center">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Entrando...
+                {t('login.loggingIn')}
               </div>
             ) : (
               <div className="flex items-center">
                 <LogIn className="h-4 w-4 mr-2" />
-                Entrar
+                {t('auth.login')}
               </div>
             )}
           </Button>
 
           <div className="mt-6 pt-6 border-t border-border">
             <p className="text-sm text-center text-muted-foreground mb-3">
-              Ainda não tem uma conta?
+              {t('login.noAccountYet')}
             </p>
             <Button
               type="button"
@@ -197,7 +197,7 @@ export function LoginForm() {
               onClick={() => navigate('/choose-plan')}
               className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
             >
-              Criar conta
+              {t('login.createAccount')}
             </Button>
           </div>
         </form>

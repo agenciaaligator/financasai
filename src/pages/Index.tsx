@@ -121,6 +121,9 @@ const LandingPage = () => {
       {showLogin && (
         <div 
           className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('auth.login')}
           onClick={(e) => e.target === e.currentTarget && setShowLogin(false)}
         >
           <div className="relative animate-fadeInUp">
@@ -432,9 +435,18 @@ const ProtectedDashboard = () => {
   }
 
   // Must set password first
+  useEffect(() => {
+    if (!guard.loading && guard.needsPassword) {
+      navigate('/set-password', { replace: true });
+    }
+  }, [guard.loading, guard.needsPassword, navigate]);
+
   if (guard.needsPassword) {
-    navigate('/set-password', { replace: true });
-    return null;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   // Subscription inactive and not in grace period
