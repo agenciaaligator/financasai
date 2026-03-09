@@ -205,7 +205,7 @@ export function CategoryManager({ categories, onRefresh, showForm, setShowForm }
                     </div>
                     <DeleteConfirmationDialog
                       itemName={category.name}
-                      itemType={t('categories.categoryItem', 'categoria')}
+                      itemType="categoria"
                       onConfirm={() => handleDelete(category.id, category.name)}
                     >
                       <Button
@@ -237,7 +237,7 @@ export function CategoryManager({ categories, onRefresh, showForm, setShowForm }
                     </div>
                     <DeleteConfirmationDialog
                       itemName={category.name}
-                      itemType={t('categories.categoryItem', 'categoria')}
+                      itemType="categoria"
                       onConfirm={() => handleDelete(category.id, category.name)}
                     >
                       <Button
