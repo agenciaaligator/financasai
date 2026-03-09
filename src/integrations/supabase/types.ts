@@ -910,6 +910,47 @@ export type Database = {
           },
         ]
       }
+      user_category_patterns: {
+        Row: {
+          category_id: string
+          confidence_score: number | null
+          created_at: string | null
+          id: string
+          keyword: string
+          updated_at: string | null
+          usage_count: number | null
+          user_id: string
+        }
+        Insert: {
+          category_id: string
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          keyword: string
+          updated_at?: string | null
+          usage_count?: number | null
+          user_id: string
+        }
+        Update: {
+          category_id?: string
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          keyword?: string
+          updated_at?: string | null
+          usage_count?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_category_patterns_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
