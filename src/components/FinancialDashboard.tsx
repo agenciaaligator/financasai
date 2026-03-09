@@ -182,10 +182,10 @@ export function FinancialDashboard() {
             <div className="flex items-center justify-between px-6 py-4">
               <div className="flex items-center gap-4">
                 <SidebarTrigger className="h-8 w-8" />
-                <div>
-                  <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                    {tabTitleMap[currentTab] || currentTab}
-                  </h1>
+                 <div>
+                   <h1 className="font-heading text-2xl font-semibold text-foreground">
+                     {tabTitleMap[currentTab] || currentTab}
+                   </h1>
                   <p className="text-sm text-muted-foreground">
                     {t('dashboard.hello', 'Olá')}, {user?.email}
                   </p>
