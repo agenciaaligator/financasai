@@ -123,6 +123,10 @@ export function TransactionList({
     }
   };
 
+  if (isLoading) {
+    return <ChatSkeleton />;
+  }
+
   if (transactions.length === 0) {
     return (
       <div className="text-center py-8 space-y-4">
