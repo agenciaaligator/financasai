@@ -126,6 +126,28 @@ export default {
 					'50%': {
 						transform: 'translateY(-6px)'
 					}
+				},
+				'bounceCustom': {
+					'0%, 20%, 53%, 80%, 100%': {
+						transform: 'translateY(0)'
+					},
+					'40%, 43%': {
+						transform: 'translateY(-15px)'
+					},
+					'70%': {
+						transform: 'translateY(-7px)'
+					},
+					'90%': {
+						transform: 'translateY(-3px)'
+					}
+				},
+				'pulseGlow': {
+					'0%, 100%': {
+						boxShadow: '0 0 30px rgba(37, 211, 102, 0.3)'
+					},
+					'50%': {
+						boxShadow: '0 0 40px rgba(37, 211, 102, 0.5)'
+					}
 				}
 			},
 			animation: {
