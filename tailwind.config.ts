@@ -154,7 +154,9 @@ export default {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
 				'fadeInUp': 'fadeInUp 0.6s ease-out',
-				'float': 'float 3s ease-in-out infinite'
+				'float': 'float 3s ease-in-out infinite',
+				'bounceCustom': 'bounceCustom 2s infinite',
+				'pulseGlow': 'pulseGlow 2s infinite'
 			}
 		}
 	},

@@ -1,19 +1,15 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Check, MessageCircle, Loader2, ArrowRight, Phone, CheckCircle2 } from "lucide-react";
+import { Calendar, Check, MessageCircle, Loader2, ArrowRight, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 import { LanguageFlagSelector } from "@/components/LanguageFlagSelector";
-import PhoneInput from 'react-phone-number-input';
-import 'react-phone-number-input/style.css';
-import '@/components/ui/phone-input.css';
 
 export default function Welcome() {
   const navigate = useNavigate();
@@ -162,8 +158,6 @@ export default function Welcome() {
       if (error) throw error;
       if (!data?.valid && !data?.success) throw new Error(data?.message || data?.error || 'Código inválido ou expirado');
 
-      // Sessão já foi criada pela edge function - NÃO fazer upsert aqui
-
       // Atualizar telefone no perfil (não-bloqueante)
       supabase
         .from('profiles')
@@ -201,8 +195,9 @@ export default function Welcome() {
   const isWhatsAppConnected = step === 'connected';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20">
-      <header className="border-b bg-background/80 backdrop-blur-sm">
+    <div className="min-h-screen bg-gradient-to-br from-[#F8F9FA] to-[#F8F9FA]/50 flex items-center justify-center px-4 py-8">
+      {/* Header */}
+      <header className="fixed top-0 left-0 right-0 z-10 border-b bg-background/80 backdrop-blur-sm">
         <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Calendar className="h-6 w-6 text-primary" />
@@ -212,227 +207,246 @@ export default function Welcome() {
         </nav>
       </header>
 
-      <div className="container mx-auto px-4 py-12 max-w-2xl">
+      {/* Main Content */}
+      <div className="w-full max-w-[800px] mt-20 animate-fadeInUp">
         {/* Progress Bar */}
         <div className="flex items-center justify-center gap-0 mb-12">
           {/* Step 1: Account Created */}
           <div className="flex flex-col items-center">
-            <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white">
-              <Check className="h-5 w-5" />
+            <div className="w-12 h-12 lg:w-15 lg:h-15 rounded-full bg-success flex items-center justify-center text-white">
+              <Check className="h-5 w-5 lg:h-6 lg:w-6" />
             </div>
-            <span className="text-xs mt-2 text-green-600 font-medium text-center max-w-[80px]">
+            <span className="text-xs mt-2 text-success font-medium text-center max-w-[80px]">
               {t('welcome.stepAccountCreated')}
             </span>
           </div>
           
-          <div className="w-12 h-0.5 bg-green-500 mt-[-16px]" />
+          <div className="w-[120px] h-[3px] bg-success mt-[-16px]" />
           
           {/* Step 2: Email Confirmed */}
           <div className="flex flex-col items-center">
-            <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white">
-              <Check className="h-5 w-5" />
+            <div className="w-12 h-12 lg:w-15 lg:h-15 rounded-full bg-success flex items-center justify-center text-white">
+              <Check className="h-5 w-5 lg:h-6 lg:w-6" />
             </div>
-            <span className="text-xs mt-2 text-green-600 font-medium text-center max-w-[80px]">
+            <span className="text-xs mt-2 text-success font-medium text-center max-w-[80px]">
               {t('welcome.stepEmailConfirmed')}
             </span>
           </div>
           
-          <div className={`w-12 h-0.5 mt-[-16px] ${isWhatsAppConnected ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
+          <div className={`w-[120px] h-[3px] mt-[-16px] ${isWhatsAppConnected ? 'bg-success' : 'bg-muted-foreground/30'}`} />
           
           {/* Step 3: Connect WhatsApp */}
           <div className="flex flex-col items-center">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+            <div className={`w-12 h-12 lg:w-15 lg:h-15 rounded-full flex items-center justify-center ${
               isWhatsAppConnected 
-                ? 'bg-green-500 text-white' 
-                : 'bg-blue-500 text-white animate-pulse'
+                ? 'bg-success text-white' 
+                : 'bg-primary text-white scale-110 shadow-[0_0_20px_rgba(43,91,132,0.3)]'
             }`}>
-              {isWhatsAppConnected ? <Check className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
+              {isWhatsAppConnected ? (
+                <Check className="h-5 w-5 lg:h-6 lg:w-6" />
+              ) : (
+                <MessageCircle className="h-5 w-5 lg:h-6 lg:w-6 text-2xl" />
+              )}
             </div>
             <span className={`text-xs mt-2 font-medium text-center max-w-[80px] ${
-              isWhatsAppConnected ? 'text-green-600' : 'text-blue-600'
+              isWhatsAppConnected ? 'text-success' : 'text-primary'
             }`}>
               {t('welcome.stepConnectWhatsApp')}
             </span>
           </div>
         </div>
 
-        {/* Welcome Header */}
-        <div className="text-center mb-10">
-          <div className="w-20 h-20 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center mx-auto mb-6">
-            <span className="text-4xl">🎉</span>
+        {/* Main Card */}
+        <div className="rounded-[24px] bg-card shadow-[0_8px_25px_rgba(43,91,132,0.08)] overflow-hidden">
+          {/* Header Gradiente */}
+          <div className="relative bg-gradient-to-br from-[#2B5B84] to-[#1e4a6b] p-8 lg:p-12 pb-8 text-center">
+            {/* Elemento decorativo blur */}
+            <div className="absolute top-4 right-4 w-20 h-20 bg-white/10 rounded-full blur-xl"></div>
+            
+            {/* Emoji comemorativo */}
+            <div className="text-[4rem] animate-bounceCustom mb-4">🎉</div>
+            
+            {/* Título */}
+            <h1 className="font-heading text-[2.5rem] text-white mb-2">
+              Parabéns, {userName || 'Usuário'}!
+            </h1>
+            <p className="text-white/90 text-lg">
+              Sua conta Dona Wilma está quase pronta
+            </p>
           </div>
-          <h1 className="text-3xl font-bold mb-3">
-            {t('welcome.congratulations')}
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            {isWhatsAppConnected 
-              ? t('welcome.allSetDesc', { defaultValue: 'Tudo pronto! Você já pode usar o Dona Wilma.' })
-              : t('welcome.connectToStart')
-            }
-          </p>
-        </div>
 
-        {/* WhatsApp Connection Card */}
-        <Card className="border-2 shadow-xl mb-8">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                <MessageCircle className="h-6 w-6 text-green-600" />
+          {/* Conteúdo */}
+          <div className="p-8 lg:p-12">
+            {/* Seção WhatsApp */}
+            <div className="text-center mb-10">
+              {/* Ícone WhatsApp */}
+              <div className="w-20 h-20 bg-gradient-to-br from-[#25D366] to-[#1da851] rounded-full flex items-center justify-center mx-auto mb-6 animate-pulseGlow shadow-[0_0_30px_rgba(37,211,102,0.3)]">
+                <MessageCircle className="h-10 w-10 text-white" />
               </div>
-              <div>
-                <CardTitle>{t('welcome.connectWhatsApp')}</CardTitle>
-                <CardDescription>
-                  {t('welcome.connectDesc')}
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
+              
+              <h2 className="text-2xl font-semibold text-[#2B5B84] mb-3">
+                {t('welcome.connectWhatsApp')}
+              </h2>
+              <p className="text-muted-foreground text-lg mb-8 max-w-md mx-auto">
+                É aqui que a <strong>mágica acontece</strong>! Conecte seu WhatsApp e comece a gerenciar tudo por mensagem.
+              </p>
 
-          <CardContent className="space-y-6">
-            {step === 'phone' && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">{t('welcome.phoneLabel')}</Label>
-                  <PhoneInput
-                    international
-                    defaultCountry="BR"
-                    value={phoneNumber}
-                    onChange={(value) => setPhoneNumber(value || '')}
-                    className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background"
-                    disabled={isLoading}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {t('welcome.phoneHint')}
-                  </p>
-                </div>
+              {/* Formulário */}
+              {step === 'phone' && (
+                <div className="max-w-[400px] mx-auto space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="text-base font-medium">
+                      {t('welcome.phoneLabel')}
+                    </Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="11999999999"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
+                      className="rounded-[16px] px-5 py-4 text-base focus:border-[#2B5B84] focus:shadow-[0_0_20px_rgba(43,91,132,0.1)]"
+                      disabled={isLoading}
+                    />
+                    <p className="text-sm text-muted-foreground flex items-center gap-2 justify-center">
+                      📱 {t('welcome.phoneHint')}
+                    </p>
+                  </div>
 
-                <Button
-                  className="w-full"
-                  size="lg"
-                  onClick={handleSendCode}
-                  disabled={isLoading || !phoneNumber}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      {t('welcome.sending')}
-                    </>
-                  ) : (
-                    <>
-                      <Phone className="mr-2 h-5 w-5" />
-                      {t('welcome.sendCode')}
-                    </>
-                  )}
-                </Button>
-              </>
-            )}
-
-            {step === 'code' && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="code">{t('welcome.codeLabel')}</Label>
-                  <Input
-                    id="code"
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    placeholder={t('welcome.codePlaceholder')}
-                    value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    disabled={isLoading}
-                    className="text-center text-2xl tracking-widest"
-                    maxLength={6}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {t('welcome.codeHint', { phone: phoneNumber })}
-                  </p>
-                </div>
-
-                <div className="flex gap-3">
                   <Button
-                    variant="outline"
-                    onClick={() => setStep('phone')}
-                    disabled={isLoading}
-                    className="flex-1"
-                  >
-                    {t('welcome.back')}
-                  </Button>
-                  <Button
-                    className="flex-1"
-                    onClick={handleVerifyCode}
-                    disabled={isLoading || verificationCode.length < 6}
+                    className="w-full bg-gradient-to-r from-[#25D366] to-[#1da851] text-white rounded-full px-8 py-4 shadow-[0_4px_20px_rgba(37,211,102,0.3)] hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(37,211,102,0.4)] transition-all duration-300"
+                    size="lg"
+                    onClick={handleSendCode}
+                    disabled={isLoading || !phoneNumber}
                   >
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                        {t('welcome.verifying')}
+                        {t('welcome.sending')}
                       </>
                     ) : (
                       <>
-                        <Check className="mr-2 h-5 w-5" />
-                        {t('welcome.verify')}
+                        🚀 {t('welcome.sendCode')}
                       </>
                     )}
                   </Button>
                 </div>
-              </>
-            )}
+              )}
 
-            {step === 'connected' && (
-              <div className="text-center py-4">
-                <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle2 className="h-8 w-8 text-green-600" />
+              {step === 'code' && (
+                <div className="max-w-[400px] mx-auto space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="code" className="text-base font-medium">
+                      {t('welcome.codeLabel')}
+                    </Label>
+                    <Input
+                      id="code"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      placeholder={t('welcome.codePlaceholder')}
+                      value={verificationCode}
+                      onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      disabled={isLoading}
+                      className="rounded-[16px] text-center text-2xl tracking-widest px-5 py-4 focus:border-[#2B5B84] focus:shadow-[0_0_20px_rgba(43,91,132,0.1)]"
+                      maxLength={6}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      {t('welcome.codeHint', { phone: phoneNumber })}
+                    </p>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => setStep('phone')}
+                      disabled={isLoading}
+                      className="flex-1 rounded-[16px]"
+                    >
+                      {t('welcome.back')}
+                    </Button>
+                    <Button
+                      className="flex-1 bg-gradient-to-r from-[#25D366] to-[#1da851] text-white rounded-[16px] shadow-[0_4px_20px_rgba(37,211,102,0.3)] hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(37,211,102,0.4)] transition-all duration-300"
+                      onClick={handleVerifyCode}
+                      disabled={isLoading || verificationCode.length < 6}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                          {t('welcome.verifying')}
+                        </>
+                      ) : (
+                        <>
+                          <Check className="mr-2 h-5 w-5" />
+                          {t('welcome.verify')}
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
-                <h3 className="text-xl font-semibold mb-2">{t('welcome.connected')}</h3>
-                <p className="text-muted-foreground mb-2">
-                  {t('welcome.number')} {phoneNumber}
-                </p>
-                <Badge variant="secondary" className="mb-4">
-                  {t('welcome.readyToUse')}
-                </Badge>
+              )}
+
+              {step === 'connected' && (
+                <div className="text-center py-4">
+                  <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle2 className="h-8 w-8 text-success" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">{t('welcome.connected')}</h3>
+                  <p className="text-muted-foreground mb-2">
+                    {t('welcome.number')} {phoneNumber}
+                  </p>
+                  <Badge variant="secondary" className="mb-4">
+                    {t('welcome.readyToUse')}
+                  </Badge>
+                </div>
+              )}
+            </div>
+
+            {/* Grid de Dicas */}
+            <div className="bg-[#2B5B84]/[0.03] rounded-[20px] p-8 mb-8">
+              <h3 className="text-xl font-semibold text-center mb-6 flex items-center justify-center gap-2">
+                💡 Como usar no WhatsApp
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="bg-white rounded-[16px] p-6 text-center shadow-[0_2px_10px_rgba(43,91,132,0.05)] border border-[#E9ECEF] hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(43,91,132,0.1)] transition-all duration-300">
+                  <div className="text-[2rem] mb-3">💰</div>
+                  <h4 className="font-semibold mb-2">Despesas</h4>
+                  <p className="text-sm text-muted-foreground">"Gastei 50 no mercado"</p>
+                </div>
+                
+                <div className="bg-white rounded-[16px] p-6 text-center shadow-[0_2px_10px_rgba(43,91,132,0.05)] border border-[#E9ECEF] hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(43,91,132,0.1)] transition-all duration-300">
+                  <div className="text-[2rem] mb-3">📈</div>
+                  <h4 className="font-semibold mb-2">Receitas</h4>
+                  <p className="text-sm text-muted-foreground">"Recebi 1000 salário"</p>
+                </div>
+                
+                <div className="bg-white rounded-[16px] p-6 text-center shadow-[0_2px_10px_rgba(43,91,132,0.05)] border border-[#E9ECEF] hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(43,91,132,0.1)] transition-all duration-300">
+                  <div className="text-[2rem] mb-3">📊</div>
+                  <h4 className="font-semibold mb-2">Saldo</h4>
+                  <p className="text-sm text-muted-foreground">"Saldo do mês"</p>
+                </div>
+                
+                <div className="bg-white rounded-[16px] p-6 text-center shadow-[0_2px_10px_rgba(43,91,132,0.05)] border border-[#E9ECEF] hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(43,91,132,0.1)] transition-all duration-300">
+                  <div className="text-[2rem] mb-3">📸</div>
+                  <h4 className="font-semibold mb-2">Fotos</h4>
+                  <p className="text-sm text-muted-foreground">Envie foto do cupom</p>
+                </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </div>
 
-        {/* Quick Start Tips */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="text-lg">{t('welcome.tipsTitle')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-3 text-sm">
-              <li className="flex items-start gap-2">
-                <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <span dangerouslySetInnerHTML={{ __html: t('welcome.tip1') }} />
-              </li>
-              <li className="flex items-start gap-2">
-                <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <span dangerouslySetInnerHTML={{ __html: t('welcome.tip2') }} />
-              </li>
-              <li className="flex items-start gap-2">
-                <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <span dangerouslySetInnerHTML={{ __html: t('welcome.tip3') }} />
-              </li>
-              <li className="flex items-start gap-2">
-                <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <span dangerouslySetInnerHTML={{ __html: t('welcome.tip4') }} />
-              </li>
-            </ul>
-          </CardContent>
-        </Card>
-
-        {/* Action Button */}
-        <div className="flex flex-col gap-3">
-          <Button
-            size="lg"
-            className="w-full text-base font-bold"
-            onClick={handleGoToDashboard}
-            disabled={step !== 'connected'}
-          >
-            🚀 {t('welcome.startUsing')}
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Button>
+            {/* Botão Final */}
+            <div className="text-center">
+              <Button
+                size="lg"
+                className="bg-gradient-to-r from-[#25D366] to-[#1da851] text-white rounded-full px-12 py-4 text-lg font-bold shadow-[0_4px_20px_rgba(37,211,102,0.3)] hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(37,211,102,0.4)] transition-all duration-300"
+                onClick={handleGoToDashboard}
+                disabled={step !== 'connected'}
+              >
+                🚀 {t('welcome.startUsing')}
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
