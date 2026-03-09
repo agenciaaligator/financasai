@@ -124,13 +124,13 @@ export function AppSidebar({
         </div>
       </SidebarHeader>
       
-      <SidebarContent className="px-2 py-4">
+      <SidebarContent className="px-2 py-3">
         <SidebarGroup>
           <SidebarGroupContent>
             <div className="mb-4">
               <SidebarMenuButton
                 onClick={onToggleForm}
-                className={`w-full h-12 text-left bg-secondary hover:bg-secondary/90 text-secondary-foreground font-medium transition-all duration-200 shadow-lg ${
+                className={`w-full h-10 text-left bg-secondary hover:bg-secondary/90 text-secondary-foreground font-medium transition-all duration-200 shadow-lg ${
                   !open ? "justify-center px-2" : "justify-start px-4"
                 }`}
               >
@@ -146,7 +146,7 @@ export function AppSidebar({
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
                       onClick={() => onTabChange(item.id)}
-                      className={`w-full h-12 transition-all duration-200 hover:translate-x-1 hover:bg-white/10 hover:backdrop-blur ${
+                      className={`w-full h-10 transition-all duration-200 hover:translate-x-1 hover:bg-white/10 hover:backdrop-blur ${
                         isActive 
                           ? "bg-white/20 backdrop-blur text-white font-medium border-l-4 border-secondary" 
                           : "text-white/80"
