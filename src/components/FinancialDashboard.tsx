@@ -37,6 +37,7 @@ export function FinancialDashboard() {
     transactions: t('dashboard.transactions', 'Transações'),
     categories: t('dashboard.categories', 'Categorias'),
     reports: t('dashboard.reports', 'Relatórios'),
+    goals: t('dashboard.goals', 'Metas Mensais'),
     whatsapp: t('dashboard.whatsapp', 'WhatsApp'),
     profile: t('dashboard.profile', 'Perfil'),
     admin: t('dashboard.admin', 'Painel Administrativo'),

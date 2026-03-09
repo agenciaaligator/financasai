@@ -235,5 +235,31 @@
     "inactiveDesc": "Regolarizza il tuo abbonamento per continuare a usare Dona Wilma.",
     "gracePeriodTitle": "Il tuo abbonamento è scaduto",
     "gracePeriodDesc": "Regolarizza entro il {{date}} per evitare il blocco dell'accesso."
+  },
+  "goals": {
+    "title": "Obiettivi Mensili",
+    "subtitle": "Imposta limiti di spesa per categoria e monitora i tuoi progressi",
+    "addGoal": "Imposta Obiettivo",
+    "newGoal": "Nuovo Obiettivo Mensile",
+    "editGoal": "Modifica Obiettivo",
+    "category": "Categoria",
+    "selectCategory": "Seleziona una categoria",
+    "monthlyLimit": "Limite mensile",
+    "emptyTitle": "Nessun obiettivo impostato",
+    "emptyDesc": "Imposta obiettivi per monitorare le spese per categoria",
+    "createFirst": "Crea primo obiettivo",
+    "exceeded": "Superato!",
+    "critical": "Critico",
+    "attention": "Attenzione",
+    "onTrack": "In linea",
+    "remaining": "Restano {{value}}",
+    "overBudget": "Superato di {{value}}",
+    "tooltip": "Hai speso {{spent}} su {{total}} in questa categoria",
+    "deleteTitle": "Elimina Obiettivo",
+    "deleteDesc": "Sei sicuro di voler eliminare questo obiettivo?"
+  },
+  "sidebar": {
+    "goals": "Obiettivi",
+    "goalsDesc": "Obiettivi mensili"
   }
 }

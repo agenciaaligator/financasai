@@ -6,6 +6,7 @@ import { FinancialChart } from "../FinancialChart";
 import { CategoryManager } from "../CategoryManager";
 import { ProfileSettings } from "../ProfileSettings";
 import { ReportsPage } from "../ReportsPage";
+import { MonthlyGoalsSection } from "./MonthlyGoalsSection";
 import { AdminPanel } from "../admin/AdminPanel";
 import { BalanceAlert } from "./BalanceAlert";
 import { SummaryCards } from "./SummaryCards";
@@ -17,6 +18,7 @@ import { TransactionList } from "../TransactionList";
 import { TransactionFilters, TransactionFiltersState } from "../TransactionFilters";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useFeatureLimits } from "@/hooks/useFeatureLimits";
+import { useMonthlyGoals } from "@/hooks/useMonthlyGoals";
 import { 
   startOfDay, 
   endOfDay, 
@@ -67,6 +69,7 @@ export function DashboardContent({
 }: DashboardContentProps) {
   const { planName, planLimits } = useSubscription();
   const { getTransactionProgress, getCategoryProgress } = useFeatureLimits();
+  const { goalsWithProgress, loading: goalsLoading, addGoal, deleteGoal } = useMonthlyGoals(transactions, categories);
   const { t } = useTranslation();
   
   const [filters, setFilters] = useState<TransactionFiltersState>(() => {
@@ -415,6 +418,19 @@ export function DashboardContent({
 
   if (currentTab === "reports") {
     return <ReportsPage />;
+  }
+
+  if (currentTab === "goals") {
+    return (
+      <MonthlyGoalsSection
+        goalsWithProgress={goalsWithProgress}
+        categories={categories}
+        existingGoalCategoryIds={goalsWithProgress.map(gp => gp.goal.category_id)}
+        onAddGoal={addGoal}
+        onDeleteGoal={deleteGoal}
+        loading={goalsLoading}
+      />
+    );
   }
 
   if (currentTab === "profile") {
