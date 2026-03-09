@@ -30,6 +30,7 @@ interface TransactionListProps {
   hasActiveFilters?: boolean;
   onClearFilters?: () => void;
   totalTransactionsCount?: number;
+  isLoading?: boolean;
 }
 
 export function TransactionList({ 
