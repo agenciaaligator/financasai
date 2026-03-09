@@ -7,8 +7,8 @@ interface FinancialChartProps {
 }
 
 const COLORS = {
-  income: '#059669',
-  expense: '#dc2626'
+  income: '#27AE60', // Verde natural
+  expense: '#dc2626'  // Vermelho para despesas
 };
 
 export function FinancialChart({ transactions }: FinancialChartProps) {

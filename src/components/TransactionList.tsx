@@ -127,30 +127,27 @@ export function TransactionList({
       
       <div className="space-y-3">
       {transactions.map((transaction) => (
-        <Card key={transaction.id} className={`border-l-4 hover:shadow-soft transition-shadow ${transaction.type === 'income' ? 'border-l-success/40' : 'border-l-destructive/40'}`}>
+        <Card key={transaction.id} className={`dw-card border-0 hover:translate-x-1 hover:bg-muted/30 transition-all duration-300 ${transaction.type === 'income' ? 'border-l-4 border-l-success' : 'border-l-4 border-l-destructive'}`}>
           <CardContent className="pt-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-start sm:items-center space-x-3 min-w-0 flex-1">
-                <div className={`p-2 rounded-full flex-shrink-0 ${
-                  transaction.type === 'income' 
-                    ? 'bg-success/10 text-success' 
-                    : 'bg-destructive/10 text-destructive'
-                }`}>
-                  {transaction.type === 'income' ? (
-                    <TrendingUp className="h-4 w-4" />
-                  ) : (
-                    <TrendingDown className="h-4 w-4" />
-                  )}
+                <div className="w-12 h-12 rounded-full flex-shrink-0 bg-muted/50 flex items-center justify-center">
+                  <span className="text-xl">{getCategoryEmoji(transaction.categories?.name)}</span>
                 </div>
                 
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                     <p className="font-medium truncate">{transaction.title}</p>
-                    {transaction.categories && (
-                      <Badge variant="outline" className="text-xs w-fit">
-                        {transaction.categories.name}
+                    <div className="flex gap-2">
+                      {transaction.categories && (
+                        <Badge variant="outline" className="text-xs w-fit">
+                          {transaction.categories.name}
+                        </Badge>
+                      )}
+                      <Badge variant="secondary" className="text-xs w-fit">
+                        {getTransactionSource(transaction)}
                       </Badge>
-                    )}
+                    </div>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
                     {formatFriendlyDate(transaction.date)}
@@ -169,7 +166,7 @@ export function TransactionList({
                   <p className={`font-bold text-base sm:text-lg ${
                     transaction.type === 'income' ? 'text-success' : 'text-destructive'
                   }`}>
-                    {transaction.type === 'income' ? '+' : '-'} R$ {transaction.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    {transaction.type === 'income' ? '↗ +' : '↘ -'} R$ {transaction.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
                 <div className="flex space-x-1">
