@@ -1,11 +1,5 @@
 import {
-  DollarSign,
-  TrendingUp,
-  Tags,
-  BarChart,
-  User,
   Plus,
-  Shield,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTranslation } from "react-i18next";
