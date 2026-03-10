@@ -95,10 +95,10 @@ const LandingPage = () => {
               </SheetTrigger>
               <SheetContent side="right" className="glass-card">
                 <nav className="flex flex-col gap-4 mt-8">
-                  <a href="#home" onClick={() => setSheetOpen(false)} className="text-lg font-medium hover:text-primary transition-colors">Home</a>
-                  <a href="#como-funciona" onClick={() => setSheetOpen(false)} className="text-lg font-medium hover:text-primary transition-colors">{t('landing.nav.howItWorks')}</a>
-                  <a href="#planos" onClick={() => setSheetOpen(false)} className="text-lg font-medium hover:text-primary transition-colors">{t('landing.nav.plans')}</a>
-                  <a href="#contato" onClick={() => setSheetOpen(false)} className="text-lg font-medium hover:text-primary transition-colors">{t('landing.nav.contact')}</a>
+                  <button onClick={() => { setSheetOpen(false); setTimeout(() => scrollToSection('home'), 300); }} className="text-lg font-medium hover:text-primary transition-colors text-left">Home</button>
+                  <button onClick={() => { setSheetOpen(false); setTimeout(() => scrollToSection('como-funciona'), 300); }} className="text-lg font-medium hover:text-primary transition-colors text-left">{t('landing.nav.howItWorks')}</button>
+                  <button onClick={() => { setSheetOpen(false); setTimeout(() => scrollToSection('planos'), 300); }} className="text-lg font-medium hover:text-primary transition-colors text-left">{t('landing.nav.plans')}</button>
+                  <button onClick={() => { setSheetOpen(false); setTimeout(() => scrollToSection('contato'), 300); }} className="text-lg font-medium hover:text-primary transition-colors text-left">{t('landing.nav.contact')}</button>
                   <div className="flex flex-col gap-3 mt-6 pt-6 border-t border-border">
                     <LanguageFlagSelector inline onSelect={() => setSheetOpen(false)} />
                     <Button variant="outline" onClick={() => { setShowLogin(true); setSheetOpen(false); }} className="w-full">
