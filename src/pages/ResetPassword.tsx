@@ -27,7 +27,7 @@ export default function ResetPassword() {
   const isSetPassword = location.pathname === '/set-password';
 
   useEffect(() => {
-    let timeout: NodeJS.Timeout;
+    let timeout: ReturnType<typeof setTimeout>;
     let resolved = false;
 
     const resolve = () => {
