@@ -347,14 +347,14 @@ export function DashboardContent({
 
           <Card className="bg-gradient-card shadow-card border-0">
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
+              <CardTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <span className="font-heading">💬 {t('transactionList.yourConversations', 'Suas conversas financeiras')}</span>
                   <p className="text-sm font-normal text-muted-foreground mt-1">
                     {t('transactionList.allIncomeAndExpenses', 'Todas as suas receitas e despesas')}
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-shrink-0">
                   <span className="text-sm font-normal text-muted-foreground">
                     {t('transactionList.ofTotal', '{{filtered}} de {{total}} transações', { filtered: filteredTransactions.length, total: transactions.length })}
                   </span>

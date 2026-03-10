@@ -58,7 +58,7 @@ export function SummaryCards({ balance, totalIncome, totalExpenses }: SummaryCar
           </div>
         </CardHeader>
         <CardContent>
-          <div className="text-[2rem] font-bold text-destructive">
+          <div className="text-xl sm:text-[2rem] font-bold text-destructive">
             R$ {totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
