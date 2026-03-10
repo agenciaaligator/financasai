@@ -1,30 +1,73 @@
 
+## Correcao Final - Fluxo de Onboarding
 
-## Substituir logo "Dona Wilma" em todo o site
+### Bug Critico Encontrado
 
-O logo atual usa um ícone Calendar + texto "Dona Wilma" em vários locais, e na página de login usa a imagem redonda `99e234ab`. O novo logo (horizontal, com coração+gráfico+texto) será copiado para `public/images/logo.png` e substituído em todos os pontos.
+**Problema 5: Validacao do codigo WhatsApp SEMPRE falha** (mesmo com codigo correto)
 
-### Locais a alterar
+A edge function `validate-code` retorna `{ valid: true, message: "Codigo valido" }`, mas o frontend (`Welcome.tsx` linha 163) verifica `data?.success`. Como `success` nao existe na resposta, o frontend interpreta como erro e mostra "Codigo invalido ou expirado" mesmo quando o codigo esta correto.
 
-| Arquivo | Local | Mudança |
-|---------|-------|---------|
-| `src/pages/Index.tsx` (L68-72) | Navbar da landing | Trocar ícone Calendar + texto por `<img>` do logo |
-| `src/pages/Index.tsx` (L377-381) | Footer | Idem, versão branca/invertida ou mesma imagem |
-| `src/pages/Login.tsx` (L8-14) | Tela de login | Trocar imagem redonda + texto por logo horizontal |
-| `src/pages/Terms.tsx` (L19-22) | Header termos | Trocar Calendar + texto por logo |
-| `src/pages/Privacy.tsx` (L19-22) | Header privacidade | Idem |
-| `src/pages/ChoosePlan.tsx` (L29-31) | Header planos | Idem |
-| `src/pages/Welcome.tsx` (L240-242) | Header boas-vindas | Idem |
-| `src/components/AppSidebar.tsx` (L60-67) | Sidebar mobile | Trocar emoji 💰 + texto por logo (com filtro brightness para fundo escuro) |
-| `src/components/AppSidebar.tsx` (L114-123) | Sidebar desktop | Idem |
-| `index.html` (L11, 25, 31) | Favicon + OG/Twitter images | Atualizar referências para o novo logo |
+Isso explica tambem o Problema 4 (parece que o codigo nao funciona) e o Problema 6 (mensagem de boas-vindas nunca chega, pois o usuario nunca conclui a validacao com sucesso no frontend).
 
-### Implementação
+### Alteracoes Necessarias
 
-1. Copiar `user-uploads://logo_transparente_site_400x90.png` → `public/images/logo.png`
-2. Em cada local acima, substituir o bloco `Calendar icon + span` por `<img src="/images/logo.png" alt="Dona Wilma" className="h-8" />` (ajustando altura conforme contexto)
-3. No sidebar (fundo escuro), usar `className="brightness-0 invert"` para tornar o logo branco
-4. No footer (fundo escuro), mesma técnica de inversão
-5. Na página de login, usar o logo maior (`h-12`) centralizado, removendo a imagem redonda e o `<h1>`
-6. No `index.html`, atualizar favicon e og:image para `/images/logo.png`
+#### 1. Corrigir Welcome.tsx - Verificacao da resposta validate-code
 
+**Arquivo:** `src/pages/Welcome.tsx` (linha 163)
+
+Alterar de:
+```tsx
+if (!data?.success) throw new Error(data?.error || 'Codigo invalido ou expirado');
+```
+
+Para:
+```tsx
+if (!data?.valid && !data?.success) throw new Error(data?.message || data?.error || 'Codigo invalido ou expirado');
+```
+
+Isso aceita tanto `{ valid: true }` (resposta atual) quanto `{ success: true }` (se for alterado no futuro).
+
+#### 2. Limpeza de dados do usuario de teste
+
+Executar queries SQL para limpar os dados de `alexandre@aligator.com.br`:
+```sql
+DELETE FROM whatsapp_sessions WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM whatsapp_validation_codes WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM user_roles WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM user_subscriptions WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM organization_members WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM organizations WHERE owner_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM profiles WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+```
+
+A exclusao do usuario de `auth.users` precisa ser feita via Supabase Dashboard (Authentication > Users) ou pela edge function `delete-user-admin`.
+
+### Problemas 2 e 3: Email Timing e Link
+
+**Nao ha bug de codigo aqui.** O fluxo atual e:
+1. `signUp()` envia email de confirmacao (comportamento nativo Supabase)
+2. Usuario faz checkout no Stripe
+3. Stripe webhook ativa a assinatura
+4. Usuario confirma email quando quiser
+5. Link do email vai para `/auth/callback` (ja configurado corretamente na linha 47 do Register.tsx)
+6. `/auth/callback` verifica assinatura e redireciona para `/boas-vindas`
+
+O email e enviado no momento do signup porque o Supabase nao permite adiar o envio. Isso NAO e um bug - o usuario pode confirmar o email a qualquer momento, antes ou depois do checkout.
+
+### Resumo
+
+A unica alteracao de codigo necessaria e a correcao da verificacao da resposta em `Welcome.tsx`. O resto sao operacoes de limpeza de dados no banco.

@@ -57,15 +57,7 @@ export function AppSidebar({
     return (
       <div className="flex flex-col h-full bg-gradient-to-br from-primary to-primary-dark text-sidebar-foreground">
         <div className="border-b border-sidebar-border p-4">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-secondary/20 backdrop-blur rounded-lg flex items-center justify-center animate-float">
-              <span className="text-xl">💰</span>
-            </div>
-            <div>
-              <h2 className="font-heading italic text-xl text-white font-semibold">Dona Wilma</h2>
-              <p className="text-xs text-white/70">Sua assistente financeira pessoal</p>
-            </div>
-          </div>
+          <img src="/images/logo.png" alt="Dona Wilma" className="h-8 brightness-0 invert" />
         </div>
         
         <div className="flex-1 px-3 py-4">
@@ -111,17 +103,13 @@ export function AppSidebar({
   return (
     <Sidebar className="border-r border-sidebar-border bg-gradient-to-br from-primary to-primary-dark">
       <SidebarHeader className="border-b border-sidebar-border p-4">
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 bg-secondary/20 backdrop-blur rounded-lg flex items-center justify-center animate-float">
+        {open ? (
+          <img src="/images/logo.png" alt="Dona Wilma" className="h-8 brightness-0 invert" />
+        ) : (
+          <div className="w-10 h-10 bg-secondary/20 backdrop-blur rounded-lg flex items-center justify-center">
             <span className="text-xl">💰</span>
           </div>
-          {open && (
-            <div>
-              <h2 className="font-heading italic text-xl text-white font-semibold">Dona Wilma</h2>
-              <p className="text-xs text-white/70">Sua assistente financeira pessoal</p>
-            </div>
-          )}
-        </div>
+        )}
       </SidebarHeader>
       
       <SidebarContent className="px-2 py-3">

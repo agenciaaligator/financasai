@@ -65,12 +65,7 @@ const LandingPage = () => {
       {/* Navigation */}
       <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'glass-nav-scrolled' : 'glass-nav'}`}>
         <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-primary flex items-center justify-center shadow-primary">
-              <Calendar className="h-4.5 w-4.5 text-white" />
-            </div>
-            <span className="font-display font-bold text-xl tracking-tight">Dona Wilma</span>
-          </div>
+          <img src="/images/logo.png" alt="Dona Wilma" className="h-8" />
           
           <div className="hidden md:flex items-center gap-8">
             <a href="#home" className="text-sm font-medium text-foreground/80 hover:text-primary transition-all duration-200 hover:-translate-y-0.5">Home</a>
@@ -374,11 +369,8 @@ const LandingPage = () => {
         <div className="container mx-auto px-4 py-16 relative z-10">
           <div className="grid md:grid-cols-3 gap-10">
             <div>
-              <div className="flex items-center gap-2.5 mb-5">
-                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
-                  <Calendar className="h-4.5 w-4.5 text-secondary" />
-                </div>
-                <span className="font-display font-bold text-xl text-white">Dona Wilma</span>
+              <div className="mb-5">
+                <img src="/images/logo.png" alt="Dona Wilma" className="h-8 brightness-0 invert" />
               </div>
               <p className="text-sm text-white/60 leading-relaxed">
                 {t('landing.footer.tagline')}
