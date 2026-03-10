@@ -201,6 +201,7 @@ export function ReportsPage() {
                     ))}
                   </Pie>
                   <Tooltip formatter={(v) => formatCurrency(Number(v))} />
+                  <Legend />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
