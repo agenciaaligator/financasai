@@ -26,9 +26,8 @@ export default function ChoosePlan() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950">
       <header className="border-b border-white/10 bg-white/5 backdrop-blur-sm">
         <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-            <Calendar className="h-6 w-6 text-primary" />
-            <span className="font-bold text-xl text-white">Dona Wilma</span>
+          <div className="cursor-pointer" onClick={() => navigate('/')}>
+            <img src="/images/logo.png" alt="Dona Wilma" className="h-8 brightness-0 invert" />
           </div>
           <Button variant="ghost" onClick={() => navigate('/')} className="border border-white/20 text-white hover:bg-white/10 hover:text-white">
             {t('common.back')}
