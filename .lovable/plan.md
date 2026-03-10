@@ -1,34 +1,73 @@
 
+## Correcao Final - Fluxo de Onboarding
 
-## Correções: Menu Mobile Landing + Logo no Login
+### Bug Critico Encontrado
 
-### Problemas Identificados
+**Problema 5: Validacao do codigo WhatsApp SEMPRE falha** (mesmo com codigo correto)
 
-**1. Links do menu mobile na landing page não navegam para as seções**
-O menu hamburger usa `<a href="#como-funciona" onClick={() => setSheetOpen(false)}>`. O componente Sheet (Radix) bloqueia o scroll do body enquanto está aberto. Quando o link é clicado, o browser tenta fazer scroll para o hash, mas o scroll está bloqueado. Ao fechar o Sheet, o scroll é desbloqueado, mas a navegação por hash já foi consumida — resultado: nada acontece.
+A edge function `validate-code` retorna `{ valid: true, message: "Codigo valido" }`, mas o frontend (`Welcome.tsx` linha 163) verifica `data?.success`. Como `success` nao existe na resposta, o frontend interpreta como erro e mostra "Codigo invalido ou expirado" mesmo quando o codigo esta correto.
 
-**Correção**: Usar `scrollToSection(id)` com um pequeno delay após fechar o Sheet, em vez de depender do `href` nativo.
+Isso explica tambem o Problema 4 (parece que o codigo nao funciona) e o Problema 6 (mensagem de boas-vindas nunca chega, pois o usuario nunca conclui a validacao com sucesso no frontend).
 
-**2. Ícone Eye (👁) na tela de login em vez do logo**
-O `LoginForm.tsx` (L71-74) mostra um ícone `Eye` dentro de um círculo gradiente. Deveria mostrar o logo do Dona Wilma.
+### Alteracoes Necessarias
 
----
+#### 1. Corrigir Welcome.tsx - Verificacao da resposta validate-code
 
-### Arquivos a modificar
+**Arquivo:** `src/pages/Welcome.tsx` (linha 163)
 
-**`src/pages/Index.tsx`** (L97-101): Trocar os `<a href="#hash">` por botões que chamam `scrollToSection()` após fechar o Sheet:
+Alterar de:
 ```tsx
-<button onClick={() => { setSheetOpen(false); setTimeout(() => scrollToSection('como-funciona'), 300); }}>
+if (!data?.success) throw new Error(data?.error || 'Codigo invalido ou expirado');
 ```
 
-**`src/components/auth/LoginForm.tsx`** (L71-74): Substituir o ícone Eye pelo logo:
+Para:
 ```tsx
-<img src="/images/logo.png" alt="Dona Wilma" className="h-10" />
-```
-Em vez de:
-```tsx
-<div className="p-3 bg-gradient-primary rounded-full">
-  <Eye className="h-8 w-8 text-white" />
-</div>
+if (!data?.valid && !data?.success) throw new Error(data?.message || data?.error || 'Codigo invalido ou expirado');
 ```
 
+Isso aceita tanto `{ valid: true }` (resposta atual) quanto `{ success: true }` (se for alterado no futuro).
+
+#### 2. Limpeza de dados do usuario de teste
+
+Executar queries SQL para limpar os dados de `alexandre@aligator.com.br`:
+```sql
+DELETE FROM whatsapp_sessions WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM whatsapp_validation_codes WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM user_roles WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM user_subscriptions WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM organization_members WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM organizations WHERE owner_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM profiles WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+```
+
+A exclusao do usuario de `auth.users` precisa ser feita via Supabase Dashboard (Authentication > Users) ou pela edge function `delete-user-admin`.
+
+### Problemas 2 e 3: Email Timing e Link
+
+**Nao ha bug de codigo aqui.** O fluxo atual e:
+1. `signUp()` envia email de confirmacao (comportamento nativo Supabase)
+2. Usuario faz checkout no Stripe
+3. Stripe webhook ativa a assinatura
+4. Usuario confirma email quando quiser
+5. Link do email vai para `/auth/callback` (ja configurado corretamente na linha 47 do Register.tsx)
+6. `/auth/callback` verifica assinatura e redireciona para `/boas-vindas`
+
+O email e enviado no momento do signup porque o Supabase nao permite adiar o envio. Isso NAO e um bug - o usuario pode confirmar o email a qualquer momento, antes ou depois do checkout.
+
+### Resumo
+
+A unica alteracao de codigo necessaria e a correcao da verificacao da resposta em `Welcome.tsx`. O resto sao operacoes de limpeza de dados no banco.
