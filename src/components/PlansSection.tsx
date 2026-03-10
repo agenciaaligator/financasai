@@ -98,7 +98,7 @@ export function PlansSection() {
 
             <div className="mb-6">
               <div className="flex items-baseline gap-2">
-                <span className="font-display text-5xl font-bold text-white">
+                <span className="font-display text-3xl sm:text-5xl font-bold text-white">
                   {formatPrice(getDisplayPrice('monthly', locale), currency)}
                 </span>
                 <span className="text-white/50">{t('landing.plans.perMonth')}</span>
