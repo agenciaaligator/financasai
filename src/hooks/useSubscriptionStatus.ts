@@ -31,7 +31,7 @@ export function useSubscriptionStatus(session: Session | null): UseSubscriptionS
   const [error, setError] = useState<string | null>(null);
   
   // Refs para debounce e cooldown
-  const checkTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const checkTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastCheckTimeRef = useRef<number>(0);
   const isCheckingRef = useRef<boolean>(false);
 
