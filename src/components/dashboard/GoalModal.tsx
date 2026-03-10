@@ -71,6 +71,7 @@ export function GoalModal({ open, onClose, onSave, categories, existingGoalCateg
               type="number"
               min="1"
               step="0.01"
+              inputMode="decimal"
               placeholder="800.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}

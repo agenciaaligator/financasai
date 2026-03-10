@@ -137,7 +137,7 @@ export function MonthlyGoalsSection({
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="h-7 w-7 p-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                               onClick={() => handleEdit(gp)}
                             >
                               <Pencil className="h-3.5 w-3.5" />
@@ -145,7 +145,7 @@ export function MonthlyGoalsSection({
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-destructive"
+                              className="h-7 w-7 p-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity text-destructive"
                               onClick={() => setDeletingGoalId(gp.goal.id)}
                             >
                               <Trash2 className="h-3.5 w-3.5" />

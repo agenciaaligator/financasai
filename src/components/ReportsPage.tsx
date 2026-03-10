@@ -192,7 +192,7 @@ export function ReportsPage() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    label={false}
                     outerRadius={90}
                     dataKey="value"
                   >
@@ -201,6 +201,7 @@ export function ReportsPage() {
                     ))}
                   </Pie>
                   <Tooltip formatter={(v) => formatCurrency(Number(v))} />
+                  <Legend />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -221,7 +222,7 @@ export function ReportsPage() {
               <BarChart data={barData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="name" />
-                <YAxis tickFormatter={v => formatCurrency(v)} />
+                <YAxis tickFormatter={v => v >= 1000 ? `R$${(v / 1000).toFixed(0)}k` : `R$${v}`} width={60} />
                 <Tooltip formatter={v => formatCurrency(Number(v))} />
                 <Legend />
                 <Bar dataKey={t('reports.income')} fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />

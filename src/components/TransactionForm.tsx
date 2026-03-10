@@ -163,6 +163,7 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
                 id="amount"
                 type="number"
                 step="0.01"
+                inputMode="decimal"
                 placeholder="0,00"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}

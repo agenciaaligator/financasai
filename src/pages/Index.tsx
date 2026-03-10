@@ -82,7 +82,7 @@ const LandingPage = () => {
               variant="outline" 
               size="sm"
               onClick={() => setShowLogin(true)} 
-              className="hidden sm:flex font-medium hover:-translate-y-0.5 transition-transform"
+              className="font-medium hover:-translate-y-0.5 transition-transform"
             >
               {t('auth.login')}
             </Button>

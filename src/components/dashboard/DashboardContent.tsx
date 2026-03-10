@@ -217,11 +217,11 @@ export function DashboardContent({
         <Card className="relative dw-card bg-card shadow-card border-0 overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/20 rounded-full blur-3xl -translate-y-8 translate-x-8"></div>
           <CardContent className="p-8 relative">
-            <h1 className="font-heading text-[2.5rem] font-semibold text-foreground mb-2">
-              Olá! 🎉
+            <h1 className="font-heading text-2xl sm:text-[2.5rem] font-semibold text-foreground mb-2">
+              {t('dashboard.greeting', 'Olá! 🎉')}
             </h1>
-            <p className="text-lg text-muted-foreground">
-              Como estão suas finanças hoje? Vamos dar uma olhada...
+            <p className="text-base sm:text-lg text-muted-foreground">
+              {t('dashboard.greetingSubtitle', 'Como estão suas finanças hoje? Vamos dar uma olhada...')}
             </p>
           </CardContent>
         </Card>
@@ -347,14 +347,14 @@ export function DashboardContent({
 
           <Card className="bg-gradient-card shadow-card border-0">
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
+              <CardTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <span className="font-heading">💬 {t('transactionList.yourConversations', 'Suas conversas financeiras')}</span>
                   <p className="text-sm font-normal text-muted-foreground mt-1">
                     {t('transactionList.allIncomeAndExpenses', 'Todas as suas receitas e despesas')}
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-shrink-0">
                   <span className="text-sm font-normal text-muted-foreground">
                     {t('transactionList.ofTotal', '{{filtered}} de {{total}} transações', { filtered: filteredTransactions.length, total: transactions.length })}
                   </span>

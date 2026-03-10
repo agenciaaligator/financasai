@@ -65,12 +65,12 @@ export function TransactionFilters({
           <div className="space-y-2">
             <Label>{t('filters.period', 'Período')}</Label>
             <Tabs value={filters.period} onValueChange={(value) => onFiltersChange({ ...filters, period: value as TransactionFiltersState['period'] })} className="w-full">
-              <TabsList className="grid grid-cols-5 h-auto rounded-[25px] p-1">
-                <TabsTrigger value="all" className="text-xs rounded-[20px]">{t('filters.all', 'Todos')}</TabsTrigger>
-                <TabsTrigger value="today" className="text-xs rounded-[20px]">{t('filters.today', 'Hoje')}</TabsTrigger>
-                <TabsTrigger value="week" className="text-xs rounded-[20px]">{t('filters.week', 'Semana')}</TabsTrigger>
-                <TabsTrigger value="month" className="text-xs rounded-[20px]">{t('filters.month', 'Mês')}</TabsTrigger>
-                <TabsTrigger value="last_month" className="text-xs rounded-[20px]">{t('filters.lastMonth', 'Último mês')}</TabsTrigger>
+              <TabsList className="flex overflow-x-auto h-auto rounded-[25px] p-1 [scrollbar-width:none] [-webkit-overflow-scrolling:touch]">
+                <TabsTrigger value="all" className="text-xs rounded-[20px] flex-shrink-0">{t('filters.all', 'Todos')}</TabsTrigger>
+                <TabsTrigger value="today" className="text-xs rounded-[20px] flex-shrink-0">{t('filters.today', 'Hoje')}</TabsTrigger>
+                <TabsTrigger value="week" className="text-xs rounded-[20px] flex-shrink-0">{t('filters.week', 'Semana')}</TabsTrigger>
+                <TabsTrigger value="month" className="text-xs rounded-[20px] flex-shrink-0">{t('filters.month', 'Mês')}</TabsTrigger>
+                <TabsTrigger value="last_month" className="text-xs rounded-[20px] flex-shrink-0">{t('filters.lastMonth', 'Último mês')}</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
