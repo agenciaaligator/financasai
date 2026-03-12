@@ -184,7 +184,7 @@ const LandingPage = () => {
                 ))}
               </div>
               <p className="text-sm text-muted-foreground">
-                <span className="font-semibold text-foreground">+500</span> usuários ativos
+                <span className="font-semibold text-foreground">{t('landing.hero.socialProofCount')}</span> {t('landing.hero.socialProofLabel')}
               </p>
             </div>
           </div>
