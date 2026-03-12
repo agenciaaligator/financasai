@@ -1,18 +1,73 @@
 
+## Correcao Final - Fluxo de Onboarding
 
-## Problema: Logo duplicado na tela de login (modal da landing)
+### Bug Critico Encontrado
 
-Quando o usuário clica em "Entrar" na landing page, o `Index.tsx` abre um modal que renderiza `<LoginForm />`. O `LoginForm` contém seu próprio logo dentro do `CardHeader`. Como o modal da landing NÃO adiciona logo externo (diferente de `Login.tsx` que tem logo + subtítulo acima do form), o resultado visual é correto — **um único logo aparece**.
+**Problema 5: Validacao do codigo WhatsApp SEMPRE falha** (mesmo com codigo correto)
 
-Porém, na página `/login` dedicada, o `Login.tsx` renderiza um logo (`h-12`) + subtítulo ACIMA do `<LoginForm />`, que por sua vez tem OUTRO logo (`h-10`) dentro do card. Isso causa **duplicação**.
+A edge function `validate-code` retorna `{ valid: true, message: "Codigo valido" }`, mas o frontend (`Welcome.tsx` linha 163) verifica `data?.success`. Como `success` nao existe na resposta, o frontend interpreta como erro e mostra "Codigo invalido ou expirado" mesmo quando o codigo esta correto.
 
-### Correção
+Isso explica tambem o Problema 4 (parece que o codigo nao funciona) e o Problema 6 (mensagem de boas-vindas nunca chega, pois o usuario nunca conclui a validacao com sucesso no frontend).
 
-Remover o logo de dentro do `LoginForm.tsx` (linhas 71-73) e mantê-lo apenas nos wrappers (`Login.tsx` e `Index.tsx` modal). No modal da `Index.tsx`, adicionar o logo acima do `<LoginForm />`.
+### Alteracoes Necessarias
 
-| Arquivo | Mudança |
-|---------|---------|
-| `src/components/auth/LoginForm.tsx` | Remover `<img src="/images/logo.png" ... />` do CardHeader (L71-73) |
-| `src/pages/Index.tsx` | Adicionar logo acima do `<LoginForm />` dentro do modal (L133) |
-| `src/pages/Login.tsx` | Já tem logo — nenhuma mudança necessária |
+#### 1. Corrigir Welcome.tsx - Verificacao da resposta validate-code
 
+**Arquivo:** `src/pages/Welcome.tsx` (linha 163)
+
+Alterar de:
+```tsx
+if (!data?.success) throw new Error(data?.error || 'Codigo invalido ou expirado');
+```
+
+Para:
+```tsx
+if (!data?.valid && !data?.success) throw new Error(data?.message || data?.error || 'Codigo invalido ou expirado');
+```
+
+Isso aceita tanto `{ valid: true }` (resposta atual) quanto `{ success: true }` (se for alterado no futuro).
+
+#### 2. Limpeza de dados do usuario de teste
+
+Executar queries SQL para limpar os dados de `alexandre@aligator.com.br`:
+```sql
+DELETE FROM whatsapp_sessions WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM whatsapp_validation_codes WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM user_roles WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM user_subscriptions WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM organization_members WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM organizations WHERE owner_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM profiles WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+```
+
+A exclusao do usuario de `auth.users` precisa ser feita via Supabase Dashboard (Authentication > Users) ou pela edge function `delete-user-admin`.
+
+### Problemas 2 e 3: Email Timing e Link
+
+**Nao ha bug de codigo aqui.** O fluxo atual e:
+1. `signUp()` envia email de confirmacao (comportamento nativo Supabase)
+2. Usuario faz checkout no Stripe
+3. Stripe webhook ativa a assinatura
+4. Usuario confirma email quando quiser
+5. Link do email vai para `/auth/callback` (ja configurado corretamente na linha 47 do Register.tsx)
+6. `/auth/callback` verifica assinatura e redireciona para `/boas-vindas`
+
+O email e enviado no momento do signup porque o Supabase nao permite adiar o envio. Isso NAO e um bug - o usuario pode confirmar o email a qualquer momento, antes ou depois do checkout.
+
+### Resumo
+
+A unica alteracao de codigo necessaria e a correcao da verificacao da resposta em `Welcome.tsx`. O resto sao operacoes de limpeza de dados no banco.
