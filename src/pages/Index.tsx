@@ -145,7 +145,7 @@ const LandingPage = () => {
             {/* Hero badge */}
             <div className="hero-badge animate-fadeInUp">
               <Sparkles className="h-4 w-4" />
-              <span>Inteligência Artificial para sua vida</span>
+              <span>{t('landing.hero.badge')}</span>
             </div>
             
             <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.1] tracking-tight animate-fadeInUp" style={{ animationDelay: '0.1s' }}>
