@@ -543,7 +543,13 @@
       "titleEnd": "for you",
       "subtitle": "Manage your finances smartly with Dona Wilma",
       "viewPlans": "View plans",
-      "learnMore": "Learn more"
+      "learnMore": "Learn more",
+      "badge": "Artificial Intelligence for your life",
+      "socialProofCount": "+500",
+      "socialProofLabel": "active users",
+      "floatingWhatsapp": "WhatsApp",
+      "floatingMessage": "Spent 50 at the store",
+      "floatingSuccess": "Recorded!"
     },
     "howItWorks": {
       "subtitle": "Simplify your life with technology that works for you"
