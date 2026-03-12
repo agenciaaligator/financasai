@@ -15,6 +15,7 @@ export default function Privacy() {
   const [activeSection, setActiveSection] = useState<string>("");
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
