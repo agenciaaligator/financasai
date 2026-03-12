@@ -52,7 +52,9 @@
     "admin": "Admin",
     "adminDesc": "Admin panel",
     "newTransaction": "New Transaction",
-    "subtitle": "Your personal assistant"
+    "subtitle": "Your personal assistant",
+    "goals": "Goals",
+    "goalsDesc": "Monthly goals"
   },
   "chart": {
     "incomeVsExpenses": "Income vs Expenses",
