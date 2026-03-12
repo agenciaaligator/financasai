@@ -15,6 +15,7 @@ export default function Terms() {
   const [activeSection, setActiveSection] = useState<string>("");
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -107,18 +108,32 @@ export default function Terms() {
 
       {/* Footer */}
       <footer className="footer-dark mt-8">
-        <div className="container mx-auto px-4 py-12 relative z-10">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-3">
-              <img src="/images/logo.png" alt="Dona Wilma" className="h-6 brightness-0 invert" />
-              <span className="text-sm text-white/50">{t('landing.footer.tagline')}</span>
+        <div className="container mx-auto px-4 py-16 relative z-10">
+          <div className="grid md:grid-cols-3 gap-10">
+            <div>
+              <div className="mb-5">
+                <img src="/images/logo.png" alt="Dona Wilma" className="h-8 brightness-0 invert" />
+              </div>
+              <p className="text-sm text-white/60 leading-relaxed">
+                {t('landing.footer.tagline')}
+              </p>
             </div>
-            <div className="flex items-center gap-6 text-sm text-white/50">
-              <button onClick={() => navigate("/termos")} className="hover:text-white transition-colors">{t('landing.footer.terms')}</button>
-              <button onClick={() => navigate("/privacidade")} className="hover:text-white transition-colors">{t('landing.footer.privacy')}</button>
+            <div>
+              <h3 className="font-display font-semibold text-secondary mb-5">{t('landing.footer.links')}</h3>
+              <ul className="space-y-3 text-sm text-white/60">
+                <li><button onClick={() => navigate("/")} className="hover:text-white hover:translate-x-1 inline-block transition-all">Home</button></li>
+                <li><button onClick={() => navigate("/termos")} className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.footer.terms')}</button></li>
+                <li><button onClick={() => navigate("/privacidade")} className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.footer.privacy')}</button></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-display font-semibold text-secondary mb-5">{t('landing.nav.contact')}</h3>
+              <p className="text-sm text-white/60">
+                contato@donawilma.com.br
+              </p>
             </div>
           </div>
-          <div className="border-t border-white/10 mt-8 pt-6 text-center text-sm text-white/40 space-y-1">
+          <div className="border-t border-white/10 mt-12 pt-8 text-center text-sm text-white/50 space-y-2">
             <p>{t('landing.footer.copyright')}</p>
             <p>
               {t('landing.footer.developedBy')}{' '}
