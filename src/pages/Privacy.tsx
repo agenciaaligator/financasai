@@ -1,10 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ChevronRight, Shield, Menu } from "lucide-react";
+import { ChevronRight, Shield, Menu } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { LanguageFlagSelector } from "@/components/LanguageFlagSelector";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { LoginForm } from "@/components/auth/LoginForm";
 
 const sectionKeys = [
   "dataCollected", "dataUsage", "sharing", "ai", "security",
