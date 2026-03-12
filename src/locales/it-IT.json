@@ -258,10 +258,7 @@
     "deleteTitle": "Elimina Obiettivo",
     "deleteDesc": "Sei sicuro di voler eliminare questo obiettivo?"
   },
-  "sidebar": {
-    "goals": "Obiettivi",
-    "goalsDesc": "Obiettivi mensili"
-  },
+  "_sidebar_goals_merged_into_main_sidebar": true,
   "reports": {
     "title": "Report Finanziari",
     "income": "Entrate",
