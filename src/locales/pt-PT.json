@@ -51,7 +51,9 @@
     "admin": "Admin",
     "adminDesc": "Painel administrativo",
     "newTransaction": "Nova Transação",
-    "subtitle": "A sua assessora pessoal"
+    "subtitle": "A sua assessora pessoal",
+    "goals": "Metas",
+    "goalsDesc": "Metas mensais"
   },
   "chart": { "incomeVsExpenses": "Receitas vs Despesas", "byCategory": "Por Categoria", "noCategory": "Sem Categoria", "addTransactions": "Adicione transações para ver os gráficos", "financialChart": "Gráfico Financeiro", "howIsYourMoney": "Como está o seu dinheiro este mês" },
   "transactionList": { "noTransactions": "Nenhuma transação encontrada", "noTransactionsYet": "Ainda não tem movimentações. Que tal registar a primeira?", "searchNoResults": "Não encontrámos nada. Tente outros termos.", "yesterday": "Ontem", "yourLatestMovements": "As suas últimas movimentações", "viewAllTransactions": "Ver todas as transações", "yourTransactions": "As Suas Transações", "allIncomeAndExpenses": "Todas as suas receitas e despesas", "activeFilters": "Tem filtros ativos", "filtersHiding": "As transações podem estar ocultas pelos filtros aplicados.", "clearAllFilters": "Limpar todos os filtros", "totalTransactions": "Existem {{count}} transações no total", "tryReload": "Tente recarregar para ver as transações mais recentes.", "reloadTransactions": "Recarregar transações", "showing": "A mostrar {{start}}-{{end}} de {{total}} transações", "allTransactions": "Todas as Transações", "ofTotal": "{{filtered}} de {{total}} transações", "activeFiltersInfo": "Filtros ativos:", "showingFiltered": "A mostrar {{filtered}} de {{total}} transações", "clearFilters": "Limpar filtros", "latestTransactions": "Últimas Transações", "recentTransactions": "Transações Recentes" },
