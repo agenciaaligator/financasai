@@ -1,73 +1,27 @@
 
-## Correcao Final - Fluxo de Onboarding
 
-### Bug Critico Encontrado
+## Header Unificado + Breadcrumb nas Páginas Legais
 
-**Problema 5: Validacao do codigo WhatsApp SEMPRE falha** (mesmo com codigo correto)
+### Problema
+O header das páginas `/termos` e `/privacidade` tem links diferentes (Home, Termos, Privacidade + botão Voltar) enquanto a landing tem (Home, Como funciona, Planos, Contato + botão Entrar). O breadcrumb com o nome da página está embutido no header ao lado do logo.
 
-A edge function `validate-code` retorna `{ valid: true, message: "Codigo valido" }`, mas o frontend (`Welcome.tsx` linha 163) verifica `data?.success`. Como `success` nao existe na resposta, o frontend interpreta como erro e mostra "Codigo invalido ou expirado" mesmo quando o codigo esta correto.
+### Solução
 
-Isso explica tambem o Problema 4 (parece que o codigo nao funciona) e o Problema 6 (mensagem de boas-vindas nunca chega, pois o usuario nunca conclui a validacao com sucesso no frontend).
+**Header idêntico à landing** em ambas as páginas legais:
+- Mesmo menu: Home, Como funciona, Planos, Contato (navegam para `/#home`, `/#como-funciona`, etc.)
+- Botão "Entrar" em vez de "Voltar"
+- LanguageFlagSelector no mesmo lugar
+- Mobile Sheet com os mesmos links + botão Entrar
 
-### Alteracoes Necessarias
+**Breadcrumb separado** abaixo do header (na área do hero banner que já existe):
+- Formato: `Home > Termos de Serviço` ou `Home > Política de Privacidade`
+- "Home" clicável, página atual como texto simples
+- Posicionado acima do título com ícone no hero banner
 
-#### 1. Corrigir Welcome.tsx - Verificacao da resposta validate-code
+### Arquivos
 
-**Arquivo:** `src/pages/Welcome.tsx` (linha 163)
+| Arquivo | Mudança |
+|---------|---------|
+| `src/pages/Terms.tsx` | Header → cópia da landing (links de seção + Entrar); breadcrumb no hero banner |
+| `src/pages/Privacy.tsx` | Mesmo tratamento |
 
-Alterar de:
-```tsx
-if (!data?.success) throw new Error(data?.error || 'Codigo invalido ou expirado');
-```
-
-Para:
-```tsx
-if (!data?.valid && !data?.success) throw new Error(data?.message || data?.error || 'Codigo invalido ou expirado');
-```
-
-Isso aceita tanto `{ valid: true }` (resposta atual) quanto `{ success: true }` (se for alterado no futuro).
-
-#### 2. Limpeza de dados do usuario de teste
-
-Executar queries SQL para limpar os dados de `alexandre@aligator.com.br`:
-```sql
-DELETE FROM whatsapp_sessions WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM whatsapp_validation_codes WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM user_roles WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM user_subscriptions WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM organization_members WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM organizations WHERE owner_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM profiles WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-```
-
-A exclusao do usuario de `auth.users` precisa ser feita via Supabase Dashboard (Authentication > Users) ou pela edge function `delete-user-admin`.
-
-### Problemas 2 e 3: Email Timing e Link
-
-**Nao ha bug de codigo aqui.** O fluxo atual e:
-1. `signUp()` envia email de confirmacao (comportamento nativo Supabase)
-2. Usuario faz checkout no Stripe
-3. Stripe webhook ativa a assinatura
-4. Usuario confirma email quando quiser
-5. Link do email vai para `/auth/callback` (ja configurado corretamente na linha 47 do Register.tsx)
-6. `/auth/callback` verifica assinatura e redireciona para `/boas-vindas`
-
-O email e enviado no momento do signup porque o Supabase nao permite adiar o envio. Isso NAO e um bug - o usuario pode confirmar o email a qualquer momento, antes ou depois do checkout.
-
-### Resumo
-
-A unica alteracao de codigo necessaria e a correcao da verificacao da resposta em `Welcome.tsx`. O resto sao operacoes de limpeza de dados no banco.
