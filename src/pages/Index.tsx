@@ -130,6 +130,9 @@ const LandingPage = () => {
             >
               ✕
             </Button>
+            <div className="flex justify-center mb-4">
+              <img src="/images/logo.png" alt="Dona Wilma" className="h-12" />
+            </div>
             <LoginForm />
           </div>
         </div>

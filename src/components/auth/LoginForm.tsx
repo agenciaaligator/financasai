@@ -68,9 +68,6 @@ export function LoginForm() {
   return (
     <Card className="w-full max-w-md bg-gradient-card shadow-primary border-0">
       <CardHeader className="space-y-1 text-center">
-        <div className="flex justify-center mb-4">
-          <img src="/images/logo.png" alt="Dona Wilma" className="h-10" />
-        </div>
         <CardTitle className="text-2xl font-bold">
           {t('auth.login')}
         </CardTitle>
