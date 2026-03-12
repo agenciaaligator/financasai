@@ -217,7 +217,7 @@ const LandingPage = () => {
               <div className="absolute -top-4 -right-6 glass-card rounded-2xl px-4 py-3 shadow-card animate-float" style={{ animationDelay: '1.5s' }}>
                 <div className="flex items-center gap-2">
                   <span className="text-lg">✅</span>
-                  <p className="text-xs font-semibold text-success">Registrado!</p>
+                  <p className="text-xs font-semibold text-success">{t('landing.hero.floatingSuccess')}</p>
                 </div>
               </div>
             </div>
