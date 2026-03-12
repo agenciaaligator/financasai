@@ -1,8 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ChevronRight, Shield } from "lucide-react";
+import { ArrowLeft, ChevronRight, Shield, Menu } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
+import { LanguageFlagSelector } from "@/components/LanguageFlagSelector";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const sectionKeys = [
   "dataCollected", "dataUsage", "sharing", "ai", "security",
@@ -13,6 +15,7 @@ export default function Privacy() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState<string>("");
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -47,10 +50,45 @@ export default function Privacy() {
               <span className="font-medium text-foreground">{t('legal.privacy.title')}</span>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={() => navigate("/")} className="gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            {t('legal.backButton')}
-          </Button>
+
+          <div className="hidden md:flex items-center gap-8">
+            <button onClick={() => navigate("/")} className="text-sm font-medium text-foreground/80 hover:text-primary transition-all duration-200 hover:-translate-y-0.5">Home</button>
+            <button onClick={() => navigate("/termos")} className="text-sm font-medium text-foreground/80 hover:text-primary transition-all duration-200 hover:-translate-y-0.5">{t('landing.footer.terms')}</button>
+            <button onClick={() => navigate("/privacidade")} className="text-sm font-medium text-primary transition-all duration-200">{t('landing.footer.privacy')}</button>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="hidden md:block">
+              <LanguageFlagSelector />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/")}
+              className="font-medium hover:-translate-y-0.5 transition-transform gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              {t('legal.backButton')}
+            </Button>
+
+            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+              <SheetTrigger asChild className="md:hidden">
+                <Button variant="ghost" size="icon">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right">
+                <nav className="flex flex-col gap-4 mt-8">
+                  <button onClick={() => { setSheetOpen(false); navigate("/"); }} className="text-lg font-medium hover:text-primary transition-colors text-left">Home</button>
+                  <button onClick={() => { setSheetOpen(false); navigate("/termos"); }} className="text-lg font-medium hover:text-primary transition-colors text-left">{t('landing.footer.terms')}</button>
+                  <button onClick={() => { setSheetOpen(false); navigate("/privacidade"); }} className="text-lg font-medium text-primary text-left">{t('landing.footer.privacy')}</button>
+                  <div className="flex flex-col gap-3 mt-6 pt-6 border-t border-border">
+                    <LanguageFlagSelector inline onSelect={() => setSheetOpen(false)} />
+                  </div>
+                </nav>
+              </SheetContent>
+            </Sheet>
+          </div>
         </nav>
       </header>
 
