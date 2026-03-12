@@ -838,10 +838,7 @@
     "deleteTitle": "Excluir Meta",
     "deleteDesc": "Tem certeza que deseja excluir esta meta?"
   },
-  "sidebar": {
-    "goals": "Metas",
-    "goalsDesc": "Metas mensais"
-  },
+  "_sidebar_goals_merged_into_main_sidebar": true,
   "reports": {
     "title": "Relatórios Financeiros",
     "income": "Receitas",
