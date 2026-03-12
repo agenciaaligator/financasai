@@ -207,8 +207,8 @@ const LandingPage = () => {
                     <span className="text-xl">💬</span>
                   </div>
                   <div>
-                    <p className="text-xs font-semibold">WhatsApp</p>
-                    <p className="text-xs text-muted-foreground">Gastei 50 no mercado</p>
+                    <p className="text-xs font-semibold">{t('landing.hero.floatingWhatsapp')}</p>
+                    <p className="text-xs text-muted-foreground">{t('landing.hero.floatingMessage')}</p>
                   </div>
                 </div>
               </div>
