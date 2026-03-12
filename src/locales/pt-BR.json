@@ -52,7 +52,9 @@
     "admin": "Admin",
     "adminDesc": "Painel administrativo",
     "newTransaction": "Nova Transação",
-    "subtitle": "Sua assessora pessoal"
+    "subtitle": "Sua assessora pessoal",
+    "goals": "Metas",
+    "goalsDesc": "Metas mensais"
   },
   "chart": {
     "incomeVsExpenses": "Receitas vs Despesas",
