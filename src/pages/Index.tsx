@@ -145,7 +145,7 @@ const LandingPage = () => {
             {/* Hero badge */}
             <div className="hero-badge animate-fadeInUp">
               <Sparkles className="h-4 w-4" />
-              <span>Inteligência Artificial para sua vida</span>
+              <span>{t('landing.hero.badge')}</span>
             </div>
             
             <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.1] tracking-tight animate-fadeInUp" style={{ animationDelay: '0.1s' }}>
@@ -184,7 +184,7 @@ const LandingPage = () => {
                 ))}
               </div>
               <p className="text-sm text-muted-foreground">
-                <span className="font-semibold text-foreground">+500</span> usuários ativos
+                <span className="font-semibold text-foreground">{t('landing.hero.socialProofCount')}</span> {t('landing.hero.socialProofLabel')}
               </p>
             </div>
           </div>
@@ -207,8 +207,8 @@ const LandingPage = () => {
                     <span className="text-xl">💬</span>
                   </div>
                   <div>
-                    <p className="text-xs font-semibold">WhatsApp</p>
-                    <p className="text-xs text-muted-foreground">Gastei 50 no mercado</p>
+                    <p className="text-xs font-semibold">{t('landing.hero.floatingWhatsapp')}</p>
+                    <p className="text-xs text-muted-foreground">{t('landing.hero.floatingMessage')}</p>
                   </div>
                 </div>
               </div>
@@ -217,7 +217,7 @@ const LandingPage = () => {
               <div className="absolute -top-4 -right-6 glass-card rounded-2xl px-4 py-3 shadow-card animate-float" style={{ animationDelay: '1.5s' }}>
                 <div className="flex items-center gap-2">
                   <span className="text-lg">✅</span>
-                  <p className="text-xs font-semibold text-success">Registrado!</p>
+                  <p className="text-xs font-semibold text-success">{t('landing.hero.floatingSuccess')}</p>
                 </div>
               </div>
             </div>
@@ -385,8 +385,8 @@ const LandingPage = () => {
                 <li><a href="#home" className="hover:text-white hover:translate-x-1 inline-block transition-all">Home</a></li>
                 <li><a href="#como-funciona" className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.nav.howItWorks')}</a></li>
                 <li><a href="#planos" className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.nav.plans')}</a></li>
-                <li><a href="/termos" className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.footer.terms')}</a></li>
-                <li><a href="/privacidade" className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.footer.privacy')}</a></li>
+                <li><button onClick={() => navigate("/termos")} className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.footer.terms')}</button></li>
+                <li><button onClick={() => navigate("/privacidade")} className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.footer.privacy')}</button></li>
               </ul>
             </div>
             <div>

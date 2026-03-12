@@ -51,7 +51,9 @@
     "admin": "Admin",
     "adminDesc": "Painel administrativo",
     "newTransaction": "Nova Transação",
-    "subtitle": "A sua assessora pessoal"
+    "subtitle": "A sua assessora pessoal",
+    "goals": "Metas",
+    "goalsDesc": "Metas mensais"
   },
   "chart": { "incomeVsExpenses": "Receitas vs Despesas", "byCategory": "Por Categoria", "noCategory": "Sem Categoria", "addTransactions": "Adicione transações para ver os gráficos", "financialChart": "Gráfico Financeiro", "howIsYourMoney": "Como está o seu dinheiro este mês" },
   "transactionList": { "noTransactions": "Nenhuma transação encontrada", "noTransactionsYet": "Ainda não tem movimentações. Que tal registar a primeira?", "searchNoResults": "Não encontrámos nada. Tente outros termos.", "yesterday": "Ontem", "yourLatestMovements": "As suas últimas movimentações", "viewAllTransactions": "Ver todas as transações", "yourTransactions": "As Suas Transações", "allIncomeAndExpenses": "Todas as suas receitas e despesas", "activeFilters": "Tem filtros ativos", "filtersHiding": "As transações podem estar ocultas pelos filtros aplicados.", "clearAllFilters": "Limpar todos os filtros", "totalTransactions": "Existem {{count}} transações no total", "tryReload": "Tente recarregar para ver as transações mais recentes.", "reloadTransactions": "Recarregar transações", "showing": "A mostrar {{start}}-{{end}} de {{total}} transações", "allTransactions": "Todas as Transações", "ofTotal": "{{filtered}} de {{total}} transações", "activeFiltersInfo": "Filtros ativos:", "showingFiltered": "A mostrar {{filtered}} de {{total}} transações", "clearFilters": "Limpar filtros", "latestTransactions": "Últimas Transações", "recentTransactions": "Transações Recentes" },
@@ -141,7 +143,7 @@
   },
   "landing": {
     "nav": { "howItWorks": "Como funciona", "plans": "Planos", "contact": "Contacto" },
-    "hero": { "title": "Tenha uma assessora pessoal a trabalhar", "highlight": "24h por dia", "titleEnd": "por si", "subtitle": "Faça a gestão das suas finanças de forma inteligente com a Dona Wilma", "viewPlans": "Ver planos", "learnMore": "Saber mais" },
+    "hero": { "title": "Tenha uma assessora pessoal a trabalhar", "highlight": "24h por dia", "titleEnd": "por si", "subtitle": "Faça a gestão das suas finanças de forma inteligente com a Dona Wilma", "viewPlans": "Ver planos", "learnMore": "Saber mais", "badge": "Inteligência Artificial para a sua vida", "socialProofCount": "+500", "socialProofLabel": "utilizadores ativos", "floatingWhatsapp": "WhatsApp", "floatingMessage": "Gastei 50 no supermercado", "floatingSuccess": "Registado!" },
     "howItWorks": { "subtitle": "Simplifique a sua vida com tecnologia que trabalha por si" },
     "features": { "financial": { "tag": "FINANCEIRO", "title": "Controlo Financeiro no WhatsApp", "description": "Registe receitas e despesas com mensagens como 'gastei 50 euros no supermercado' ou 'recebi 2 mil de salário' diretamente no WhatsApp. A IA compreende, categoriza e regista tudo automaticamente.", "h1": "Categorização inteligente com IA", "h2": "Relatórios por categoria", "h3": "Integração com o painel web" }, "records": { "tag": "REGISTOS", "title": "Registe tudo no WhatsApp", "description": "Envie uma mensagem e o nosso assistente regista tudo automaticamente.", "h1": "Texto ou áudio, escolha", "h2": "Categorização inteligente", "h3": "Rápido, prático e sem complicação" }, "dashboard": { "tag": "PAINEL", "title": "Painel Profissional", "description": "Visualize relatórios, gráficos e detalhes das suas transações com poucos cliques. Tudo organizado automaticamente, sem registo manual.", "h1": "Gráficos de fluxo de caixa", "h2": "Visão por categoria", "h3": "Detalhamento por período", "h4": "Prático e acessível" }, "categories": { "tag": "CATEGORIAS", "title": "Categorias Personalizadas", "description": "Use as que já vêm prontas ou crie quantas quiser.", "h1": "Categorias ilimitadas", "h2": "Classificação automática por IA", "h3": "Registo automático no WhatsApp" } },
     "howItWorksPractice": { "title": "Como funciona na prática", "subtitle": "Em 3 passos simples, organiza a sua vida financeira" },
@@ -150,7 +152,7 @@
     "interaction": { "title": "Interaja com a Dona Wilma 24h por dia", "subtitle": "Pergunte o que quiser sobre as suas finanças ou compromissos.", "footer": "E muito mais... A IA compreende linguagem natural e está sempre pronta para ajudar!", "examples": { "0": "Gastei 200 euros no cartão", "1": "Recebi 10 mil euros de salário", "2": "Quanto gastei hoje?", "3": "Saldo do mês?", "4": "Paguei 30 euros de gasolina", "5": "Tenho renda dia 22", "6": "Quanto gastei este mês?", "7": "Que lembretes tenho hoje?", "8": "Reunião amanhã às 14h", "9": "Lembrar de ligar ao cliente", "10": "Consulta médica na sexta", "11": "Aniversário do João dia 15" } },
     "stats": { "title": "Porquê escolher a Dona Wilma?", "subtitle": "Simplicidade e tecnologia para facilitar o seu dia a dia", "items": { "0": { "title": "Direto no WhatsApp", "description": "Registe finanças e compromissos sem abrir nenhuma app" }, "1": { "title": "IA que o compreende", "description": "Categorização automática com inteligência artificial" }, "2": { "title": "Disponível 24h", "description": "A sua assessora pessoal a trabalhar o tempo todo" }, "3": { "title": "Seguro e privado", "description": "Os seus dados protegidos com encriptação de ponta" } } },
     "steps": { "items": { "0": { "title": "Envie uma mensagem", "description": "Mande um texto ou áudio pelo WhatsApp" }, "1": { "title": "A IA organiza tudo", "description": "A Dona Wilma compreende, categoriza e regista automaticamente" }, "2": { "title": "Acompanhe no painel", "description": "Veja gráficos, relatórios e a sua agenda completa no painel web" } } },
-    "footer": { "tagline": "A sua assessora pessoal para finanças", "links": "Links", "terms": "Termos de Serviço", "privacy": "Política de Privacidade", "copyright": "© 2025 Dona Wilma. Todos os direitos reservados.", "developedBy": "Desenvolvido por" }
+    "footer": { "tagline": "A sua assessora pessoal para finanças", "links": "Links", "terms": "Termos de Serviço", "privacy": "Política de Privacidade", "copyright": "© 2025-2026 Dona Wilma. Todos os direitos reservados.", "developedBy": "Desenvolvido por" }
   },
   "legal": {
     "backButton": "Voltar",
@@ -283,10 +285,7 @@
     "deleteTitle": "Eliminar Meta",
     "deleteDesc": "Tem a certeza que deseja eliminar esta meta?"
   },
-  "sidebar": {
-    "goals": "Metas",
-    "goalsDesc": "Metas mensais"
-  },
+  "_sidebar_goals_merged_into_main_sidebar": true,
   "reports": {
     "title": "Relatórios Financeiros",
     "income": "Receitas",

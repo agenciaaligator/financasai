@@ -1,72 +1,73 @@
 
+## Correcao Final - Fluxo de Onboarding
 
-## Revisão Completa para Lançamento + Redesign das Páginas Legais
+### Bug Critico Encontrado
 
-### 1. REDESIGN: Termos de Serviço e Política de Privacidade
+**Problema 5: Validacao do codigo WhatsApp SEMPRE falha** (mesmo com codigo correto)
 
-As páginas atuais são minimalistas — apenas header com logo + botão voltar e conteúdo simples. Para diferenciá-las como páginas independentes com identidade visual própria:
+A edge function `validate-code` retorna `{ valid: true, message: "Codigo valido" }`, mas o frontend (`Welcome.tsx` linha 163) verifica `data?.success`. Como `success` nao existe na resposta, o frontend interpreta como erro e mostra "Codigo invalido ou expirado" mesmo quando o codigo esta correto.
 
-**Novo layout proposto para ambas (`Terms.tsx` e `Privacy.tsx`):**
-- Header com logo clicável, título da página em destaque, e botão "Voltar ao site"
-- Breadcrumb visual (Home > Termos de Serviço)
-- Sidebar/índice com âncoras para cada seção (navegação interna)
-- Footer completo reutilizando o mesmo footer da landing (logo, links, copyright, Aligator)
-- Card com fundo branco para o conteúdo, separando visualmente do background
-- Remover import não usado de `Calendar` em ambos os arquivos
+Isso explica tambem o Problema 4 (parece que o codigo nao funciona) e o Problema 6 (mensagem de boas-vindas nunca chega, pois o usuario nunca conclui a validacao com sucesso no frontend).
 
-**Arquivos:** `src/pages/Terms.tsx`, `src/pages/Privacy.tsx`
+### Alteracoes Necessarias
 
----
+#### 1. Corrigir Welcome.tsx - Verificacao da resposta validate-code
 
-### 2. LINKS DO FOOTER: Usar React Router
+**Arquivo:** `src/pages/Welcome.tsx` (linha 163)
 
-No footer da landing (`Index.tsx` L388-389), os links para `/termos` e `/privacidade` usam `<a href>` que causa full page reload. Trocar por `<Link>` do React Router ou `onClick={() => navigate(...)}`
+Alterar de:
+```tsx
+if (!data?.success) throw new Error(data?.error || 'Codigo invalido ou expirado');
+```
 
-**Arquivo:** `src/pages/Index.tsx`
+Para:
+```tsx
+if (!data?.valid && !data?.success) throw new Error(data?.message || data?.error || 'Codigo invalido ou expirado');
+```
 
----
+Isso aceita tanto `{ valid: true }` (resposta atual) quanto `{ success: true }` (se for alterado no futuro).
 
-### 3. TEXTOS HARDCODED EM PORTUGUÊS (Landing Page)
+#### 2. Limpeza de dados do usuario de teste
 
-Strings na landing que não passam pelo i18n:
+Executar queries SQL para limpar os dados de `alexandre@aligator.com.br`:
+```sql
+DELETE FROM whatsapp_sessions WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM whatsapp_validation_codes WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM user_roles WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM user_subscriptions WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM organization_members WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM organizations WHERE owner_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM profiles WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+```
 
-| Linha | Texto | Chave sugerida |
-|-------|-------|----------------|
-| 148 | "Inteligência Artificial para sua vida" | `landing.hero.badge` |
-| 187 | "+500 usuários ativos" | `landing.hero.socialProof` |
-| 210-211 | "WhatsApp" / "Gastei 50 no mercado" | `landing.hero.floatingWhatsapp` / `landing.hero.floatingMessage` |
-| 220 | "Registrado!" | `landing.hero.floatingSuccess` |
+A exclusao do usuario de `auth.users` precisa ser feita via Supabase Dashboard (Authentication > Users) ou pela edge function `delete-user-admin`.
 
-**Arquivos:** `src/pages/Index.tsx` + todos os 5 arquivos de locale
+### Problemas 2 e 3: Email Timing e Link
 
----
+**Nao ha bug de codigo aqui.** O fluxo atual e:
+1. `signUp()` envia email de confirmacao (comportamento nativo Supabase)
+2. Usuario faz checkout no Stripe
+3. Stripe webhook ativa a assinatura
+4. Usuario confirma email quando quiser
+5. Link do email vai para `/auth/callback` (ja configurado corretamente na linha 47 do Register.tsx)
+6. `/auth/callback` verifica assinatura e redireciona para `/boas-vindas`
 
-### 4. COPYRIGHT DESATUALIZADO
+O email e enviado no momento do signup porque o Supabase nao permite adiar o envio. Isso NAO e um bug - o usuario pode confirmar o email a qualquer momento, antes ou depois do checkout.
 
-`pt-BR.json` L700: `"© 2025 Dona Wilma"` — estamos em 2026. Atualizar para usar ano dinâmico ou corrigir para 2025-2026 em todos os locales.
+### Resumo
 
-**Arquivos:** todos os 5 locales (`pt-BR`, `pt-PT`, `en-US`, `es-ES`, `it-IT`)
-
----
-
-### 5. SIDEBAR SEM ABA "METAS" NO LOCALE (duplicação)
-
-Em `pt-BR.json` há duas definições de `sidebar` — uma em L41-55 e outra em L835-837 apenas com `goals` e `goalsDesc`. A segunda sobrescreve parcialmente a primeira. Mesclar em uma única entrada.
-
-**Arquivo:** `src/locales/pt-BR.json` (e verificar nos outros locales)
-
----
-
-### RESUMO DAS MUDANÇAS
-
-| # | Arquivo | O que muda |
-|---|---------|------------|
-| 1 | `src/pages/Terms.tsx` | Redesign completo com header diferenciado, índice lateral, footer |
-| 2 | `src/pages/Privacy.tsx` | Mesmo redesign |
-| 3 | `src/pages/Index.tsx` | Links footer com navigate(), i18n dos textos hardcoded |
-| 4 | `src/locales/pt-BR.json` | Novas chaves hero, copyright 2026, merge sidebar duplicado |
-| 5 | `src/locales/en-US.json` | Mesmas novas chaves traduzidas |
-| 6 | `src/locales/es-ES.json` | Mesmas novas chaves traduzidas |
-| 7 | `src/locales/it-IT.json` | Mesmas novas chaves traduzidas |
-| 8 | `src/locales/pt-PT.json` | Mesmas novas chaves traduzidas |
-
+A unica alteracao de codigo necessaria e a correcao da verificacao da resposta em `Welcome.tsx`. O resto sao operacoes de limpeza de dados no banco.

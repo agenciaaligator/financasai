@@ -52,7 +52,9 @@
     "admin": "Admin",
     "adminDesc": "Painel administrativo",
     "newTransaction": "Nova Transação",
-    "subtitle": "Sua assessora pessoal"
+    "subtitle": "Sua assessora pessoal",
+    "goals": "Metas",
+    "goalsDesc": "Metas mensais"
   },
   "chart": {
     "incomeVsExpenses": "Receitas vs Despesas",
@@ -549,7 +551,13 @@
       "titleEnd": "por você",
       "subtitle": "Gerencie suas finanças de forma inteligente com a Dona Wilma",
       "viewPlans": "Ver planos",
-      "learnMore": "Saiba mais"
+      "learnMore": "Saiba mais",
+      "badge": "Inteligência Artificial para sua vida",
+      "socialProofCount": "+500",
+      "socialProofLabel": "usuários ativos",
+      "floatingWhatsapp": "WhatsApp",
+      "floatingMessage": "Gastei 50 no mercado",
+      "floatingSuccess": "Registrado!"
     },
     "howItWorks": {
       "subtitle": "Simplifique sua vida com tecnologia que trabalha por você"
@@ -697,7 +705,7 @@
       "links": "Links",
       "terms": "Termos de Serviço",
       "privacy": "Política de Privacidade",
-      "copyright": "© 2025 Dona Wilma. Todos os direitos reservados.",
+      "copyright": "© 2025-2026 Dona Wilma. Todos os direitos reservados.",
       "developedBy": "Desenvolvido por"
     }
   },
@@ -832,10 +840,7 @@
     "deleteTitle": "Excluir Meta",
     "deleteDesc": "Tem certeza que deseja excluir esta meta?"
   },
-  "sidebar": {
-    "goals": "Metas",
-    "goalsDesc": "Metas mensais"
-  },
+  "_sidebar_goals_merged_into_main_sidebar": true,
   "reports": {
     "title": "Relatórios Financeiros",
     "income": "Receitas",

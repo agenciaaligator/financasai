@@ -51,7 +51,9 @@
     "admin": "Admin",
     "adminDesc": "Panel administrativo",
     "newTransaction": "Nueva Transacción",
-    "subtitle": "Tu asesora personal"
+    "subtitle": "Tu asesora personal",
+    "goals": "Metas",
+    "goalsDesc": "Metas mensuales"
   },
   "chart": {
     "incomeVsExpenses": "Ingresos vs Gastos",
@@ -527,7 +529,7 @@
   },
   "landing": {
     "nav": { "howItWorks": "Cómo funciona", "plans": "Planes", "contact": "Contacto" },
-    "hero": { "title": "Ten una asesora personal trabajando", "highlight": "24h al día", "titleEnd": "por ti", "subtitle": "Gestiona tus finanzas de forma inteligente con Dona Wilma", "viewPlans": "Ver planes", "learnMore": "Saber más" },
+    "hero": { "title": "Ten una asesora personal trabajando", "highlight": "24h al día", "titleEnd": "por ti", "subtitle": "Gestiona tus finanzas de forma inteligente con Dona Wilma", "viewPlans": "Ver planes", "learnMore": "Saber más", "badge": "Inteligencia Artificial para tu vida", "socialProofCount": "+500", "socialProofLabel": "usuarios activos", "floatingWhatsapp": "WhatsApp", "floatingMessage": "Gasté 50 en el súper", "floatingSuccess": "¡Registrado!" },
     "howItWorks": { "subtitle": "Simplifica tu vida con tecnología que trabaja por ti" },
     "features": {
       "financial": { "tag": "FINANCIERO", "title": "Control Financiero en WhatsApp", "description": "Registra ingresos y gastos con mensajes como 'gasté 50 en el supermercado' o 'recibí 2 mil de salario' directo en WhatsApp. La IA entiende, categoriza y registra todo automáticamente.", "h1": "Categorización inteligente con IA", "h2": "Informes por categoría", "h3": "Integración con el panel web" },
@@ -541,7 +543,7 @@
     "interaction": { "title": "Interactúa con Dona Wilma las 24 horas", "subtitle": "Pregunta lo que quieras sobre tus finanzas o compromisos.", "footer": "Y mucho más... ¡La IA entiende lenguaje natural y siempre está lista para ayudar!", "examples": { "0": "Gasté 200 en la tarjeta", "1": "Recibí 10 mil de salario", "2": "¿Cuánto gasté hoy?", "3": "¿Saldo del mes?", "4": "Pagué 30 de gasolina", "5": "Tengo alquiler el día 22", "6": "¿Cuánto gasté este mes?", "7": "¿Qué recordatorios tengo hoy?", "8": "Reunión mañana a las 14h", "9": "Recordarme llamar al cliente", "10": "Cita médica el viernes", "11": "Cumpleaños de Juan el día 15" } },
     "stats": { "title": "¿Por qué elegir Dona Wilma?", "subtitle": "Simplicidad y tecnología para facilitar tu día a día", "items": { "0": { "title": "Directo en WhatsApp", "description": "Registra finanzas y compromisos sin abrir ninguna app" }, "1": { "title": "IA que te entiende", "description": "Categorización automática con inteligencia artificial" }, "2": { "title": "Disponible 24h", "description": "Tu asesora personal trabajando todo el tiempo" }, "3": { "title": "Seguro y privado", "description": "Tus datos protegidos con cifrado de punta" } } },
     "steps": { "items": { "0": { "title": "Envía un mensaje", "description": "Manda un texto o audio por WhatsApp" }, "1": { "title": "La IA organiza todo", "description": "Dona Wilma entiende, categoriza y registra automáticamente" }, "2": { "title": "Sigue en el panel", "description": "Ve gráficos, informes y tu agenda completa en el panel web" } } },
-    "footer": { "tagline": "Tu asesora personal de finanzas", "links": "Enlaces", "terms": "Términos de Servicio", "privacy": "Política de Privacidad", "copyright": "© 2025 Dona Wilma. Todos los derechos reservados.", "developedBy": "Desarrollado por" }
+    "footer": { "tagline": "Tu asesora personal de finanzas", "links": "Enlaces", "terms": "Términos de Servicio", "privacy": "Política de Privacidad", "copyright": "© 2025-2026 Dona Wilma. Todos los derechos reservados.", "developedBy": "Desarrollado por" }
   },
   "legal": {
     "backButton": "Volver",
@@ -674,10 +676,7 @@
     "deleteTitle": "Eliminar Meta",
     "deleteDesc": "¿Estás seguro de que deseas eliminar esta meta?"
   },
-  "sidebar": {
-    "goals": "Metas",
-    "goalsDesc": "Metas mensuales"
-  },
+  "_sidebar_goals_merged_into_main_sidebar": true,
   "reports": {
     "title": "Informes Financieros",
     "income": "Ingresos",
