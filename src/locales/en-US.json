@@ -834,10 +834,7 @@
     "deleteTitle": "Delete Goal",
     "deleteDesc": "Are you sure you want to delete this goal?"
   },
-  "sidebar": {
-    "goals": "Goals",
-    "goalsDesc": "Monthly goals"
-  },
+  "_sidebar_goals_merged_into_main_sidebar": true,
   "reports": {
     "title": "Financial Reports",
     "income": "Income",

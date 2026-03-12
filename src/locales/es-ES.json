@@ -676,10 +676,7 @@
     "deleteTitle": "Eliminar Meta",
     "deleteDesc": "¿Estás seguro de que deseas eliminar esta meta?"
   },
-  "sidebar": {
-    "goals": "Metas",
-    "goalsDesc": "Metas mensuales"
-  },
+  "_sidebar_goals_merged_into_main_sidebar": true,
   "reports": {
     "title": "Informes Financieros",
     "income": "Ingresos",
