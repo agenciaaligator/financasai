@@ -17,6 +17,14 @@ export default function Terms() {
   const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState<string>("");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     window.scrollTo(0, 0);
