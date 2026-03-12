@@ -527,7 +527,7 @@
   },
   "landing": {
     "nav": { "howItWorks": "Cómo funciona", "plans": "Planes", "contact": "Contacto" },
-    "hero": { "title": "Ten una asesora personal trabajando", "highlight": "24h al día", "titleEnd": "por ti", "subtitle": "Gestiona tus finanzas de forma inteligente con Dona Wilma", "viewPlans": "Ver planes", "learnMore": "Saber más" },
+    "hero": { "title": "Ten una asesora personal trabajando", "highlight": "24h al día", "titleEnd": "por ti", "subtitle": "Gestiona tus finanzas de forma inteligente con Dona Wilma", "viewPlans": "Ver planes", "learnMore": "Saber más", "badge": "Inteligencia Artificial para tu vida", "socialProofCount": "+500", "socialProofLabel": "usuarios activos", "floatingWhatsapp": "WhatsApp", "floatingMessage": "Gasté 50 en el súper", "floatingSuccess": "¡Registrado!" },
     "howItWorks": { "subtitle": "Simplifica tu vida con tecnología que trabaja por ti" },
     "features": {
       "financial": { "tag": "FINANCIERO", "title": "Control Financiero en WhatsApp", "description": "Registra ingresos y gastos con mensajes como 'gasté 50 en el supermercado' o 'recibí 2 mil de salario' directo en WhatsApp. La IA entiende, categoriza y registra todo automáticamente.", "h1": "Categorización inteligente con IA", "h2": "Informes por categoría", "h3": "Integración con el panel web" },
