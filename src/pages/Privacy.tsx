@@ -101,8 +101,14 @@ export default function Privacy() {
 
       {/* Login modal */}
       {showLogin && (
-        <div className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" onClick={(e) => { if (e.target === e.currentTarget) setShowLogin(false); }}>
-          <LoginForm onClose={() => setShowLogin(false)} />
+        <div className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={t('auth.login')} onClick={(e) => e.target === e.currentTarget && setShowLogin(false)}>
+          <div className="relative animate-fadeInUp">
+            <Button variant="ghost" size="icon" className="absolute -top-3 -right-3 z-10 bg-background rounded-full shadow-md" onClick={() => setShowLogin(false)}>✕</Button>
+            <div className="flex justify-center mb-4">
+              <img src="/images/logo.png" alt="Dona Wilma" className="h-12" />
+            </div>
+            <LoginForm />
+          </div>
         </div>
       )}
 
