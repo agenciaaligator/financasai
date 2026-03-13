@@ -701,6 +701,16 @@
       "privacy": "Privacy Policy",
       "copyright": "© 2025-2026 Dona Wilma. All rights reserved.",
       "developedBy": "Developed by"
+    },
+    "contactSection": {
+      "title": "Get in touch",
+      "subtitle": "Have questions? Reach out to us",
+      "whatsappTitle": "WhatsApp",
+      "whatsappDesc": "Chat directly with Dona Wilma",
+      "whatsappButton": "Chat on WhatsApp",
+      "emailTitle": "Email",
+      "emailDesc": "Send us a message",
+      "emailButton": "Send Email"
     }
   },
   "legal": {
