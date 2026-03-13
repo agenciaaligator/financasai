@@ -186,7 +186,9 @@ export default function Terms() {
             <div>
               <h3 className="font-display font-semibold text-secondary mb-5">{t('landing.footer.links')}</h3>
               <ul className="space-y-3 text-sm text-white/60">
-                <li><button onClick={() => navigate("/")} className="hover:text-white hover:translate-x-1 inline-block transition-all">Home</button></li>
+                <li><button onClick={() => navigate("/#home")} className="hover:text-white hover:translate-x-1 inline-block transition-all">Home</button></li>
+                <li><button onClick={() => navigate("/#como-funciona")} className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.nav.howItWorks')}</button></li>
+                <li><button onClick={() => navigate("/#planos")} className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.nav.plans')}</button></li>
                 <li><button onClick={() => navigate("/termos")} className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.footer.terms')}</button></li>
                 <li><button onClick={() => navigate("/privacidade")} className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.footer.privacy')}</button></li>
               </ul>
