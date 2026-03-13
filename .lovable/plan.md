@@ -1,73 +1,42 @@
 
-## Correcao Final - Fluxo de Onboarding
 
-### Bug Critico Encontrado
+## Criar Seção de Contato Dedicada
 
-**Problema 5: Validacao do codigo WhatsApp SEMPRE falha** (mesmo com codigo correto)
+### Problema
+Atualmente, clicar em "Contato" no header/footer scrolla até o footer (`id="contato"`), o que é estranho e pouco profissional.
 
-A edge function `validate-code` retorna `{ valid: true, message: "Codigo valido" }`, mas o frontend (`Welcome.tsx` linha 163) verifica `data?.success`. Como `success` nao existe na resposta, o frontend interpreta como erro e mostra "Codigo invalido ou expirado" mesmo quando o codigo esta correto.
+### Solução
+Criar uma seção de contato dedicada acima do footer com cards bonitos para WhatsApp e Email.
 
-Isso explica tambem o Problema 4 (parece que o codigo nao funciona) e o Problema 6 (mensagem de boas-vindas nunca chega, pois o usuario nunca conclui a validacao com sucesso no frontend).
+### Mudanças em `src/pages/Index.tsx`
 
-### Alteracoes Necessarias
+1. **Nova seção `id="contato"`** entre o FAQ e o Footer:
+   - Background `bg-muted/30` para diferenciar
+   - Título centralizado com `section-line` (padrão das outras seções)
+   - Dois cards glass (`glass-card`) lado a lado em grid `md:grid-cols-2`:
+     - **Card WhatsApp**: ícone verde do WhatsApp, número do agente, botão "Conversar no WhatsApp" que abre `https://wa.me/NUMERO`
+     - **Card Email**: ícone de email, endereço `contato@donawilma.com.br`, botão "Enviar Email" que abre `mailto:`
+   - Cada card com hover elevado, ícone grande centralizado, texto descritivo
 
-#### 1. Corrigir Welcome.tsx - Verificacao da resposta validate-code
+2. **Footer**: remover `id="contato"` do `<footer>` (fica só como footer sem âncora)
 
-**Arquivo:** `src/pages/Welcome.tsx` (linha 163)
+3. **Traduções**: Adicionar chaves em `pt-BR.json` (e nos outros locales) para título, subtítulo e labels dos cards de contato
 
-Alterar de:
-```tsx
-if (!data?.success) throw new Error(data?.error || 'Codigo invalido ou expirado');
+### Mudanças nos locales (`pt-BR.json`, `en-US.json`, `es-ES.json`, `it-IT.json`, `pt-PT.json`)
+Adicionar:
+```json
+"contactSection": {
+  "title": "Entre em contato",
+  "subtitle": "Tire suas dúvidas ou fale com a gente",
+  "whatsappTitle": "WhatsApp",
+  "whatsappDesc": "Fale diretamente com a Dona Wilma",
+  "whatsappButton": "Conversar no WhatsApp",
+  "emailTitle": "E-mail",
+  "emailDesc": "Envie sua mensagem",
+  "emailButton": "Enviar E-mail"
+}
 ```
 
-Para:
-```tsx
-if (!data?.valid && !data?.success) throw new Error(data?.message || data?.error || 'Codigo invalido ou expirado');
-```
+### Páginas legais (`Terms.tsx`, `Privacy.tsx`)
+Atualizar os links de "Contato" no header/footer para apontar para `/#contato` (já devem estar assim).
 
-Isso aceita tanto `{ valid: true }` (resposta atual) quanto `{ success: true }` (se for alterado no futuro).
-
-#### 2. Limpeza de dados do usuario de teste
-
-Executar queries SQL para limpar os dados de `alexandre@aligator.com.br`:
-```sql
-DELETE FROM whatsapp_sessions WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM whatsapp_validation_codes WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM user_roles WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM user_subscriptions WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM organization_members WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM organizations WHERE owner_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM profiles WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-```
-
-A exclusao do usuario de `auth.users` precisa ser feita via Supabase Dashboard (Authentication > Users) ou pela edge function `delete-user-admin`.
-
-### Problemas 2 e 3: Email Timing e Link
-
-**Nao ha bug de codigo aqui.** O fluxo atual e:
-1. `signUp()` envia email de confirmacao (comportamento nativo Supabase)
-2. Usuario faz checkout no Stripe
-3. Stripe webhook ativa a assinatura
-4. Usuario confirma email quando quiser
-5. Link do email vai para `/auth/callback` (ja configurado corretamente na linha 47 do Register.tsx)
-6. `/auth/callback` verifica assinatura e redireciona para `/boas-vindas`
-
-O email e enviado no momento do signup porque o Supabase nao permite adiar o envio. Isso NAO e um bug - o usuario pode confirmar o email a qualquer momento, antes ou depois do checkout.
-
-### Resumo
-
-A unica alteracao de codigo necessaria e a correcao da verificacao da resposta em `Welcome.tsx`. O resto sao operacoes de limpeza de dados no banco.
