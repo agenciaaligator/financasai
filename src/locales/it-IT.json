@@ -314,17 +314,5 @@
     "addTransaction": "Aggiungi Transazione",
     "daysAgo": "{{count}} giorni fa",
     "categoryItem": "categoria"
-  },
-  "landing": {
-    "contactSection": {
-      "title": "Contattaci",
-      "subtitle": "Hai domande? Scrivici",
-      "whatsappTitle": "WhatsApp",
-      "whatsappDesc": "Parla direttamente con Dona Wilma",
-      "whatsappButton": "Chatta su WhatsApp",
-      "emailTitle": "Email",
-      "emailDesc": "Inviaci un messaggio",
-      "emailButton": "Invia email"
-    }
   }
 }
