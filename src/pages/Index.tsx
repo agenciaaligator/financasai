@@ -367,8 +367,56 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* Contato */}
+      <section id="contato" className="py-20 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12 scroll-reveal">
+            <div className="section-line mx-auto mb-6" />
+            <h2 className="font-display text-3xl md:text-4xl font-bold mb-3">
+              {t('landing.contactSection.title')}
+            </h2>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              {t('landing.contactSection.subtitle')}
+            </p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto scroll-reveal delay-1">
+            {/* WhatsApp Card */}
+            <a
+              href="https://wa.me/5511999999999"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="glass-card rounded-2xl p-8 text-center hover:-translate-y-2 hover:shadow-card transition-all duration-300 group"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-success/15 flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform">
+                <Smartphone className="h-8 w-8 text-success" />
+              </div>
+              <h3 className="font-display text-xl font-bold mb-2">{t('landing.contactSection.whatsappTitle')}</h3>
+              <p className="text-muted-foreground text-sm mb-5">{t('landing.contactSection.whatsappDesc')}</p>
+              <span className="inline-flex items-center gap-2 text-sm font-semibold text-success">
+                {t('landing.contactSection.whatsappButton')} →
+              </span>
+            </a>
+            {/* Email Card */}
+            <a
+              href="mailto:contato@donawilma.com.br"
+              className="glass-card rounded-2xl p-8 text-center hover:-translate-y-2 hover:shadow-card transition-all duration-300 group"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-primary/15 flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform">
+                <Zap className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="font-display text-xl font-bold mb-2">{t('landing.contactSection.emailTitle')}</h3>
+              <p className="text-muted-foreground text-sm mb-2">contato@donawilma.com.br</p>
+              <p className="text-muted-foreground text-sm mb-5">{t('landing.contactSection.emailDesc')}</p>
+              <span className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
+                {t('landing.contactSection.emailButton')} →
+              </span>
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
-      <footer id="contato" className="footer-dark mt-8">
+      <footer className="footer-dark mt-8">
         <div className="container mx-auto px-4 py-16 relative z-10">
           <div className="grid md:grid-cols-3 gap-10">
             <div>
