@@ -33,9 +33,7 @@ export function WhatsAppPage() {
 
   const fetchLinkedOrganization = async () => {
     if (!user) return;
-    
     try {
-      // SESSÕES PERMANENTES: Não verificar expiração
       const { data: session } = await supabase
         .from('whatsapp_sessions')
         .select('organization_id')
@@ -43,14 +41,12 @@ export function WhatsAppPage() {
         .order('last_activity', { ascending: false })
         .limit(1)
         .maybeSingle();
-      
       if (session?.organization_id) {
         const { data: org } = await supabase
           .from('organizations')
           .select('name')
           .eq('id', session.organization_id)
           .single();
-        
         setLinkedOrgName(org?.name || null);
       } else {
         setLinkedOrgName(null);
@@ -62,38 +58,31 @@ export function WhatsAppPage() {
 
   const fetchSessionInfo = async () => {
     if (!user) return;
-
     const { data: profile } = await supabase
       .from('profiles')
       .select('phone_number')
       .eq('user_id', user.id)
       .single();
-
     if (!profile?.phone_number) return;
-
     const { data: session } = await supabase
       .from('whatsapp_sessions')
       .select('last_activity, expires_at')
       .eq('phone_number', profile.phone_number)
       .maybeSingle();
-
     setSessionInfo(session);
   };
 
   const checkAuthenticationStatus = async () => {
     if (!user) return;
-
     try {
       const { data, error } = await supabase.rpc('is_whatsapp_authenticated_for_user', {
         p_user_id: user.id
       });
-      
       if (error) {
         console.error('Erro RPC is_whatsapp_authenticated_for_user:', error);
         setIsAuthenticated(false);
         return;
       }
-      
       setIsAuthenticated(data === true);
     } catch (error) {
       console.error('Erro ao verificar autenticação WhatsApp:', error);
@@ -103,13 +92,11 @@ export function WhatsAppPage() {
 
   const fetchPhoneNumber = async () => {
     if (!user) return;
-
     const { data } = await supabase
       .from('profiles')
       .select('phone_number')
       .eq('user_id', user.id)
       .maybeSingle();
-
     if (data?.phone_number) {
       setPhoneNumber(data.phone_number);
     }
@@ -120,36 +107,22 @@ export function WhatsAppPage() {
     checkAuthenticationStatus();
     fetchLinkedOrganization();
     fetchSessionInfo();
-    
-    // Real-time listener for session changes
     const channel = supabase
       .channel('whatsapp-session-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'whatsapp_sessions',
-          filter: `user_id=eq.${user?.id}`
-        },
-        () => {
-          checkAuthenticationStatus();
-          fetchLinkedOrganization();
-          fetchSessionInfo();
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_sessions', filter: `user_id=eq.${user?.id}` }, () => {
+        checkAuthenticationStatus();
+        fetchLinkedOrganization();
+        fetchSessionInfo();
+      })
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [user]);
 
   const handleConnect = async () => {
     if (!phoneNumber) {
       toast({
-        title: "Número necessário",
-        description: "Por favor, digite seu número de WhatsApp",
+        title: t('whatsapp.numberRequired'),
+        description: t('whatsapp.numberRequiredDesc'),
         variant: "destructive"
       });
       return;
@@ -157,24 +130,14 @@ export function WhatsAppPage() {
 
     setLoading(true);
     try {
-      // Salvar número no perfil
       if (user) {
-        await supabase
-          .from('profiles')
-          .update({ phone_number: phoneNumber.trim() })
-          .eq('user_id', user.id);
+        await supabase.from('profiles').update({ phone_number: phoneNumber.trim() }).eq('user_id', user.id);
       }
 
-      // Solicitar código
       const response = await fetch(`${supabaseUrl}/functions/v1/whatsapp-agent`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          phone_number: phoneNumber,
-          action: 'auth'
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone_number: phoneNumber, action: 'auth' })
       });
 
       const result = await response.json();
@@ -182,25 +145,25 @@ export function WhatsAppPage() {
       if (result.success) {
         if (result.response.includes('não encontrado') || result.response.includes('não está registrado')) {
           toast({
-            title: "Número não cadastrado",
-            description: "Atualize seu número no perfil e tente novamente",
+            title: t('whatsapp.numberNotRegistered'),
+            description: t('whatsapp.numberNotRegisteredDesc'),
             variant: "destructive"
           });
         } else {
           toast({
-            title: "Código enviado!",
-            description: "Verifique o código gerado e insira abaixo",
+            title: t('whatsapp.codeSent'),
+            description: t('whatsapp.codeSentDesc'),
           });
         }
       } else {
-        throw new Error(result.error || 'Falha ao enviar código');
+        throw new Error(result.error || 'Failed');
       }
 
       await checkAuthenticationStatus();
     } catch (error) {
       toast({
-        title: "Erro",
-        description: error instanceof Error ? error.message : "Falha ao conectar",
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('common.genericError'),
         variant: "destructive"
       });
     } finally {
@@ -211,8 +174,8 @@ export function WhatsAppPage() {
   const handleVerifyCode = async () => {
     if (!authCode) {
       toast({
-        title: "Código necessário",
-        description: "Digite o código de 6 dígitos",
+        title: t('whatsapp.codeRequired'),
+        description: t('whatsapp.codeRequiredDesc'),
         variant: "destructive"
       });
       return;
@@ -222,44 +185,32 @@ export function WhatsAppPage() {
     try {
       const response = await fetch(`${supabaseUrl}/functions/v1/whatsapp-agent`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          phone_number: phoneNumber,
-          message: {
-            body: `codigo ${authCode}`
-          }
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone_number: phoneNumber, message: { body: `codigo ${authCode}` } })
       });
 
       const result = await response.json();
       
       if (result.success && result.response.includes('sucesso')) {
         setIsAuthenticated(true);
-        
-        // Vincular automaticamente à organização atual após verificação
         if (organization_id) {
-          await supabase.functions.invoke('whatsapp-session-set-org', {
-            body: { organization_id }
-          });
+          await supabase.functions.invoke('whatsapp-session-set-org', { body: { organization_id } });
         }
-        
         toast({
-          title: "🎉 WhatsApp conectado!",
-          description: "Agora você pode gerenciar suas finanças pelo WhatsApp. Envie 'ajuda' para ver os comandos.",
+          title: t('whatsapp.connectedSuccess'),
+          description: t('whatsapp.connectedSuccessDesc'),
         });
         setAuthCode("");
         await checkAuthenticationStatus();
         await fetchLinkedOrganization();
         await fetchSessionInfo();
       } else {
-        throw new Error('Código inválido');
+        throw new Error('Invalid code');
       }
     } catch (error) {
       toast({
-        title: "Código inválido",
-        description: "Verifique o código e tente novamente",
+        title: t('whatsapp.invalidCode'),
+        description: t('whatsapp.invalidCodeDesc'),
         variant: "destructive"
       });
     } finally {
@@ -267,38 +218,24 @@ export function WhatsAppPage() {
     }
   };
 
-
   const handleDisconnect = async () => {
     if (!user) return;
-    
     setLoading(true);
     try {
-      // 1. Remover sessão WhatsApp
-      await supabase
-        .from('whatsapp_sessions')
-        .delete()
-        .eq('user_id', user.id);
-
-      // 2. Limpar número do perfil
-      await supabase
-        .from('profiles')
-        .update({ phone_number: null })
-        .eq('user_id', user.id);
-
-      // 3. Atualizar estado local
+      await supabase.from('whatsapp_sessions').delete().eq('user_id', user.id);
+      await supabase.from('profiles').update({ phone_number: null }).eq('user_id', user.id);
       setIsAuthenticated(false);
       setLinkedOrgName(null);
       setSessionInfo(null);
-      setPhoneNumber(''); // Limpar input
-      
+      setPhoneNumber('');
       toast({
-        title: "WhatsApp desconectado",
-        description: "Você pode reconectar com outro número quando quiser",
+        title: t('whatsapp.disconnected'),
+        description: t('whatsapp.disconnectedDesc'),
       });
     } catch (error) {
       toast({
-        title: "Erro",
-        description: "Não foi possível desconectar",
+        title: t('common.error'),
+        description: t('whatsapp.cannotDisconnect'),
         variant: "destructive"
       });
     } finally {
@@ -308,21 +245,19 @@ export function WhatsAppPage() {
 
   const getLastActivityMessage = () => {
     if (!sessionInfo?.last_activity) return null;
-    
     const now = new Date();
     const lastActivity = new Date(sessionInfo.last_activity);
     const hoursSinceActivity = Math.floor((now.getTime() - lastActivity.getTime()) / (1000 * 60 * 60));
     
-    if (hoursSinceActivity < 1) return "há menos de 1 hora";
-    if (hoursSinceActivity === 1) return "há 1 hora";
-    if (hoursSinceActivity < 24) return `há ${hoursSinceActivity} horas`;
+    if (hoursSinceActivity < 1) return t('whatsapp.lessThan1Hour');
+    if (hoursSinceActivity === 1) return t('whatsapp.oneHourAgo');
+    if (hoursSinceActivity < 24) return t('whatsapp.hoursAgo', { count: hoursSinceActivity });
     
     const daysSinceActivity = Math.floor(hoursSinceActivity / 24);
-    if (daysSinceActivity === 1) return "há 1 dia";
-    return `há ${daysSinceActivity} dias`;
+    if (daysSinceActivity === 1) return t('whatsapp.oneDayAgo');
+    return t('whatsapp.daysAgo', { count: daysSinceActivity });
   };
 
-  // Estado não conectado (Onboarding)
   if (!isAuthenticated) {
     return (
       <div className="space-y-6">
@@ -334,17 +269,17 @@ export function WhatsAppPage() {
               </div>
               <div>
                 <CardTitle className="text-2xl">{t('whatsapp.title')}</CardTitle>
-                <p className="text-sm text-muted-foreground">Configure em 2 minutos</p>
+                <p className="text-sm text-muted-foreground">{t('whatsapp.setupIn2Min')}</p>
               </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="bg-muted/30 p-4 rounded-lg space-y-3">
-              <p className="text-sm font-medium">✨ Após conectar, você poderá:</p>
+              <p className="text-sm font-medium">✨ {t('whatsapp.afterConnect')}</p>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>• Adicionar transações por voz ou texto</li>
-                <li>• Enviar fotos de notas fiscais (OCR automático)</li>
-                <li>• Consultar saldo e relatórios instantaneamente</li>
+                <li>• {t('whatsapp.addByVoice')}</li>
+                <li>• {t('whatsapp.sendReceipts')}</li>
+                <li>• {t('whatsapp.checkBalance')}</li>
               </ul>
             </div>
 
@@ -352,31 +287,31 @@ export function WhatsAppPage() {
               <div className="space-y-2">
                 <Label htmlFor="phone">
                   <Phone className="inline h-4 w-4 mr-1" />
-                  Número do WhatsApp
+                  {t('whatsapp.phoneLabel')}
                 </Label>
                 <Input
                   id="phone"
-                  placeholder="5511999999999"
+                  placeholder={t('whatsapp.phonePlaceholder')}
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Formato internacional (sem +): 5511999999999
+                  {t('whatsapp.phoneFormat')}
                 </p>
               </div>
 
               {phoneNumber && (
                 <div className="space-y-2">
-                  <Label htmlFor="code">Código de verificação</Label>
+                  <Label htmlFor="code">{t('whatsapp.codeLabel')}</Label>
                   <Input
                     id="code"
-                    placeholder="123456"
+                    placeholder={t('whatsapp.codePlaceholder')}
                     value={authCode}
                     onChange={(e) => setAuthCode(e.target.value)}
                     maxLength={6}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Digite o código de 6 dígitos gerado
+                    {t('whatsapp.codeHint')}
                   </p>
                 </div>
               )}
@@ -387,7 +322,7 @@ export function WhatsAppPage() {
                   disabled={loading || !phoneNumber}
                   className="flex-1"
                 >
-                  {loading ? "Enviando..." : t('whatsapp.connect')}
+                  {loading ? t('whatsapp.sending') : t('whatsapp.connect')}
                 </Button>
                 {authCode && (
                   <Button
@@ -395,7 +330,7 @@ export function WhatsAppPage() {
                     disabled={loading || authCode.length !== 6}
                     variant="default"
                   >
-                    Verificar Código
+                    {t('whatsapp.verifyCode')}
                   </Button>
                 )}
               </div>
@@ -406,10 +341,8 @@ export function WhatsAppPage() {
     );
   }
 
-  // Estado conectado (Gestão)
   return (
     <div className="space-y-6">
-      {/* Status da Conexão */}
       <Card className="bg-gradient-card shadow-card border-0">
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -429,7 +362,7 @@ export function WhatsAppPage() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">📱 Número</p>
+              <p className="text-sm text-muted-foreground">📱 {t('whatsapp.number')}</p>
               <p className="font-mono text-sm">+{phoneNumber}</p>
             </div>
             
@@ -463,12 +396,11 @@ export function WhatsAppPage() {
         </CardContent>
       </Card>
 
-      {/* Comandos Disponíveis (Accordion) */}
       <Card className="bg-gradient-card shadow-card border-0">
         <CardHeader>
           <CardTitle>📖 {t('whatsapp.quickGuide')}</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Envie "ajuda" no WhatsApp para ver esta lista por lá também!
+            {t('whatsapp.sendHelpHint')}
           </p>
         </CardHeader>
         <CardContent>
@@ -477,10 +409,10 @@ export function WhatsAppPage() {
               <AccordionTrigger>📝 {t('whatsapp.addTransactions')}</AccordionTrigger>
               <AccordionContent>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>• "gasto 50 mercado" - adiciona despesa</li>
-                  <li>• "receita 1000 salario" - adiciona receita</li>
-                  <li>• "+100 freelance" - adiciona receita</li>
-                  <li>• "-30 combustível hoje" - adiciona despesa</li>
+                  <li>• {t('whatsapp.cmdAddExpense')}</li>
+                  <li>• {t('whatsapp.cmdAddIncome')}</li>
+                  <li>• {t('whatsapp.cmdAddPlus')}</li>
+                  <li>• {t('whatsapp.cmdAddMinus')}</li>
                 </ul>
               </AccordionContent>
             </AccordionItem>
@@ -489,9 +421,9 @@ export function WhatsAppPage() {
               <AccordionTrigger>📸 {t('whatsapp.ocr')}</AccordionTrigger>
               <AccordionContent>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>• Tire uma foto da nota fiscal</li>
-                  <li>• Envie a imagem pelo WhatsApp</li>
-                  <li>• A IA extrai valor, local e categoria automaticamente!</li>
+                  <li>• {t('whatsapp.cmdOcrStep1')}</li>
+                  <li>• {t('whatsapp.cmdOcrStep2')}</li>
+                  <li>• {t('whatsapp.cmdOcrStep3')}</li>
                 </ul>
               </AccordionContent>
             </AccordionItem>
@@ -500,8 +432,8 @@ export function WhatsAppPage() {
               <AccordionTrigger>✏️ {t('whatsapp.editDelete')}</AccordionTrigger>
               <AccordionContent>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>• "editar última" - edita a última transação</li>
-                  <li>• "excluir última" - deleta a última transação</li>
+                  <li>• {t('whatsapp.cmdEditLast')}</li>
+                  <li>• {t('whatsapp.cmdDeleteLast')}</li>
                 </ul>
               </AccordionContent>
             </AccordionItem>
@@ -510,10 +442,10 @@ export function WhatsAppPage() {
               <AccordionTrigger>📊 {t('whatsapp.queries')}</AccordionTrigger>
               <AccordionContent>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>• "saldo" - ver saldo atual</li>
-                  <li>• "hoje" - relatório do dia</li>
-                  <li>• "semana" - relatório semanal</li>
-                  <li>• "mes" - relatório mensal</li>
+                  <li>• {t('whatsapp.cmdBalance')}</li>
+                  <li>• {t('whatsapp.cmdToday')}</li>
+                  <li>• {t('whatsapp.cmdWeek')}</li>
+                  <li>• {t('whatsapp.cmdMonth')}</li>
                 </ul>
               </AccordionContent>
             </AccordionItem>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ export function EditTransactionModal({
   onClose, 
   onUpdate 
 }: EditTransactionModalProps) {
+  const { t } = useTranslation();
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [type, setType] = useState<'income' | 'expense'>('expense');
@@ -40,7 +42,6 @@ export function EditTransactionModal({
       setAmount(transaction.amount.toString());
       setType(transaction.type as 'income' | 'expense');
       
-      // Fix: Directly set category without timeout
       if (transaction.category_id) {
         const categoryExists = categories.find(cat => cat.id === transaction.category_id);
         if (categoryExists) {
@@ -50,25 +51,15 @@ export function EditTransactionModal({
         setCategoryId("");
       }
       
-      // Fix: Use date directly without timezone conversion
       const dateValue = transaction.date.includes('T') 
         ? transaction.date.split('T')[0] 
         : transaction.date;
       setDate(dateValue);
       setDescription(transaction.description || "");
       setSuggestedCategory(null);
-      
-      console.log('Editando transação:', {
-        id: transaction.id,
-        originalDate: transaction.date,
-        formattedDate: dateValue?.includes('T') ? dateValue.split('T')[0] : dateValue,
-        categoryId: transaction.category_id,
-        categoriesAvailable: categories.length
-      });
     }
   }, [transaction, categories]);
 
-  // Detectar mudança significativa no título e sugerir nova categoria
   useEffect(() => {
     if (title !== originalTitle && title.length >= 3) {
       const normalizedTitle = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -92,27 +83,18 @@ export function EditTransactionModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!transaction || !title || !amount) {
-      return;
-    }
+    if (!transaction || !title || !amount) return;
 
     setLoading(true);
-
-    console.log('Salvando transação com data:', {
-      originalDate: transaction.date,
-      newDate: date,
-      formattedForDB: date
-    });
     
-    const { data: updatedData, error } = await supabase
+    const { error } = await supabase
       .from('transactions')
       .update({
         title,
         amount: parseFloat(amount),
         type,
         category_id: categoryId || null,
-        date: date, // Garantir que a data está no formato YYYY-MM-DD
+        date,
         description: description || null,
         updated_at: new Date().toISOString()
       })
@@ -120,17 +102,15 @@ export function EditTransactionModal({
       .select();
 
     if (error) {
-      console.error('Erro ao atualizar transação:', error);
       toast({
-        title: "Erro ao atualizar transação",
+        title: t('editTransaction.updateError'),
         description: error.message,
         variant: "destructive"
       });
     } else {
-      console.log('Transação atualizada com sucesso. Dados retornados:', updatedData);
       toast({
-        title: "Transação atualizada!",
-        description: "A transação foi modificada com sucesso."
+        title: t('editTransaction.updateSuccess'),
+        description: t('editTransaction.updateSuccessDesc')
       });
       onUpdate();
       onClose();
@@ -145,31 +125,31 @@ export function EditTransactionModal({
     <Dialog open={!!transaction} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Editar Transação</DialogTitle>
+          <DialogTitle>{t('editTransaction.title')}</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="editType">Tipo</Label>
+              <Label htmlFor="editType">{t('editTransaction.type')}</Label>
               <Select value={type} onValueChange={(value: 'income' | 'expense') => setType(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="income">Receita</SelectItem>
-                  <SelectItem value="expense">Despesa</SelectItem>
+                  <SelectItem value="income">{t('editTransaction.income')}</SelectItem>
+                  <SelectItem value="expense">{t('editTransaction.expense')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="editAmount">Valor (R$)</Label>
+              <Label htmlFor="editAmount">{t('editTransaction.amount')}</Label>
               <Input
                 id="editAmount"
                 type="number"
                 step="0.01"
-                placeholder="0,00"
+                placeholder={t('editTransaction.amountPlaceholder')}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 required
@@ -178,11 +158,11 @@ export function EditTransactionModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="editTitle">Título</Label>
+            <Label htmlFor="editTitle">{t('editTransaction.titleField')}</Label>
             <Input
               id="editTitle"
               type="text"
-              placeholder="Ex: Mercado, Salário, etc."
+              placeholder={t('editTransaction.titlePlaceholder')}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
@@ -192,10 +172,10 @@ export function EditTransactionModal({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="editCategory">
-                Categoria
+                {t('editTransaction.category')}
                 {suggestedCategory && (
                   <span className="ml-2 text-xs text-amber-600 font-normal">
-                    💡 Sugestão: {categories.find(c => c.id === suggestedCategory)?.name}
+                    {t('editTransaction.suggestion', { name: categories.find(c => c.id === suggestedCategory)?.name })}
                     <Button 
                       type="button" 
                       variant="link" 
@@ -206,14 +186,14 @@ export function EditTransactionModal({
                       }}
                       className="ml-1 h-auto p-0 text-xs underline"
                     >
-                      Aplicar
+                      {t('editTransaction.apply')}
                     </Button>
                   </span>
                 )}
               </Label>
               <Select value={categoryId} onValueChange={setCategoryId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma categoria" />
+                  <SelectValue placeholder={t('editTransaction.selectCategory')} />
                 </SelectTrigger>
                 <SelectContent>
                   {categories
@@ -228,7 +208,7 @@ export function EditTransactionModal({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="editDate">Data</Label>
+              <Label htmlFor="editDate">{t('editTransaction.date')}</Label>
               <Input
                 id="editDate"
                 type="date"
@@ -240,10 +220,10 @@ export function EditTransactionModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="editDescription">Descrição (opcional)</Label>
+            <Label htmlFor="editDescription">{t('editTransaction.description')}</Label>
             <Textarea
               id="editDescription"
-              placeholder="Descrição adicional..."
+              placeholder={t('editTransaction.descriptionPlaceholder')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
@@ -256,10 +236,10 @@ export function EditTransactionModal({
               disabled={loading}
               className="flex-1 bg-gradient-primary hover:shadow-primary transition-all duration-200"
             >
-              {loading ? "Salvando..." : "Salvar Alterações"}
+              {loading ? t('editTransaction.saving') : t('editTransaction.saveChanges')}
             </Button>
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancelar
+              {t('editTransaction.cancel')}
             </Button>
           </div>
         </form>
