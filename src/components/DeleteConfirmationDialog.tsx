@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,7 +16,7 @@ import { AlertTriangle } from "lucide-react";
 
 interface DeleteConfirmationDialogProps {
   itemName: string;
-  itemType: 'transação' | 'categoria' | 'compromisso' | 'membro';
+  itemType: 'transaction' | 'category' | 'commitment' | 'member';
   onConfirm: () => void;
   children: React.ReactNode;
 }
@@ -26,9 +27,10 @@ export function DeleteConfirmationDialog({
   onConfirm,
   children
 }: DeleteConfirmationDialogProps) {
+  const { t } = useTranslation();
   const [confirmText, setConfirmText] = useState("");
   const [open, setOpen] = useState(false);
-  const expectedText = "DELETAR";
+  const expectedText = t('deleteDialog.confirmWord');
   
   const handleConfirm = () => {
     onConfirm();
@@ -40,6 +42,11 @@ export function DeleteConfirmationDialog({
     setConfirmText("");
     setOpen(false);
   };
+
+  const translatedItemType = t(`deleteDialog.${itemType}`);
+  const article = (itemType === 'commitment' || itemType === 'member') 
+    ? t('deleteDialog.theItemMasc') 
+    : t('deleteDialog.theItem');
   
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
@@ -50,37 +57,39 @@ export function DeleteConfirmationDialog({
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2 text-destructive">
             <AlertTriangle className="h-5 w-5" />
-            Confirmar exclusão
+            {t('deleteDialog.title')}
           </AlertDialogTitle>
           <AlertDialogDescription className="space-y-3">
             <p>
-              Você está prestes a deletar {itemType === 'transação' ? 'a' : 'o'} {itemType}{" "}
+              {t('deleteDialog.aboutToDelete')} {article} {translatedItemType}{" "}
               <strong>"{itemName}"</strong>.
             </p>
             <p className="text-destructive font-semibold">
-              ⚠️ Esta ação não pode ser desfeita!
+              {t('deleteDialog.cannotBeUndone')}
             </p>
             <p>
-              Digite <code className="bg-muted px-2 py-1 rounded font-mono">{expectedText}</code> para confirmar:
+              {t('deleteDialog.typeToConfirm', { word: expectedText }).split(expectedText)[0]}
+              <code className="bg-muted px-2 py-1 rounded font-mono">{expectedText}</code>
+              {t('deleteDialog.typeToConfirm', { word: expectedText }).split(expectedText)[1]}
             </p>
             <Input
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
-              placeholder="Digite DELETAR"
+              placeholder={t('deleteDialog.placeholder')}
               className="border-destructive focus:ring-destructive"
             />
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={handleCancel}>
-            Cancelar
+            {t('deleteDialog.cancel')}
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
             disabled={confirmText !== expectedText}
             className="bg-destructive hover:bg-destructive/90"
           >
-            Deletar permanentemente
+            {t('deleteDialog.deletePermanently')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -909,5 +909,51 @@
     "addTransaction": "Add Transaction",
     "daysAgo": "{{count}} days ago",
     "categoryItem": "category"
+  },
+  "deleteDialog": {
+    "title": "Confirm deletion",
+    "aboutToDelete": "You are about to delete",
+    "theItem": "the",
+    "theItemMasc": "the",
+    "cannotBeUndone": "⚠️ This action cannot be undone!",
+    "typeToConfirm": "Type {{word}} to confirm:",
+    "confirmWord": "DELETE",
+    "placeholder": "Type DELETE",
+    "cancel": "Cancel",
+    "deletePermanently": "Delete permanently",
+    "transaction": "transaction",
+    "category": "category",
+    "commitment": "commitment",
+    "member": "member"
+  },
+  "editTransaction": {
+    "title": "Edit Transaction",
+    "type": "Type",
+    "amount": "Amount",
+    "amountPlaceholder": "0.00",
+    "titleField": "Title",
+    "titlePlaceholder": "E.g.: Groceries, Salary, etc.",
+    "category": "Category",
+    "selectCategory": "Select a category",
+    "date": "Date",
+    "description": "Description (optional)",
+    "descriptionPlaceholder": "Additional description...",
+    "saving": "Saving...",
+    "saveChanges": "Save Changes",
+    "cancel": "Cancel",
+    "income": "Income",
+    "expense": "Expense",
+    "suggestion": "💡 Suggestion: {{name}}",
+    "apply": "Apply",
+    "updateError": "Error updating transaction",
+    "updateSuccess": "Transaction updated!",
+    "updateSuccessDesc": "The transaction was successfully modified."
+  },
+  "limitWarning": {
+    "transactions": "transactions",
+    "categories": "categories",
+    "limitReached": "{{item}} limit reached",
+    "limitWarning": "Warning: {{item}} limit",
+    "usageMessage": "You are using {{current}} of {{limit}} {{item}} available on the {{plan}} plan."
   }
 }
