@@ -7,6 +7,7 @@ import { Transaction } from '@/hooks/useTransactions';
 import { useAuth } from "@/hooks/useAuth";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import { ChatSkeleton } from "@/components/ui/chat-skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
