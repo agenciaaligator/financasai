@@ -13,6 +13,7 @@ import { useFeatureLimits } from "@/hooks/useFeatureLimits";
 import { categorySchema } from "@/lib/validations";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import { useTranslation } from "react-i18next";
+import { translateCategoryName } from "@/lib/categoryTranslations";
 
 interface Category {
   id: string;
@@ -201,7 +202,7 @@ export function CategoryManager({ categories, onRefresh, showForm, setShowForm }
                         className="w-4 h-4 rounded-full"
                         style={{ backgroundColor: category.color }}
                       />
-                      <span className="text-sm font-medium">{category.name}</span>
+                      <span className="text-sm font-medium">{translateCategoryName(category.name, t)}</span>
                     </div>
                     <DeleteConfirmationDialog
                       itemName={category.name}
@@ -233,7 +234,7 @@ export function CategoryManager({ categories, onRefresh, showForm, setShowForm }
                         className="w-4 h-4 rounded-full"
                         style={{ backgroundColor: category.color }}
                       />
-                      <span className="text-sm font-medium">{category.name}</span>
+                      <span className="text-sm font-medium">{translateCategoryName(category.name, t)}</span>
                     </div>
                     <DeleteConfirmationDialog
                       itemName={category.name}

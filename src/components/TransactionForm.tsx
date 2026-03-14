@@ -13,6 +13,7 @@ import { useCategoryPatterns } from "@/hooks/useCategoryPatterns";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { transactionSchema } from "@/lib/validations";
+import { translateCategoryName } from "@/lib/categoryTranslations";
 
 interface TransactionFormProps {
   onSubmit: (transaction: {
@@ -214,7 +215,7 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
                     .filter(cat => cat.type === type)
                     .map(category => (
                       <SelectItem key={category.id} value={category.id}>
-                        {category.name}
+                        {translateCategoryName(category.name, t)}
                       </SelectItem>
                     ))}
                 </SelectContent>

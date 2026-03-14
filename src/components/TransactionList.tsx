@@ -15,6 +15,7 @@ import { useTransactions } from "@/hooks/useTransactions";
 import { useCategoryPatterns } from "@/hooks/useCategoryPatterns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { translateCategoryName, getOriginalCategoryKey } from "@/lib/categoryTranslations";
 import {
   Pagination,
   PaginationContent,
@@ -102,7 +103,7 @@ export function TransactionList({
 
   const getCategoryEmoji = (categoryName?: string) => {
     if (!categoryName) return '💬';
-    const name = categoryName.toLowerCase();
+    const name = getOriginalCategoryKey(categoryName);
     if (name.includes('alimentação') || name.includes('comida') || name.includes('mercado')) return '🍽️';
     if (name.includes('transporte') || name.includes('uber') || name.includes('gasolina')) return '🚗';
     if (name.includes('saúde') || name.includes('médico') || name.includes('farmácia')) return '💊';
@@ -115,7 +116,7 @@ export function TransactionList({
 
   const getCategoryGradient = (categoryName?: string) => {
     if (!categoryName) return 'bg-gradient-to-br from-gray-400 to-gray-500';
-    const name = categoryName.toLowerCase();
+    const name = getOriginalCategoryKey(categoryName);
     if (name.includes('alimentação') || name.includes('comida') || name.includes('mercado')) return 'bg-gradient-to-br from-red-400 to-red-600';
     if (name.includes('transporte') || name.includes('uber') || name.includes('gasolina')) return 'bg-gradient-to-br from-blue-400 to-green-500';
     if (name.includes('casa') || name.includes('moradia') || name.includes('aluguel')) return 'bg-gradient-to-br from-blue-400 to-green-500';
@@ -239,7 +240,7 @@ export function TransactionList({
                             className="text-xs w-fit cursor-pointer hover:bg-accent transition-colors"
                             title={t('categories.clickToChange', 'Clique para alterar a categoria')}
                           >
-                            {transaction.categories?.name || t('categories.uncategorized', 'Sem categoria')}
+                            {translateCategoryName(transaction.categories?.name, t)}
                           </Badge>
                         </PopoverTrigger>
                         <PopoverContent className="w-56 p-2" align="start">
@@ -259,7 +260,7 @@ export function TransactionList({
                                     className="w-3 h-3 rounded-full flex-shrink-0" 
                                     style={{ backgroundColor: cat.color }} 
                                   />
-                                  <span>{cat.name}</span>
+                                  <span>{translateCategoryName(cat.name, t)}</span>
                                   {transaction.category_id === cat.id && (
                                     <span className="ml-auto text-primary">✓</span>
                                   )}

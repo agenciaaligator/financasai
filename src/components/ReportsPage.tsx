@@ -8,6 +8,7 @@ import { startOfMonth, endOfMonth, subMonths, format, parseISO } from "date-fns"
 import { ptBR, enUS, es, it, pt } from "date-fns/locale";
 import { useTranslation } from "react-i18next";
 import { Skeleton } from "@/components/ui/skeleton";
+import { translateCategoryName } from "@/lib/categoryTranslations";
 
 const BRAND_COLORS = ['hsl(207, 50%, 34%)', 'hsl(37, 74%, 67%)', 'hsl(145, 63%, 42%)', 'hsl(0, 85%, 60%)', 'hsl(36, 90%, 51%)'];
 
@@ -79,7 +80,8 @@ export function ReportsPage() {
     const map = new Map<string, { name: string; amount: number; color: string }>();
     currentTx.filter(t => t.type === 'expense').forEach(tx => {
       const cat = categories?.find(c => c.id === tx.category_id);
-      const name = cat?.name || t('reports.uncategorized');
+      const rawName = cat?.name || '';
+      const name = rawName ? translateCategoryName(rawName, t) : t('reports.uncategorized');
       const color = cat?.color || '#6B7280';
       const existing = map.get(name) || { name, amount: 0, color };
       existing.amount += Number(tx.amount);

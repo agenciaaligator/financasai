@@ -955,5 +955,19 @@
     "limitReached": "{{item}} limit reached",
     "limitWarning": "Warning: {{item}} limit",
     "usageMessage": "You are using {{current}} of {{limit}} {{item}} available on the {{plan}} plan."
+  },
+  "defaultCategories": {
+    "food": "Food",
+    "transport": "Transport",
+    "housing": "Housing",
+    "health": "Health",
+    "entertainment": "Entertainment",
+    "education": "Education",
+    "clothing": "Clothing",
+    "other": "Other",
+    "salary": "Salary",
+    "freelance": "Freelance",
+    "investments": "Investments",
+    "projects": "Projects"
   }
 }
