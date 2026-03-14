@@ -33,7 +33,7 @@ function getDateLocale(lang: string) {
 }
 
 export function ReportsPage() {
-  const { t: tFn, i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const locale = getDateLocale(i18n.language);
 
   // Generate last 12 months options
