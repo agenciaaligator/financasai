@@ -240,7 +240,7 @@ export function TransactionList({
                             className="text-xs w-fit cursor-pointer hover:bg-accent transition-colors"
                             title={t('categories.clickToChange', 'Clique para alterar a categoria')}
                           >
-                            {transaction.categories?.name || t('categories.uncategorized', 'Sem categoria')}
+                            {translateCategoryName(transaction.categories?.name, t)}
                           </Badge>
                         </PopoverTrigger>
                         <PopoverContent className="w-56 p-2" align="start">
