@@ -78,7 +78,7 @@ export function AppSidebar({
                 <button
                   key={item.id}
                   onClick={() => onTabChange(item.id)}
-                  className={`w-full h-12 transition-all duration-200 rounded-lg flex items-center justify-start px-4 hover:translate-x-1 hover:bg-white/10 hover:backdrop-blur ${
+                  className={`w-full h-auto min-h-[3rem] py-2 transition-all duration-200 rounded-lg flex items-center justify-start px-4 hover:translate-x-1 hover:bg-white/10 hover:backdrop-blur ${
                     isActive 
                       ? "bg-white/20 backdrop-blur text-white font-medium border-l-4 border-secondary" 
                       : "text-white/80"
