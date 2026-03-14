@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Transaction, Category } from "@/hooks/useTransactions";
+import { translateCategoryName } from "@/lib/categoryTranslations";
 
 interface EditTransactionModalProps {
   transaction: Transaction | null;
