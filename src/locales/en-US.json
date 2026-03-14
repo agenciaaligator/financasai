@@ -12,6 +12,14 @@
     "admin": "Admin Panel",
     "whatsapp": "WhatsApp",
     "hello": "Hello",
+    "greeting": "Hello! 🎉",
+    "greetingSubtitle": "How are your finances today? Let's take a look...",
+    "welcomeTitle": "Welcome to Dona Wilma!",
+    "welcomeDesc": "Send WhatsApp messages to manage your finances:",
+    "welcomeTip1": "\"Spent 50 at the grocery store\"",
+    "welcomeTip2": "\"Received 3000 salary\"",
+    "welcomeTip3": "\"Meeting tomorrow at 2pm\"",
+    "goals": "Monthly Goals",
     "balanceAlert": {
       "title": "Warning! Your balance is negative",
       "description": "Consider reviewing your expenses or increasing your income"
