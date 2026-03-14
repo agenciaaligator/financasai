@@ -1,73 +1,74 @@
 
-## Correcao Final - Fluxo de Onboarding
 
-### Bug Critico Encontrado
+## Adicionar Traduções Faltantes no Dashboard
 
-**Problema 5: Validacao do codigo WhatsApp SEMPRE falha** (mesmo com codigo correto)
+### Problema
+Ao mudar o idioma no dashboard, os textos de saudação e banner de boas-vindas permanecem em português porque as chaves de tradução não existem nos arquivos de locale.
 
-A edge function `validate-code` retorna `{ valid: true, message: "Codigo valido" }`, mas o frontend (`Welcome.tsx` linha 163) verifica `data?.success`. Como `success` nao existe na resposta, o frontend interpreta como erro e mostra "Codigo invalido ou expirado" mesmo quando o codigo esta correto.
+### Chaves faltantes
+Todas dentro do objeto `dashboard`:
+- `greeting` — "Olá! 🎉"
+- `greetingSubtitle` — "Como estão suas finanças hoje? Vamos dar uma olhada..."
+- `welcomeTitle` — "Bem-vindo ao Dona Wilma!"
+- `welcomeDesc` — "Envie mensagens pelo WhatsApp para registrar suas finanças:"
+- `welcomeTip1` — "Gastei 50 no mercado"
+- `welcomeTip2` — "Recebi 3000 de salário"
+- `welcomeTip3` — "Reunião amanhã às 14h"
+- `goals` — "Metas Mensais" (usado em FinancialDashboard.tsx tabTitleMap)
 
-Isso explica tambem o Problema 4 (parece que o codigo nao funciona) e o Problema 6 (mensagem de boas-vindas nunca chega, pois o usuario nunca conclui a validacao com sucesso no frontend).
+### Correções
 
-### Alteracoes Necessarias
+Adicionar essas chaves ao objeto `dashboard` nos 5 arquivos de locale:
 
-#### 1. Corrigir Welcome.tsx - Verificacao da resposta validate-code
+**`pt-BR.json`**: valores já são os fallbacks atuais (português)
 
-**Arquivo:** `src/pages/Welcome.tsx` (linha 163)
-
-Alterar de:
-```tsx
-if (!data?.success) throw new Error(data?.error || 'Codigo invalido ou expirado');
+**`en-US.json`**:
+```json
+"greeting": "Hello! 🎉",
+"greetingSubtitle": "How are your finances today? Let's take a look...",
+"welcomeTitle": "Welcome to Dona Wilma!",
+"welcomeDesc": "Send WhatsApp messages to manage your finances:",
+"welcomeTip1": "\"Spent 50 at the grocery store\"",
+"welcomeTip2": "\"Received 3000 salary\"",
+"welcomeTip3": "\"Meeting tomorrow at 2pm\"",
+"goals": "Monthly Goals"
 ```
 
-Para:
-```tsx
-if (!data?.valid && !data?.success) throw new Error(data?.message || data?.error || 'Codigo invalido ou expirado');
+**`es-ES.json`**:
+```json
+"greeting": "¡Hola! 🎉",
+"greetingSubtitle": "¿Cómo están tus finanzas hoy? Vamos a echar un vistazo...",
+"welcomeTitle": "¡Bienvenido a Dona Wilma!",
+"welcomeDesc": "Envía mensajes por WhatsApp para gestionar tus finanzas:",
+"welcomeTip1": "\"Gasté 50 en el supermercado\"",
+"welcomeTip2": "\"Recibí 3000 de salario\"",
+"welcomeTip3": "\"Reunión mañana a las 14h\"",
+"goals": "Metas Mensuales"
 ```
 
-Isso aceita tanto `{ valid: true }` (resposta atual) quanto `{ success: true }` (se for alterado no futuro).
-
-#### 2. Limpeza de dados do usuario de teste
-
-Executar queries SQL para limpar os dados de `alexandre@aligator.com.br`:
-```sql
-DELETE FROM whatsapp_sessions WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM whatsapp_validation_codes WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM user_roles WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM user_subscriptions WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM organization_members WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM organizations WHERE owner_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM profiles WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
+**`it-IT.json`**:
+```json
+"greeting": "Ciao! 🎉",
+"greetingSubtitle": "Come stanno le tue finanze oggi? Diamo un'occhiata...",
+"welcomeTitle": "Benvenuto su Dona Wilma!",
+"welcomeDesc": "Invia messaggi WhatsApp per gestire le tue finanze:",
+"welcomeTip1": "\"Ho speso 50 al supermercato\"",
+"welcomeTip2": "\"Ho ricevuto 3000 di stipendio\"",
+"welcomeTip3": "\"Riunione domani alle 14\"",
+"goals": "Obiettivi Mensili"
 ```
 
-A exclusao do usuario de `auth.users` precisa ser feita via Supabase Dashboard (Authentication > Users) ou pela edge function `delete-user-admin`.
+**`pt-PT.json`**:
+```json
+"greeting": "Olá! 🎉",
+"greetingSubtitle": "Como estão as suas finanças hoje? Vamos dar uma vista de olhos...",
+"welcomeTitle": "Bem-vindo ao Dona Wilma!",
+"welcomeDesc": "Envie mensagens pelo WhatsApp para registar as suas finanças:",
+"welcomeTip1": "\"Gastei 50 no supermercado\"",
+"welcomeTip2": "\"Recebi 3000 de salário\"",
+"welcomeTip3": "\"Reunião amanhã às 14h\"",
+"goals": "Metas Mensais"
+```
 
-### Problemas 2 e 3: Email Timing e Link
+**Arquivos**: `src/locales/pt-BR.json`, `src/locales/en-US.json`, `src/locales/es-ES.json`, `src/locales/it-IT.json`, `src/locales/pt-PT.json`
 
-**Nao ha bug de codigo aqui.** O fluxo atual e:
-1. `signUp()` envia email de confirmacao (comportamento nativo Supabase)
-2. Usuario faz checkout no Stripe
-3. Stripe webhook ativa a assinatura
-4. Usuario confirma email quando quiser
-5. Link do email vai para `/auth/callback` (ja configurado corretamente na linha 47 do Register.tsx)
-6. `/auth/callback` verifica assinatura e redireciona para `/boas-vindas`
-
-O email e enviado no momento do signup porque o Supabase nao permite adiar o envio. Isso NAO e um bug - o usuario pode confirmar o email a qualquer momento, antes ou depois do checkout.
-
-### Resumo
-
-A unica alteracao de codigo necessaria e a correcao da verificacao da resposta em `Welcome.tsx`. O resto sao operacoes de limpeza de dados no banco.
