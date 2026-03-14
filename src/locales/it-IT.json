@@ -11,6 +11,15 @@
     "admin": "Pannello Admin",
     "whatsapp": "WhatsApp",
     "hello": "Ciao",
+    "balance": "Saldo",
+    "greeting": "Ciao! 🎉",
+    "greetingSubtitle": "Come stanno le tue finanze oggi? Diamo un'occhiata...",
+    "welcomeTitle": "Benvenuto su Dona Wilma!",
+    "welcomeDesc": "Invia messaggi WhatsApp per gestire le tue finanze:",
+    "welcomeTip1": "\"Ho speso 50 al supermercato\"",
+    "welcomeTip2": "\"Ho ricevuto 3000 di stipendio\"",
+    "welcomeTip3": "\"Riunione domani alle 14\"",
+    "goals": "Obiettivi Mensili",
     "balanceAlert": {
       "title": "Attenzione! Il tuo saldo è negativo",
       "description": "Considera di rivedere le tue spese o aumentare le tue entrate"

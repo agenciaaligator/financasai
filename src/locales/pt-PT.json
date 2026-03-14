@@ -11,6 +11,15 @@
     "admin": "Painel Administrativo",
     "whatsapp": "WhatsApp",
     "hello": "Olá",
+    "balance": "Saldo",
+    "greeting": "Olá! 🎉",
+    "greetingSubtitle": "Como estão as suas finanças hoje? Vamos dar uma vista de olhos...",
+    "welcomeTitle": "Bem-vindo ao Dona Wilma!",
+    "welcomeDesc": "Envie mensagens pelo WhatsApp para registar as suas finanças:",
+    "welcomeTip1": "\"Gastei 50 no supermercado\"",
+    "welcomeTip2": "\"Recebi 3000 de salário\"",
+    "welcomeTip3": "\"Reunião amanhã às 14h\"",
+    "goals": "Metas Mensais",
     "balanceAlert": {
       "title": "Atenção! O seu saldo está negativo",
       "description": "Considere rever os seus gastos ou aumentar as suas receitas"
