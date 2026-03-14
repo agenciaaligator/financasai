@@ -1,73 +1,87 @@
 
-## Correcao Final - Fluxo de Onboarding
 
-### Bug Critico Encontrado
+## Corrigir Todas as Traduções Faltantes no Dashboard e WhatsApp
 
-**Problema 5: Validacao do codigo WhatsApp SEMPRE falha** (mesmo com codigo correto)
+### Problema
+Vários componentes do dashboard ainda possuem textos em português hardcoded, sem usar o sistema i18n. Ao trocar idioma, esses textos permanecem em português.
 
-A edge function `validate-code` retorna `{ valid: true, message: "Codigo valido" }`, mas o frontend (`Welcome.tsx` linha 163) verifica `data?.success`. Como `success` nao existe na resposta, o frontend interpreta como erro e mostra "Codigo invalido ou expirado" mesmo quando o codigo esta correto.
+### Componentes Afetados e Strings Hardcoded
 
-Isso explica tambem o Problema 4 (parece que o codigo nao funciona) e o Problema 6 (mensagem de boas-vindas nunca chega, pois o usuario nunca conclui a validacao com sucesso no frontend).
+**1. `src/components/DeleteConfirmationDialog.tsx`** — 100% hardcoded em português:
+- "Confirmar exclusão"
+- "Você está prestes a deletar..."
+- "Esta ação não pode ser desfeita!"
+- "Digite DELETAR para confirmar"
+- placeholder "Digite DELETAR"
+- "Cancelar"
+- "Deletar permanentemente"
+- `itemType` props passadas em português ('transação', 'categoria', etc.) — precisam ser traduzidas no ponto de chamada
 
-### Alteracoes Necessarias
+**2. `src/components/EditTransactionModal.tsx`** — 100% hardcoded em português:
+- "Editar Transação"
+- "Tipo", "Valor (R$)", "Título", "Categoria", "Data"
+- "Receita", "Despesa"
+- "Descrição (opcional)"
+- "Salvando...", "Salvar Alterações", "Cancelar"
+- "Selecione uma categoria"
+- "Sugestão: ...", "Aplicar"
+- Toast messages: "Erro ao atualizar transação", "Transação atualizada!"
+- Placeholder texts
 
-#### 1. Corrigir Welcome.tsx - Verificacao da resposta validate-code
+**3. `src/components/dashboard/LimitWarning.tsx`** — 100% hardcoded em português:
+- "transações" / "categorias"
+- "Limite de X atingido" / "Atenção: Limite de X"
+- "Você está usando X de Y..."
 
-**Arquivo:** `src/pages/Welcome.tsx` (linha 163)
+**4. `src/components/dashboard/WhatsAppPage.tsx`** — Parcialmente traduzido, mas muitas strings hardcoded:
+- "Configure em 2 minutos"
+- "Após conectar, você poderá:"
+- Lista de funcionalidades (voz, OCR, saldo)
+- "Número do WhatsApp" label
+- "Formato internacional..."
+- "Código de verificação"
+- "Enviando...", "Verificar Código"
+- Toasts: "Número necessário", "Código enviado!", "Código inválido", etc.
+- "Envie 'ajuda' no WhatsApp..."
+- Todos os exemplos de comandos do accordion (gasto 50, receita 1000, etc.)
+- `getLastActivityMessage()` — retorna "há X horas" hardcoded
 
-Alterar de:
-```tsx
-if (!data?.success) throw new Error(data?.error || 'Codigo invalido ou expirado');
-```
+**5. `src/components/dashboard/WhatsAppInfo.tsx`** — 100% hardcoded em português (integração WhatsApp, comandos, dicas)
 
-Para:
-```tsx
-if (!data?.valid && !data?.success) throw new Error(data?.message || data?.error || 'Codigo invalido ou expirado');
-```
+### Correções
 
-Isso aceita tanto `{ valid: true }` (resposta atual) quanto `{ success: true }` (se for alterado no futuro).
+**Passo 1**: Adicionar todas as chaves faltantes nos 5 arquivos de locale:
+- `src/locales/pt-BR.json` — chaves em português
+- `src/locales/en-US.json` — traduções para inglês
+- `src/locales/es-ES.json` — traduções para espanhol
+- `src/locales/it-IT.json` — traduções para italiano
+- `src/locales/pt-PT.json` — variante portuguesa
 
-#### 2. Limpeza de dados do usuario de teste
+Chaves a adicionar/organizar:
+- `deleteDialog.*` — todas as strings do diálogo de exclusão
+- `editTransaction.*` — todas as strings do modal de edição
+- `limitWarning.*` — strings do aviso de limite
+- `whatsapp.*` — strings faltantes da página WhatsApp (usar as chaves já definidas que existem mas não são usadas no código, como `setupIn2Min`, `afterConnect`, `addByVoice`, `sendReceipts`, `checkBalance`, `numberRequired`, `codeSent`, etc.)
 
-Executar queries SQL para limpar os dados de `alexandre@aligator.com.br`:
-```sql
-DELETE FROM whatsapp_sessions WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM whatsapp_validation_codes WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM user_roles WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM user_subscriptions WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM organization_members WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM organizations WHERE owner_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM profiles WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-```
+**Passo 2**: Atualizar os componentes para usar `useTranslation()`:
+- `DeleteConfirmationDialog.tsx` — adicionar `useTranslation`, substituir todas as strings
+- `EditTransactionModal.tsx` — adicionar `useTranslation`, substituir todas as strings
+- `LimitWarning.tsx` — adicionar `useTranslation`, substituir strings
+- `WhatsAppPage.tsx` — substituir strings hardcoded pelas chaves `whatsapp.*` que já existem nos locales mas não estão sendo usadas no componente
+- `WhatsAppInfo.tsx` — adicionar `useTranslation`, substituir todas as strings
 
-A exclusao do usuario de `auth.users` precisa ser feita via Supabase Dashboard (Authentication > Users) ou pela edge function `delete-user-admin`.
+**Passo 3**: Nos componentes que chamam `DeleteConfirmationDialog`, traduzir o `itemType`:
+- Em `CategoryManager.tsx` e outros, passar `itemType` traduzido
 
-### Problemas 2 e 3: Email Timing e Link
+### Arquivos Afetados (10 arquivos)
+- `src/components/DeleteConfirmationDialog.tsx`
+- `src/components/EditTransactionModal.tsx`
+- `src/components/dashboard/LimitWarning.tsx`
+- `src/components/dashboard/WhatsAppPage.tsx`
+- `src/components/dashboard/WhatsAppInfo.tsx`
+- `src/locales/pt-BR.json`
+- `src/locales/en-US.json`
+- `src/locales/es-ES.json`
+- `src/locales/it-IT.json`
+- `src/locales/pt-PT.json`
 
-**Nao ha bug de codigo aqui.** O fluxo atual e:
-1. `signUp()` envia email de confirmacao (comportamento nativo Supabase)
-2. Usuario faz checkout no Stripe
-3. Stripe webhook ativa a assinatura
-4. Usuario confirma email quando quiser
-5. Link do email vai para `/auth/callback` (ja configurado corretamente na linha 47 do Register.tsx)
-6. `/auth/callback` verifica assinatura e redireciona para `/boas-vindas`
-
-O email e enviado no momento do signup porque o Supabase nao permite adiar o envio. Isso NAO e um bug - o usuario pode confirmar o email a qualquer momento, antes ou depois do checkout.
-
-### Resumo
-
-A unica alteracao de codigo necessaria e a correcao da verificacao da resposta em `Welcome.tsx`. O resto sao operacoes de limpeza de dados no banco.
