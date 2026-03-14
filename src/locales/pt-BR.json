@@ -94,7 +94,8 @@
     "showingFiltered": "Mostrando {{filtered}} de {{total}} transações",
     "clearFilters": "Limpar filtros",
     "latestTransactions": "Últimas Transações",
-    "recentTransactions": "Transações Recentes"
+    "recentTransactions": "Transações Recentes",
+    "yourConversations": "Suas conversas financeiras"
   },
   "filters": {
     "filters": "Filtros",
@@ -109,6 +110,7 @@
     "lastMonth": "Último mês",
     "type": "Tipo",
     "allTransactions": "Todas as transações",
+    "allConversations": "Todas as conversas",
     "onlyIncome": "Apenas Receitas",
     "onlyExpenses": "Apenas Despesas",
     "search": "Buscar",

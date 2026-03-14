@@ -97,8 +97,7 @@ export function TransactionList({
       return t('categories.daysAgo', '{{count}} dias atrás', { count: daysDiff });
     }
 
-    const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
-    return `${day} de ${months[month - 1]}`;
+    return new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short' }).format(transactionDate);
   };
 
   const getCategoryEmoji = (categoryName?: string) => {
