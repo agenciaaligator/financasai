@@ -7,6 +7,7 @@ import { Transaction } from '@/hooks/useTransactions';
 import { useAuth } from "@/hooks/useAuth";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import { ChatSkeleton } from "@/components/ui/chat-skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -96,8 +97,7 @@ export function TransactionList({
       return t('categories.daysAgo', '{{count}} dias atrás', { count: daysDiff });
     }
 
-    const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
-    return `${day} de ${months[month - 1]}`;
+    return new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short' }).format(transactionDate);
   };
 
   const getCategoryEmoji = (categoryName?: string) => {
