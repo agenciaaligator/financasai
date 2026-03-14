@@ -51,6 +51,7 @@ interface DashboardContentProps {
   isNegative: boolean;
   showTransactionForm: boolean;
   onToggleTransactionForm: () => void;
+  onTabChange: (tab: string) => void;
 }
 
 export function DashboardContent({ 
