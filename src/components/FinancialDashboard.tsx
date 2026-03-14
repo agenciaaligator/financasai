@@ -45,6 +45,7 @@ export function FinancialDashboard() {
 
   // Scroll para o topo quando mudar de tab ou abrir formulário (DEVE estar antes de qualquer early return)
   useEffect(() => {
+    setShowForm(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentTab]);
 

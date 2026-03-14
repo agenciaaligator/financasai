@@ -57,7 +57,7 @@ export function AppSidebar({
     return (
       <div className="flex flex-col h-full bg-gradient-to-br from-primary to-primary-dark text-sidebar-foreground">
         <div className="border-b border-sidebar-border p-4">
-          <img src="/images/logo.png" alt="Dona Wilma" className="h-8 brightness-0 invert" />
+          <img src="/images/logo.png" alt="Dona Wilma" className="h-8 object-contain brightness-0 invert" />
         </div>
         
         <div className="flex-1 px-3 py-4">
@@ -78,7 +78,7 @@ export function AppSidebar({
                 <button
                   key={item.id}
                   onClick={() => onTabChange(item.id)}
-                  className={`w-full h-12 transition-all duration-200 rounded-lg flex items-center justify-start px-4 hover:translate-x-1 hover:bg-white/10 hover:backdrop-blur ${
+                  className={`w-full h-auto min-h-[3rem] py-2 transition-all duration-200 rounded-lg flex items-center justify-start px-4 hover:translate-x-1 hover:bg-white/10 hover:backdrop-blur ${
                     isActive 
                       ? "bg-white/20 backdrop-blur text-white font-medium border-l-4 border-secondary" 
                       : "text-white/80"
@@ -104,7 +104,7 @@ export function AppSidebar({
     <Sidebar className="border-r border-sidebar-border bg-gradient-to-br from-primary to-primary-dark">
       <SidebarHeader className="border-b border-sidebar-border p-4">
         {open ? (
-          <img src="/images/logo.png" alt="Dona Wilma" className="h-8 brightness-0 invert" />
+          <img src="/images/logo.png" alt="Dona Wilma" className="h-8 object-contain brightness-0 invert" />
         ) : (
           <div className="w-10 h-10 bg-secondary/20 backdrop-blur rounded-lg flex items-center justify-center">
             <span className="text-xl">💰</span>
@@ -118,7 +118,7 @@ export function AppSidebar({
             <div className="mb-4">
               <SidebarMenuButton
                 onClick={onToggleForm}
-                className={`w-full h-10 text-left bg-secondary hover:bg-secondary/90 text-secondary-foreground font-medium transition-all duration-200 shadow-lg ${
+                className={`w-full h-auto min-h-[2.5rem] py-2 text-left bg-secondary hover:bg-secondary/90 text-secondary-foreground font-medium transition-all duration-200 shadow-lg ${
                   !open ? "justify-center px-2" : "justify-start px-4"
                 }`}
               >
@@ -134,7 +134,7 @@ export function AppSidebar({
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
                       onClick={() => onTabChange(item.id)}
-                      className={`w-full h-10 transition-all duration-200 hover:translate-x-1 hover:bg-white/10 hover:backdrop-blur ${
+                      className={`w-full h-auto min-h-[2.5rem] py-2 transition-all duration-200 hover:translate-x-1 hover:bg-white/10 hover:backdrop-blur ${
                         isActive 
                           ? "bg-white/20 backdrop-blur text-white font-medium border-l-4 border-secondary" 
                           : "text-white/80"
