@@ -234,7 +234,7 @@ export function CategoryManager({ categories, onRefresh, showForm, setShowForm }
                         className="w-4 h-4 rounded-full"
                         style={{ backgroundColor: category.color }}
                       />
-                      <span className="text-sm font-medium">{category.name}</span>
+                      <span className="text-sm font-medium">{translateCategoryName(category.name, t)}</span>
                     </div>
                     <DeleteConfirmationDialog
                       itemName={category.name}

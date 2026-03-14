@@ -201,7 +201,7 @@ export function EditTransactionModal({
                     .filter(cat => cat.type === type)
                     .map(category => (
                       <SelectItem key={category.id} value={category.id}>
-                        {category.name}
+                        {translateCategoryName(category.name, t)}
                       </SelectItem>
                     ))}
                 </SelectContent>

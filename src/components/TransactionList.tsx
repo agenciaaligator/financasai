@@ -260,7 +260,7 @@ export function TransactionList({
                                     className="w-3 h-3 rounded-full flex-shrink-0" 
                                     style={{ backgroundColor: cat.color }} 
                                   />
-                                  <span>{cat.name}</span>
+                                  <span>{translateCategoryName(cat.name, t)}</span>
                                   {transaction.category_id === cat.id && (
                                     <span className="ml-auto text-primary">✓</span>
                                   )}

@@ -215,7 +215,7 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
                     .filter(cat => cat.type === type)
                     .map(category => (
                       <SelectItem key={category.id} value={category.id}>
-                        {category.name}
+                        {translateCategoryName(category.name, t)}
                       </SelectItem>
                     ))}
                 </SelectContent>
