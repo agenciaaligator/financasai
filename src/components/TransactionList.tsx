@@ -103,7 +103,7 @@ export function TransactionList({
 
   const getCategoryEmoji = (categoryName?: string) => {
     if (!categoryName) return '💬';
-    const name = categoryName.toLowerCase();
+    const name = getOriginalCategoryKey(categoryName);
     if (name.includes('alimentação') || name.includes('comida') || name.includes('mercado')) return '🍽️';
     if (name.includes('transporte') || name.includes('uber') || name.includes('gasolina')) return '🚗';
     if (name.includes('saúde') || name.includes('médico') || name.includes('farmácia')) return '💊';
