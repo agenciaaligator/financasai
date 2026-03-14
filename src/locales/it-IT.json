@@ -323,5 +323,51 @@
     "addTransaction": "Aggiungi Transazione",
     "daysAgo": "{{count}} giorni fa",
     "categoryItem": "categoria"
+  },
+  "deleteDialog": {
+    "title": "Conferma eliminazione",
+    "aboutToDelete": "Stai per eliminare",
+    "theItem": "la",
+    "theItemMasc": "il",
+    "cannotBeUndone": "⚠️ Questa azione non può essere annullata!",
+    "typeToConfirm": "Digita {{word}} per confermare:",
+    "confirmWord": "ELIMINA",
+    "placeholder": "Digita ELIMINA",
+    "cancel": "Annulla",
+    "deletePermanently": "Elimina permanentemente",
+    "transaction": "transazione",
+    "category": "categoria",
+    "commitment": "impegno",
+    "member": "membro"
+  },
+  "editTransaction": {
+    "title": "Modifica Transazione",
+    "type": "Tipo",
+    "amount": "Importo",
+    "amountPlaceholder": "0,00",
+    "titleField": "Titolo",
+    "titlePlaceholder": "Es: Supermercato, Stipendio, ecc.",
+    "category": "Categoria",
+    "selectCategory": "Seleziona una categoria",
+    "date": "Data",
+    "description": "Descrizione (opzionale)",
+    "descriptionPlaceholder": "Descrizione aggiuntiva...",
+    "saving": "Salvataggio...",
+    "saveChanges": "Salva Modifiche",
+    "cancel": "Annulla",
+    "income": "Entrata",
+    "expense": "Spesa",
+    "suggestion": "💡 Suggerimento: {{name}}",
+    "apply": "Applica",
+    "updateError": "Errore nell'aggiornamento della transazione",
+    "updateSuccess": "Transazione aggiornata!",
+    "updateSuccessDesc": "La transazione è stata modificata con successo."
+  },
+  "limitWarning": {
+    "transactions": "transazioni",
+    "categories": "categorie",
+    "limitReached": "Limite di {{item}} raggiunto",
+    "limitWarning": "Attenzione: Limite di {{item}}",
+    "usageMessage": "Stai usando {{current}} di {{limit}} {{item}} disponibili nel piano {{plan}}."
   }
 }
