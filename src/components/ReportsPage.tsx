@@ -80,7 +80,8 @@ export function ReportsPage() {
     const map = new Map<string, { name: string; amount: number; color: string }>();
     currentTx.filter(t => t.type === 'expense').forEach(tx => {
       const cat = categories?.find(c => c.id === tx.category_id);
-      const name = cat?.name || t('reports.uncategorized');
+      const rawName = cat?.name || '';
+      const name = rawName ? translateCategoryName(rawName, tFn) : tFn('reports.uncategorized');
       const color = cat?.color || '#6B7280';
       const existing = map.get(name) || { name, amount: 0, color };
       existing.amount += Number(tx.amount);
