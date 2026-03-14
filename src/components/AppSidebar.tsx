@@ -134,7 +134,7 @@ export function AppSidebar({
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
                       onClick={() => onTabChange(item.id)}
-                      className={`w-full h-10 transition-all duration-200 hover:translate-x-1 hover:bg-white/10 hover:backdrop-blur ${
+                      className={`w-full h-auto min-h-[2.5rem] py-2 transition-all duration-200 hover:translate-x-1 hover:bg-white/10 hover:backdrop-blur ${
                         isActive 
                           ? "bg-white/20 backdrop-blur text-white font-medium border-l-4 border-secondary" 
                           : "text-white/80"
