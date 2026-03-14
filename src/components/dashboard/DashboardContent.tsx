@@ -66,7 +66,8 @@ export function DashboardContent({
   totalExpenses,
   isNegative,
   showTransactionForm,
-  onToggleTransactionForm
+  onToggleTransactionForm,
+  onTabChange
 }: DashboardContentProps) {
   const { planName, planLimits } = useSubscription();
   const { getTransactionProgress, getCategoryProgress } = useFeatureLimits();
