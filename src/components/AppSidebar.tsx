@@ -104,7 +104,7 @@ export function AppSidebar({
     <Sidebar className="border-r border-sidebar-border bg-gradient-to-br from-primary to-primary-dark">
       <SidebarHeader className="border-b border-sidebar-border p-4">
         {open ? (
-          <img src="/images/logo.png" alt="Dona Wilma" className="h-8 brightness-0 invert" />
+          <img src="/images/logo.png" alt="Dona Wilma" className="h-8 object-contain brightness-0 invert" />
         ) : (
           <div className="w-10 h-10 bg-secondary/20 backdrop-blur rounded-lg flex items-center justify-center">
             <span className="text-xl">💰</span>
