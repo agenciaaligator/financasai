@@ -118,7 +118,7 @@ export function AppSidebar({
             <div className="mb-4">
               <SidebarMenuButton
                 onClick={onToggleForm}
-                className={`w-full h-10 text-left bg-secondary hover:bg-secondary/90 text-secondary-foreground font-medium transition-all duration-200 shadow-lg ${
+                className={`w-full h-auto min-h-[2.5rem] py-2 text-left bg-secondary hover:bg-secondary/90 text-secondary-foreground font-medium transition-all duration-200 shadow-lg ${
                   !open ? "justify-center px-2" : "justify-start px-4"
                 }`}
               >
