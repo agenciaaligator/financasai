@@ -1,32 +1,73 @@
 
+## Correcao Final - Fluxo de Onboarding
 
-## Correções de Navegação e Revisão Geral do Dashboard
+### Bug Critico Encontrado
 
-### Bug Principal: "Ver todas as transações" não funciona
+**Problema 5: Validacao do codigo WhatsApp SEMPRE falha** (mesmo com codigo correto)
 
-**Causa**: Em `DashboardContent.tsx` (linha 201), o botão dispara `window.dispatchEvent(new CustomEvent('switchTab', ...))`, mas **nenhum componente escuta esse evento**. O `FinancialDashboard.tsx` gerencia `currentTab` via `useState` — não há `addEventListener` para `switchTab`.
+A edge function `validate-code` retorna `{ valid: true, message: "Codigo valido" }`, mas o frontend (`Welcome.tsx` linha 163) verifica `data?.success`. Como `success` nao existe na resposta, o frontend interpreta como erro e mostra "Codigo invalido ou expirado" mesmo quando o codigo esta correto.
 
-**Correção**: O `DashboardContent` já recebe os dados necessários mas não tem acesso ao `onTabChange`. A solução mais limpa é:
-- Adicionar prop `onTabChange` ao `DashboardContentProps`
-- Passar `setCurrentTab` (ou `handleTabChange`) do `FinancialDashboard` para `DashboardContent`
-- Substituir o `window.dispatchEvent` por `onTabChange('transactions')` diretamente
-- Remover o código do custom event morto
+Isso explica tambem o Problema 4 (parece que o codigo nao funciona) e o Problema 6 (mensagem de boas-vindas nunca chega, pois o usuario nunca conclui a validacao com sucesso no frontend).
 
-### Outros Problemas Detectados
+### Alteracoes Necessarias
 
-**2. Moeda hardcoded "R$"** — Em `SummaryCards.tsx` (linha 26) e provavelmente em outros componentes, o símbolo `R$` e o formato `pt-BR` estão fixos. Ao usar outro idioma, a moeda deveria se adaptar (ou pelo menos ser configurável). Isso é menor mas inconsistente com o esforço de i18n.
+#### 1. Corrigir Welcome.tsx - Verificacao da resposta validate-code
 
-**3. Sidebar sem item WhatsApp** — A sidebar (`AppSidebar.tsx`) não inclui o item "WhatsApp" nos itens de navegação, apesar de `DashboardContent` ter um handler para `currentTab === "whatsapp"`. O usuário só consegue acessar por outro caminho (se existir). Isso pode ser intencional, mas vale confirmar.
+**Arquivo:** `src/pages/Welcome.tsx` (linha 163)
 
-### Arquivos Afetados
+Alterar de:
+```tsx
+if (!data?.success) throw new Error(data?.error || 'Codigo invalido ou expirado');
+```
 
-- `src/components/dashboard/DashboardContent.tsx` — adicionar prop `onTabChange`, remover custom event
-- `src/components/FinancialDashboard.tsx` — passar `onTabChange` ao `DashboardContent`
+Para:
+```tsx
+if (!data?.valid && !data?.success) throw new Error(data?.message || data?.error || 'Codigo invalido ou expirado');
+```
 
-### Implementação
+Isso aceita tanto `{ valid: true }` (resposta atual) quanto `{ success: true }` (se for alterado no futuro).
 
-1. Adicionar `onTabChange: (tab: string) => void` à interface `DashboardContentProps`
-2. No `FinancialDashboard.tsx`, passar `onTabChange={handleTabChange}` (mobile) e `onTabChange={setCurrentTab}` (desktop) ao `DashboardContent`
-3. Em `DashboardContent.tsx`, substituir `handleViewAllTransactions` por `onTabChange('transactions')`
-4. Remover o `CustomEvent` não utilizado
+#### 2. Limpeza de dados do usuario de teste
 
+Executar queries SQL para limpar os dados de `alexandre@aligator.com.br`:
+```sql
+DELETE FROM whatsapp_sessions WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM whatsapp_validation_codes WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM user_roles WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM user_subscriptions WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM organization_members WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM organizations WHERE owner_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM profiles WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+```
+
+A exclusao do usuario de `auth.users` precisa ser feita via Supabase Dashboard (Authentication > Users) ou pela edge function `delete-user-admin`.
+
+### Problemas 2 e 3: Email Timing e Link
+
+**Nao ha bug de codigo aqui.** O fluxo atual e:
+1. `signUp()` envia email de confirmacao (comportamento nativo Supabase)
+2. Usuario faz checkout no Stripe
+3. Stripe webhook ativa a assinatura
+4. Usuario confirma email quando quiser
+5. Link do email vai para `/auth/callback` (ja configurado corretamente na linha 47 do Register.tsx)
+6. `/auth/callback` verifica assinatura e redireciona para `/boas-vindas`
+
+O email e enviado no momento do signup porque o Supabase nao permite adiar o envio. Isso NAO e um bug - o usuario pode confirmar o email a qualquer momento, antes ou depois do checkout.
+
+### Resumo
+
+A unica alteracao de codigo necessaria e a correcao da verificacao da resposta em `Welcome.tsx`. O resto sao operacoes de limpeza de dados no banco.

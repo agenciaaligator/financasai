@@ -51,6 +51,7 @@ interface DashboardContentProps {
   isNegative: boolean;
   showTransactionForm: boolean;
   onToggleTransactionForm: () => void;
+  onTabChange: (tab: string) => void;
 }
 
 export function DashboardContent({ 
@@ -65,7 +66,8 @@ export function DashboardContent({
   totalExpenses,
   isNegative,
   showTransactionForm,
-  onToggleTransactionForm
+  onToggleTransactionForm,
+  onTabChange
 }: DashboardContentProps) {
   const { planName, planLimits } = useSubscription();
   const { getTransactionProgress, getCategoryProgress } = useFeatureLimits();
@@ -195,10 +197,8 @@ export function DashboardContent({
       .reduce((acc, t) => acc + Number(t.amount), 0);
   }, [currentMonthTransactions]);
 
-  // Helper to switch to transactions tab
   const handleViewAllTransactions = () => {
-    // Dispatch custom event to switch tab
-    window.dispatchEvent(new CustomEvent('switchTab', { detail: 'transactions' }));
+    onTabChange('transactions');
   };
 
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(() => {
