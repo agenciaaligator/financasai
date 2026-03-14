@@ -789,5 +789,19 @@
     "limitReached": "Límite de {{item}} alcanzado",
     "limitWarning": "Atención: Límite de {{item}}",
     "usageMessage": "Estás usando {{current}} de {{limit}} {{item}} disponibles en el plan {{plan}}."
+  },
+  "defaultCategories": {
+    "food": "Alimentación",
+    "transport": "Transporte",
+    "housing": "Vivienda",
+    "health": "Salud",
+    "entertainment": "Entretenimiento",
+    "education": "Educación",
+    "clothing": "Vestuario",
+    "other": "Otros",
+    "salary": "Salario",
+    "freelance": "Freelance",
+    "investments": "Inversiones",
+    "projects": "Proyectos"
   }
 }
