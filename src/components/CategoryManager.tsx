@@ -237,7 +237,7 @@ export function CategoryManager({ categories, onRefresh, showForm, setShowForm }
                     </div>
                     <DeleteConfirmationDialog
                       itemName={category.name}
-                      itemType="categoria"
+                      itemType="category"
                       onConfirm={() => handleDelete(category.id, category.name)}
                     >
                       <Button

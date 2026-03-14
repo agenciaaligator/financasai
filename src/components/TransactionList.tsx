@@ -308,7 +308,7 @@ export function TransactionList({
                   {onDelete && (
                     <DeleteConfirmationDialog
                       itemName={transaction.title}
-                      itemType="transação"
+                      itemType="transaction"
                       onConfirm={() => onDelete(transaction.id)}
                     >
                       <Button
