@@ -57,7 +57,7 @@ export function AppSidebar({
     return (
       <div className="flex flex-col h-full bg-gradient-to-br from-primary to-primary-dark text-sidebar-foreground">
         <div className="border-b border-sidebar-border p-4">
-          <img src="/images/logo.png" alt="Dona Wilma" className="h-8 brightness-0 invert" />
+          <img src="/images/logo.png" alt="Dona Wilma" className="h-8 object-contain brightness-0 invert" />
         </div>
         
         <div className="flex-1 px-3 py-4">
