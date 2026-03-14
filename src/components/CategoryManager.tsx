@@ -13,6 +13,7 @@ import { useFeatureLimits } from "@/hooks/useFeatureLimits";
 import { categorySchema } from "@/lib/validations";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import { useTranslation } from "react-i18next";
+import { translateCategoryName } from "@/lib/categoryTranslations";
 
 interface Category {
   id: string;
