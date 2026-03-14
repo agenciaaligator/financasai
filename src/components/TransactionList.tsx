@@ -116,7 +116,7 @@ export function TransactionList({
 
   const getCategoryGradient = (categoryName?: string) => {
     if (!categoryName) return 'bg-gradient-to-br from-gray-400 to-gray-500';
-    const name = categoryName.toLowerCase();
+    const name = getOriginalCategoryKey(categoryName);
     if (name.includes('alimentação') || name.includes('comida') || name.includes('mercado')) return 'bg-gradient-to-br from-red-400 to-red-600';
     if (name.includes('transporte') || name.includes('uber') || name.includes('gasolina')) return 'bg-gradient-to-br from-blue-400 to-green-500';
     if (name.includes('casa') || name.includes('moradia') || name.includes('aluguel')) return 'bg-gradient-to-br from-blue-400 to-green-500';
