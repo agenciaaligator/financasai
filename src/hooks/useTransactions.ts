@@ -180,7 +180,7 @@ export function useTransactions() {
 
     if (error) {
       toast({
-        title: "Erro ao adicionar transação",
+        title: t('toasts.addTransactionError', 'Erro ao adicionar transação'),
         description: error.message,
         variant: "destructive"
       });
