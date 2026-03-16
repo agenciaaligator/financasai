@@ -3,6 +3,8 @@ import { TrendingUp, TrendingDown, Wallet, Tag } from "lucide-react";
 import { Transaction } from "@/hooks/useTransactions";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { formatCurrency } from "@/lib/formatCurrency";
+import { translateCategoryName } from "@/lib/categoryTranslations";
 
 interface FilteredSummaryCardsProps {
   transactions: Transaction[];
