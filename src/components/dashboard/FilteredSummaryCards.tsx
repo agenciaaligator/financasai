@@ -55,7 +55,7 @@ export function FilteredSummaryCards({ transactions }: FilteredSummaryCardsProps
         </CardHeader>
         <CardContent>
           <div className={`text-2xl font-bold ${summary.balance >= 0 ? 'text-success' : 'text-destructive'}`}>
-            R$ {summary.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            {formatCurrency(summary.balance)}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {summary.transactionCount} {t('dashboard.filtered.transactions')}
