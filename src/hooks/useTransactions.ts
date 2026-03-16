@@ -225,8 +225,8 @@ export function useTransactions() {
 
     setTransactions(prev => prev.filter(t => t.id !== id));
     toast({
-      title: "Transação excluída",
-      description: "A transação foi removida com sucesso.",
+      title: t('toasts.transactionDeleted', 'Transação excluída'),
+      description: t('toasts.transactionDeletedDesc', 'A transação foi removida com sucesso.'),
     });
   };
 
