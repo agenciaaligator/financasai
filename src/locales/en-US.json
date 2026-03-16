@@ -62,7 +62,9 @@
     "newTransaction": "New Transaction",
     "subtitle": "Your personal assistant",
     "goals": "Goals",
-    "goalsDesc": "Monthly goals"
+    "goalsDesc": "Monthly goals",
+    "whatsapp": "WhatsApp",
+    "whatsappDesc": "Manage via WhatsApp"
   },
   "chart": {
     "incomeVsExpenses": "Income vs Expenses",

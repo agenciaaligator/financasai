@@ -62,7 +62,9 @@
     "newTransaction": "Nova Transação",
     "subtitle": "Sua assessora pessoal",
     "goals": "Metas",
-    "goalsDesc": "Metas mensais"
+    "goalsDesc": "Metas mensais",
+    "whatsapp": "WhatsApp",
+    "whatsappDesc": "Gerenciar via WhatsApp"
   },
   "chart": {
     "incomeVsExpenses": "Receitas vs Despesas",
