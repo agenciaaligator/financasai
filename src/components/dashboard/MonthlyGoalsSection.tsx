@@ -66,8 +66,7 @@ export function MonthlyGoalsSection({
     setEditingGoal(null);
   };
 
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  const fmtCurrency = (value: number) => formatCurrency(value);
 
   if (loading) {
     return (
