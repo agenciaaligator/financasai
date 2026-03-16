@@ -201,8 +201,8 @@ export function useTransactions() {
     
     setTransactions(prev => [mappedData, ...prev]);
     toast({
-      title: "Transação adicionada!",
-      description: `${transaction.type === 'income' ? 'Receita' : 'Despesa'} de R$ ${transaction.amount.toFixed(2)} adicionada.`,
+      title: t('toasts.transactionAdded', 'Transação adicionada!'),
+      description: t('toasts.transactionAddedDesc', '{{type}} de {{amount}} adicionada.', { type: transaction.type === 'income' ? t('transactions.income', 'Receita') : t('transactions.expense', 'Despesa'), amount: formatCurrency(transaction.amount) }),
     });
 
     return { error: null };
