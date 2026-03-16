@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useOrganizationPermissions } from './useOrganizationPermissions';
+import { useTranslation } from 'react-i18next';
+import { formatCurrency } from '@/lib/formatCurrency';
 
 export interface Transaction {
   id: string;
