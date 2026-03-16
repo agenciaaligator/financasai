@@ -149,7 +149,7 @@ export function useTransactions() {
 
     if (error) {
       toast({
-        title: "Erro ao carregar categorias",
+        title: t('toasts.loadCategoriesError', 'Erro ao carregar categorias'),
         description: error.message,
         variant: "destructive"
       });
