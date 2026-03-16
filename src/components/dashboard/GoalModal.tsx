@@ -59,7 +59,7 @@ export function GoalModal({ open, onClose, onSave, categories, existingGoalCateg
                   <SelectItem key={cat.id} value={cat.id}>
                     <span className="flex items-center gap-2">
                       <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: cat.color }} />
-                      {cat.name}
+                      {translateCategoryName(cat.name, t)}
                     </span>
                   </SelectItem>
                 ))}

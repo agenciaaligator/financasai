@@ -104,7 +104,7 @@ export function FilteredSummaryCards({ transactions }: FilteredSummaryCardsProps
               summary.topCategories.map((cat, idx) => (
                 <div key={cat.name} className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground truncate flex-1">
-                    {idx + 1}. {cat.name}
+                    {idx + 1}. {translateCategoryName(cat.name, t)}
                   </span>
                   <span className="font-medium ml-2">{cat.count}x</span>
                 </div>

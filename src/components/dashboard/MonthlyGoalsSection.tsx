@@ -127,7 +127,7 @@ export function MonthlyGoalsSection({
                               className="w-3 h-3 rounded-full inline-block"
                               style={{ backgroundColor: gp.categoryColor }}
                             />
-                            <span className="font-medium">{gp.categoryName}</span>
+                            <span className="font-medium">{translateCategoryName(gp.categoryName, t)}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             {gp.percentage >= 90 && (
