@@ -85,7 +85,7 @@ export function FilteredSummaryCards({ transactions }: FilteredSummaryCardsProps
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-destructive">
-            R$ {summary.expenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            {formatCurrency(summary.expenses)}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {t('dashboard.filtered.totalSpent')}
