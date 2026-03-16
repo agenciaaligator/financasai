@@ -42,7 +42,7 @@ export function useTransactions() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { organization_id, canViewOthers, loading: permsLoading } = useOrganizationPermissions();
-  
+  const { t } = useTranslation();
 
   const fetchTransactions = async () => {
     if (!user) return;
