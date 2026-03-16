@@ -66,7 +66,7 @@ export function MonthlyGoalsSection({
     setEditingGoal(null);
   };
 
-  const fmtCurrency = formatCurrency;
+  
 
   if (loading) {
     return (
