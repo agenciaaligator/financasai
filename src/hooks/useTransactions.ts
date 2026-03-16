@@ -130,8 +130,8 @@ export function useTransactions() {
     } catch (error: any) {
       console.error('Erro ao carregar transações:', error);
       toast({
-        title: "Erro de conexão",
-        description: "Não foi possível carregar transações. Verifique sua internet.",
+        title: t('toasts.connectionError', 'Erro de conexão'),
+        description: t('toasts.loadTransactionsError', 'Não foi possível carregar transações. Verifique sua internet.'),
         variant: "destructive"
       });
     } finally {
