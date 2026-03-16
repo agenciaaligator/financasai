@@ -216,7 +216,7 @@ export function useTransactions() {
 
     if (error) {
       toast({
-        title: "Erro ao excluir transação",
+        title: t('toasts.deleteTransactionError', 'Erro ao excluir transação'),
         description: error.message,
         variant: "destructive"
       });
