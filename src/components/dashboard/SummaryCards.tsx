@@ -24,7 +24,7 @@ export function SummaryCards({ balance, totalIncome, totalExpenses }: SummaryCar
         </CardHeader>
         <CardContent>
           <div className={`text-xl sm:text-[2rem] font-bold ${isNegative ? 'text-destructive' : 'text-success'}`}>
-            R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            {formatCurrency(balance)}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
             {t('summary.balanceSubtitle', 'Receitas menos despesas deste mês')}
