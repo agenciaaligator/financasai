@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslation } from "react-i18next";
+import { formatCurrency } from "@/lib/formatCurrency";
 
 interface SummaryCardsProps {
   balance: number;
@@ -23,7 +24,7 @@ export function SummaryCards({ balance, totalIncome, totalExpenses }: SummaryCar
         </CardHeader>
         <CardContent>
           <div className={`text-xl sm:text-[2rem] font-bold ${isNegative ? 'text-destructive' : 'text-success'}`}>
-            R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            {formatCurrency(balance)}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
             {t('summary.balanceSubtitle', 'Receitas menos despesas deste mês')}
@@ -41,7 +42,7 @@ export function SummaryCards({ balance, totalIncome, totalExpenses }: SummaryCar
         </CardHeader>
         <CardContent>
           <div className="text-xl sm:text-[2rem] font-bold text-success">
-            R$ {totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            {formatCurrency(totalIncome)}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
             {t('summary.incomeSubtitle', 'Total recebido este mês')}
@@ -59,7 +60,7 @@ export function SummaryCards({ balance, totalIncome, totalExpenses }: SummaryCar
         </CardHeader>
         <CardContent>
           <div className="text-xl sm:text-[2rem] font-bold text-destructive">
-            R$ {totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            {formatCurrency(totalExpenses)}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
             {t('summary.expensesSubtitle', 'Total gasto este mês')}

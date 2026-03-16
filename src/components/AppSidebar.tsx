@@ -44,6 +44,7 @@ export function AppSidebar({
     { id: "categories", title: t('sidebar.categories', 'Categorias'), emoji: "📂", description: t('sidebar.categoriesDesc', 'Gerenciar categorias') },
     { id: "goals", title: t('sidebar.goals', 'Metas'), emoji: "🎯", description: t('sidebar.goalsDesc', 'Metas mensais') },
     { id: "reports", title: t('sidebar.reports', 'Relatórios'), emoji: "📈", description: t('sidebar.reportsDesc', 'Análises e gráficos') },
+    { id: "whatsapp", title: t('sidebar.whatsapp', 'WhatsApp'), emoji: "📱", description: t('sidebar.whatsappDesc', 'Gerenciar via WhatsApp') },
     { id: "profile", title: t('sidebar.profile', 'Perfil'), emoji: "👤", description: t('sidebar.profileDesc', 'Configurações pessoais') },
   ];
 

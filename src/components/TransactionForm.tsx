@@ -159,7 +159,7 @@ export function TransactionForm({ onSubmit, onCancel }: TransactionFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="amount">{t('transactions.amount', 'Valor')} (R$)</Label>
+              <Label htmlFor="amount">{t('transactions.amount', 'Valor')}</Label>
               <Input
                 id="amount"
                 type="number"

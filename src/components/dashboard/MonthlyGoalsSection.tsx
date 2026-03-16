@@ -8,6 +8,8 @@ import { Plus, Trash2, Pencil } from "lucide-react";
 import { GoalModal } from "./GoalModal";
 import { GoalProgress } from "@/hooks/useMonthlyGoals";
 import { useTranslation } from "react-i18next";
+import { translateCategoryName } from "@/lib/categoryTranslations";
+import { formatCurrency } from "@/lib/formatCurrency";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,8 +66,7 @@ export function MonthlyGoalsSection({
     setEditingGoal(null);
   };
 
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  
 
   if (loading) {
     return (
@@ -126,7 +127,7 @@ export function MonthlyGoalsSection({
                               className="w-3 h-3 rounded-full inline-block"
                               style={{ backgroundColor: gp.categoryColor }}
                             />
-                            <span className="font-medium">{gp.categoryName}</span>
+                            <span className="font-medium">{translateCategoryName(gp.categoryName, t)}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             {gp.percentage >= 90 && (

@@ -3,6 +3,8 @@ import { TrendingUp, TrendingDown, Wallet, Tag } from "lucide-react";
 import { Transaction } from "@/hooks/useTransactions";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { formatCurrency } from "@/lib/formatCurrency";
+import { translateCategoryName } from "@/lib/categoryTranslations";
 
 interface FilteredSummaryCardsProps {
   transactions: Transaction[];
@@ -53,7 +55,7 @@ export function FilteredSummaryCards({ transactions }: FilteredSummaryCardsProps
         </CardHeader>
         <CardContent>
           <div className={`text-2xl font-bold ${summary.balance >= 0 ? 'text-success' : 'text-destructive'}`}>
-            R$ {summary.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            {formatCurrency(summary.balance)}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {summary.transactionCount} {t('dashboard.filtered.transactions')}
@@ -68,7 +70,7 @@ export function FilteredSummaryCards({ transactions }: FilteredSummaryCardsProps
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-success">
-            R$ {summary.income.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            {formatCurrency(summary.income)}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {t('dashboard.filtered.totalReceived')}
@@ -83,7 +85,7 @@ export function FilteredSummaryCards({ transactions }: FilteredSummaryCardsProps
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-destructive">
-            R$ {summary.expenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            {formatCurrency(summary.expenses)}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {t('dashboard.filtered.totalSpent')}
@@ -102,7 +104,7 @@ export function FilteredSummaryCards({ transactions }: FilteredSummaryCardsProps
               summary.topCategories.map((cat, idx) => (
                 <div key={cat.name} className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground truncate flex-1">
-                    {idx + 1}. {cat.name}
+                    {idx + 1}. {translateCategoryName(cat.name, t)}
                   </span>
                   <span className="font-medium ml-2">{cat.count}x</span>
                 </div>

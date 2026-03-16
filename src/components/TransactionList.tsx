@@ -16,6 +16,7 @@ import { useCategoryPatterns } from "@/hooks/useCategoryPatterns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { translateCategoryName, getOriginalCategoryKey } from "@/lib/categoryTranslations";
+import { formatCurrency } from "@/lib/formatCurrency";
 import {
   Pagination,
   PaginationContent,
@@ -292,7 +293,7 @@ export function TransactionList({
                   <p className={`font-bold text-base sm:text-lg ${
                     transaction.type === 'income' ? 'text-success' : 'text-destructive'
                   }`}>
-                    {transaction.type === 'income' ? '↗ +' : '↘ -'} R$ {transaction.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    {transaction.type === 'income' ? '↗ +' : '↘ -'} {formatCurrency(transaction.amount)}
                   </p>
                 </div>
                 <div className="flex space-x-1">

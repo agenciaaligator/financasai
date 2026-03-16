@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useOrganizationPermissions } from './useOrganizationPermissions';
+import { useTranslation } from 'react-i18next';
+import { formatCurrency } from '@/lib/formatCurrency';
 
 export interface Transaction {
   id: string;
@@ -40,7 +42,7 @@ export function useTransactions() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { organization_id, canViewOthers, loading: permsLoading } = useOrganizationPermissions();
-  
+  const { t } = useTranslation();
 
   const fetchTransactions = async () => {
     if (!user) return;
@@ -128,8 +130,8 @@ export function useTransactions() {
     } catch (error: any) {
       console.error('Erro ao carregar transações:', error);
       toast({
-        title: "Erro de conexão",
-        description: "Não foi possível carregar transações. Verifique sua internet.",
+        title: t('toasts.connectionError', 'Erro de conexão'),
+        description: t('toasts.loadTransactionsError', 'Não foi possível carregar transações. Verifique sua internet.'),
         variant: "destructive"
       });
     } finally {
@@ -147,7 +149,7 @@ export function useTransactions() {
 
     if (error) {
       toast({
-        title: "Erro ao carregar categorias",
+        title: t('toasts.loadCategoriesError', 'Erro ao carregar categorias'),
         description: error.message,
         variant: "destructive"
       });
@@ -178,7 +180,7 @@ export function useTransactions() {
 
     if (error) {
       toast({
-        title: "Erro ao adicionar transação",
+        title: t('toasts.addTransactionError', 'Erro ao adicionar transação'),
         description: error.message,
         variant: "destructive"
       });
@@ -199,8 +201,8 @@ export function useTransactions() {
     
     setTransactions(prev => [mappedData, ...prev]);
     toast({
-      title: "Transação adicionada!",
-      description: `${transaction.type === 'income' ? 'Receita' : 'Despesa'} de R$ ${transaction.amount.toFixed(2)} adicionada.`,
+      title: t('toasts.transactionAdded', 'Transação adicionada!'),
+      description: t('toasts.transactionAddedDesc', '{{type}} de {{amount}} adicionada.', { type: transaction.type === 'income' ? t('transactions.income', 'Receita') : t('transactions.expense', 'Despesa'), amount: formatCurrency(transaction.amount) }),
     });
 
     return { error: null };
@@ -214,7 +216,7 @@ export function useTransactions() {
 
     if (error) {
       toast({
-        title: "Erro ao excluir transação",
+        title: t('toasts.deleteTransactionError', 'Erro ao excluir transação'),
         description: error.message,
         variant: "destructive"
       });
@@ -223,8 +225,8 @@ export function useTransactions() {
 
     setTransactions(prev => prev.filter(t => t.id !== id));
     toast({
-      title: "Transação excluída",
-      description: "A transação foi removida com sucesso.",
+      title: t('toasts.transactionDeleted', 'Transação excluída'),
+      description: t('toasts.transactionDeletedDesc', 'A transação foi removida com sucesso.'),
     });
   };
 

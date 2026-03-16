@@ -1,6 +1,7 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { Transaction } from '@/hooks/useTransactions';
 import { useTranslation } from 'react-i18next';
+import { formatCurrency } from '@/lib/formatCurrency';
 
 interface FinancialChartProps {
   transactions: Transaction[];
@@ -44,7 +45,7 @@ export function FinancialChart({ transactions }: FinancialChartProps) {
       return (
         <div className="bg-background p-3 border border-border rounded-lg shadow-lg">
           <p className="font-medium text-foreground" style={{ color: entry.payload.color }}>
-            {`${entry.name}: R$ ${entry.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${percentage}%)`}
+            {`${entry.name}: ${formatCurrency(entry.value)} (${percentage}%)`}
           </p>
         </div>
       );
