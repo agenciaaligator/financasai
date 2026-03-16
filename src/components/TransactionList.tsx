@@ -292,7 +292,7 @@ export function TransactionList({
                   <p className={`font-bold text-base sm:text-lg ${
                     transaction.type === 'income' ? 'text-success' : 'text-destructive'
                   }`}>
-                    {transaction.type === 'income' ? '↗ +' : '↘ -'} R$ {transaction.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    {transaction.type === 'income' ? '↗ +' : '↘ -'} {formatCurrency(transaction.amount)}
                   </p>
                 </div>
                 <div className="flex space-x-1">
