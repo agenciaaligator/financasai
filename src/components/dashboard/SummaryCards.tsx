@@ -42,7 +42,7 @@ export function SummaryCards({ balance, totalIncome, totalExpenses }: SummaryCar
         </CardHeader>
         <CardContent>
           <div className="text-xl sm:text-[2rem] font-bold text-success">
-            R$ {totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            {formatCurrency(totalIncome)}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
             {t('summary.incomeSubtitle', 'Total recebido este mês')}
