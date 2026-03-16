@@ -1,6 +1,7 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { Transaction } from '@/hooks/useTransactions';
 import { useTranslation } from 'react-i18next';
+import { formatCurrency } from '@/lib/formatCurrency';
 
 interface FinancialChartProps {
   transactions: Transaction[];
