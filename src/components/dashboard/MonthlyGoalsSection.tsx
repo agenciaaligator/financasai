@@ -8,6 +8,8 @@ import { Plus, Trash2, Pencil } from "lucide-react";
 import { GoalModal } from "./GoalModal";
 import { GoalProgress } from "@/hooks/useMonthlyGoals";
 import { useTranslation } from "react-i18next";
+import { translateCategoryName } from "@/lib/categoryTranslations";
+import { formatCurrency } from "@/lib/formatCurrency";
 import {
   AlertDialog,
   AlertDialogAction,
