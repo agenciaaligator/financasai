@@ -45,7 +45,7 @@ export function TransactionFilters({
       <CardContent className="pt-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold">💬 {t('filters.filters', 'Filtrar conversas')}</h3>
+            <h3 className="font-semibold">🔍 {t('filters.title', 'Filtrar transações')}</h3>
             {activeFiltersCount > 0 && (
               <Badge variant="secondary" className="ml-2 rounded-full">
                 {activeFiltersCount} {activeFiltersCount === 1 ? t('filters.activeFilter', 'filtro ativo') : t('filters.activeFilters', 'filtros ativos')}
