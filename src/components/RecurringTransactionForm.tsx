@@ -172,7 +172,7 @@ export function RecurringTransactionForm({
               <SelectContent>
                 {filteredCategories.map((cat) => (
                   <SelectItem key={cat.id} value={cat.id}>
-                    {cat.name}
+                    {translateCategoryName(cat.name, t)}
                   </SelectItem>
                 ))}
               </SelectContent>

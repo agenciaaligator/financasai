@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,9 +18,16 @@ interface GoalModalProps {
 
 export function GoalModal({ open, onClose, onSave, categories, existingGoalCategoryIds, editingGoal }: GoalModalProps) {
   const { t } = useTranslation();
-  const [categoryId, setCategoryId] = useState(editingGoal?.categoryId || "");
-  const [amount, setAmount] = useState(editingGoal?.amount?.toString() || "");
+  const [categoryId, setCategoryId] = useState("");
+  const [amount, setAmount] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setCategoryId(editingGoal?.categoryId || "");
+      setAmount(editingGoal?.amount?.toString() || "");
+    }
+  }, [open, editingGoal]);
 
   const expenseCategories = categories.filter((c: any) => c.type === "expense");
 

@@ -176,7 +176,7 @@ export function EditTransactionModal({
                 {t('editTransaction.category')}
                 {suggestedCategory && (
                   <span className="ml-2 text-xs text-amber-600 font-normal">
-                    {t('editTransaction.suggestion', { name: categories.find(c => c.id === suggestedCategory)?.name })}
+                    {t('editTransaction.suggestion', { name: translateCategoryName(categories.find(c => c.id === suggestedCategory)?.name, t) })}
                     <Button 
                       type="button" 
                       variant="link" 

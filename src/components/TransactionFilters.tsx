@@ -92,7 +92,7 @@ export function TransactionFilters({
 
           {/* Busca por texto */}
           <div className="space-y-2">
-            <Label>{t('filters.search', 'Buscar na conversa')}</Label>
+            <Label>{t('filters.search', 'Buscar transação')}</Label>
             <Input
               placeholder={t('filters.searchPlaceholder', 'Digite para buscar...')}
               value={filters.searchText}
