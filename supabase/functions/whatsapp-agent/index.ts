@@ -3814,6 +3814,23 @@ class WhatsAppAgent {
         category: categoryInfo.category_name,
         user_id: userId.substring(0, 8) + '***'
       });
+
+      // 🎯 Check goal alerts after saving expense transaction
+      if (transaction.type === 'expense') {
+        try {
+          const alertUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/check-goal-alerts`;
+          fetch(alertUrl, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ user_id: userId })
+          }).catch(err => console.warn('⚠️ Goal alert check failed:', err));
+        } catch (e) {
+          console.warn('⚠️ Goal alert check error:', e);
+        }
+      }
       
       // 🎭 Buscar nome do usuário para resposta personalizada
       const { data: profile } = await supabase

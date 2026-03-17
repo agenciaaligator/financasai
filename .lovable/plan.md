@@ -1,43 +1,73 @@
 
+## Correcao Final - Fluxo de Onboarding
 
-## Notificação WhatsApp para Metas Mensais — Funcionalidade Inexistente
+### Bug Critico Encontrado
 
-### Diagnóstico
+**Problema 5: Validacao do codigo WhatsApp SEMPRE falha** (mesmo com codigo correto)
 
-Não existe nenhuma lógica implementada para enviar notificações via WhatsApp quando uma meta mensal é atingida ou ultrapassada. O sistema atual:
+A edge function `validate-code` retorna `{ valid: true, message: "Codigo valido" }`, mas o frontend (`Welcome.tsx` linha 163) verifica `data?.success`. Como `success` nao existe na resposta, o frontend interpreta como erro e mostra "Codigo invalido ou expirado" mesmo quando o codigo esta correto.
 
-1. **Frontend**: O hook `useMonthlyGoals` calcula o progresso (percentual gasto vs meta) e exibe barras coloridas na UI (verde/amarelo/vermelho)
-2. **Backend**: Não há nenhum trigger, cron job ou edge function que monitore o progresso das metas e envie alertas
-3. **WhatsApp agent**: Não tem lógica de metas — só processa transações, OCR e consultas de saldo
+Isso explica tambem o Problema 4 (parece que o codigo nao funciona) e o Problema 6 (mensagem de boas-vindas nunca chega, pois o usuario nunca conclui a validacao com sucesso no frontend).
 
-### Plano de Implementação
+### Alteracoes Necessarias
 
-**1. Criar tabela `goal_alerts_sent`** para evitar notificações duplicadas:
-- `id`, `user_id`, `goal_id`, `month` (YYYY-MM), `threshold` (70, 90, 100), `sent_at`
-- Unique constraint em `(goal_id, month, threshold)`
+#### 1. Corrigir Welcome.tsx - Verificacao da resposta validate-code
 
-**2. Criar edge function `check-goal-alerts`** que:
-- Busca todos os goals ativos
-- Para cada goal, calcula o gasto do mês atual na categoria
-- Se percentual >= 70%, 90% ou 100% e ainda não enviou alerta para esse threshold/mês:
-  - Busca sessão WhatsApp do usuário
-  - Envia mensagem via WhatsApp API (ex: "⚠️ Você já gastou 85% da sua meta de R$ 300 em Alimentação este mês (R$ 255/R$ 300)")
-  - Registra na `goal_alerts_sent`
+**Arquivo:** `src/pages/Welcome.tsx` (linha 163)
 
-**3. Disparar verificação após nova transação**:
-- No `useTransactions.ts`, após `addTransaction` com sucesso, chamar `supabase.functions.invoke('check-goal-alerts')` para o usuário atual
-- Alternativa: trigger no banco após INSERT em `transactions` que chama a edge function (mais confiável, captura transações do WhatsApp também)
+Alterar de:
+```tsx
+if (!data?.success) throw new Error(data?.error || 'Codigo invalido ou expirado');
+```
 
-**4. Mensagens por threshold**:
-- **70%**: "📊 Atenção! Você já usou 70% da meta de {categoria} ({gasto}/{meta})"
-- **90%**: "⚠️ Cuidado! Você está em 90% da meta de {categoria} ({gasto}/{meta})"
-- **100%+**: "🚨 Meta ultrapassada! Você gastou {gasto} de {meta} em {categoria}"
+Para:
+```tsx
+if (!data?.valid && !data?.success) throw new Error(data?.message || data?.error || 'Codigo invalido ou expirado');
+```
 
-### Arquivos Afetados
+Isso aceita tanto `{ valid: true }` (resposta atual) quanto `{ success: true }` (se for alterado no futuro).
 
-1. **Nova migração SQL** — tabela `goal_alerts_sent` com RLS
-2. **Nova edge function** `supabase/functions/check-goal-alerts/index.ts`
-3. **`supabase/config.toml`** — registrar nova function
-4. **`src/hooks/useTransactions.ts`** — chamar check após addTransaction
-5. **`supabase/functions/whatsapp-agent/index.ts`** — também chamar check após registrar transação via WhatsApp
+#### 2. Limpeza de dados do usuario de teste
 
+Executar queries SQL para limpar os dados de `alexandre@aligator.com.br`:
+```sql
+DELETE FROM whatsapp_sessions WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM whatsapp_validation_codes WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM user_roles WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM user_subscriptions WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM organization_members WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM organizations WHERE owner_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+DELETE FROM profiles WHERE user_id IN (
+  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
+);
+```
+
+A exclusao do usuario de `auth.users` precisa ser feita via Supabase Dashboard (Authentication > Users) ou pela edge function `delete-user-admin`.
+
+### Problemas 2 e 3: Email Timing e Link
+
+**Nao ha bug de codigo aqui.** O fluxo atual e:
+1. `signUp()` envia email de confirmacao (comportamento nativo Supabase)
+2. Usuario faz checkout no Stripe
+3. Stripe webhook ativa a assinatura
+4. Usuario confirma email quando quiser
+5. Link do email vai para `/auth/callback` (ja configurado corretamente na linha 47 do Register.tsx)
+6. `/auth/callback` verifica assinatura e redireciona para `/boas-vindas`
+
+O email e enviado no momento do signup porque o Supabase nao permite adiar o envio. Isso NAO e um bug - o usuario pode confirmar o email a qualquer momento, antes ou depois do checkout.
+
+### Resumo
+
+A unica alteracao de codigo necessaria e a correcao da verificacao da resposta em `Welcome.tsx`. O resto sao operacoes de limpeza de dados no banco.

@@ -325,6 +325,41 @@ export type Database = {
         }
         Relationships: []
       }
+      goal_alerts_sent: {
+        Row: {
+          goal_id: string
+          id: string
+          month: string
+          sent_at: string
+          threshold: number
+          user_id: string
+        }
+        Insert: {
+          goal_id: string
+          id?: string
+          month: string
+          sent_at?: string
+          threshold: number
+          user_id: string
+        }
+        Update: {
+          goal_id?: string
+          id?: string
+          month?: string
+          sent_at?: string
+          threshold?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_alerts_sent_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "monthly_goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       master_users: {
         Row: {
           created_at: string

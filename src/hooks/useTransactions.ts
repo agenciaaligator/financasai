@@ -205,6 +205,13 @@ export function useTransactions() {
       description: t('toasts.transactionAddedDesc', '{{type}} de {{amount}} adicionada.', { type: transaction.type === 'income' ? t('transactions.income', 'Receita') : t('transactions.expense', 'Despesa'), amount: formatCurrency(transaction.amount) }),
     });
 
+    // Check goal alerts after adding expense
+    if (transaction.type === 'expense') {
+      supabase.functions.invoke('check-goal-alerts', {
+        body: { user_id: user.id }
+      }).catch(err => console.warn('Goal alert check failed:', err));
+    }
+
     return { error: null };
   };
 
