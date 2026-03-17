@@ -80,10 +80,10 @@ export function TransactionFilters({
             <Label>{t('filters.type', 'Tipo de transação')}</Label>
             <Select value={filters.type} onValueChange={(value) => onFiltersChange({ ...filters, type: value as TransactionFiltersState['type'] })}>
               <SelectTrigger className="rounded-[16px]">
-                <SelectValue placeholder={t('filters.allTransactions', 'Todas as conversas')} />
+                <SelectValue placeholder={t('filters.allTransactions', 'Todas as transações')} />
               </SelectTrigger>
               <SelectContent className="rounded-[16px]">
-                <SelectItem value="all">{t('filters.allConversations', 'Todas as conversas')}</SelectItem>
+                <SelectItem value="all">{t('filters.allTransactions', 'Todas as transações')}</SelectItem>
                 <SelectItem value="income">{t('filters.onlyIncome', 'Só entradas')}</SelectItem>
                 <SelectItem value="expense">{t('filters.onlyExpenses', 'Só saídas')}</SelectItem>
               </SelectContent>
