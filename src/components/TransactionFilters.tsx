@@ -45,7 +45,7 @@ export function TransactionFilters({
       <CardContent className="pt-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold">💬 {t('filters.filters', 'Filtrar conversas')}</h3>
+            <h3 className="font-semibold">🔍 {t('filters.title', 'Filtrar transações')}</h3>
             {activeFiltersCount > 0 && (
               <Badge variant="secondary" className="ml-2 rounded-full">
                 {activeFiltersCount} {activeFiltersCount === 1 ? t('filters.activeFilter', 'filtro ativo') : t('filters.activeFilters', 'filtros ativos')}
@@ -77,13 +77,13 @@ export function TransactionFilters({
 
           {/* Tipo */}
           <div className="space-y-2">
-            <Label>{t('filters.type', 'Tipo de conversa')}</Label>
+            <Label>{t('filters.type', 'Tipo de transação')}</Label>
             <Select value={filters.type} onValueChange={(value) => onFiltersChange({ ...filters, type: value as TransactionFiltersState['type'] })}>
               <SelectTrigger className="rounded-[16px]">
-                <SelectValue placeholder={t('filters.allTransactions', 'Todas as conversas')} />
+                <SelectValue placeholder={t('filters.allTransactions', 'Todas as transações')} />
               </SelectTrigger>
               <SelectContent className="rounded-[16px]">
-                <SelectItem value="all">{t('filters.allConversations', 'Todas as conversas')}</SelectItem>
+                <SelectItem value="all">{t('filters.allTransactions', 'Todas as transações')}</SelectItem>
                 <SelectItem value="income">{t('filters.onlyIncome', 'Só entradas')}</SelectItem>
                 <SelectItem value="expense">{t('filters.onlyExpenses', 'Só saídas')}</SelectItem>
               </SelectContent>
@@ -92,7 +92,7 @@ export function TransactionFilters({
 
           {/* Busca por texto */}
           <div className="space-y-2">
-            <Label>{t('filters.search', 'Buscar na conversa')}</Label>
+            <Label>{t('filters.search', 'Buscar transação')}</Label>
             <Input
               placeholder={t('filters.searchPlaceholder', 'Digite para buscar...')}
               value={filters.searchText}

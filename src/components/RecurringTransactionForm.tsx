@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { translateCategoryName } from "@/lib/categoryTranslations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -172,7 +173,7 @@ export function RecurringTransactionForm({
               <SelectContent>
                 {filteredCategories.map((cat) => (
                   <SelectItem key={cat.id} value={cat.id}>
-                    {cat.name}
+                    {translateCategoryName(cat.name, t)}
                   </SelectItem>
                 ))}
               </SelectContent>
