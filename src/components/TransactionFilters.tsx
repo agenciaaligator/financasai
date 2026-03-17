@@ -77,7 +77,7 @@ export function TransactionFilters({
 
           {/* Tipo */}
           <div className="space-y-2">
-            <Label>{t('filters.type', 'Tipo de conversa')}</Label>
+            <Label>{t('filters.type', 'Tipo de transação')}</Label>
             <Select value={filters.type} onValueChange={(value) => onFiltersChange({ ...filters, type: value as TransactionFiltersState['type'] })}>
               <SelectTrigger className="rounded-[16px]">
                 <SelectValue placeholder={t('filters.allTransactions', 'Todas as conversas')} />
