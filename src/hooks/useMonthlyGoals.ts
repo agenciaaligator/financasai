@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useOrganizationPermissions } from './useOrganizationPermissions';
 import { useToast } from '@/hooks/use-toast';
+import { useTranslation } from 'react-i18next';
 import { Transaction } from './useTransactions';
 import { startOfMonth, endOfMonth, parseISO, isWithinInterval } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
@@ -31,6 +32,7 @@ export function useMonthlyGoals(transactions: Transaction[], categories: any[]) 
   const { user } = useAuth();
   const { organization_id } = useOrganizationPermissions();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [goals, setGoals] = useState<MonthlyGoal[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -71,10 +73,10 @@ export function useMonthlyGoals(transactions: Transaction[], categories: any[]) 
       await fetchGoals();
       return { success: true };
     } catch (err: any) {
-      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+      toast({ title: t('common.error', 'Erro'), description: err.message, variant: 'destructive' });
       return { error: err };
     }
-  }, [user, organization_id, fetchGoals, toast]);
+  }, [user, organization_id, fetchGoals, toast, t]);
 
   const deleteGoal = useCallback(async (goalId: string) => {
     try {
@@ -86,9 +88,9 @@ export function useMonthlyGoals(transactions: Transaction[], categories: any[]) 
       if (error) throw error;
       await fetchGoals();
     } catch (err: any) {
-      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+      toast({ title: t('common.error', 'Erro'), description: err.message, variant: 'destructive' });
     }
-  }, [fetchGoals, toast]);
+  }, [fetchGoals, toast, t]);
 
   const goalsWithProgress: GoalProgress[] = useMemo(() => {
     const now = toZonedTime(new Date(), TIMEZONE);

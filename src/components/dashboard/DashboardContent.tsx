@@ -264,7 +264,7 @@ export function DashboardContent({
 
           <Card className="dw-card bg-card shadow-card border-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle>💬 {t('transactionList.yourLatestMovements', 'Suas últimas conversas financeiras')}</CardTitle>
+              <CardTitle>💬 {t('transactionList.yourLatestMovements', 'Suas últimas movimentações')}</CardTitle>
               <Button
                 variant="ghost"
                 size="sm"
@@ -349,7 +349,7 @@ export function DashboardContent({
             <CardHeader>
               <CardTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <span className="font-heading">💬 {t('transactionList.yourConversations', 'Suas conversas financeiras')}</span>
+                  <span className="font-heading">💬 {t('transactionList.yourConversations', 'Suas transações financeiras')}</span>
                   <p className="text-sm font-normal text-muted-foreground mt-1">
                     {t('transactionList.allIncomeAndExpenses', 'Todas as suas receitas e despesas')}
                   </p>
