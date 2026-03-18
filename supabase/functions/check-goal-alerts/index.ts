@@ -9,7 +9,7 @@ const corsHeaders = {
 const WHATSAPP_API_URL = `https://graph.facebook.com/v21.0/${Deno.env.get('WHATSAPP_PHONE_NUMBER_ID')}/messages`;
 const WHATSAPP_ACCESS_TOKEN = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
 
-const THRESHOLDS = [70, 90, 100];
+const THRESHOLDS = [70, 90, 100, 120, 150];
 
 async function sendWhatsAppMessage(to: string, message: string): Promise<boolean> {
   if (!WHATSAPP_ACCESS_TOKEN) {
