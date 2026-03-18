@@ -55,8 +55,12 @@ function getAlertMessage(threshold: number, categoryName: string, spent: number,
   const goalStr = formatCurrency(goalAmount);
   const percentage = Math.round((spent / goalAmount) * 100);
 
-  if (threshold >= 100) {
+  if (threshold >= 150) {
+    return `🔴 *Meta muito ultrapassada!*\n\nVocê gastou ${spentStr} de ${goalStr} em *${categoryName}* este mês (${percentage}%).\n\nSeus gastos estão 50% acima do limite!`;
+  } else if (threshold >= 120) {
     return `🚨 *Meta ultrapassada!*\n\nVocê gastou ${spentStr} de ${goalStr} em *${categoryName}* este mês (${percentage}%).\n\nConsidere revisar seus gastos nesta categoria.`;
+  } else if (threshold >= 100) {
+    return `⚠️ *Limite atingido!*\n\nVocê atingiu ${spentStr} de ${goalStr} em *${categoryName}* este mês (${percentage}%).`;
   } else if (threshold >= 90) {
     return `⚠️ *Cuidado!* Você está em ${percentage}% da meta de *${categoryName}*\n\n${spentStr} de ${goalStr}\n\nVocê está quase no limite!`;
   } else {
