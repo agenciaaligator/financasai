@@ -32,6 +32,7 @@ export function useMonthlyGoals(transactions: Transaction[], categories: any[]) 
   const { user } = useAuth();
   const { organization_id } = useOrganizationPermissions();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [goals, setGoals] = useState<MonthlyGoal[]>([]);
   const [loading, setLoading] = useState(true);
 
