@@ -1,73 +1,33 @@
 
-## Correcao Final - Fluxo de Onboarding
 
-### Bug Critico Encontrado
+## Fix: WhatsApp Agent Ignoring Social Messages (obrigado, valeu, etc.)
 
-**Problema 5: Validacao do codigo WhatsApp SEMPRE falha** (mesmo com codigo correto)
+### Root Cause
 
-A edge function `validate-code` retorna `{ valid: true, message: "Codigo valido" }`, mas o frontend (`Welcome.tsx` linha 163) verifica `data?.success`. Como `success` nao existe na resposta, o frontend interpreta como erro e mostra "Codigo invalido ou expirado" mesmo quando o codigo esta correto.
-
-Isso explica tambem o Problema 4 (parece que o codigo nao funciona) e o Problema 6 (mensagem de boas-vindas nunca chega, pois o usuario nunca conclui a validacao com sucesso no frontend).
-
-### Alteracoes Necessarias
-
-#### 1. Corrigir Welcome.tsx - Verificacao da resposta validate-code
-
-**Arquivo:** `src/pages/Welcome.tsx` (linha 163)
-
-Alterar de:
-```tsx
-if (!data?.success) throw new Error(data?.error || 'Codigo invalido ou expirado');
+Line 2406 in `whatsapp-agent/index.ts`:
+```typescript
+if (nlpResult && nlpResult.confidence > 0.7) {
 ```
 
-Para:
-```tsx
-if (!data?.valid && !data?.success) throw new Error(data?.message || data?.error || 'Codigo invalido ou expirado');
+The NLP returns `{"intent": "other", "confidence": 0.5}` for "muito obrigado". Since 0.5 < 0.7, the entire NLP block is skipped — including the `case 'other'` handler at line 2466-2486 that has the gratitude regex. The message then falls through to the transaction parser (fails), and hits the generic "Não entendi" fallback.
+
+### Fix
+
+Add a social message detection check **before** the NLP confidence gate, right after the greeting detection block (around line 2392). This handles common social phrases (obrigado, valeu, legal, etc.) without depending on NLP confidence:
+
+```typescript
+// PRIORIDADE 2.5: Detectar mensagens sociais simples (antes do NLP)
+const gratitudeMatch = /obrigad[oa]?|valeu|thanks|muito bom|legal|show|massa|top/i.test(normalizedText);
+if (gratitudeMatch) {
+  return {
+    response: '😊 Por nada! Estou aqui sempre que precisar. É só me chamar! 💙',
+    sessionData: { ...sessionData, conversation_state: 'idle' }
+  };
+}
 ```
 
-Isso aceita tanto `{ valid: true }` (resposta atual) quanto `{ success: true }` (se for alterado no futuro).
+### File Changed
+- `supabase/functions/whatsapp-agent/index.ts` — add social message detection before NLP block (~line 2393)
 
-#### 2. Limpeza de dados do usuario de teste
+This is a 5-line fix. The existing NLP `case 'other'` block remains as a secondary fallback for less common phrases.
 
-Executar queries SQL para limpar os dados de `alexandre@aligator.com.br`:
-```sql
-DELETE FROM whatsapp_sessions WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM whatsapp_validation_codes WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM user_roles WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM user_subscriptions WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM organization_members WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM organizations WHERE owner_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-DELETE FROM profiles WHERE user_id IN (
-  SELECT id FROM auth.users WHERE email = 'alexandre@aligator.com.br'
-);
-```
-
-A exclusao do usuario de `auth.users` precisa ser feita via Supabase Dashboard (Authentication > Users) ou pela edge function `delete-user-admin`.
-
-### Problemas 2 e 3: Email Timing e Link
-
-**Nao ha bug de codigo aqui.** O fluxo atual e:
-1. `signUp()` envia email de confirmacao (comportamento nativo Supabase)
-2. Usuario faz checkout no Stripe
-3. Stripe webhook ativa a assinatura
-4. Usuario confirma email quando quiser
-5. Link do email vai para `/auth/callback` (ja configurado corretamente na linha 47 do Register.tsx)
-6. `/auth/callback` verifica assinatura e redireciona para `/boas-vindas`
-
-O email e enviado no momento do signup porque o Supabase nao permite adiar o envio. Isso NAO e um bug - o usuario pode confirmar o email a qualquer momento, antes ou depois do checkout.
-
-### Resumo
-
-A unica alteracao de codigo necessaria e a correcao da verificacao da resposta em `Welcome.tsx`. O resto sao operacoes de limpeza de dados no banco.
