@@ -2390,6 +2390,15 @@ class WhatsAppAgent {
       };
     }
 
+    // 🙏 PRIORIDADE 2.5: Detectar mensagens sociais simples (antes do NLP)
+    const socialMatch = /obrigad[oa]?|valeu|thanks|muito bom|legal|show|massa|top|brigad[oa]/i.test(normalizedText);
+    if (socialMatch) {
+      return {
+        response: '😊 Por nada! Estou aqui sempre que precisar. É só me chamar! 💙',
+        sessionData: { ...sessionData, conversation_state: 'idle' }
+      };
+    }
+
     // 🤖 PRIORIDADE 2.8: Processar com IA para linguagem natural
     // ⚠️ CRITICAL: NÃO processar com NLP se contém termos de agenda
     const hasAgendaTerms = normalizedText.includes('compromiss') || 
