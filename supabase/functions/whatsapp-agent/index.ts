@@ -46,15 +46,6 @@ async function sendWhatsAppMessage(to: string, message: string): Promise<void> {
   }
 }
 
-    // 🙏 PRIORIDADE 2.5: Detectar mensagens sociais simples (antes do NLP)
-    const socialMatch = /obrigad[oa]?|valeu|thanks|muito bom|legal|show|massa|top|brigad[oa]/i.test(normalizedText);
-    if (socialMatch) {
-      return {
-        response: '😊 Por nada! Estou aqui sempre que precisar. É só me chamar! 💙',
-        sessionData: { ...sessionData, conversation_state: 'idle' }
-      };
-    }
-
 
 // Rate limiting for authentication
 const authRateLimit = new Map<string, { count: number; windowStart: number }>();
