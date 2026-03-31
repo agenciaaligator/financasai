@@ -175,7 +175,10 @@ export function FinancialDashboard() {
           currentTab={currentTab}
           onTabChange={setCurrentTab}
           showForm={showForm}
-          onToggleForm={() => setShowForm(!showForm)}
+          onToggleForm={() => {
+            if (!showForm) setCurrentTab('dashboard');
+            setShowForm(!showForm);
+          }}
           isOwner={isOwner}
           isAdmin={isAdmin}
         />
