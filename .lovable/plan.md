@@ -1,33 +1,42 @@
 
 
-## Fix: WhatsApp Agent Ignoring Social Messages (obrigado, valeu, etc.)
+## Correção: Layout do Formulário de Nova Transação
 
-### Root Cause
+### Problema
 
-Line 2406 in `whatsapp-agent/index.ts`:
+Ao clicar em "Nova Transação" na sidebar, o formulário abre inline acima do conteúdo da aba atual (ex: Transações), resultando em layout confuso — o formulário e a lista de transações competem pelo espaço, especialmente em viewports menores (~948px) onde a sidebar ocupa parte da tela.
+
+### Causa
+
+Em `FinancialDashboard.tsx`, o `showForm` renderiza o `TransactionForm` **acima** do `DashboardContent` sem mudar a aba para "dashboard". O conteúdo da aba corrente (transações, metas, etc.) continua visível abaixo do formulário.
+
+### Solução
+
+Quando o usuário clica "Nova Transação":
+1. Mudar a aba para "dashboard" automaticamente (`setCurrentTab('dashboard')`)
+2. Mostrar o formulário somente na aba dashboard
+3. Isso garante que o formulário tenha o espaço completo sem conflito com outras abas
+
+### Alteração
+
+**`src/components/FinancialDashboard.tsx`** — Na função `onToggleForm` passada ao `AppSidebar`, adicionar `setCurrentTab('dashboard')` quando o form é aberto:
+
 ```typescript
-if (nlpResult && nlpResult.confidence > 0.7) {
+// Desktop (linha ~177)
+onToggleForm={() => {
+  if (!showForm) setCurrentTab('dashboard');
+  setShowForm(!showForm);
+}}
+
+// Mobile (linha ~102, dentro do Sheet)
+onToggleForm={() => {
+  if (!showForm) {
+    setCurrentTab('dashboard');
+  }
+  setShowForm(!showForm);
+  setMobileMenuOpen(false);
+}}
 ```
 
-The NLP returns `{"intent": "other", "confidence": 0.5}` for "muito obrigado". Since 0.5 < 0.7, the entire NLP block is skipped — including the `case 'other'` handler at line 2466-2486 that has the gratitude regex. The message then falls through to the transaction parser (fails), and hits the generic "Não entendi" fallback.
-
-### Fix
-
-Add a social message detection check **before** the NLP confidence gate, right after the greeting detection block (around line 2392). This handles common social phrases (obrigado, valeu, legal, etc.) without depending on NLP confidence:
-
-```typescript
-// PRIORIDADE 2.5: Detectar mensagens sociais simples (antes do NLP)
-const gratitudeMatch = /obrigad[oa]?|valeu|thanks|muito bom|legal|show|massa|top/i.test(normalizedText);
-if (gratitudeMatch) {
-  return {
-    response: '😊 Por nada! Estou aqui sempre que precisar. É só me chamar! 💙',
-    sessionData: { ...sessionData, conversation_state: 'idle' }
-  };
-}
-```
-
-### File Changed
-- `supabase/functions/whatsapp-agent/index.ts` — add social message detection before NLP block (~line 2393)
-
-This is a 5-line fix. The existing NLP `case 'other'` block remains as a secondary fallback for less common phrases.
+Isso resolve o problema: o formulário sempre abre na aba dashboard, onde há espaço e contexto adequado (cards de resumo + formulário).
 
