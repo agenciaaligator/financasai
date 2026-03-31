@@ -106,6 +106,7 @@ export function FinancialDashboard() {
                     onTabChange={handleTabChange}
                     showForm={showForm}
                     onToggleForm={() => {
+                      if (!showForm) setCurrentTab('dashboard');
                       setShowForm(!showForm);
                       setMobileMenuOpen(false);
                     }}
