@@ -185,15 +185,15 @@ export function FinancialDashboard() {
         
         <main className="flex-1 flex flex-col">
           {/* Header Desktop */}
-          <header className="border-b border-sidebar-border bg-background/80 backdrop-blur-sm">
-            <div className="flex items-center justify-between px-6 py-4">
+          <header className="border-b border-border/50 bg-background/80 backdrop-blur-sm">
+            <div className="flex items-center justify-between px-6 py-3">
               <div className="flex items-center gap-4">
                 <SidebarTrigger className="h-8 w-8" />
                  <div>
-                   <h1 className="font-heading text-2xl font-semibold text-foreground">
+                   <h1 className="font-heading text-lg font-bold text-foreground">
                      {tabTitleMap[currentTab] || currentTab}
                    </h1>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     {t('dashboard.hello', 'Olá')}, {user?.email}
                   </p>
                 </div>

@@ -118,13 +118,14 @@ Paleta de cores extraída do ícone: tons de azul com gradientes
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
   }
 }
 
 @layer utilities {
   .font-heading {
-    font-family: 'Crimson Text', serif;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 700;
   }
   
   .font-display {
