@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, RefreshCw } from "lucide-react";
+import { Plus, RefreshCw, Lightbulb } from "lucide-react";
 import { FinancialChart } from "../FinancialChart";
 import { CategoryManager } from "../CategoryManager";
 import { ProfileSettings } from "../ProfileSettings";
@@ -19,6 +19,9 @@ import { TransactionFilters, TransactionFiltersState } from "../TransactionFilte
 import { useSubscription } from "@/hooks/useSubscription";
 import { useFeatureLimits } from "@/hooks/useFeatureLimits";
 import { useMonthlyGoals } from "@/hooks/useMonthlyGoals";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import donaWilmaAvatar from "@/assets/dona-wilma-avatar.jpg";
+import { useAuth } from "@/hooks/useAuth";
 import { 
   startOfDay, 
   endOfDay, 
@@ -27,8 +30,10 @@ import {
   startOfMonth, 
   endOfMonth, 
   subMonths,
+  subDays,
   isWithinInterval,
-  parseISO
+  parseISO,
+  format
 } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import { ErrorBoundary } from "../ErrorBoundary";
@@ -37,6 +42,13 @@ import { useTranslation } from "react-i18next";
 
 const TIMEZONE = 'America/Sao_Paulo';
 const ITEMS_PER_PAGE = 10;
+
+const TIPS = [
+  'Envie "gastei 50 no mercado" pelo WhatsApp',
+  'Envie uma foto do comprovante para registrar',
+  'Diga "quanto gastei esse mês" para um resumo',
+  'Crie metas mensais para controlar seus gastos',
+];
 
 interface DashboardContentProps {
   currentTab: string;
@@ -73,6 +85,7 @@ export function DashboardContent({
   const { getTransactionProgress, getCategoryProgress } = useFeatureLimits();
   const { goalsWithProgress, loading: goalsLoading, addGoal, deleteGoal } = useMonthlyGoals(transactions, categories);
   const { t } = useTranslation();
+  const { user } = useAuth();
   
   const [filters, setFilters] = useState<TransactionFiltersState>(() => {
     try {
@@ -197,6 +210,37 @@ export function DashboardContent({
       .reduce((acc, t) => acc + Number(t.amount), 0);
   }, [currentMonthTransactions]);
 
+  // Sparkline data: last 7 days
+  const sparklineData = useMemo(() => {
+    const now = toZonedTime(new Date(), TIMEZONE);
+    const days: string[] = [];
+    for (let i = 6; i >= 0; i--) {
+      days.push(format(subDays(now, i), 'yyyy-MM-dd'));
+    }
+
+    const income = days.map(day =>
+      transactions
+        .filter(t => t.date === day && t.type === 'income')
+        .reduce((sum, t) => sum + Number(t.amount), 0)
+    );
+
+    const expense = days.map(day =>
+      transactions
+        .filter(t => t.date === day && t.type === 'expense')
+        .reduce((sum, t) => sum + Number(t.amount), 0)
+    );
+
+    const balanceArr = days.map((_, i) => {
+      let b = 0;
+      for (let j = 0; j <= i; j++) {
+        b += income[j] - expense[j];
+      }
+      return b;
+    });
+
+    return { income, expense, balance: balanceArr };
+  }, [transactions]);
+
   const handleViewAllTransactions = () => {
     onTabChange('transactions');
   };
@@ -210,86 +254,140 @@ export function DashboardContent({
     setShowWelcomeBanner(false);
   };
 
+  // Daily tip
+  const tipOfDay = TIPS[new Date().getDate() % TIPS.length];
+
   if (currentTab === "dashboard") {
     return (
-      <div className="space-y-6">
-        {/* Header Acolhedor */}
-        <Card className="relative dw-card bg-card shadow-card border-0 overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/20 rounded-full blur-3xl -translate-y-8 translate-x-8"></div>
-          <CardContent className="p-8 relative">
-            <h1 className="font-heading text-2xl sm:text-[2.5rem] font-semibold text-foreground mb-2">
-              {t('dashboard.greeting', 'Olá! 🎉')}
-            </h1>
-            <p className="text-base sm:text-lg text-muted-foreground">
-              {t('dashboard.greetingSubtitle', 'Como estão suas finanças hoje? Vamos dar uma olhada...')}
-            </p>
-          </CardContent>
-        </Card>
-
-        {showWelcomeBanner && (
-          <Card className="bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20">
-            <CardContent className="pt-6">
-              <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold text-foreground">🎉 {t('dashboard.welcomeTitle', 'Bem-vindo ao Dona Wilma!')}</h3>
-                  <p className="text-sm text-muted-foreground">{t('dashboard.welcomeDesc', 'Envie mensagens pelo WhatsApp para registrar suas finanças:')}</p>
-                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                    <li>{t('dashboard.welcomeTip1', '"Gastei 50 no mercado"')}</li>
-                    <li>{t('dashboard.welcomeTip2', '"Recebi 3000 de salário"')}</li>
-                    <li>{t('dashboard.welcomeTip3', '"Reunião amanhã às 14h"')}</li>
-                  </ul>
+      <div className="space-y-4">
+        {/* Bento Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Hero Welcome Card - spans 2 cols on desktop */}
+          <Card className="md:col-span-2 border-0 shadow-sm bg-gradient-to-r from-card to-muted/30">
+            <CardContent className="p-4 flex items-center gap-4">
+              <Avatar className="h-12 w-12 flex-shrink-0 ring-2 ring-primary/20">
+                <AvatarImage src={donaWilmaAvatar} alt="Dona Wilma" className="object-cover object-top" />
+                <AvatarFallback className="bg-primary/10 text-primary font-bold">DW</AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <p className="font-heading text-base font-bold text-foreground truncate">
+                  {t('dashboard.greeting', 'Olá! 🎉')} {user?.email && <span className="font-medium text-sm text-muted-foreground">{user.email}</span>}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {t('dashboard.greetingSubtitle', 'Dona Wilma está pronta. Suas finanças hoje:')}
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="inline-flex items-center gap-1 text-xs bg-success/10 text-success px-2 py-0.5 rounded-full font-medium">
+                    <span className="w-1.5 h-1.5 bg-success rounded-full animate-pulse" />
+                    WhatsApp
+                  </span>
                 </div>
-                <Button variant="ghost" size="sm" onClick={dismissWelcomeBanner}>✕</Button>
               </div>
             </CardContent>
           </Card>
-        )}
-        <BalanceAlert isNegative={isNegative} />
-        
-        <SummaryCards
-          balance={monthlyBalance}
-          totalIncome={monthlyTotalIncome}
-          totalExpenses={monthlyTotalExpenses}
-        />
-        
-        <div className="space-y-6">
-          <Card className="dw-card bg-card shadow-card border-0">
-            <CardHeader>
-              <CardTitle className="font-heading">{t('chart.howIsYourMoney', 'Como seu dinheiro se comportou')}</CardTitle>
+
+          {/* Balance Alert or Tip of Day */}
+          {isNegative ? (
+            <BalanceAlert isNegative={isNegative} />
+          ) : (
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-secondary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Lightbulb className="h-4 w-4 text-secondary" />
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wider font-medium text-muted-foreground mb-1">
+                    {t('dashboard.tipOfDay', 'Dica do dia')}
+                  </p>
+                  <p className="text-sm text-foreground">{tipOfDay}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Summary Cards */}
+          <SummaryCards
+            balance={monthlyBalance}
+            totalIncome={monthlyTotalIncome}
+            totalExpenses={monthlyTotalExpenses}
+            sparklineData={sparklineData}
+          />
+
+          {/* Chart Card - spans 2 cols */}
+          <Card className="md:col-span-2 border-0 shadow-sm">
+            <CardHeader className="pb-2 pt-4 px-4">
+              <CardTitle className="font-heading text-sm">{t('chart.howIsYourMoney', 'Como seu dinheiro se comportou')}</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-4 pb-4">
               <FinancialChart transactions={currentMonthTransactions} />
             </CardContent>
           </Card>
 
-          <Card className="dw-card bg-card shadow-card border-0">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle>💬 {t('transactionList.yourLatestMovements', 'Suas últimas movimentações')}</CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onRefresh}
-                className="h-8 w-8 p-0"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <TransactionList 
-                transactions={transactions.slice(0, 5)} 
-                onDelete={onDelete}
-                onEdit={onEdit}
-              />
-              {transactions.length > 5 && (
-                <div className="mt-4 text-center">
-                  <Button variant="link" onClick={handleViewAllTransactions}>
-                    {t('transactionList.viewAllTransactions', 'Ver todas as transações')} →
-                  </Button>
+          {/* Balance Alert if negative (shown in chart row) */}
+          {isNegative && (
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-secondary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Lightbulb className="h-4 w-4 text-secondary" />
                 </div>
-              )}
+                <div>
+                  <p className="text-xs uppercase tracking-wider font-medium text-muted-foreground mb-1">
+                    {t('dashboard.tipOfDay', 'Dica do dia')}
+                  </p>
+                  <p className="text-sm text-foreground">{tipOfDay}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Welcome banner */}
+        {showWelcomeBanner && (
+          <Card className="bg-primary/5 border-primary/10 border-0 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold text-foreground">🎉 {t('dashboard.welcomeTitle', 'Bem-vindo ao Dona Wilma!')}</h3>
+                  <p className="text-xs text-muted-foreground">{t('dashboard.welcomeDesc', 'Envie mensagens pelo WhatsApp para registrar suas finanças:')}</p>
+                  <ul className="text-xs text-muted-foreground space-y-0.5 list-disc list-inside">
+                    <li>{t('dashboard.welcomeTip1', '"Gastei 50 no mercado"')}</li>
+                    <li>{t('dashboard.welcomeTip2', '"Recebi 3000 de salário"')}</li>
+                  </ul>
+                </div>
+                <Button variant="ghost" size="sm" onClick={dismissWelcomeBanner} className="h-6 w-6 p-0 text-muted-foreground">✕</Button>
+              </div>
             </CardContent>
           </Card>
-        </div>
+        )}
+
+        {/* Recent Transactions */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4">
+            <CardTitle className="font-heading text-sm">{t('transactionList.yourLatestMovements', 'Últimas movimentações')}</CardTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onRefresh}
+              className="h-7 w-7 p-0"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+            </Button>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <TransactionList 
+              transactions={transactions.slice(0, 5)} 
+              onDelete={onDelete}
+              onEdit={onEdit}
+            />
+            {transactions.length > 5 && (
+              <div className="mt-3 text-center">
+                <Button variant="link" size="sm" onClick={handleViewAllTransactions} className="text-xs">
+                  {t('transactionList.viewAllTransactions', 'Ver todas as transações')} →
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -345,26 +443,26 @@ export function DashboardContent({
             <FilteredSummaryCards transactions={filteredTransactions} />
           )}
 
-          <Card className="bg-gradient-card shadow-card border-0">
+          <Card className="border-0 shadow-sm">
             <CardHeader>
               <CardTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <span className="font-heading">💬 {t('transactionList.yourConversations', 'Suas transações financeiras')}</span>
-                  <p className="text-sm font-normal text-muted-foreground mt-1">
+                  <span className="font-heading text-sm">{t('transactionList.yourConversations', 'Suas transações financeiras')}</span>
+                  <p className="text-xs font-normal text-muted-foreground mt-1">
                     {t('transactionList.allIncomeAndExpenses', 'Todas as suas receitas e despesas')}
                   </p>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
-                  <span className="text-sm font-normal text-muted-foreground">
+                  <span className="text-xs font-normal text-muted-foreground">
                     {t('transactionList.ofTotal', '{{filtered}} de {{total}} transações', { filtered: filteredTransactions.length, total: transactions.length })}
                   </span>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={onRefresh}
-                    className="h-8 w-8 p-0"
+                    className="h-7 w-7 p-0"
                   >
-                    <RefreshCw className="h-4 w-4" />
+                    <RefreshCw className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </CardTitle>
@@ -445,20 +543,20 @@ export function DashboardContent({
     return <AdminPanel />;
   }
 
-  // Fallback para dashboard
+  // Fallback
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <BalanceAlert isNegative={isNegative} />
-      
-      <SummaryCards 
-        balance={balance}
-        totalIncome={totalIncome}
-        totalExpenses={totalExpenses}
-      />
-      
-      <Card className="dw-card bg-card shadow-card border-0">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <SummaryCards 
+          balance={balance}
+          totalIncome={totalIncome}
+          totalExpenses={totalExpenses}
+        />
+      </div>
+      <Card className="border-0 shadow-sm">
         <CardHeader>
-          <CardTitle className="font-heading">{t('chart.howIsYourMoney', 'Como seu dinheiro se comportou')}</CardTitle>
+          <CardTitle className="font-heading text-sm">{t('chart.howIsYourMoney', 'Como seu dinheiro se comportou')}</CardTitle>
         </CardHeader>
         <CardContent>
           <FinancialChart transactions={transactions} />
