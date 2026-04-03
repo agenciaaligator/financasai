@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { AlertTriangle } from "lucide-react";
+import { Info } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface BalanceAlertProps {
@@ -12,13 +12,15 @@ export function BalanceAlert({ isNegative }: BalanceAlertProps) {
   if (!isNegative) return null;
 
   return (
-    <Card className="mb-6 border-destructive bg-destructive/5">
-      <CardContent className="pt-6">
+    <Card className="border-l-4 border-l-warning bg-warning/5 border-0 shadow-sm">
+      <CardContent className="p-4">
         <div className="flex items-center space-x-3">
-          <AlertTriangle className="h-5 w-5 text-destructive" />
+          <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center flex-shrink-0">
+            <Info className="h-4 w-4 text-warning" />
+          </div>
           <div>
-            <p className="text-destructive font-medium">{t('dashboard.balanceAlert.title')}</p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm font-medium text-foreground">{t('dashboard.balanceAlert.title')}</p>
+            <p className="text-xs text-muted-foreground">
               {t('dashboard.balanceAlert.description')}
             </p>
           </div>
