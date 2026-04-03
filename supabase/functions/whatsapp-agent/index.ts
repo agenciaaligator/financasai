@@ -2985,7 +2985,7 @@ class WhatsAppAgent {
         sessionData: { ...sessionData, conversation_state: 'idle', pending_ocr_data: undefined }
       };
 
-    } else if (negative.includes(messageText.toLowerCase().trim())) {
+    } else if (isNegative) {
       await SessionManager.updateSession(session.id, {
         session_data: {
           ...sessionData,
