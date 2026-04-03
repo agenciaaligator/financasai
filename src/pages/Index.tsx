@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSubscriptionGuard } from "@/hooks/useSubscriptionGuard";
 import { GracePeriodBanner } from "@/components/GracePeriodBanner";
 import SubscriptionInactive from "@/pages/SubscriptionInactive";
+import donaWilmaLandingHero from "@/assets/dona-wilma-landing-hero.jpg";
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -194,9 +195,9 @@ const LandingPage = () => {
             <div className="relative group">
               <div className="absolute inset-0 bg-gradient-primary opacity-15 blur-[60px] rounded-full scale-110 group-hover:scale-125 group-hover:opacity-20 transition-all duration-700" />
               <img 
-                src="/images/landing/hero-illustration.png" 
-                alt="Dona Wilma - WhatsApp, Dashboard e Calendário integrados"
-                className="relative w-full max-w-md rounded-3xl shadow-hero hover:scale-[1.02] transition-transform duration-500"
+                src={donaWilmaLandingHero}
+                alt="Dona Wilma mostrando a solução financeira no celular"
+                className="relative w-full max-w-md rounded-3xl shadow-hero hover:scale-[1.02] transition-transform duration-500 object-cover"
                 loading="eager"
               />
               
