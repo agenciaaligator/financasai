@@ -2930,10 +2930,11 @@ class WhatsAppAgent {
     const sessionData = session.session_data || {};
     const ocrData = sessionData.pending_ocr_data!;
 
-    const affirmative = ['sim', 's', 'yes', 'y', 'confirmo', 'ok', 'salvar'];
-    const negative = ['não', 'nao', 'n', 'no', 'cancelar'];
+    const normalizedMsg = messageText.toLowerCase().trim();
+    const isAffirmative = /^(sim|s|yes|y|confirmo|ok|salvar)\b/.test(normalizedMsg);
+    const isNegative = /^(n[aã]o|n|no|cancelar)\b/.test(normalizedMsg);
 
-    if (affirmative.includes(messageText.toLowerCase().trim())) {
+    if (isAffirmative) {
       // Para contas (bill), priorizar due_date; para comprovantes, usar date
       const isBill = ocrData.document_type === 'bill';
       const preferredDate = (isBill && ocrData.due_date) ? ocrData.due_date : ocrData.date;

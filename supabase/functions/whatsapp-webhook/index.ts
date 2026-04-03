@@ -659,6 +659,13 @@ const handler = async (req: Request): Promise<Response> => {
         console.log(`🎙️ [${messageId?.substring(0,10)}] Proceeding with transcription...`);
         try {
           text = await transcribeAudio(message.audio.id, message.from);
+          // Limpar transcrição da mesma forma que texto (remover pontuação do Whisper)
+          if (text) {
+            text = text
+              .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+              .replace(/\s+/g, ' ')
+              .trim();
+          }
           forceText = true;
           console.log(`✅ [${messageId?.substring(0,10)}] Transcription successful:`, {
             from: message.from.substring(0, 8) + '***',
