@@ -18,10 +18,10 @@ export default {
 			}
 		},
 		extend: {
-		fontFamily: {
-			heading: ['Crimson Text', 'serif'],
-			body: ['Inter', 'sans-serif'],
-			display: ['Space Grotesk', 'sans-serif'],
+	fontFamily: {
+			heading: ['Plus Jakarta Sans', 'sans-serif'],
+			body: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+			display: ['Plus Jakarta Sans', 'sans-serif'],
 		},
 			colors: {
 				border: 'hsl(var(--border))',
