@@ -1,42 +1,40 @@
 
 
-## Correção: Layout do Formulário de Nova Transação
+## Bug: Áudio "Sim" não é reconhecido na confirmação de OCR
 
-### Problema
+### Causa Raiz
 
-Ao clicar em "Nova Transação" na sidebar, o formulário abre inline acima do conteúdo da aba atual (ex: Transações), resultando em layout confuso — o formulário e a lista de transações competem pelo espaço, especialmente em viewports menores (~948px) onde a sidebar ocupa parte da tela.
+Dois problemas combinados:
 
-### Causa
+1. **Webhook não limpa transcrições de áudio**: O webhook limpa pontuação apenas para mensagens de texto (linhas 678-692). Transcrições de áudio (Whisper/ElevenLabs) chegam ao agente com pontuação intacta — ex: "Sim." ou "Sim, por favor."
 
-Em `FinancialDashboard.tsx`, o `showForm` renderiza o `TransactionForm` **acima** do `DashboardContent` sem mudar a aba para "dashboard". O conteúdo da aba corrente (transações, metas, etc.) continua visível abaixo do formulário.
+2. **Confirmação OCR usa match exato**: `handleOCRConfirmation` (linha 2936) faz `affirmative.includes(messageText.toLowerCase().trim())`, que requer correspondência exata. "sim." ou "sim, por favor" não estão na lista `['sim', 's', 'yes', 'y', 'confirmo', 'ok', 'salvar']`.
 
 ### Solução
 
-Quando o usuário clica "Nova Transação":
-1. Mudar a aba para "dashboard" automaticamente (`setCurrentTab('dashboard')`)
-2. Mostrar o formulário somente na aba dashboard
-3. Isso garante que o formulário tenha o espaço completo sem conflito com outras abas
+Duas correções:
 
-### Alteração
-
-**`src/components/FinancialDashboard.tsx`** — Na função `onToggleForm` passada ao `AppSidebar`, adicionar `setCurrentTab('dashboard')` quando o form é aberto:
+**1. Webhook (`whatsapp-webhook/index.ts`)**: Aplicar a mesma limpeza de pontuação nas transcrições de áudio (após linha 661), para que o texto chegue limpo ao agente:
 
 ```typescript
-// Desktop (linha ~177)
-onToggleForm={() => {
-  if (!showForm) setCurrentTab('dashboard');
-  setShowForm(!showForm);
-}}
-
-// Mobile (linha ~102, dentro do Sheet)
-onToggleForm={() => {
-  if (!showForm) {
-    setCurrentTab('dashboard');
-  }
-  setShowForm(!showForm);
-  setMobileMenuOpen(false);
-}}
+text = await transcribeAudio(message.audio.id, message.from);
+// Limpar transcrição da mesma forma que texto
+text = text
+  .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
+forceText = true;
 ```
 
-Isso resolve o problema: o formulário sempre abre na aba dashboard, onde há espaço e contexto adequado (cards de resumo + formulário).
+**2. Agent (`whatsapp-agent/index.ts`)**: Tornar a confirmação OCR mais flexível — usar `startsWith` ou regex em vez de `includes` exato, para cobrir variações como "sim por favor", "sim confirmo":
+
+```typescript
+const normalizedMsg = messageText.toLowerCase().trim();
+const isAffirmative = /^(sim|s|yes|y|confirmo|ok|salvar)\b/.test(normalizedMsg);
+const isNegative = /^(n[aã]o|n|no|cancelar)\b/.test(normalizedMsg);
+```
+
+### Arquivos Afetados (2)
+1. `supabase/functions/whatsapp-webhook/index.ts` — limpar transcrição de áudio
+2. `supabase/functions/whatsapp-agent/index.ts` — regex flexível no `handleOCRConfirmation`
 
