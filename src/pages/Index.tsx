@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSubscriptionGuard } from "@/hooks/useSubscriptionGuard";
 import { GracePeriodBanner } from "@/components/GracePeriodBanner";
 import SubscriptionInactive from "@/pages/SubscriptionInactive";
+import donaWilmaLandingHero from "@/assets/dona-wilma-landing-hero.jpg";
 
 const LandingPage = () => {
   const navigate = useNavigate();
