@@ -191,7 +191,7 @@ const LandingPage = () => {
           </div>
           
           {/* Hero image */}
-          <div className="hidden md:flex items-center justify-center">
+          <div className="flex items-center justify-center">
             <div className="relative group">
               <div className="absolute inset-0 bg-gradient-primary opacity-15 blur-[60px] rounded-full scale-110 group-hover:scale-125 group-hover:opacity-20 transition-all duration-700" />
               <img 
