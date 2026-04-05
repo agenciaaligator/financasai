@@ -255,7 +255,7 @@ export function DashboardContent({
   };
 
   // Daily tip
-  const tipOfDay = TIPS[new Date().getDate() % TIPS.length];
+  const tipOfDay = t(TIPS_KEYS[new Date().getDate() % TIPS_KEYS.length]);
 
   if (currentTab === "dashboard") {
     return (
