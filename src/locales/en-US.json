@@ -734,7 +734,7 @@
         "acceptance": { "title": "1. Acceptance of Terms", "content": "By using the Dona Wilma service (\"Service\"), you agree to these Terms of Service. If you do not agree, do not use the Service. The Service is provided by Aligator (\"Company\")." },
         "description": { "title": "2. Service Description", "content": "Dona Wilma is a personal financial and appointment management platform that uses artificial intelligence to categorize transactions and organize schedules. The service includes WhatsApp integration, Google Calendar, and a web dashboard." },
         "account": { "title": "3. Registration and Account", "content": "You are responsible for maintaining the confidentiality of your login credentials. All activities performed on your account are your responsibility. You must provide accurate and up-to-date information during registration." },
-        "payment": { "title": "4. Plans and Payment", "content": "The Service offers free and paid plans. Paid plans are charged on a recurring basis (monthly or annual) via Stripe. You can cancel at any time through the subscription management portal. There are no prorated refunds for periods already paid." },
+        "payment": { "title": "4. Plans and Payment", "content": "The Service offers paid plans (monthly or annual), charged on a recurring basis via Stripe. You can cancel at any time through the subscription management portal. There are no prorated refunds for periods already paid." },
         "acceptableUse": { "title": "5. Acceptable Use", "content": "You agree not to use the Service for illegal, fraudulent purposes or that violate the rights of third parties. Abusive use of the WhatsApp bot (spam, bulk messages) may result in account suspension." },
         "ip": { "title": "6. Intellectual Property", "content": "All content, design, and code of the Service are the property of the Company. Your financial and personal data remain your property." },
         "liability": { "title": "7. Limitation of Liability", "content": "The Service is provided \"as is\". The Company is not responsible for financial decisions made based on information from the Service. Automatic AI categorization may contain inaccuracies and should be verified by the user." },
@@ -989,5 +989,59 @@
     "freelance": "Freelance",
     "investments": "Investments",
     "projects": "Projects"
+  },
+  "upgrade": {
+    "title": "Subscribe to Premium",
+    "description": "Unlock all features and maximize your potential",
+    "whyPremium": "Why choose Premium?",
+    "reasons": {
+      "financial": "Complete and intuitive financial management",
+      "whatsapp": "WhatsApp integration to simplify your day",
+      "aiReports": "Smart AI-powered reports",
+      "calendar": "Google Calendar sync"
+    },
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "perMonth": "per month",
+    "perYearShort": "year",
+    "chargedAnnually": "Charged",
+    "save40": "Save 40%",
+    "currentPlan": "Current Plan",
+    "subscribeNow": "Subscribe Now",
+    "couponNote": "Coupons and discounts are applied directly at Stripe checkout",
+    "priceError": "Plan not configured. Contact support.",
+    "features": {
+      "unlimitedTransactions": "✨ Unlimited transactions",
+      "unlimitedCategories": "✨ Unlimited categories",
+      "whatsapp": "WhatsApp integration",
+      "aiReports": "AI-powered reports",
+      "googleCalendar": "Google Calendar",
+      "prioritySupport": "Priority support"
+    }
+  },
+  "welcome": {
+    "greeting": "Welcome, {{name}}!",
+    "accountReady": "Your Dona Wilma account is ready",
+    "orderSummary": "Order summary",
+    "plan": "Plan",
+    "price": "Price",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "perMonth": "month",
+    "perYear": "year",
+    "getStarted": "Get started",
+    "tip1": "Use WhatsApp commands: \"Meeting tomorrow at 2pm\"",
+    "tip2": "Log expenses: \"Spent 50 at the grocery store\"",
+    "tip3": "Track automatic reports",
+    "goToDashboard": "Go to Dashboard",
+    "viewSubscription": "View my subscription"
+  },
+  "dashboard": {
+    "tips": {
+      "0": "Send \"spent 50 at the grocery store\" via WhatsApp",
+      "1": "Send a receipt photo to register automatically",
+      "2": "Say \"how much did I spend this month\" for a summary",
+      "3": "Create monthly goals to track your spending"
+    }
   }
 }

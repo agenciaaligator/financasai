@@ -173,7 +173,7 @@
         "acceptance": { "title": "1. Aceitação dos Termos", "content": "Ao utilizar o serviço Dona Wilma (\"Serviço\"), concorda com estes Termos de Serviço. Se não concordar, não utilize o Serviço. O Serviço é oferecido pela Aligator (\"Empresa\")." },
         "description": { "title": "2. Descrição do Serviço", "content": "A Dona Wilma é uma plataforma de gestão financeira e de compromissos pessoais que utiliza inteligência artificial para categorizar transações e organizar agendas. O serviço inclui integração com WhatsApp, Google Calendar e painel web." },
         "account": { "title": "3. Registo e Conta", "content": "É responsável por manter a confidencialidade das suas credenciais de acesso. Todas as atividades realizadas na sua conta são da sua responsabilidade. Deve fornecer informações verdadeiras e atualizadas durante o registo." },
-        "payment": { "title": "4. Planos e Pagamento", "content": "O Serviço oferece planos gratuitos e pagos. Os planos pagos são cobrados de forma recorrente (mensal ou anual) via Stripe. Pode cancelar a qualquer momento através do portal de gestão de subscrição. Não há reembolso proporcional para períodos já pagos." },
+        "payment": { "title": "4. Planos e Pagamento", "content": "O Serviço oferece planos pagos (mensal ou anual), cobrados de forma recorrente via Stripe. Pode cancelar a qualquer momento através do portal de gestão de subscrição. Não há reembolso proporcional para períodos já pagos." },
         "acceptableUse": { "title": "5. Uso Aceitável", "content": "Concorda em não utilizar o Serviço para fins ilegais, fraudulentos ou que violem direitos de terceiros. O uso abusivo do bot de WhatsApp (spam, mensagens em massa) pode resultar em suspensão da conta." },
         "ip": { "title": "6. Propriedade Intelectual", "content": "Todo o conteúdo, design e código do Serviço são propriedade da Empresa. Os seus dados financeiros e pessoais continuam a ser da sua propriedade." },
         "liability": { "title": "7. Limitação de Responsabilidade", "content": "O Serviço é fornecido \"tal como está\". A Empresa não se responsabiliza por decisões financeiras tomadas com base nas informações do Serviço. A categorização automática por IA pode conter imprecisões e deve ser verificada pelo utilizador." },
@@ -428,5 +428,59 @@
     "freelance": "Freelance",
     "investments": "Investimentos",
     "projects": "Projetos"
+  },
+  "upgrade": {
+    "title": "Subscreva o Premium",
+    "description": "Desbloqueie todos os recursos e maximize o seu potencial",
+    "whyPremium": "Porquê escolher o Premium?",
+    "reasons": {
+      "financial": "Gestão financeira completa e intuitiva",
+      "whatsapp": "Integração com WhatsApp para facilitar o seu dia a dia",
+      "aiReports": "Relatórios inteligentes com IA",
+      "calendar": "Sincronização com Google Calendar"
+    },
+    "monthly": "Mensal",
+    "yearly": "Anual",
+    "perMonth": "por mês",
+    "perYearShort": "ano",
+    "chargedAnnually": "Cobrado",
+    "save40": "Poupe 40%",
+    "currentPlan": "Plano Atual",
+    "subscribeNow": "Subscrever Agora",
+    "couponNote": "Cupões e descontos são aplicados diretamente no checkout do Stripe",
+    "priceError": "Plano não configurado. Contacte o suporte.",
+    "features": {
+      "unlimitedTransactions": "✨ Transações ilimitadas",
+      "unlimitedCategories": "✨ Categorias ilimitadas",
+      "whatsapp": "WhatsApp integrado",
+      "aiReports": "Relatórios com IA",
+      "googleCalendar": "Google Calendar",
+      "prioritySupport": "Suporte prioritário"
+    }
+  },
+  "welcome": {
+    "greeting": "Bem-vindo, {{name}}!",
+    "accountReady": "A sua conta Dona Wilma está pronta",
+    "orderSummary": "Resumo do pedido",
+    "plan": "Plano",
+    "price": "Valor",
+    "monthly": "Mensal",
+    "yearly": "Anual",
+    "perMonth": "mês",
+    "perYear": "ano",
+    "getStarted": "Comece agora",
+    "tip1": "Use comandos no WhatsApp: \"Reunião amanhã às 14h\"",
+    "tip2": "Registe despesas: \"Gastei 50 no supermercado\"",
+    "tip3": "Acompanhe relatórios automáticos",
+    "goToDashboard": "Ir para o Dashboard",
+    "viewSubscription": "Ver a minha subscrição"
+  },
+  "dashboard": {
+    "tips": {
+      "0": "Envie \"gastei 50 no supermercado\" pelo WhatsApp",
+      "1": "Envie uma foto do comprovativo para registar",
+      "2": "Diga \"quanto gastei este mês\" para um resumo",
+      "3": "Crie metas mensais para controlar os seus gastos"
+    }
   }
 }
