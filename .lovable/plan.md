@@ -1,43 +1,90 @@
 
 
-## Destaque no Preço Mensal Equivalente do Plano Anual
+## Revisao Completa do Site — Problemas Identificados e Correcoes
 
-### O que muda
+### Problemas Encontrados
 
-No card do plano Anual, inverter a hierarquia visual: o valor em destaque (grande) passa a ser o **equivalente mensal** (R$ 19,92/mês), e o valor cheio anual (R$ 239,00/ano) fica menor abaixo, como informação complementar.
+#### 1. CONTEUDO — Textos hardcoded sem i18n
 
-### Mudança no arquivo
+| Arquivo | Problema |
+|---------|----------|
+| `UpgradeModal.tsx` (linhas 56-70, 83-94, 115, 147, 153) | Textos em portugues hardcoded: "Assine o Premium", "Por que escolher o Premium?", "Mensal", "Anual", "por mes", "Cobrado", "Assinar Agora", "Plano Atual", "Cupons e descontos..." |
+| `WelcomeScreen.tsx` (linhas 32-44, 49) | Textos hardcoded: "Bem-vindo", "Sua conta Dona Wilma esta pronta", "Resumo do pedido", "Plano:", "Valor:", "Comece agora:" |
+| `DashboardContent.tsx` (linhas 46-51) | Array TIPS hardcoded em portugues, nao usa i18n |
 
-**`src/components/PlansSection.tsx`** — linhas 157-173 (bloco de preço do card anual):
+#### 2. CONTEUDO — Inconsistencias nos Termos de Servico
 
-Antes:
-- Grande: `R$ 239,00 /ano`
-- Pequeno: `Equivalente a R$ 19,92/mês`
+| Arquivo | Problema |
+|---------|----------|
+| `pt-BR.json` (linha 743) | Secao "Planos e Pagamento" menciona "planos gratuitos e pagos" — o modelo nao tem plano gratuito |
 
-Depois:
-- Grande: `R$ 19,92 /mês`
-- Pequeno: `Cobrado R$ 239,00/ano`
+#### 3. USABILIDADE — Link WhatsApp de contato falso
 
-Código resultante:
-```tsx
-<div className="mb-2">
-  <div className="flex items-baseline gap-2">
-    <span className="font-display text-3xl sm:text-5xl font-bold text-white">
-      {formatPrice(getYearlyMonthlyEquivalent(locale), currency)}
-    </span>
-    <span className="text-white/50">{t('landing.plans.perMonth')}</span>
-  </div>
-</div>
-<div className="mb-6">
-  <p className="text-sm text-white/50">
-    {t('landing.plans.chargedAnnually')}: {formatPrice(getDisplayPrice('yearly', locale), currency)}{t('landing.plans.perYear')}
-  </p>
-</div>
-```
+| Arquivo | Problema |
+|---------|----------|
+| `Index.tsx` (linha 387) | `href="https://wa.me/5511999999999"` — numero placeholder, nao funcional |
 
-Mesma lógica aplicada ao **`src/components/UpgradeModal.tsx`** (linhas 100-115) para manter consistência no modal de upgrade.
+#### 4. USABILIDADE — Secao "Contato" duplicada visualmente
 
-### Arquivos afetados (2)
-1. `src/components/PlansSection.tsx` — inverter hierarquia de preço no card anual
-2. `src/components/UpgradeModal.tsx` — mesma inversão no modal de upgrade
+| Arquivo | Problema |
+|---------|----------|
+| `Index.tsx` (linhas 371-417) | Secao Contato tem `bg-muted/30` e esta colada na secao FAQ que tambem tem `bg-muted/30`, criando um bloco visual unico sem separacao |
+
+#### 5. LOGICA — WelcomeScreen usa exports deprecated
+
+| Arquivo | Problema |
+|---------|----------|
+| `WelcomeScreen.tsx` (linha 3) | Importa `DISPLAY_PRICES` e `formatPrice` do pricing.ts — estes sao exports de compatibilidade retroativa, fixos em BRL. Deveria usar `getDisplayPrice()` + `getCurrencyFromLocale()` para respeitar o idioma do usuario |
+
+#### 6. LOGICA — UpgradeModal features hardcoded
+
+| Arquivo | Problema |
+|---------|----------|
+| `UpgradeModal.tsx` (linhas 30-37) | Lista de features do premium esta hardcoded em portugues no componente, diferente da PlansSection que usa chaves i18n |
+
+#### 7. LOGICA — Admin acessivel por 2 caminhos
+
+| Arquivo | Problema |
+|---------|----------|
+| `App.tsx` (linha 85) | Rota `/admin` renderiza `AdminRoute` (componente standalone com proprio loading) |
+| `AppSidebar.tsx` + `DashboardContent.tsx` | Tab "admin" dentro do dashboard renderiza `AdminPanel` inline |
+| Efeito | Admin funciona nos 2 lugares, mas a rota `/admin` nao tem sidebar/header do dashboard. A tab do sidebar e o caminho preferido. A rota `/admin` pode confundir |
+
+#### 8. VISUAL — Floating cards do hero saem da tela em mobile
+
+| Arquivo | Problema |
+|---------|----------|
+| `Index.tsx` (linhas 205, 218) | Cards flutuantes com `absolute -bottom-6 -left-8` e `absolute -top-4 -right-6` podem transbordar em telas de 320-375px |
+
+#### 9. LOGICA — Social proof com dados placeholder
+
+| Arquivo | Problema |
+|---------|----------|
+| `Index.tsx` (linhas 182-190) | Circulos coloridos genericos como avatares (sem imagens reais), contagem via i18n key `socialProofCount` — possivelmente exibindo numero inventado |
+
+#### 10. USABILIDADE — Dashboard "Dica do dia" nao internacionalizada
+
+| Arquivo | Problema |
+|---------|----------|
+| `DashboardContent.tsx` (linhas 46-51) | Array TIPS com 4 dicas hardcoded em portugues |
+
+---
+
+### Plano de Correcao (7 tarefas)
+
+| # | Arquivo(s) | Correcao |
+|---|-----------|----------|
+| 1 | `UpgradeModal.tsx` | Substituir todos os textos hardcoded por chaves i18n (`t('upgrade.title')`, etc). Adicionar chaves correspondentes nos 5 arquivos de locale |
+| 2 | `WelcomeScreen.tsx` | Internacionalizar textos + migrar de `DISPLAY_PRICES`/`formatPrice` para `getDisplayPrice()`/`getCurrencyFromLocale()` com locale do i18n |
+| 3 | `DashboardContent.tsx` | Mover array TIPS para chaves i18n (`dashboard.tips.0` a `dashboard.tips.3`) nos 5 locales |
+| 4 | `pt-BR.json` (+ outros locales) | Corrigir secao legal.terms.sections.payment: remover mencao a "planos gratuitos", ajustar para "O Servico oferece planos pagos (mensal ou anual)" |
+| 5 | `Index.tsx` linha 387 | Trocar `5511999999999` pelo numero real do WhatsApp Business (pode ser o mesmo `WHATSAPP_PHONE_NUMBER_ID` ou pedir ao usuario) |
+| 6 | `Index.tsx` linhas 205-223 | Adicionar `hidden sm:block` nos floating cards do hero para evitar overflow em mobile, ou limitar posicao com `left-0 bottom-0` responsivo |
+| 7 | `Index.tsx` linha 371 | Remover `bg-muted/30` da secao Contato para diferencia-la da FAQ, ou adicionar separador visual |
+
+### Observacoes (nao bloqueantes)
+
+- **Rota `/admin`**: manter funcionando como fallback, mas pode ser removida no futuro ja que o admin e acessivel pela tab do sidebar
+- **Social proof**: os circulos genericos sao aceitaveis como MVP, mas idealmente devem ter fotos ou ser removidos
+- **Google Calendar mencionado no UpgradeModal**: feature "Google Calendar" esta listada nas features premium, confirmar se esta realmente ativa no produto
 
