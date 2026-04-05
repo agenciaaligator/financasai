@@ -157,18 +157,15 @@ export function PlansSection() {
             <div className="mb-2">
               <div className="flex items-baseline gap-2">
                 <span className="font-display text-3xl sm:text-5xl font-bold text-white">
-                  {formatPrice(getDisplayPrice('yearly', locale), currency)}
+                  {formatPrice(getYearlyMonthlyEquivalent(locale), currency)}
                 </span>
-                <span className="text-white/50">{t('landing.plans.perYear')}</span>
+                <span className="text-white/50">{t('landing.plans.perMonth')}</span>
               </div>
             </div>
 
             <div className="mb-6">
               <p className="text-sm text-white/50">
-                {t('landing.plans.equivalentTo')} {formatPrice(getYearlyMonthlyEquivalent(locale), currency)}{t('landing.plans.perMonth')}
-              </p>
-              <p className="text-sm text-white/50">
-                {t('landing.plans.chargedAnnually')}
+                {t('landing.plans.chargedAnnually')}: {formatPrice(getDisplayPrice('yearly', locale), currency)}{t('landing.plans.perYear')}
               </p>
             </div>
 
