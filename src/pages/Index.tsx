@@ -202,7 +202,7 @@ const LandingPage = () => {
               />
               
               {/* Floating card - WhatsApp message */}
-              <div className="absolute -bottom-6 -left-8 glass-card rounded-2xl p-4 shadow-card animate-float">
+              <div className="hidden sm:block absolute -bottom-6 -left-8 glass-card rounded-2xl p-4 shadow-card animate-float">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-success/15 flex items-center justify-center">
                     <span className="text-xl">💬</span>
@@ -215,7 +215,7 @@ const LandingPage = () => {
               </div>
               
               {/* Floating card - Success */}
-              <div className="absolute -top-4 -right-6 glass-card rounded-2xl px-4 py-3 shadow-card animate-float" style={{ animationDelay: '1.5s' }}>
+              <div className="hidden sm:block absolute -top-4 -right-6 glass-card rounded-2xl px-4 py-3 shadow-card animate-float" style={{ animationDelay: '1.5s' }}>
                 <div className="flex items-center gap-2">
                   <span className="text-lg">✅</span>
                   <p className="text-xs font-semibold text-success">{t('landing.hero.floatingSuccess')}</p>
@@ -369,7 +369,7 @@ const LandingPage = () => {
       </section>
 
       {/* Contato */}
-      <section id="contato" className="py-20 bg-muted/30">
+      <section id="contato" className="py-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12 scroll-reveal">
             <div className="section-line mx-auto mb-6" />
@@ -383,7 +383,7 @@ const LandingPage = () => {
           <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto scroll-reveal delay-1">
             {/* WhatsApp Card */}
             <a
-              href="https://wa.me/5511999999999"
+              href="https://wa.me/5521972680128"
               target="_blank"
               rel="noopener noreferrer"
               className="glass-card rounded-2xl p-8 text-center hover:-translate-y-2 hover:shadow-card transition-all duration-300 group"
