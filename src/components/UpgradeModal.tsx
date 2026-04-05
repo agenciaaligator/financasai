@@ -17,7 +17,7 @@ interface UpgradeModalProps {
 }
 
 export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const currency = getCurrencyFromLocale(i18n.language);
   const { isPremium } = useSubscription();
   const { createCheckoutSession, loading } = useCheckout();
@@ -27,21 +27,21 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
   const yearlyPrice = getDisplayPrice('yearly', i18n.language);
   const monthlyEquivalent = getYearlyMonthlyEquivalent(i18n.language);
 
-  const features = [
-    { name: '✨ Transações ilimitadas', available: true },
-    { name: '✨ Categorias ilimitadas', available: true },
-    { name: 'WhatsApp integrado', available: true },
-    { name: 'Relatórios com IA', available: true },
-    { name: 'Google Calendar', available: true },
-    { name: 'Suporte prioritário', available: true },
+  const featureKeys = [
+    'upgrade.features.unlimitedTransactions',
+    'upgrade.features.unlimitedCategories',
+    'upgrade.features.whatsapp',
+    'upgrade.features.aiReports',
+    'upgrade.features.googleCalendar',
+    'upgrade.features.prioritySupport',
   ];
 
   const handleSubscribe = () => {
     const priceId = getPriceId(selectedCycle, i18n.language);
     if (!priceId) {
       toast({
-        title: "❌ Erro",
-        description: "Plano não configurado. Contate o suporte.",
+        title: "❌ " + t('common.error'),
+        description: t('upgrade.priceError'),
         variant: "destructive"
       });
       return;
@@ -53,20 +53,20 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Assine o Premium</DialogTitle>
+          <DialogTitle>{t('upgrade.title')}</DialogTitle>
           <DialogDescription>
-            {reason || "Desbloqueie todos os recursos e maximize seu potencial"}
+            {reason || t('upgrade.description')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
           <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-            <h3 className="font-semibold mb-2">Por que escolher o Premium?</h3>
+            <h3 className="font-semibold mb-2">{t('upgrade.whyPremium')}</h3>
             <ul className="space-y-1 text-sm text-muted-foreground">
-              <li>✓ Gestão financeira completa e intuitiva</li>
-              <li>✓ Integração com WhatsApp para facilitar seu dia a dia</li>
-              <li>✓ Relatórios inteligentes com IA</li>
-              <li>✓ Sincronização com Google Calendar</li>
+              <li>✓ {t('upgrade.reasons.financial')}</li>
+              <li>✓ {t('upgrade.reasons.whatsapp')}</li>
+              <li>✓ {t('upgrade.reasons.aiReports')}</li>
+              <li>✓ {t('upgrade.reasons.calendar')}</li>
             </ul>
           </div>
 
@@ -80,7 +80,7 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                Mensal
+                {t('upgrade.monthly')}
               </button>
               <button
                 onClick={() => setSelectedCycle('yearly')}
@@ -90,7 +90,7 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                Anual
+                {t('upgrade.yearly')}
                 <span className="ml-2 text-xs">(-40%)</span>
               </button>
             </div>
@@ -112,29 +112,25 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
                   {formatCurrencyPrice(selectedCycle === 'monthly' ? monthlyPrice : monthlyEquivalent, currency)}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  {selectedCycle === 'monthly' ? 'por mês' : 'por mês'}
+                  {t('upgrade.perMonth')}
                 </div>
                 {selectedCycle === 'yearly' && (
                   <>
                     <div className="text-xs text-muted-foreground mt-1">
-                      Cobrado {formatCurrencyPrice(yearlyPrice, currency)}/ano
+                      {t('upgrade.chargedAnnually')} {formatCurrencyPrice(yearlyPrice, currency)}/{t('upgrade.perYearShort')}
                     </div>
                     <Badge variant="secondary" className="mt-2">
-                      💰 Economize 40%
+                      💰 {t('upgrade.save40')}
                     </Badge>
                   </>
                 )}
               </div>
 
               <ul className="space-y-2">
-                {features.map((feature, idx) => (
+                {featureKeys.map((key, idx) => (
                   <li key={idx} className="flex items-start gap-2 text-sm">
-                    {feature.available ? (
-                      <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                    ) : (
-                      <X className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                    )}
-                    <span className="text-foreground">{feature.name}</span>
+                    <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                    <span className="text-foreground">{t(key)}</span>
                   </li>
                 ))}
               </ul>
@@ -144,13 +140,13 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
                 disabled={isPremium || loading}
                 className="w-full"
               >
-                {isPremium ? 'Plano Atual' : 'Assinar Agora'}
+                {isPremium ? t('upgrade.currentPlan') : t('upgrade.subscribeNow')}
               </Button>
             </div>
           </Card>
 
           <p className="text-center text-xs text-muted-foreground">
-            Cupons e descontos são aplicados diretamente no checkout do Stripe
+            {t('upgrade.couponNote')}
           </p>
         </div>
       </DialogContent>

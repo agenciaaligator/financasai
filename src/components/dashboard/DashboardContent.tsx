@@ -43,11 +43,11 @@ import { useTranslation } from "react-i18next";
 const TIMEZONE = 'America/Sao_Paulo';
 const ITEMS_PER_PAGE = 10;
 
-const TIPS = [
-  'Envie "gastei 50 no mercado" pelo WhatsApp',
-  'Envie uma foto do comprovante para registrar',
-  'Diga "quanto gastei esse mês" para um resumo',
-  'Crie metas mensais para controlar seus gastos',
+const TIPS_KEYS = [
+  'dashboard.tips.0',
+  'dashboard.tips.1',
+  'dashboard.tips.2',
+  'dashboard.tips.3',
 ];
 
 interface DashboardContentProps {
