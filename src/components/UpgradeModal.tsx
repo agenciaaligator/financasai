@@ -111,11 +111,13 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
                 <div className="text-3xl font-bold">
                   {formatCurrencyPrice(selectedCycle === 'monthly' ? monthlyPrice : monthlyEquivalent, currency)}
                 </div>
-                <div className="text-sm text-muted-foreground">por mês</div>
+                <div className="text-sm text-muted-foreground">
+                  {selectedCycle === 'monthly' ? 'por mês' : 'por mês'}
+                </div>
                 {selectedCycle === 'yearly' && (
                   <>
                     <div className="text-xs text-muted-foreground mt-1">
-                      {formatCurrencyPrice(yearlyPrice, currency)}/ano
+                      Cobrado {formatCurrencyPrice(yearlyPrice, currency)}/ano
                     </div>
                     <Badge variant="secondary" className="mt-2">
                       💰 Economize 40%
