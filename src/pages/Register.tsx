@@ -186,6 +186,35 @@ export default function Register() {
     );
   }
 
+  if (emailSent) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-8 text-center space-y-5">
+          <div className="mx-auto w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center">
+            <ArrowRight className="h-7 w-7 text-primary" />
+          </div>
+          <h2 className="text-2xl font-bold text-white">
+            {t("register.checkEmailTitle", "Confira seu e-mail")}
+          </h2>
+          <p className="text-white/80">
+            {t("register.checkEmailDesc", "Enviamos um link de confirmação para")} <strong className="text-white">{email}</strong>.
+          </p>
+          <p className="text-white/60 text-sm">
+            {t("register.checkEmailHint", "Clique no link do e-mail para ativar sua conta. Confira a caixa de spam se não encontrar.")}
+          </p>
+          <div className="pt-2 space-y-2">
+            <Button onClick={() => navigate("/choose-plan")} className="w-full" size="lg">
+              {t("register.choosePlanCta", "Escolher meu plano")}
+            </Button>
+            <Button onClick={() => navigate("/login")} variant="outline" className="w-full border-white/30 text-white bg-white/10 hover:bg-white/20">
+              {t("register.alreadyHaveAccount", "Já tenho conta")}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950">
       <header className="border-b border-white/10 bg-white/5 backdrop-blur-sm">
