@@ -804,7 +804,14 @@ const handler = async (req: Request): Promise<Response> => {
             console.log(`[WEBHOOK][CLAIM] ✅ Connected user=${codeRow.user_id} phone=${phoneE164}`);
             
             await sendWhatsAppMessage(message.from,
-              '✅ *WhatsApp conectado com sucesso!*\n\nA partir de agora você pode registrar suas finanças por aqui.\n\n💡 Experimente:\n• "Gastei 50 no mercado"\n• "Recebi 1000 de salário"\n• "Saldo do mês"'
+              `🎉 *Bem-vinda à Dona Wilma!*\n\n` +
+              `✅ WhatsApp conectado com sucesso!\n\n` +
+              `📋 *COMO USAR:*\n` +
+              `💸 *Finanças:* "gastei 50" ou "recebi 2000"\n` +
+              `📅 *Agenda:* "marcar dentista amanhã 14h"\n` +
+              `📊 *Relatórios:* "meus gastos este mês"\n\n` +
+              `💡 *Dica:* Digite *"ajuda"* para ver todos os comandos!\n\n` +
+              `Estou aqui para facilitar sua vida financeira 🚀`
             );
             
             return new Response(JSON.stringify({ success: true, claim: 'connected' }), {
