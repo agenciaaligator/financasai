@@ -30,12 +30,14 @@ export default function Register() {
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !email.trim() || !password.trim()) return;
 
     setLoading(true);
+    console.log("[REGISTER] Starting signup for:", email, "plan:", plan);
     try {
       const normalizedEmail = email.toLowerCase().trim();
 
