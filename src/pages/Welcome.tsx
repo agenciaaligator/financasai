@@ -16,6 +16,7 @@ export default function Welcome() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, loading } = useAuth();
+  const guard = useSubscriptionGuard();
   const { t } = useTranslation();
 
   const [step, setStep] = useState<ConnectionStep>('loading');
@@ -30,9 +31,16 @@ export default function Welcome() {
 
   // Buscar perfil + verificar sessão existente
   useEffect(() => {
-    if (loading) return;
+    if (loading || guard.loading) return;
     if (!user) {
       navigate('/', { replace: true });
+      return;
+    }
+
+    // Bloquear acesso se não tem assinatura ativa (e não é master/admin)
+    if (!guard.isMasterOrAdmin && guard.subscriptionStatus !== 'active' && !guard.isInGracePeriod) {
+      console.log('[Welcome] No active subscription, redirecting to /escolher-plano');
+      navigate('/escolher-plano', { replace: true });
       return;
     }
 
