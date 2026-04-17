@@ -1,81 +1,116 @@
 
 
-## Diagnóstico — Bug Crítico no Onboarding
+## Plano — Onboarding com Validação Reversa de WhatsApp (custo zero)
 
-### O que aconteceu (procede 100%)
+### Conceito
 
-A página `/boas-vindas` (`src/pages/Welcome.tsx`) está exibindo as **chaves cruas** de tradução (`welcome.congratsTitle`, `welcome.connectMagicDesc`, `welcome.codeLabel`, etc.) em vez do texto traduzido. Isso quebra todo o passo final do onboarding — o usuário recebe o e-mail, clica no link, é redirecionado e vê uma tela ininteligível.
+Substituir o fluxo atual ("sistema envia código → usuário digita") por:
+**"sistema gera código curto → usuário envia esse código pelo WhatsApp dele para o número da Dona Wilma → webhook valida automaticamente"**.
 
-### Causa raiz
+Vantagens:
+- ✅ Custo zero por validação (mensagem inbound não cobra nada na Meta)
+- ✅ 100% de entrega (é o usuário que envia, não a Meta que entrega)
+- ✅ Abre janela de 24h automaticamente — todas as mensagens do agente depois funcionam
+- ✅ Confirma que o número realmente tem WhatsApp ativo (impossível fraudar)
+- ✅ Fim do problema "código não chegou"
 
-Na auditoria anterior eu adicionei um bloco `"welcome": { ... }` no nível raiz dos 5 arquivos `src/locales/*.json` para o componente `WelcomeScreen` (modal pós-signup). Acontece que **já existia** um bloco `"welcome": { ... }` no nível raiz desses mesmos arquivos, com todas as chaves usadas pela página `/boas-vindas` (`congratsTitle`, `connectMagicDesc`, `codeLabel`, `tipExpenses`, `startUsing`, etc.).
-
-JSON com chaves duplicadas no mesmo nível: o **segundo bloco sobrescreve o primeiro**. Como o segundo só tem 15 chaves (modal), todas as chaves da página foram perdidas em todos os 5 idiomas.
-
-```text
-pt-BR.json:
-  linha  494: "welcome": { ...60+ chaves da página /boas-vindas... }   ← perdido
-  linha 1028: "welcome": { ...15 chaves do WelcomeScreen modal... }    ← vence
-```
-
-Mesma duplicação confirmada em `en-US.json`, `es-ES.json`, `it-IT.json`, `pt-PT.json`.
-
-### Auditoria do fluxo de onboarding completo
+### Novo fluxo `/boas-vindas`
 
 ```text
-Landing → "Começar agora"
-   ↓
-/choose-plan  (escolha mensal/anual)
-   ↓
-/cadastro  (SignUpForm: nome, email, telefone, senha → OTP WhatsApp)
-   ↓ [signUp() dispara email de confirmação]
-WelcomeScreen modal aparece em cima do SignUp (com plano + CTA checkout)
-   ↓
-Stripe Checkout → /payment-success
-   ↓
-Email de confirmação chega → usuário clica link → /auth/callback
-   ↓
-AuthCallback verifica subscription:
-   - sem assinatura → /choose-plan
-   - com assinatura → /boas-vindas   ← AQUI APARECE A TELA QUEBRADA
-   ↓
-/boas-vindas (Welcome.tsx) → conecta WhatsApp via OTP → "/" (dashboard)
+1. Usuário chega em /boas-vindas após confirmar email + assinatura
+2. Sistema gera código curto de 6 caracteres alfanuméricos (ex: "DW-A7K2")
+   - prefixo "DW-" deixa óbvio que é da Dona Wilma
+   - salva em whatsapp_validation_codes (claim_code, user_id, expires_at: 30min)
+3. Tela mostra:
+   ┌─────────────────────────────────────────┐
+   │ Conecte seu WhatsApp                    │
+   │                                         │
+   │ Envie esta mensagem do SEU WhatsApp     │
+   │ para o nosso número:                    │
+   │                                         │
+   │   ┌───────────────────────┐            │
+   │   │   DW-A7K2             │  [Copiar]  │
+   │   └───────────────────────┘            │
+   │                                         │
+   │ Para: +55 11 9XXXX-XXXX  [Abrir WhatsApp]│
+   │                                         │
+   │ ⏳ Aguardando sua mensagem...          │
+   └─────────────────────────────────────────┘
+4. Botão "Abrir WhatsApp" abre wa.me/<numero>?text=DW-A7K2
+   (mensagem já preenchida — usuário só clica em enviar)
+5. UI faz polling a cada 3s em whatsapp_validation_codes
+   buscando used=true para esse user_id
+6. Webhook (whatsapp-webhook) detecta código no texto recebido:
+   - extrai phone do remetente
+   - busca código pendente válido → marca used=true + grava phone_number
+   - cria whatsapp_sessions(user_id, phone_number) → permanente (10y)
+   - responde no WhatsApp: "✅ Conectado! Já pode começar. Mande 'oi' para testar."
+7. UI detecta validação → redireciona para /dashboard
 ```
 
-**Outros pontos do onboarding inspecionados — sem problemas funcionais:**
-- `AuthCallback` redireciona corretamente (com/sem assinatura).
-- `Welcome.tsx` tem lógica robusta: detecta sessão WhatsApp existente, valida telefone E.164, reenvio de código, mensagens de erro localizadas.
-- Rota `/boas-vindas` registrada corretamente no `App.tsx`.
+### Mudanças no código
 
-O único bloqueio real é a **renderização das traduções**.
+#### 1. Banco — adicionar coluna `claim_code`
+Migração:
+- `ALTER TABLE whatsapp_validation_codes ADD COLUMN claim_code TEXT UNIQUE`
+- índice em `claim_code` para lookup rápido no webhook
+- manter `code` antigo para compatibilidade
 
-### Correção (1 ação, 5 arquivos)
+#### 2. Edge function nova — `whatsapp-claim-code` (substitui `send-validation-code`)
+- recebe `user_id`
+- gera código `DW-XXXX` (4 chars alfanuméricos sem ambíguos: sem 0/O/I/1)
+- salva em DB com expiração 30min
+- **não envia nada via WhatsApp**
+- retorna `{ claim_code, dona_wilma_number }`
 
-Para cada arquivo `src/locales/{pt-BR,en-US,es-ES,it-IT,pt-PT}.json`:
+#### 3. `whatsapp-webhook/index.ts` — interceptar claim codes ANTES da lógica de agente
+- regex `^DW-[A-Z0-9]{4}$` no texto recebido (case-insensitive, trim)
+- se bater: chamar handler de claim → marcar used, criar sessão, responder confirmação, retornar 200
+- só prossegue para o agente normal se não for claim code
 
-1. Localizar os DOIS blocos `"welcome": { ... }` no nível raiz.
-2. **Mesclar** os dois objetos em um único bloco `"welcome": { ... }`, preservando TODAS as chaves de ambos.
-   - O primeiro bloco (página `/boas-vindas`) tem ~60 chaves: `congratsTitle`, `congratsSubtitle`, `defaultUser`, `connectWhatsApp`, `connectMagicDesc`, `stepAccountCreated`, `stepEmailConfirmed`, `stepConnectWhatsApp`, `phoneLabel`, `phoneHint`, `sendCode`, `sending`, `codeLabel`, `codePlaceholder`, `codeHint`, `back`, `verify`, `verifying`, `resendCode`, `connected`, `number`, `readyToUse`, `tipsHowTo`, `tipExpenses`, `tipExpensesExample`, `tipIncome`, `tipIncomeExample`, `tipBalance`, `tipBalanceExample`, `tipPhotos`, `tipPhotosExample`, `startUsing`, `invalidNumber`, `invalidNumberDesc`, `numberAlreadyRegistered`, `numberAlreadyRegisteredDesc`, `whatsappInUse`, `whatsappInUseDesc`, `codeSent`, `codeSentDesc`, `sendError`, `invalidCode`, `invalidCodeDesc`, `connectedSuccess`, `connectedSuccessDesc`, etc.
-   - O segundo bloco (modal `WelcomeScreen`) tem 15 chaves: `greeting`, `accountReady`, `orderSummary`, `plan`, `price`, `monthly`, `yearly`, `perMonth`, `perYear`, `getStarted`, `tip1`, `tip2`, `tip3`, `goToDashboard`, `viewSubscription`.
-   - Não há colisão de nomes entre os dois blocos — merge é direto.
-3. Remover o segundo bloco duplicado.
-4. Validar que cada arquivo continua sendo JSON válido (`JSON.parse`).
+#### 4. `src/pages/Welcome.tsx` — nova UI
+- remove campos "telefone" e "código"
+- mostra: claim code grande + botão copiar + botão "Abrir WhatsApp" (deep link `wa.me/`)
+- polling a cada 3s via `useQuery` com `refetchInterval` em `whatsapp_sessions` (RLS já permite o user ler a própria sessão)
+- quando sessão aparecer → toast "Conectado!" → `navigate('/')`
+- timer de 30min com botão "Gerar novo código" se expirar
+- estados: `waiting` (default), `connected` (sucesso), `expired` (timeout)
 
-Vou escrever um script Node que faz o merge automaticamente nos 5 arquivos preservando ordem e indentação.
+#### 5. Locales — atualizar chaves do bloco `welcome`
+- adicionar: `claimCodeTitle`, `claimCodeInstruction`, `copyCode`, `copied`, `openWhatsApp`, `waitingMessage`, `expiredCode`, `generateNewCode`, `successConnected`
+- remover/depreciar: `phoneLabel`, `phoneHint`, `sendCode`, `codeLabel`, `codePlaceholder`, `verify` (não são mais usados)
+- 5 idiomas
 
-### Verificação extra (preventivo)
+#### 6. Variável de configuração
+- secret novo `DONA_WILMA_PUBLIC_NUMBER` (ex: `5511999999999`) — número exibido na UI e usado no `wa.me/` link
+- **Ação manual sua:** confirmar qual é o número público da Dona Wilma para eu colocar no secret
 
-Mesmo script vai escanear cada locale por **outras chaves duplicadas** no nível raiz e reportar — se houver outra duplicação além de `welcome`, corrigir no mesmo passo.
+#### 7. Bug paralelo — trigger `handle_new_user_simple`
+- já está correto (lê `raw_user_meta_data->>'phone_number'`), mas o `SignUpForm.tsx` provavelmente está enviando como `phone` em vez de `phone_number`
+- conferir e padronizar para `phone_number`
 
-### Arquivos afetados (5)
+### Edge cases tratados
 
-- `src/locales/pt-BR.json`
-- `src/locales/en-US.json`
-- `src/locales/es-ES.json`
-- `src/locales/it-IT.json`
-- `src/locales/pt-PT.json`
+| Cenário | Comportamento |
+|---------|---------------|
+| Usuário envia código errado | Webhook ignora, agente normal processa como mensagem comum (provavelmente cai em "não cadastrado") |
+| Código expirado | Polling detecta `expires_at < now`, UI mostra "Gerar novo código" |
+| Mesmo número já validado p/ outro user | Webhook responde "Este WhatsApp já está conectado a outra conta" e não cria sessão |
+| Usuário fecha aba e volta | `Welcome.tsx` busca último código pendente do user antes de gerar novo |
+| Mensagem chega com texto extra (ex: "DW-A7K2 oi") | Regex permite código no início OU como mensagem inteira após trim |
 
-### Resultado esperado
+### Arquivos afetados
 
-Usuário clica no link do email → `/auth/callback` → `/boas-vindas` exibe corretamente: "Parabéns, [Nome]!", subtítulo, formulário "Conectar WhatsApp", grid de dicas, botão "Começar a usar Dona Wilma" — tudo no idioma do usuário.
+- **Migração SQL** (1) — adicionar `claim_code` em `whatsapp_validation_codes`
+- **Edge function nova** (1) — `supabase/functions/whatsapp-claim-code/index.ts`
+- **Edge function editada** (1) — `supabase/functions/whatsapp-webhook/index.ts` (handler de claim)
+- **Edge function depreciada** — `whatsapp-agent/send-validation-code.ts` mantém para fallback mas não é mais chamada
+- **Frontend** (1) — `src/pages/Welcome.tsx` reescrita
+- **Locales** (5) — chaves novas em pt-BR, pt-PT, en-US, es-ES, it-IT
+- **Secret novo** (1) — `DONA_WILMA_PUBLIC_NUMBER`
+
+### Antes de eu implementar — preciso confirmar
+
+1. **Qual é o número público do WhatsApp Business da Dona Wilma?** (formato: `5511999999999`, sem `+`, sem espaços) — vai aparecer na tela e no link `wa.me/`
+2. **OK manter o fluxo antigo (envio do código pela Meta) como fallback escondido?** Se sim, deixo um botão "Receber código por mensagem (alternativo)" pequeno embaixo. Se não, removo de vez. Recomendo **remover** — simplifica e elimina o caso da MARINES de vez.
 
