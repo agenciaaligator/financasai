@@ -1602,7 +1602,45 @@ class WhatsAppAgent {
     const messageText = message.body?.toLowerCase().trim() || '';
     const normalizedText = this.normalizeCommand(messageText);
     const sessionData = session.session_data || {};
-    
+
+    // 🔒 SUBSCRIPTION GUARD: Bloquear qualquer interação se assinatura não estiver ativa
+    // (master/admin sempre liberados). Aplicado a TODAS as mensagens, antes de qualquer processamento.
+    if (session.user_id) {
+      try {
+        const [{ data: isMaster }, { data: userRole }, { data: sub }] = await Promise.all([
+          supabase.rpc('is_master_user', { _user_id: session.user_id }),
+          supabase.rpc('get_user_role', { _user_id: session.user_id }),
+          supabase
+            .from('user_subscriptions')
+            .select('status')
+            .eq('user_id', session.user_id)
+            .maybeSingle(),
+        ]);
+
+        const isPrivileged = !!isMaster || userRole === 'admin';
+        const subStatus = sub?.status as string | undefined;
+        const isActive = subStatus === 'active' || subStatus === 'trialing';
+
+        if (!isPrivileged && !isActive) {
+          console.log('🚫 [SUBSCRIPTION-GUARD] Blocking agent interaction — no active subscription', {
+            userId: session.user_id.substring(0, 8) + '***',
+            subStatus: subStatus || 'none',
+          });
+          return {
+            response:
+              '👋 Olá! No momento sua conta está *sem assinatura ativa*.\n\n' +
+              'Para continuar usando a Dona Wilma, finalize seu pagamento aqui:\n' +
+              '👉 https://donawilma.lovable.app/choose-plan\n\n' +
+              'Assim que o pagamento for confirmado, é só me mandar uma mensagem novamente que eu retomo nosso atendimento. 💛',
+            sessionData,
+          };
+        }
+      } catch (guardErr) {
+        console.error('⚠️ [SUBSCRIPTION-GUARD] Error checking subscription, allowing message through:', guardErr);
+        // Em caso de erro transitório, não bloqueamos para evitar travar usuários pagantes.
+      }
+    }
+
     // 🎙️ FALLBACK ESPECIAL: Áudio não transcrito (sem usar IA)
     if (messageText === '__audio_transcription_failed__') {
       console.log('⚠️ Audio transcription failed - sending guided fallback');
