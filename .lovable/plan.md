@@ -1,72 +1,59 @@
 
 
-## Análise do problema relatado
+## Diagnóstico
 
-A MARINES disse que **não digitou cartão**, mas:
-1. ✅ Validou o WhatsApp (sessão criada)
-2. ✅ O agente WhatsApp responde normalmente para ela
-3. ❌ Pelo computador mostra "conta inativa"
+A captura mostra "ALEXANDRE" digitado mas quase invisível. Causa: **conflito de classes CSS** no `Register.tsx`.
 
-### Por que isso está acontecendo (diagnóstico):
+O `Input` global (`src/components/ui/input.tsx`) já define:
+- `bg-background/50` (fundo claro/escuro do tema)
+- **sem cor de texto explícita** → herda `text-foreground` (que no tema escuro é claro, mas o fundo do Input também fica claro nesse contexto = texto branco em fundo branco)
 
-A validação do WhatsApp dela aconteceu **ANTES** de eu implementar o bloqueio no `whatsapp-webhook` que verifica assinatura ativa. A sessão dela já existe na tabela `whatsapp_sessions` desde antes da correção. Por isso o agente continua respondendo — o webhook do agente (`whatsapp-agent`) só verifica se existe sessão, não se a assinatura está ativa.
+No `Register.tsx`, cada campo passa:
+```tsx
+className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+```
 
-### Pontos críticos que ainda estão abertos:
+Mas como o `Input` base já tem `bg-background/50` (que renderiza quase branco em cima do card translúcido) **e** o `focus-visible:bg-background` força fundo branco sólido no foco, o `text-white` adicionado fica **branco sobre branco** = invisível.
 
-1. **`whatsapp-agent/index.ts`** (o agente que processa transações via WhatsApp) — não verifica assinatura ativa. Qualquer usuário com sessão antiga continua usando o sistema sem pagar.
-2. **Sessões órfãs já criadas** (caso da MARINES) — precisam ser invalidadas até pagamento.
-3. **Mensagem inicial no WhatsApp** — quando ela manda "oi", o agente trata como usuário válido porque a sessão existe.
+Mesmo problema afeta: Nome, E-mail, Senha (todos os campos do Register).
 
-## Plano — Bloqueio definitivo em TODAS as camadas
+## As correções de segurança afetaram isso?
 
-### 1. `whatsapp-agent/index.ts` — Verificar assinatura a cada mensagem
-No início do handler, depois de identificar a sessão do usuário:
-- Buscar `user_subscriptions.status` do `user_id` da sessão
-- Se não for `active`/`trialing` E não for master/admin → responder:
-  > "Olá! Sua conta está sem assinatura ativa no momento. Para continuar usando a Dona Wilma, finalize seu pagamento em https://donawilma.lovable.app/escolher-plano. Após confirmar, é só me mandar uma mensagem novamente! 💛"
-- **Não processar transação, não chamar IA, não gastar créditos.**
-- Isso bloqueia o caso da MARINES imediatamente.
+**Não.** As migrations recentes mexeram apenas em:
+- `whatsapp_validation_codes` (DROP policy SELECT)
+- `organization_invitations` (CREATE policy DELETE)
+- `whatsapp_sessions` (DELETE da sessão órfã da MARINES)
 
-### 2. Limpar sessão órfã da MARINES
-Migration única (DELETE) na `whatsapp_sessions` do `user_id` `772f5a68-72e2-467b-89d4-ea33396dc2f6`. Quando ela pagar, ela revalida com um novo claim code (fluxo já implementado).
+Nenhum arquivo de UI, formulário, auth ou Input foi tocado. Esse bug de contraste **já existia** e só ficou visível agora porque você foi testar o cadastro.
 
-### 3. Reforço no `whatsapp-webhook` (claim code) — já implementado ✅
-Já bloqueia criação de sessão sem assinatura ativa.
+## Plano de correção (1 arquivo)
 
-### 4. Reforço no `Welcome.tsx` — já implementado ✅
-Já redireciona para `/escolher-plano` se sem assinatura.
+Trocar a estratégia de cor nos 4 campos do `Register.tsx` para garantir contraste em qualquer estado (normal, foco, autofill do navegador):
 
-### 5. Garantia adicional: `useSubscriptionGuard` no Dashboard
-Verificar se o dashboard (`Index.tsx` ou rota raiz logada) usa o guard. Se não usar, adicionar — qualquer rota logada deve verificar.
+**`src/pages/Register.tsx`** — nos 3 `<Input>` (nome, email, senha):
+- Substituir `bg-white/10 border-white/20 text-white placeholder:text-white/40` por classes que **sobrescrevem** o background base do Input e travam a cor do texto:
+  - `!bg-white/10` (force override do `bg-background/50`)
+  - `!text-white` (força branco mesmo em foco)
+  - `border-white/20`
+  - `placeholder:text-white/40`
+  - `focus-visible:!bg-white/15` (sobrescreve o `focus-visible:bg-background` que estava deixando fundo branco sólido)
+  - `autofill:bg-white/10` + `[-webkit-text-fill-color:white]` (corrige o autofill amarelo do Chrome que também esconde o texto)
 
-## Resumo das camadas de defesa (depois desta correção)
+Resultado: texto branco legível sobre fundo translúcido escuro em **todos** os estados (normal, focado, preenchido pelo navegador).
 
-| Camada | Bloqueio sem pagamento |
-|--------|------------------------|
-| Frontend `/boas-vindas` | ✅ Redireciona para checkout |
-| Frontend Dashboard | ✅ `useSubscriptionGuard` redireciona |
-| Frontend `/payment-success` | ✅ Fallback "pagamento não localizado" |
-| WhatsApp claim code (validação) | ✅ Webhook recusa criar sessão |
-| **WhatsApp agent (uso diário)** | 🔴 **Falta — vou implementar** |
-| Sessão órfã da MARINES | 🔴 **Falta — vou limpar** |
+## Posso testar com novo usuário depois disso?
 
-## Posso testar com um novo usuário?
+**Sim, com tranquilidade.** Resumo de defesas em camadas (já validadas):
 
-**Sim, com segurança, depois desta correção.** O fluxo definitivo será:
+| Camada | Status |
+|---|---|
+| Cadastro → email confirmação | ✅ |
+| `/boas-vindas` sem assinatura → `/escolher-plano` | ✅ |
+| Dashboard sem assinatura → bloqueado | ✅ |
+| WhatsApp claim code sem assinatura → recusa | ✅ |
+| WhatsApp agent sem assinatura → bloqueia mensagem | ✅ |
+| Sessão órfã (caso MARINES) → removida | ✅ |
+| **Contraste de inputs no cadastro** | 🔴 **vai corrigir agora** |
 
-1. Cria conta → email de confirmação chega
-2. Confirma email → cai em `/escolher-plano` (se não pagou) ou `/boas-vindas` (se pagou)
-3. Sem cartão digitado = **impossível** validar WhatsApp (webhook recusa)
-4. Sem cartão digitado = **impossível** o agente responder (agent recusa)
-5. Sem cartão digitado = **impossível** acessar dashboard (guard recusa)
-
-## Arquivos afetados
-
-- `supabase/functions/whatsapp-agent/index.ts` — adicionar verificação de assinatura no início
-- Migration (DELETE) — remover sessão órfã da MARINES
-- `src/pages/Index.tsx` (verificar se usa guard, ajustar se necessário)
-
-## Antes de implementar — confirmar
-
-Vou também verificar se a MARINES tem sessão na `whatsapp_sessions` para confirmar o diagnóstico antes de deletar. Se você aprovar o plano, faço isso na primeira ação.
+Após o ajuste de CSS, o fluxo end-to-end está pronto para teste real.
 
