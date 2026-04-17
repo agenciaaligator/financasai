@@ -67,7 +67,7 @@ export default function Welcome() {
 
       await generateClaimCode();
     })();
-  }, [user, loading]);
+  }, [user, loading, guard.loading, guard.subscriptionStatus, guard.isMasterOrAdmin, guard.isInGracePeriod]);
 
   const generateClaimCode = async () => {
     if (!user) return;
