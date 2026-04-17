@@ -678,7 +678,7 @@
     },
     "interaction": {
       "title": "Interaja com a Dona Wilma 24h por dia",
-      "subtitle": "Pergunte o que quiser sobre suas finanças ou compromissos. Veja alguns exemplos do que você pode dizer:",
+      "subtitle": "Pergunte o que quiser sobre suas finanças. Veja alguns exemplos do que você pode dizer:",
       "footer": "E muito mais... A IA entende linguagem natural e está sempre pronta para ajudar!",
       "examples": {
         "0": "Gastei 200 reais no cartão",
@@ -686,13 +686,13 @@
         "2": "Quanto gastei hoje?",
         "3": "Saldo do mês?",
         "4": "Paguei 30 reais de gasolina",
-        "5": "Tenho aluguel dia 22",
+        "5": "Gastei 50 no mercado",
         "6": "Quanto gastei esse mês?",
-        "7": "Quais lembretes eu tenho hoje?",
-        "8": "Reunião amanhã às 14h",
-        "9": "Lembrar de ligar para o cliente",
-        "10": "Consulta médica na sexta",
-        "11": "Aniversário do João dia 15"
+        "7": "Quanto gastei essa semana?",
+        "8": "Apagar última transação",
+        "9": "Recebi 500 de freela",
+        "10": "Gastei 80 no Uber",
+        "11": "Editar última transação"
       }
     },
     "stats": {
