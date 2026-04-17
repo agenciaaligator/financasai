@@ -226,7 +226,7 @@ export default function Register() {
                   placeholder={t("register.namePlaceholder")}
                   required
                   disabled={loading}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                  className="!bg-white/10 !text-white border-white/20 placeholder:text-white/40 focus-visible:!bg-white/15 [-webkit-text-fill-color:white] [&:-webkit-autofill]:[-webkit-text-fill-color:white] [&:-webkit-autofill]:[transition:background-color_9999s_ease-in-out_0s]"
                 />
               </div>
 
@@ -242,7 +242,7 @@ export default function Register() {
                   placeholder={t("register.emailPlaceholder")}
                   required
                   disabled={loading}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                  className="!bg-white/10 !text-white border-white/20 placeholder:text-white/40 focus-visible:!bg-white/15 [-webkit-text-fill-color:white] [&:-webkit-autofill]:[-webkit-text-fill-color:white] [&:-webkit-autofill]:[transition:background-color_9999s_ease-in-out_0s]"
                 />
               </div>
 
@@ -259,7 +259,7 @@ export default function Register() {
                   required
                   minLength={6}
                   disabled={loading}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                  className="!bg-white/10 !text-white border-white/20 placeholder:text-white/40 focus-visible:!bg-white/15 [-webkit-text-fill-color:white] [&:-webkit-autofill]:[-webkit-text-fill-color:white] [&:-webkit-autofill]:[transition:background-color_9999s_ease-in-out_0s]"
                 />
               </div>
 
