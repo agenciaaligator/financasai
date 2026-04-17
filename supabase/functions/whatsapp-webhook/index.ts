@@ -714,6 +714,44 @@ const handler = async (req: Request): Promise<Response> => {
               });
             }
             
+            // ============================================================
+            // 🛡️ Verificar se o usuário tem assinatura ativa OU é master/admin
+            // Bloqueia "limbo": email confirmado mas sem pagar
+            // ============================================================
+            const [subRes, masterRes, roleRes] = await Promise.all([
+              supabase
+                .from('user_subscriptions')
+                .select('status')
+                .eq('user_id', codeRow.user_id)
+                .maybeSingle(),
+              supabase
+                .from('master_users')
+                .select('user_id')
+                .eq('user_id', codeRow.user_id)
+                .maybeSingle(),
+              supabase
+                .from('user_roles')
+                .select('role')
+                .eq('user_id', codeRow.user_id)
+                .maybeSingle(),
+            ]);
+            
+            const subStatus = subRes.data?.status;
+            const isActive = subStatus === 'active' || subStatus === 'trialing';
+            const isMaster = !!masterRes.data;
+            const isAdmin = roleRes.data?.role === 'admin';
+            
+            if (!isActive && !isMaster && !isAdmin) {
+              console.log(`[WEBHOOK][CLAIM] ⚠️ User ${codeRow.user_id} has no active subscription (status=${subStatus}). Blocking claim.`);
+              await sendWhatsAppMessage(message.from,
+                '👋 Olá! Sua conta na Dona Wilma ainda não tem uma assinatura ativa.\n\n💳 Acesse https://donawilma.lovable.app/escolher-plano para finalizar seu cadastro e depois reenvie este código aqui.\n\nVamos te esperar! 💚'
+              );
+              // NÃO marcar como used — o usuário pode reenviar após pagar
+              return new Response(JSON.stringify({ success: true, claim: 'no_subscription' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              });
+            }
+            
             const phoneE164 = '+' + message.from.replace(/\D/g, '');
             
             // Verificar se este número já está conectado a OUTRA conta
