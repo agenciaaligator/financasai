@@ -1,116 +1,72 @@
 
 
-## Plano — Onboarding com Validação Reversa de WhatsApp (custo zero)
+## Análise do problema relatado
 
-### Conceito
+A MARINES disse que **não digitou cartão**, mas:
+1. ✅ Validou o WhatsApp (sessão criada)
+2. ✅ O agente WhatsApp responde normalmente para ela
+3. ❌ Pelo computador mostra "conta inativa"
 
-Substituir o fluxo atual ("sistema envia código → usuário digita") por:
-**"sistema gera código curto → usuário envia esse código pelo WhatsApp dele para o número da Dona Wilma → webhook valida automaticamente"**.
+### Por que isso está acontecendo (diagnóstico):
 
-Vantagens:
-- ✅ Custo zero por validação (mensagem inbound não cobra nada na Meta)
-- ✅ 100% de entrega (é o usuário que envia, não a Meta que entrega)
-- ✅ Abre janela de 24h automaticamente — todas as mensagens do agente depois funcionam
-- ✅ Confirma que o número realmente tem WhatsApp ativo (impossível fraudar)
-- ✅ Fim do problema "código não chegou"
+A validação do WhatsApp dela aconteceu **ANTES** de eu implementar o bloqueio no `whatsapp-webhook` que verifica assinatura ativa. A sessão dela já existe na tabela `whatsapp_sessions` desde antes da correção. Por isso o agente continua respondendo — o webhook do agente (`whatsapp-agent`) só verifica se existe sessão, não se a assinatura está ativa.
 
-### Novo fluxo `/boas-vindas`
+### Pontos críticos que ainda estão abertos:
 
-```text
-1. Usuário chega em /boas-vindas após confirmar email + assinatura
-2. Sistema gera código curto de 6 caracteres alfanuméricos (ex: "DW-A7K2")
-   - prefixo "DW-" deixa óbvio que é da Dona Wilma
-   - salva em whatsapp_validation_codes (claim_code, user_id, expires_at: 30min)
-3. Tela mostra:
-   ┌─────────────────────────────────────────┐
-   │ Conecte seu WhatsApp                    │
-   │                                         │
-   │ Envie esta mensagem do SEU WhatsApp     │
-   │ para o nosso número:                    │
-   │                                         │
-   │   ┌───────────────────────┐            │
-   │   │   DW-A7K2             │  [Copiar]  │
-   │   └───────────────────────┘            │
-   │                                         │
-   │ Para: +55 11 9XXXX-XXXX  [Abrir WhatsApp]│
-   │                                         │
-   │ ⏳ Aguardando sua mensagem...          │
-   └─────────────────────────────────────────┘
-4. Botão "Abrir WhatsApp" abre wa.me/<numero>?text=DW-A7K2
-   (mensagem já preenchida — usuário só clica em enviar)
-5. UI faz polling a cada 3s em whatsapp_validation_codes
-   buscando used=true para esse user_id
-6. Webhook (whatsapp-webhook) detecta código no texto recebido:
-   - extrai phone do remetente
-   - busca código pendente válido → marca used=true + grava phone_number
-   - cria whatsapp_sessions(user_id, phone_number) → permanente (10y)
-   - responde no WhatsApp: "✅ Conectado! Já pode começar. Mande 'oi' para testar."
-7. UI detecta validação → redireciona para /dashboard
-```
+1. **`whatsapp-agent/index.ts`** (o agente que processa transações via WhatsApp) — não verifica assinatura ativa. Qualquer usuário com sessão antiga continua usando o sistema sem pagar.
+2. **Sessões órfãs já criadas** (caso da MARINES) — precisam ser invalidadas até pagamento.
+3. **Mensagem inicial no WhatsApp** — quando ela manda "oi", o agente trata como usuário válido porque a sessão existe.
 
-### Mudanças no código
+## Plano — Bloqueio definitivo em TODAS as camadas
 
-#### 1. Banco — adicionar coluna `claim_code`
-Migração:
-- `ALTER TABLE whatsapp_validation_codes ADD COLUMN claim_code TEXT UNIQUE`
-- índice em `claim_code` para lookup rápido no webhook
-- manter `code` antigo para compatibilidade
+### 1. `whatsapp-agent/index.ts` — Verificar assinatura a cada mensagem
+No início do handler, depois de identificar a sessão do usuário:
+- Buscar `user_subscriptions.status` do `user_id` da sessão
+- Se não for `active`/`trialing` E não for master/admin → responder:
+  > "Olá! Sua conta está sem assinatura ativa no momento. Para continuar usando a Dona Wilma, finalize seu pagamento em https://donawilma.lovable.app/escolher-plano. Após confirmar, é só me mandar uma mensagem novamente! 💛"
+- **Não processar transação, não chamar IA, não gastar créditos.**
+- Isso bloqueia o caso da MARINES imediatamente.
 
-#### 2. Edge function nova — `whatsapp-claim-code` (substitui `send-validation-code`)
-- recebe `user_id`
-- gera código `DW-XXXX` (4 chars alfanuméricos sem ambíguos: sem 0/O/I/1)
-- salva em DB com expiração 30min
-- **não envia nada via WhatsApp**
-- retorna `{ claim_code, dona_wilma_number }`
+### 2. Limpar sessão órfã da MARINES
+Migration única (DELETE) na `whatsapp_sessions` do `user_id` `772f5a68-72e2-467b-89d4-ea33396dc2f6`. Quando ela pagar, ela revalida com um novo claim code (fluxo já implementado).
 
-#### 3. `whatsapp-webhook/index.ts` — interceptar claim codes ANTES da lógica de agente
-- regex `^DW-[A-Z0-9]{4}$` no texto recebido (case-insensitive, trim)
-- se bater: chamar handler de claim → marcar used, criar sessão, responder confirmação, retornar 200
-- só prossegue para o agente normal se não for claim code
+### 3. Reforço no `whatsapp-webhook` (claim code) — já implementado ✅
+Já bloqueia criação de sessão sem assinatura ativa.
 
-#### 4. `src/pages/Welcome.tsx` — nova UI
-- remove campos "telefone" e "código"
-- mostra: claim code grande + botão copiar + botão "Abrir WhatsApp" (deep link `wa.me/`)
-- polling a cada 3s via `useQuery` com `refetchInterval` em `whatsapp_sessions` (RLS já permite o user ler a própria sessão)
-- quando sessão aparecer → toast "Conectado!" → `navigate('/')`
-- timer de 30min com botão "Gerar novo código" se expirar
-- estados: `waiting` (default), `connected` (sucesso), `expired` (timeout)
+### 4. Reforço no `Welcome.tsx` — já implementado ✅
+Já redireciona para `/escolher-plano` se sem assinatura.
 
-#### 5. Locales — atualizar chaves do bloco `welcome`
-- adicionar: `claimCodeTitle`, `claimCodeInstruction`, `copyCode`, `copied`, `openWhatsApp`, `waitingMessage`, `expiredCode`, `generateNewCode`, `successConnected`
-- remover/depreciar: `phoneLabel`, `phoneHint`, `sendCode`, `codeLabel`, `codePlaceholder`, `verify` (não são mais usados)
-- 5 idiomas
+### 5. Garantia adicional: `useSubscriptionGuard` no Dashboard
+Verificar se o dashboard (`Index.tsx` ou rota raiz logada) usa o guard. Se não usar, adicionar — qualquer rota logada deve verificar.
 
-#### 6. Variável de configuração
-- secret novo `DONA_WILMA_PUBLIC_NUMBER` (ex: `5511999999999`) — número exibido na UI e usado no `wa.me/` link
-- **Ação manual sua:** confirmar qual é o número público da Dona Wilma para eu colocar no secret
+## Resumo das camadas de defesa (depois desta correção)
 
-#### 7. Bug paralelo — trigger `handle_new_user_simple`
-- já está correto (lê `raw_user_meta_data->>'phone_number'`), mas o `SignUpForm.tsx` provavelmente está enviando como `phone` em vez de `phone_number`
-- conferir e padronizar para `phone_number`
+| Camada | Bloqueio sem pagamento |
+|--------|------------------------|
+| Frontend `/boas-vindas` | ✅ Redireciona para checkout |
+| Frontend Dashboard | ✅ `useSubscriptionGuard` redireciona |
+| Frontend `/payment-success` | ✅ Fallback "pagamento não localizado" |
+| WhatsApp claim code (validação) | ✅ Webhook recusa criar sessão |
+| **WhatsApp agent (uso diário)** | 🔴 **Falta — vou implementar** |
+| Sessão órfã da MARINES | 🔴 **Falta — vou limpar** |
 
-### Edge cases tratados
+## Posso testar com um novo usuário?
 
-| Cenário | Comportamento |
-|---------|---------------|
-| Usuário envia código errado | Webhook ignora, agente normal processa como mensagem comum (provavelmente cai em "não cadastrado") |
-| Código expirado | Polling detecta `expires_at < now`, UI mostra "Gerar novo código" |
-| Mesmo número já validado p/ outro user | Webhook responde "Este WhatsApp já está conectado a outra conta" e não cria sessão |
-| Usuário fecha aba e volta | `Welcome.tsx` busca último código pendente do user antes de gerar novo |
-| Mensagem chega com texto extra (ex: "DW-A7K2 oi") | Regex permite código no início OU como mensagem inteira após trim |
+**Sim, com segurança, depois desta correção.** O fluxo definitivo será:
 
-### Arquivos afetados
+1. Cria conta → email de confirmação chega
+2. Confirma email → cai em `/escolher-plano` (se não pagou) ou `/boas-vindas` (se pagou)
+3. Sem cartão digitado = **impossível** validar WhatsApp (webhook recusa)
+4. Sem cartão digitado = **impossível** o agente responder (agent recusa)
+5. Sem cartão digitado = **impossível** acessar dashboard (guard recusa)
 
-- **Migração SQL** (1) — adicionar `claim_code` em `whatsapp_validation_codes`
-- **Edge function nova** (1) — `supabase/functions/whatsapp-claim-code/index.ts`
-- **Edge function editada** (1) — `supabase/functions/whatsapp-webhook/index.ts` (handler de claim)
-- **Edge function depreciada** — `whatsapp-agent/send-validation-code.ts` mantém para fallback mas não é mais chamada
-- **Frontend** (1) — `src/pages/Welcome.tsx` reescrita
-- **Locales** (5) — chaves novas em pt-BR, pt-PT, en-US, es-ES, it-IT
-- **Secret novo** (1) — `DONA_WILMA_PUBLIC_NUMBER`
+## Arquivos afetados
 
-### Antes de eu implementar — preciso confirmar
+- `supabase/functions/whatsapp-agent/index.ts` — adicionar verificação de assinatura no início
+- Migration (DELETE) — remover sessão órfã da MARINES
+- `src/pages/Index.tsx` (verificar se usa guard, ajustar se necessário)
 
-1. **Qual é o número público do WhatsApp Business da Dona Wilma?** (formato: `5511999999999`, sem `+`, sem espaços) — vai aparecer na tela e no link `wa.me/`
-2. **OK manter o fluxo antigo (envio do código pela Meta) como fallback escondido?** Se sim, deixo um botão "Receber código por mensagem (alternativo)" pequeno embaixo. Se não, removo de vez. Recomendo **remover** — simplifica e elimina o caso da MARINES de vez.
+## Antes de implementar — confirmar
+
+Vou também verificar se a MARINES tem sessão na `whatsapp_sessions` para confirmar o diagnóstico antes de deletar. Se você aprovar o plano, faço isso na primeira ação.
 
