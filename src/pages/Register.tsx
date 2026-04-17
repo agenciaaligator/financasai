@@ -35,6 +35,7 @@ export default function Register() {
     return <Navigate to="/choose-plan" replace />;
   }
 
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !email.trim() || !password.trim()) return;
