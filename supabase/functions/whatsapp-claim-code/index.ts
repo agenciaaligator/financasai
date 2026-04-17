@@ -1,3 +1,4 @@
+// Deploy: 2026-04-17 - Force redeploy after detecting 404 NOT_FOUND on edge runtime
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
