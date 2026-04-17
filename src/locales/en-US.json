@@ -33,6 +33,12 @@
       "totalReceived": "Total received",
       "totalSpent": "Total spent",
       "noCategories": "No categories"
+    },
+    "tips": {
+      "0": "Send \"spent 50 at the grocery store\" via WhatsApp",
+      "1": "Send a receipt photo to register automatically",
+      "2": "Say \"how much did I spend this month\" for a summary",
+      "3": "Create monthly goals to track your spending"
     }
   },
   "summary": {
@@ -525,9 +531,9 @@
     "tipBalanceExample": "\"Monthly balance\"",
     "tipPhotos": "Photos",
     "tipPhotosExample": "Send a receipt photo",
-    "tip1": "Send <strong>\"Spent 50 at the store\"</strong> to record expenses",
-    "tip2": "Send <strong>\"Received 3000 salary\"</strong> to record income",
-    "tip3": "Send a <strong>receipt photo</strong> to record automatically",
+    "tip1": "Use WhatsApp commands: \"Meeting tomorrow at 2pm\"",
+    "tip2": "Log expenses: \"Spent 50 at the grocery store\"",
+    "tip3": "Track automatic reports",
     "tip4": "Ask <strong>\"How much did I spend this month?\"</strong> for reports",
     "goToSystem": "Go to system",
     "skipForNow": "Skip for now",
@@ -543,7 +549,19 @@
     "connectedSuccess": "✅ WhatsApp connected!",
     "connectedSuccessDesc": "You can now use commands via WhatsApp",
     "invalidCode": "Invalid code",
-    "invalidCodeDesc": "Check the code and try again"
+    "invalidCodeDesc": "Check the code and try again",
+    "greeting": "Welcome, {{name}}!",
+    "accountReady": "Your Dona Wilma account is ready",
+    "orderSummary": "Order summary",
+    "plan": "Plan",
+    "price": "Price",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "perMonth": "month",
+    "perYear": "year",
+    "getStarted": "Get started",
+    "goToDashboard": "Go to Dashboard",
+    "viewSubscription": "View my subscription"
   },
   "landing": {
     "nav": {
@@ -1017,31 +1035,6 @@
       "aiReports": "AI-powered reports",
       "googleCalendar": "Google Calendar",
       "prioritySupport": "Priority support"
-    }
-  },
-  "welcome": {
-    "greeting": "Welcome, {{name}}!",
-    "accountReady": "Your Dona Wilma account is ready",
-    "orderSummary": "Order summary",
-    "plan": "Plan",
-    "price": "Price",
-    "monthly": "Monthly",
-    "yearly": "Yearly",
-    "perMonth": "month",
-    "perYear": "year",
-    "getStarted": "Get started",
-    "tip1": "Use WhatsApp commands: \"Meeting tomorrow at 2pm\"",
-    "tip2": "Log expenses: \"Spent 50 at the grocery store\"",
-    "tip3": "Track automatic reports",
-    "goToDashboard": "Go to Dashboard",
-    "viewSubscription": "View my subscription"
-  },
-  "dashboard": {
-    "tips": {
-      "0": "Send \"spent 50 at the grocery store\" via WhatsApp",
-      "1": "Send a receipt photo to register automatically",
-      "2": "Say \"how much did I spend this month\" for a summary",
-      "3": "Create monthly goals to track your spending"
     }
   }
 }

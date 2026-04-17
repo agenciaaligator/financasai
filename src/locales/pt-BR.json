@@ -33,6 +33,12 @@
       "totalReceived": "Total recebido",
       "totalSpent": "Total gasto",
       "noCategories": "Sem categorias"
+    },
+    "tips": {
+      "0": "Envie \"gastei 50 no mercado\" pelo WhatsApp",
+      "1": "Envie uma foto do comprovante para registrar",
+      "2": "Diga \"quanto gastei esse mês\" para um resumo",
+      "3": "Crie metas mensais para controlar seus gastos"
     }
   },
   "summary": {
@@ -531,9 +537,9 @@
     "tipBalanceExample": "\"Saldo do mês\"",
     "tipPhotos": "Fotos",
     "tipPhotosExample": "Envie foto do cupom",
-    "tip1": "Envie <strong>\"Gastei 50 no mercado\"</strong> para registrar despesas",
-    "tip2": "Envie <strong>\"Recebi 3000 de salário\"</strong> para registrar receitas",
-    "tip3": "Envie uma <strong>foto de recibo</strong> para registrar automaticamente",
+    "tip1": "Use comandos no WhatsApp: \"Reunião amanhã às 14h\"",
+    "tip2": "Registre gastos: \"Gastei 50 no mercado\"",
+    "tip3": "Acompanhe relatórios automáticos",
     "tip4": "Pergunte <strong>\"Quanto gastei este mês?\"</strong> para relatórios",
     "goToSystem": "Ir para o sistema",
     "skipForNow": "Pular por agora",
@@ -549,7 +555,19 @@
     "connectedSuccess": "✅ WhatsApp conectado!",
     "connectedSuccessDesc": "Você já pode usar comandos pelo WhatsApp",
     "invalidCode": "Código inválido",
-    "invalidCodeDesc": "Verifique o código e tente novamente"
+    "invalidCodeDesc": "Verifique o código e tente novamente",
+    "greeting": "Bem-vindo, {{name}}!",
+    "accountReady": "Sua conta Dona Wilma está pronta",
+    "orderSummary": "Resumo do pedido",
+    "plan": "Plano",
+    "price": "Valor",
+    "monthly": "Mensal",
+    "yearly": "Anual",
+    "perMonth": "mês",
+    "perYear": "ano",
+    "getStarted": "Comece agora",
+    "goToDashboard": "Ir para o Dashboard",
+    "viewSubscription": "Ver minha assinatura"
   },
   "landing": {
     "nav": {
@@ -1023,31 +1041,6 @@
       "aiReports": "Relatórios com IA",
       "googleCalendar": "Google Calendar",
       "prioritySupport": "Suporte prioritário"
-    }
-  },
-  "welcome": {
-    "greeting": "Bem-vindo, {{name}}!",
-    "accountReady": "Sua conta Dona Wilma está pronta",
-    "orderSummary": "Resumo do pedido",
-    "plan": "Plano",
-    "price": "Valor",
-    "monthly": "Mensal",
-    "yearly": "Anual",
-    "perMonth": "mês",
-    "perYear": "ano",
-    "getStarted": "Comece agora",
-    "tip1": "Use comandos no WhatsApp: \"Reunião amanhã às 14h\"",
-    "tip2": "Registre gastos: \"Gastei 50 no mercado\"",
-    "tip3": "Acompanhe relatórios automáticos",
-    "goToDashboard": "Ir para o Dashboard",
-    "viewSubscription": "Ver minha assinatura"
-  },
-  "dashboard": {
-    "tips": {
-      "0": "Envie \"gastei 50 no mercado\" pelo WhatsApp",
-      "1": "Envie uma foto do comprovante para registrar",
-      "2": "Diga \"quanto gastei esse mês\" para um resumo",
-      "3": "Crie metas mensais para controlar seus gastos"
     }
   }
 }
