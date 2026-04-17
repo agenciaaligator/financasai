@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,10 +11,7 @@ import { useTranslation } from "react-i18next";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
 import "@/components/ui/phone-input.css";
-import {
-  getCurrencyFromLocale,
-  getPriceId,
-} from "@/config/pricing";
+import { getPriceId } from "@/config/pricing";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -22,7 +19,9 @@ export default function Register() {
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
 
-  const plan = searchParams.get("plan") as "monthly" | "yearly" | null;
+  const planParam = searchParams.get("plan");
+  const plan: "monthly" | "yearly" | null =
+    planParam === "monthly" || planParam === "yearly" ? planParam : null;
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -30,7 +29,11 @@ export default function Register() {
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
+
+  // Single-flow enforcement: no plan → send user to plan selection.
+  if (!plan) {
+    return <Navigate to="/choose-plan" replace />;
+  }
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,10 +41,12 @@ export default function Register() {
 
     setLoading(true);
     console.log("[REGISTER] Starting signup for:", email, "plan:", plan);
+
     try {
       const normalizedEmail = email.toLowerCase().trim();
 
-      // 1. Sign up user
+      // 1. Sign up user. With "Confirm email" disabled in Supabase,
+      // this returns an active session immediately — no email is sent.
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: normalizedEmail,
         password,
@@ -78,10 +83,17 @@ export default function Register() {
           setLoading(false);
           return;
         }
-        if (signUpError.message.includes("rate limit") || signUpError.message.includes("seconds") || (signUpError as any).status === 429) {
+        if (
+          signUpError.message.includes("rate limit") ||
+          signUpError.message.includes("seconds") ||
+          (signUpError as any).status === 429
+        ) {
           toast({
             title: t("register.rateLimitTitle", "Aguarde alguns segundos"),
-            description: t("register.rateLimitDesc", "Por segurança, aguarde 30 segundos antes de tentar novamente."),
+            description: t(
+              "register.rateLimitDesc",
+              "Por segurança, aguarde 30 segundos antes de tentar novamente."
+            ),
             variant: "destructive",
           });
           setLoading(false);
@@ -94,74 +106,51 @@ export default function Register() {
         throw new Error("User creation failed");
       }
 
-      // Detect fake signup (email confirmation enabled + duplicate email)
-      // Supabase returns 200 with empty identities array
-      if (
-        signUpData.user.identities &&
-        signUpData.user.identities.length === 0
-      ) {
+      // 2. Best-effort profile sync (trigger handles it too).
+      supabase
+        .from("profiles")
+        .update({ password_set: true })
+        .eq("user_id", signUpData.user.id)
+        .then(({ error: profileErr }) => {
+          if (profileErr)
+            console.warn("[REGISTER] Profile update (non-blocking):", profileErr);
+        });
+
+      // 3. Go straight to Stripe checkout.
+      setRedirecting(true);
+      const locale = i18n.language;
+      const priceId = getPriceId(plan === "yearly" ? "yearly" : "monthly", locale);
+
+      toast({
+        title: t("landing.plans.redirectingToast"),
+        description: t("landing.plans.redirectingToastDesc"),
+      });
+
+      const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke(
+        "create-checkout",
+        {
+          body: {
+            priceId,
+            locale,
+            userId: signUpData.user.id,
+            email: normalizedEmail,
+          },
+        }
+      );
+
+      if (checkoutError || !checkoutData?.url) {
+        console.error("[REGISTER] Checkout error:", checkoutError);
+        setRedirecting(false);
         toast({
-          title: t("register.emailExists"),
-          description: t("register.emailExistsDesc"),
+          title: t("landing.plans.errorTitle"),
+          description: t("landing.plans.errorDesc"),
           variant: "destructive",
         });
         setLoading(false);
         return;
       }
 
-      // 2. Update profile: password_set = true (best-effort, trigger already handles this)
-      supabase
-        .from("profiles")
-        .update({ password_set: true })
-        .eq("user_id", signUpData.user.id)
-        .then(({ error: profileErr }) => {
-          if (profileErr) console.warn("[REGISTER] Profile update (non-blocking):", profileErr);
-        });
-
-      // 3. If plan selected, redirect to Stripe checkout
-      if (plan) {
-        setRedirecting(true);
-        const locale = i18n.language;
-        const priceId = getPriceId(plan === "yearly" ? "yearly" : "monthly", locale);
-
-        toast({
-          title: t("landing.plans.redirectingToast"),
-          description: t("landing.plans.redirectingToastDesc"),
-        });
-
-        const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke(
-          "create-checkout",
-          {
-            body: { 
-              priceId, 
-              locale,
-              userId: signUpData.user.id,
-              email: normalizedEmail,
-            },
-          }
-        );
-
-        if (checkoutError || !checkoutData?.url) {
-          console.error("[REGISTER] Checkout error:", checkoutError);
-          setRedirecting(false);
-          toast({
-            title: t("landing.plans.errorTitle"),
-            description: t("landing.plans.errorDesc"),
-            variant: "destructive",
-          });
-          // Show email-sent screen as safe fallback
-          setEmailSent(true);
-          setLoading(false);
-          return;
-        }
-
-        window.location.href = checkoutData.url;
-      } else {
-        // No plan selected: account created, email confirmation pending.
-        // Show clear "check your email" screen instead of bouncing through guards.
-        console.log("[REGISTER] No plan, showing email-sent screen");
-        setEmailSent(true);
-      }
+      window.location.href = checkoutData.url;
     } catch (error) {
       console.error("[REGISTER] Error:", error);
       toast({
@@ -179,37 +168,12 @@ export default function Register() {
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 flex items-center justify-center p-4">
         <div className="text-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-          <p className="text-white text-lg">{t("landing.plans.redirectingToast", "Redirecionando para pagamento...")}</p>
-          <p className="text-white/60 text-sm">{t("landing.plans.redirectingToastDesc", "Aguarde enquanto preparamos seu checkout")}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (emailSent) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-8 text-center space-y-5">
-          <div className="mx-auto w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center">
-            <ArrowRight className="h-7 w-7 text-primary" />
-          </div>
-          <h2 className="text-2xl font-bold text-white">
-            {t("register.checkEmailTitle", "Confira seu e-mail")}
-          </h2>
-          <p className="text-white/80">
-            {t("register.checkEmailDesc", "Enviamos um link de confirmação para")} <strong className="text-white">{email}</strong>.
+          <p className="text-white text-lg">
+            {t("landing.plans.redirectingToast", "Redirecionando para pagamento...")}
           </p>
           <p className="text-white/60 text-sm">
-            {t("register.checkEmailHint", "Clique no link do e-mail para ativar sua conta. Confira a caixa de spam se não encontrar.")}
+            {t("landing.plans.redirectingToastDesc", "Aguarde enquanto preparamos seu checkout")}
           </p>
-          <div className="pt-2 space-y-2">
-            <Button onClick={() => navigate("/choose-plan")} className="w-full" size="lg">
-              {t("register.choosePlanCta", "Escolher meu plano")}
-            </Button>
-            <Button onClick={() => navigate("/login")} variant="outline" className="w-full border-white/30 text-white bg-white/10 hover:bg-white/20">
-              {t("register.alreadyHaveAccount", "Já tenho conta")}
-            </Button>
-          </div>
         </div>
       </div>
     );
@@ -228,7 +192,7 @@ export default function Register() {
           </div>
           <Button
             variant="outline"
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/login")}
             className="border-white/30 text-white bg-white/10 hover:bg-white/20"
           >
             <LogIn className="mr-2 h-4 w-4" />
