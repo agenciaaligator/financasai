@@ -1,54 +1,103 @@
 
 
-## Diagnóstico do "looping na tela"
+## Confirmação que preciso de você
 
-Olhando a captura: você está em `/register` **sem `?plan=monthly` ou `?plan=yearly` na URL** (entrou pelo botão direto, não pela seleção de plano). Veja o fluxo no `Register.tsx`:
+**Apenas 1 coisa**: você autoriza eu desligar "Confirm email" no Supabase Dashboard (Auth → Providers → Email)? Isso é manual, você precisa clicar — eu não tenho acesso ao toggle.
+
+## Consequências de desligar email confirmation
+
+| Item | Antes (com confirmação) | Depois (sem confirmação) |
+|---|---|---|
+| Email é validado | Sim, antes do acesso | Não, mas Stripe valida identidade via cartão |
+| Risco de email falso | Baixo | Baixíssimo (cartão real exigido) |
+| UX | 4 fricções (cadastro, email, checkout, welcome) | 3 fricções (cadastro, checkout, welcome) |
+| Conta órfã sem pagar | Acontecia (Marines) | Impossível: sem cartão, sem acesso |
+| Recuperação de senha | Funciona | Funciona igual (usa email cadastrado) |
+| Caso "não recebi email" | Suporte recorrente | Eliminado |
+
+**Por que é a melhor opção**: o Stripe já é uma camada de validação muito mais forte que email — exige cartão real, nome, CVV, endereço. Validar email **antes** do pagamento é redundante e cria fricção sem ganho real. Empresas como Linear, Vercel, Cal.com, Notion fazem exatamente isso: cadastro → uso imediato (ou pagamento → uso). Email só vira obrigatório se a pessoa quiser recuperar senha.
+
+## Revisão do onboarding atual vs benchmark SaaS mundial
+
+### Fluxo atual (mapeado)
 
 ```
-linha 25: const plan = searchParams.get("plan");  // null se não veio da seção de planos
-...
-linha 120: if (plan) {
-  // redireciona pro Stripe
-} else {
-  linha 157: navigate("/choose-plan");  // sem plano → manda escolher
-}
+Landing
+  → "Começar agora" (sem plano) → /register
+  → Plano selecionado → /register?plan=X
+/register → signUp() → email enviado
+  → se plan: Stripe checkout → /payment-success → /boas-vindas
+  → se !plan: tela "confira seu email" → /choose-plan → ...
+/boas-vindas → conectar WhatsApp → OTP → dashboard
 ```
 
-**Não é looping** — é o comportamento correto: quando você se cadastra **sem ter escolhido um plano antes**, o sistema cria a conta e te leva pra `/choose-plan`. Mas como o Supabase está com **email confirmation ativo**, a sessão não fica logada imediatamente, então o `/choose-plan` (ou um guard nele) pode estar te jogando de volta pra `/` ou pra outra tela, dando sensação de loop.
+### Problemas identificados (8)
 
-Causas possíveis (uma das três):
+1. **Dois caminhos no /register** (com/sem plano) — gera código duplicado e bugs como o da Marines
+2. **Email enviado antes do pagamento** — confunde, gera 2x signup, invalida tokens
+3. **Sem indicador de progresso visual** — usuário não sabe em que etapa está (1 de 3? 2 de 3?)
+4. **Sem resumo do plano no checkout interno** — usuário esquece o que está comprando
+5. **Sem prova social no /register** — momento crítico de abandono
+6. **Sem "o que acontece depois"** — usuário não sabe que vai conectar WhatsApp
+7. **Tela "confira seu email" sem botão reenviar** — se perder o email, fica travado
+8. **/boas-vindas não tem skip nem progresso** — pressão psicológica desnecessária
 
-1. **Email confirmation ativa no Supabase**: `signUp()` retorna sucesso mas **sem sessão** (precisa confirmar email). O `navigate("/choose-plan")` acontece, mas se a página `/choose-plan` exigir auth, redireciona pra `/` ou pra login → você vê a tela de cadastro de novo se clicar em "Começar".
-2. **Email já existia** (você testou várias vezes com o mesmo): cai no `identities.length === 0` (linha 97) → toast de "email já existe" + fica na tela. Sem o toast aparecer claramente, parece travado.
-3. **Toast de erro genérico apareceu rápido e sumiu** (`common.genericError`).
+### Benchmark: como Stripe Atlas, Linear, Cal.com, Vercel fazem
 
-## Plano de correção (3 mudanças focadas)
+- **Cadastro de 1 etapa só** (nome + email + senha, sem confirmação prévia)
+- **Stepper visual** no topo (●—●—○ "Conta · Pagamento · WhatsApp")
+- **Resumo persistente do plano** sempre visível durante o flow
+- **Auto-login após signup** (sem email confirmation barrier)
+- **Email transacional de boas-vindas** disparado depois do pagamento (não antes)
+- **"Próxima etapa" explícita** em cada tela ("Falta 1 minuto pra terminar")
+- **Resgate de abandono**: se sair no meio, email "Termine seu cadastro" 24h depois (Lovable Email nativo)
 
-### 1. `src/pages/Register.tsx` — feedback claro + fluxo correto pós-signup
+## Plano de redesign do onboarding (ordenado por impacto)
 
-- **Adicionar logs detalhados** em cada etapa para diagnóstico futuro.
-- Quando **não há sessão ativa após signUp** (email confirmation), redirecionar para uma **tela intermediária explicando "confirme seu email"** em vez de `/choose-plan` (que pode rejeitar usuário sem auth).
-- Quando **`plan` é nulo**, ainda assim guardar o destino na URL: `/choose-plan?from=register&email=...` para o `ChoosePlan` saber o contexto.
+### Fase 1 — Eliminar a fonte do problema (você aprova → eu aplico)
 
-### 2. `src/pages/ChoosePlan.tsx` — verificar guard
+1. **Você desliga "Confirm email"** no Supabase Dashboard
+2. **Refatorar `Register.tsx`**: remover toda lógica de `emailSent`, `identities.length === 0`, fluxo dual com/sem plano
+3. **Forçar fluxo único**: landing → `/choose-plan` (obrigatório) → `/register?plan=X` → Stripe → `/payment-success` → `/boas-vindas` → WhatsApp → dashboard
+4. **Remover botões de "Cadastre-se" sem plano** da landing/login (ou redirecionar para `/choose-plan`)
 
-Confirmar se a página exige auth. Se exigir e o usuário acabou de se cadastrar mas **ainda não confirmou email**, ela precisa:
-- Aceitar usuário não autenticado (mostra planos públicos), OU
-- Mostrar tela "confirme seu email primeiro" com link reenviar.
+### Fase 2 — Adicionar clareza visual
 
-### 3. Botão "Começar" da landing page → garantir `?plan=` na URL
+5. **Stepper de 3 etapas** no topo de `/register`, `/payment-success`, `/boas-vindas`:
+   ```
+   ●——————●——————○
+   Conta   Pagamento  WhatsApp
+   ```
+6. **Card de resumo do plano** fixo no topo de `/register?plan=X` ("Você está assinando: Plano Anual · R$ XX,XX")
+7. **Bloco "o que acontece em seguida"** no `/register`: 3 ícones explicando (1) pagamento seguro Stripe (2) email de boas-vindas (3) conectar WhatsApp em 1 minuto
 
-Se o botão principal da landing leva pra `/register` **sem plano**, o usuário sempre cai no caminho `else` e é mandado pra `/choose-plan`. O fluxo recomendado é: **landing → escolher plano → cadastro com plano na URL → Stripe**. Vou verificar o botão e ajustar se necessário.
+### Fase 3 — Reduzir ansiedade
 
-## Antes de implementar — preciso confirmar com você
+8. **Selo de segurança** no `/register` ("🔒 Pagamento processado pela Stripe · Cancele quando quiser")
+9. **Microcopy reassurance** no botão final ("Continuar para pagamento seguro" em vez de "Criar conta")
+10. **Email transacional de boas-vindas** disparado pelo `stripe-webhook` após pagamento confirmado (Lovable Email nativo, custo zero) — substitui o email de confirmação do Supabase como ponto de contato
 
-Tenho duas perguntas críticas para escolher o caminho certo:
+### Fase 4 — Robustez (se quiser depois)
 
-**Pergunta 1**: Você entrou em `/register` clicando em qual botão? (a) "Começar agora" da landing, (b) link "Cadastre-se" do login, (c) URL direta?
+11. Email de "termine seu cadastro" 24h após abandono no checkout
+12. Página `/escolher-plano` aceita usuário não-autenticado com CTA claro
 
-**Pergunta 2**: Apareceu algum **toast/notificação** durante a tentativa? (verde ou vermelho, mesmo que rápido)
+## Resposta direta sobre "tanta insegurança"
 
-A resposta muda o que precisa ser corrigido — se foi pelo (a) "Começar agora" sem plano, o problema é que esse botão deveria levar pra `/choose-plan` antes do cadastro, não direto pra `/register`. Se foi com toast vermelho, é email duplicado ou erro de Supabase que vou caçar nos logs do edge function.
+A insegurança que você sentiu **não é de complexidade técnica** — é de:
 
-Posso também investigar agora `ChoosePlan.tsx` e o botão da landing pra te dar uma resposta definitiva sem precisar dessas perguntas — quer que eu investigue ou prefere responder?
+1. Decisões de UX legadas que se acumularam sem revisão holística (email confirmation + 2 fluxos no register + sem stepper)
+2. Falta de teste real com usuário ansioso (a Marines expôs isso)
+3. Eu corrigi pontualmente cada bug em vez de redesenhar o fluxo
+
+Esse plano resolve as 3 causas raiz de uma vez. Após Fase 1+2 implementadas, o onboarding fica no nível dos melhores SaaS do mercado para o seu segmento. Fase 3 é o polimento que diferencia.
+
+## Tempo estimado
+
+- Fase 1: 1 mensagem (10 min de implementação)
+- Fase 2: 1 mensagem (15 min)
+- Fase 3: 1 mensagem (10 min)
+- **Total**: 3 turnos para chegar a um onboarding de nível Linear/Cal.com
+
+Aprove a Fase 1 (e me confirme que pode desligar email confirmation no Supabase) que eu sigo direto. Fases 2 e 3 podem vir em sequência ou separadas, como preferir.
 
