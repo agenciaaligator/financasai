@@ -1178,6 +1178,7 @@ export type Database = {
       }
       whatsapp_validation_codes: {
         Row: {
+          claim_code: string | null
           code: string
           created_at: string | null
           expires_at: string | null
@@ -1187,6 +1188,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          claim_code?: string | null
           code: string
           created_at?: string | null
           expires_at?: string | null
@@ -1196,6 +1198,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          claim_code?: string | null
           code?: string
           created_at?: string | null
           expires_at?: string | null
