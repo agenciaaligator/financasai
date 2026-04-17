@@ -77,6 +77,34 @@ export default function PaymentSuccess() {
     );
   }
 
+  // Logged in but NO active subscription -> fallback: ofereça voltar pro checkout
+  if (session && !status?.subscribed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950 dark:to-background">
+        <Card className="max-w-md w-full p-8 text-center space-y-6 shadow-xl">
+          <div className="flex justify-center">
+            <div className="rounded-full bg-amber-100 dark:bg-amber-900/30 p-4">
+              <AlertCircle className="h-16 w-16 text-amber-600 dark:text-amber-400" />
+            </div>
+          </div>
+          <div className="space-y-3">
+            <h1 className="text-2xl font-bold text-foreground">{t('paymentSuccess.notFoundTitle')}</h1>
+            <p className="text-muted-foreground">{t('paymentSuccess.notFoundDescription')}</p>
+          </div>
+          <div className="space-y-2">
+            <Button onClick={() => navigate('/escolher-plano', { replace: true })} className="w-full group" size="lg">
+              {t('paymentSuccess.goToCheckout')}
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Button>
+            <Button onClick={() => refreshStatus()} variant="ghost" className="w-full" size="sm">
+              {t('paymentSuccess.recheck')}
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   // Not logged in (main case) - tell user to check email
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-background">
