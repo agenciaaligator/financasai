@@ -6,6 +6,7 @@ import { Check, MessageCircle, Loader2, ArrowRight, CheckCircle2, RefreshCw, Cop
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useSubscriptionGuard } from "@/hooks/useSubscriptionGuard";
 import { useTranslation } from "react-i18next";
 import { LanguageFlagSelector } from "@/components/LanguageFlagSelector";
 
