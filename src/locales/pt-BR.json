@@ -825,7 +825,11 @@
     "skipToDashboard": "Pular e ir para o Dashboard",
     "notLoggedIn": "Faça login para acessar sua conta.",
     "alreadyActiveTitle": "Assinatura já ativa",
-    "alreadyActiveSubtitle": "Este email já possui uma assinatura ativa. Faça login para acessar sua conta."
+    "alreadyActiveSubtitle": "Este email já possui uma assinatura ativa. Faça login para acessar sua conta.",
+    "notFoundTitle": "Pagamento não localizado",
+    "notFoundDescription": "Não encontramos uma assinatura ativa para sua conta. Se você acabou de pagar, aguarde alguns instantes e clique em verificar novamente. Caso contrário, finalize seu cadastro escolhendo um plano.",
+    "goToCheckout": "Escolher um plano",
+    "recheck": "Verificar novamente"
   },
   "login": {
     "emailConfirmedBanner": "✅ Email confirmado com sucesso! Entre com seus dados para acessar",

@@ -278,7 +278,11 @@
     "skipToDashboard": "Saltar para o Dashboard",
     "notLoggedIn": "Faça login para aceder à sua conta.",
     "alreadyActiveTitle": "Subscrição já ativa",
-    "alreadyActiveSubtitle": "Este email já possui uma subscrição ativa. Faça login para aceder à sua conta."
+    "alreadyActiveSubtitle": "Este email já possui uma subscrição ativa. Faça login para aceder à sua conta.",
+    "notFoundTitle": "Pagamento não localizado",
+    "notFoundDescription": "Não encontrámos uma subscrição ativa para a sua conta. Se acabou de pagar, aguarde alguns instantes e clique em verificar novamente. Caso contrário, finalize o seu registo escolhendo um plano.",
+    "goToCheckout": "Escolher um plano",
+    "recheck": "Verificar novamente"
   },
   "login": {
     "emailConfirmedBanner": "✅ Email confirmado com sucesso! Introduza os seus dados para aceder",

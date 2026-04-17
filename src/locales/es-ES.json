@@ -651,7 +651,11 @@
     "skipToDashboard": "Saltar al Dashboard",
     "notLoggedIn": "Inicia sesión para acceder a tu cuenta.",
     "alreadyActiveTitle": "Suscripción ya activa",
-    "alreadyActiveSubtitle": "Este email ya tiene una suscripción activa. Inicia sesión para acceder a tu cuenta."
+    "alreadyActiveSubtitle": "Este email ya tiene una suscripción activa. Inicia sesión para acceder a tu cuenta.",
+    "notFoundTitle": "Pago no encontrado",
+    "notFoundDescription": "No encontramos una suscripción activa para tu cuenta. Si acabas de pagar, espera unos instantes y haz clic en verificar de nuevo. De lo contrario, completa tu registro eligiendo un plan.",
+    "goToCheckout": "Elegir un plan",
+    "recheck": "Verificar de nuevo"
   },
   "login": {
     "emailConfirmedBanner": "✅ ¡Email confirmado con éxito! Ingresa tus datos para acceder",

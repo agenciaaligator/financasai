@@ -819,7 +819,11 @@
     "skipToDashboard": "Skip to Dashboard",
     "notLoggedIn": "Log in to access your account.",
     "alreadyActiveTitle": "Subscription already active",
-    "alreadyActiveSubtitle": "This email already has an active subscription. Log in to access your account."
+    "alreadyActiveSubtitle": "This email already has an active subscription. Log in to access your account.",
+    "notFoundTitle": "Payment not found",
+    "notFoundDescription": "We couldn't find an active subscription for your account. If you just paid, please wait a moment and click recheck. Otherwise, complete your sign-up by choosing a plan.",
+    "goToCheckout": "Choose a plan",
+    "recheck": "Check again"
   },
   "login": {
     "emailConfirmedBanner": "✅ Email confirmed successfully! Enter your credentials to access",

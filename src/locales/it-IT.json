@@ -251,7 +251,11 @@
     "skipToDashboard": "Vai alla Dashboard",
     "notLoggedIn": "Accedi per usare il tuo account.",
     "alreadyActiveTitle": "Abbonamento già attivo",
-    "alreadyActiveSubtitle": "Questa email ha già un abbonamento attivo. Accedi per usare il tuo account."
+    "alreadyActiveSubtitle": "Questa email ha già un abbonamento attivo. Accedi per usare il tuo account.",
+    "notFoundTitle": "Pagamento non trovato",
+    "notFoundDescription": "Non abbiamo trovato un abbonamento attivo per il tuo account. Se hai appena pagato, attendi qualche istante e clicca su verifica di nuovo. Altrimenti, completa la registrazione scegliendo un piano.",
+    "goToCheckout": "Scegli un piano",
+    "recheck": "Verifica di nuovo"
   },
   "login": {
     "emailConfirmedBanner": "✅ Email confermata con successo! Inserisci i tuoi dati per accedere",
