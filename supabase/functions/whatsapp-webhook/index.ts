@@ -683,7 +683,110 @@ const handler = async (req: Request): Promise<Response> => {
           // ✅ NÃO RETORNAR MAIS - deixar processar normalmente para o agente orientar o usuário
         }
       } else if (message.type === 'text') {
-        text = message.text?.body;
+        const rawText = message.text?.body || '';
+        
+        // ============================================================
+        // 🔑 CLAIM CODE HANDLER (validação reversa de WhatsApp)
+        // Detecta DW-XXXX no texto cru (antes de normalizar)
+        // ============================================================
+        const claimMatch = rawText.trim().toUpperCase().match(/\bDW-[A-Z0-9]{4}\b/);
+        if (claimMatch) {
+          const claimCode = claimMatch[0];
+          console.log(`[WEBHOOK][CLAIM] 🔑 Detected claim code: ${claimCode} from ${message.from}`);
+          
+          try {
+            // Buscar código pendente válido
+            const { data: codeRow } = await supabase
+              .from('whatsapp_validation_codes')
+              .select('id, user_id, expires_at')
+              .eq('claim_code', claimCode)
+              .eq('used', false)
+              .gt('expires_at', new Date().toISOString())
+              .maybeSingle();
+            
+            if (!codeRow) {
+              console.log(`[WEBHOOK][CLAIM] ❌ Code not found or expired`);
+              await sendWhatsAppMessage(message.from, 
+                '⚠️ Código inválido ou expirado.\n\nVolte ao site e gere um novo código de conexão.'
+              );
+              return new Response(JSON.stringify({ success: true, claim: 'expired' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              });
+            }
+            
+            const phoneE164 = '+' + message.from.replace(/\D/g, '');
+            
+            // Verificar se este número já está conectado a OUTRA conta
+            const { data: otherSession } = await supabase
+              .from('whatsapp_sessions')
+              .select('user_id')
+              .eq('phone_number', phoneE164)
+              .neq('user_id', codeRow.user_id)
+              .maybeSingle();
+            
+            if (otherSession) {
+              console.log(`[WEBHOOK][CLAIM] ❌ Phone already linked to another user`);
+              await sendWhatsAppMessage(message.from,
+                '⚠️ Este WhatsApp já está conectado a outra conta da Dona Wilma.\n\nDesconecte na outra conta antes de conectar aqui.'
+              );
+              await supabase.from('whatsapp_validation_codes').update({ used: true }).eq('id', codeRow.id);
+              return new Response(JSON.stringify({ success: true, claim: 'phone_in_use' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              });
+            }
+            
+            // Marcar código como usado + gravar phone_number
+            await supabase
+              .from('whatsapp_validation_codes')
+              .update({ used: true, phone_number: phoneE164 })
+              .eq('id', codeRow.id);
+            
+            // Atualizar telefone no perfil
+            await supabase
+              .from('profiles')
+              .update({ phone_number: phoneE164 })
+              .eq('user_id', codeRow.user_id);
+            
+            // Criar sessão permanente (10 anos)
+            const expiresAt = new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000).toISOString();
+            const { error: sessErr } = await supabase
+              .from('whatsapp_sessions')
+              .upsert({
+                user_id: codeRow.user_id,
+                phone_number: phoneE164,
+                expires_at: expiresAt,
+                last_activity: new Date().toISOString(),
+              }, { onConflict: 'user_id' });
+            
+            if (sessErr) {
+              console.error(`[WEBHOOK][CLAIM] ❌ Session error:`, sessErr);
+              throw sessErr;
+            }
+            
+            console.log(`[WEBHOOK][CLAIM] ✅ Connected user=${codeRow.user_id} phone=${phoneE164}`);
+            
+            await sendWhatsAppMessage(message.from,
+              '✅ *WhatsApp conectado com sucesso!*\n\nA partir de agora você pode registrar suas finanças por aqui.\n\n💡 Experimente:\n• "Gastei 50 no mercado"\n• "Recebi 1000 de salário"\n• "Saldo do mês"'
+            );
+            
+            return new Response(JSON.stringify({ success: true, claim: 'connected' }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          } catch (claimErr) {
+            console.error(`[WEBHOOK][CLAIM] ❌ Error processing claim:`, claimErr);
+            await sendWhatsAppMessage(message.from,
+              '⚠️ Erro ao conectar. Tente novamente em alguns instantes.'
+            );
+            return new Response(JSON.stringify({ success: false, claim: 'error' }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+        }
+        // ============================================================
+        // Fim do handler de claim code
+        // ============================================================
+        
+        text = rawText;
         
         // NORMALIZE: Remove TODOS os caracteres não alfanuméricos e múltiplos espaços
         if (text) {
@@ -693,7 +796,7 @@ const handler = async (req: Request): Promise<Response> => {
             .trim();                             // Remove espaços nas pontas
           
           console.log('[WEBHOOK][TEXT_CLEAN]', { 
-            original: message.text?.body?.substring(0, 50),
+            original: rawText.substring(0, 50),
             cleaned: text 
           });
         }
