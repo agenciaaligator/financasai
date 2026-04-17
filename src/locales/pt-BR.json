@@ -33,6 +33,12 @@
       "totalReceived": "Total recebido",
       "totalSpent": "Total gasto",
       "noCategories": "Sem categorias"
+    },
+    "tips": {
+      "0": "Envie \"gastei 50 no mercado\" pelo WhatsApp",
+      "1": "Envie uma foto do comprovante para registrar",
+      "2": "Diga \"quanto gastei esse mês\" para um resumo",
+      "3": "Crie metas mensais para controlar seus gastos"
     }
   },
   "summary": {
@@ -1041,13 +1047,5 @@
     "tip3": "Acompanhe relatórios automáticos",
     "goToDashboard": "Ir para o Dashboard",
     "viewSubscription": "Ver minha assinatura"
-  },
-  "dashboard": {
-    "tips": {
-      "0": "Envie \"gastei 50 no mercado\" pelo WhatsApp",
-      "1": "Envie uma foto do comprovante para registrar",
-      "2": "Diga \"quanto gastei esse mês\" para um resumo",
-      "3": "Crie metas mensais para controlar seus gastos"
-    }
   }
 }
