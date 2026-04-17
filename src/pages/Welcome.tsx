@@ -190,7 +190,7 @@ export default function Welcome() {
               <Check className="h-5 w-5 lg:h-6 lg:w-6" />
             </div>
             <span className="text-xs mt-2 text-success font-medium text-center max-w-[80px]">
-              {t('welcome.stepEmailConfirmed')}
+              {t('welcome.stepPaymentConfirmed', 'Pagamento confirmado')}
             </span>
           </div>
           <div className={`w-[120px] h-[3px] mt-[-16px] ${isConnected ? 'bg-success' : 'bg-muted-foreground/30'}`} />
