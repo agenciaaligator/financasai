@@ -78,10 +78,10 @@ export default function Register() {
           setLoading(false);
           return;
         }
-        if (signUpError.message.includes("rate limit")) {
+        if (signUpError.message.includes("rate limit") || signUpError.message.includes("seconds") || (signUpError as any).status === 429) {
           toast({
-            title: t("register.rateLimitTitle"),
-            description: t("register.rateLimitDesc"),
+            title: t("register.rateLimitTitle", "Aguarde alguns segundos"),
+            description: t("register.rateLimitDesc", "Por segurança, aguarde 30 segundos antes de tentar novamente."),
             variant: "destructive",
           });
           setLoading(false);
@@ -149,14 +149,18 @@ export default function Register() {
             description: t("landing.plans.errorDesc"),
             variant: "destructive",
           });
-          navigate("/choose-plan");
+          // Show email-sent screen as safe fallback
+          setEmailSent(true);
+          setLoading(false);
           return;
         }
 
         window.location.href = checkoutData.url;
       } else {
-        // No plan selected, go to choose plan
-        navigate("/choose-plan");
+        // No plan selected: account created, email confirmation pending.
+        // Show clear "check your email" screen instead of bouncing through guards.
+        console.log("[REGISTER] No plan, showing email-sent screen");
+        setEmailSent(true);
       }
     } catch (error) {
       console.error("[REGISTER] Error:", error);
