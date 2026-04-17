@@ -1,59 +1,73 @@
 
 
-## Diagnóstico
+## Diagnóstico do build error
 
-A captura mostra "ALEXANDRE" digitado mas quase invisível. Causa: **conflito de classes CSS** no `Register.tsx`.
+O build quebrou após o último ajuste de CSS no `Register.tsx`. A causa provável são os seletores arbitrários do Tailwind:
 
-O `Input` global (`src/components/ui/input.tsx`) já define:
-- `bg-background/50` (fundo claro/escuro do tema)
-- **sem cor de texto explícita** → herda `text-foreground` (que no tema escuro é claro, mas o fundo do Input também fica claro nesse contexto = texto branco em fundo branco)
-
-No `Register.tsx`, cada campo passa:
-```tsx
-className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+```
+[&:-webkit-autofill]:[-webkit-text-fill-color:white]
+[&:-webkit-autofill]:[transition:background-color_9999s_ease-in-out_0s]
 ```
 
-Mas como o `Input` base já tem `bg-background/50` (que renderiza quase branco em cima do card translúcido) **e** o `focus-visible:bg-background` força fundo branco sólido no foco, o `text-white` adicionado fica **branco sobre branco** = invisível.
+Tailwind tem dificuldade com pseudo-classes vendor-prefixed (`-webkit-autofill`) dentro de `[&:...]` porque o parser pode interpretar o `:` como início de variant. Resultado: erro de PostCSS/Tailwind no build de produção (mesmo que o preview tenha continuado funcionando com cache).
 
-Mesmo problema afeta: Nome, E-mail, Senha (todos os campos do Register).
+## Plano de correção (1 arquivo, 3 inputs)
 
-## As correções de segurança afetaram isso?
+**`src/pages/Register.tsx`** — simplificar o `className` dos 3 `<Input>` (Nome, Email, Senha) removendo os seletores problemáticos de autofill e mantendo apenas o essencial que resolve o problema de contraste:
 
-**Não.** As migrations recentes mexeram apenas em:
-- `whatsapp_validation_codes` (DROP policy SELECT)
-- `organization_invitations` (CREATE policy DELETE)
-- `whatsapp_sessions` (DELETE da sessão órfã da MARINES)
+Trocar:
+```
+!bg-white/10 !text-white border-white/20 placeholder:text-white/40 focus-visible:!bg-white/15 [-webkit-text-fill-color:white] [&:-webkit-autofill]:[-webkit-text-fill-color:white] [&:-webkit-autofill]:[transition:background-color_9999s_ease-in-out_0s]
+```
 
-Nenhum arquivo de UI, formulário, auth ou Input foi tocado. Esse bug de contraste **já existia** e só ficou visível agora porque você foi testar o cadastro.
+Por:
+```
+!bg-white/10 !text-white border-white/20 placeholder:text-white/40 focus-visible:!bg-white/15
+```
 
-## Plano de correção (1 arquivo)
+Para resolver o autofill amarelo do Chrome (que esconderia o texto), adicionar uma regra global em **`src/index.css`** (1 bloco, sem Tailwind arbitrário, 100% compatível com o build):
 
-Trocar a estratégia de cor nos 4 campos do `Register.tsx` para garantir contraste em qualquer estado (normal, foco, autofill do navegador):
+```css
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: white !important;
+  -webkit-box-shadow: 0 0 0 1000px rgba(255,255,255,0.10) inset !important;
+  transition: background-color 9999s ease-in-out 0s;
+  caret-color: white;
+}
+```
 
-**`src/pages/Register.tsx`** — nos 3 `<Input>` (nome, email, senha):
-- Substituir `bg-white/10 border-white/20 text-white placeholder:text-white/40` por classes que **sobrescrevem** o background base do Input e travam a cor do texto:
-  - `!bg-white/10` (force override do `bg-background/50`)
-  - `!text-white` (força branco mesmo em foco)
-  - `border-white/20`
-  - `placeholder:text-white/40`
-  - `focus-visible:!bg-white/15` (sobrescreve o `focus-visible:bg-background` que estava deixando fundo branco sólido)
-  - `autofill:bg-white/10` + `[-webkit-text-fill-color:white]` (corrige o autofill amarelo do Chrome que também esconde o texto)
+Essa regra é escopo global mas só dispara no estado de autofill do navegador — não afeta inputs normais em outras páginas.
 
-Resultado: texto branco legível sobre fundo translúcido escuro em **todos** os estados (normal, focado, preenchido pelo navegador).
+## Posso divulgar depois disso?
 
-## Posso testar com novo usuário depois disso?
+Resposta direta: **depois desse fix do build + um teste end-to-end seu de 5 minutos, sim.**
 
-**Sim, com tranquilidade.** Resumo de defesas em camadas (já validadas):
+Resumo de tudo que foi blindado nos últimos turnos:
 
 | Camada | Status |
 |---|---|
-| Cadastro → email confirmação | ✅ |
+| Cadastro com inputs legíveis | 🔧 corrigir build agora |
+| Email de confirmação Supabase | ✅ |
 | `/boas-vindas` sem assinatura → `/escolher-plano` | ✅ |
-| Dashboard sem assinatura → bloqueado | ✅ |
+| Dashboard sem assinatura → bloqueado (`useSubscriptionGuard`) | ✅ |
 | WhatsApp claim code sem assinatura → recusa | ✅ |
-| WhatsApp agent sem assinatura → bloqueia mensagem | ✅ |
-| Sessão órfã (caso MARINES) → removida | ✅ |
-| **Contraste de inputs no cadastro** | 🔴 **vai corrigir agora** |
+| **WhatsApp agent sem assinatura → bloqueia mensagem** (correção pós-MARINES) | ✅ |
+| Sessão órfã da MARINES removida | ✅ |
+| RLS de `whatsapp_validation_codes` (OTP escondido do cliente) | ✅ |
+| RLS de `organization_invitations` (DELETE) | ✅ |
+| Idempotência do Stripe webhook | ✅ |
+| Proteção de role admin no webhook | ✅ |
 
-Após o ajuste de CSS, o fluxo end-to-end está pronto para teste real.
+O caso da MARINES **não pode mais se repetir**: agora o agente recusa interagir antes de validar `user_subscriptions.status in ('active','trialing')`. Mesmo que sobre alguma sessão antiga, o agente bloqueia na primeira mensagem.
+
+## Recomendação antes de divulgar em massa
+
+1. Aplicar o fix do build (próximo passo após você aprovar este plano).
+2. Você criar **1 conta nova de teste** com email descartável e seguir o fluxo: cadastro → pagamento → email → boas-vindas → WhatsApp. ~5 min.
+3. Em paralelo, criar **1 conta sem pagar** e confirmar que: dashboard bloqueia, WhatsApp não valida, agente não responde.
+4. Se ambos passarem, **pode divulgar com tranquilidade**.
+
+Não recomendo divulgar antes do passo 2/3 — não por desconfiança das defesas, mas porque um teste real seu vale mais do que qualquer revisão de código.
 
