@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { CheckCircle, Loader2, ArrowRight, AlertCircle, Mail } from 'lucide-react';
+import { CheckCircle, Loader2, ArrowRight, AlertCircle, MessageCircle } from 'lucide-react';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from 'react-i18next';
@@ -105,7 +105,7 @@ export default function PaymentSuccess() {
     );
   }
 
-  // Not logged in (main case) - tell user to check email
+  // Not logged in (rare: user paid in another tab/device) — guide to login.
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-background">
       <Card className="max-w-md w-full p-8 text-center space-y-6 shadow-xl">
@@ -115,12 +115,14 @@ export default function PaymentSuccess() {
           </div>
         </div>
         <div className="space-y-3">
-          <h1 className="text-3xl font-bold text-foreground">{t('paymentSuccess.title')}</h1>
-          <div className="flex items-center justify-center gap-2 text-muted-foreground">
-            <Mail className="h-5 w-5" />
-            <p>{t('paymentSuccess.emailSent')}</p>
+          <h1 className="text-3xl font-bold text-foreground">{t('paymentSuccess.title', 'Pagamento confirmado!')}</h1>
+          <p className="text-muted-foreground">
+            {t('paymentSuccess.loginToContinue', 'Faça login com a mesma conta para conectar seu WhatsApp e começar a usar.')}
+          </p>
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground/80 pt-2">
+            <MessageCircle className="h-4 w-4" />
+            <span>{t('paymentSuccess.nextStepWhatsApp', 'Próximo passo: conectar o WhatsApp')}</span>
           </div>
-          <p className="text-sm text-muted-foreground/70">{t('paymentSuccess.checkSpam')}</p>
         </div>
         <Button onClick={() => navigate('/login')} className="w-full group" size="lg">
           {t('paymentSuccess.goToLogin')}
