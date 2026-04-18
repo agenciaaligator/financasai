@@ -7169,11 +7169,14 @@ serve(async (req) => {
             await sendWhatsAppMessage(welcomePhone,
               `Olá! Sou a *Dona Wilma*, sua assistente financeira pelo WhatsApp. 🎉\n\n` +
               `Sua conta foi conectada com sucesso! ✅\n\n` +
-              `*Como usar:*\n` +
+              `*Como usar pelo WhatsApp:*\n` +
               `📝 Envie "gasto 50 mercado" para registrar uma despesa\n` +
               `💰 Envie "receita 1000 salário" para registrar uma receita\n` +
               `📸 Envie uma foto de nota fiscal para registro automático\n` +
               `💵 Envie "saldo" para ver seu saldo atual\n\n` +
+              `🌐 *Acesse seu painel completo:*\n` +
+              `https://donawilma.lovable.app\n\n` +
+              `Lá você pode criar categorias personalizadas, definir metas mensais, ver relatórios detalhados e muito mais! 📊\n\n` +
               `Digite *ajuda* para ver todos os comandos disponíveis.`
             );
             console.log('[VALIDATE-CODE] ✅ Welcome message sent successfully');
@@ -7318,10 +7321,13 @@ serve(async (req) => {
             success: true,
             response: `🎉 *Bem-vinda à Dona Wilma!*\n\n` +
                      `✅ WhatsApp conectado com sucesso!\n\n` +
-                     `📋 *COMO USAR:*\n` +
+                     `📋 *COMO USAR PELO WHATSAPP:*\n` +
                      `💸 *Finanças:* "gastei 50" ou "recebi 2000"\n` +
                      `📅 *Agenda:* "marcar dentista amanhã 14h"\n` +
                      `📊 *Relatórios:* "meus gastos este mês"\n\n` +
+                     `🌐 *Acesse seu painel completo:*\n` +
+                     `https://donawilma.lovable.app\n\n` +
+                     `Lá você cria categorias, define metas mensais, vê relatórios detalhados e gerencia tudo com mais conforto. 📊\n\n` +
                      `💡 *Dica:* Digite *"ajuda"* para ver todos os comandos!\n\n` +
                      `Estou aqui para facilitar sua vida financeira 🚀`
           }), {

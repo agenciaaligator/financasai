@@ -806,10 +806,13 @@ const handler = async (req: Request): Promise<Response> => {
             await sendWhatsAppMessage(message.from,
               `🎉 *Bem-vinda à Dona Wilma!*\n\n` +
               `✅ WhatsApp conectado com sucesso!\n\n` +
-              `📋 *COMO USAR:*\n` +
+              `📋 *COMO USAR PELO WHATSAPP:*\n` +
               `💸 *Finanças:* "gastei 50" ou "recebi 2000"\n` +
               `📅 *Agenda:* "marcar dentista amanhã 14h"\n` +
               `📊 *Relatórios:* "meus gastos este mês"\n\n` +
+              `🌐 *Acesse seu painel completo:*\n` +
+              `https://donawilma.lovable.app\n\n` +
+              `Lá você cria categorias personalizadas, define metas mensais, vê relatórios detalhados e gerencia tudo com mais conforto. 📊\n\n` +
               `💡 *Dica:* Digite *"ajuda"* para ver todos os comandos!\n\n` +
               `Estou aqui para facilitar sua vida financeira 🚀`
             );
