@@ -1,46 +1,73 @@
 
 
-## O que significam os 2 alertas de segurança
+## Diagnóstico — redirect indo para Home em vez de /boas-vindas
 
-São **avisos (warnings)**, não erros críticos. O sistema não está vulnerável, mas o scanner sugere endurecer dois pontos. Vou explicar cada um em linguagem direta e dizer o que recomendo fazer.
+### Evidência dos logs (timeline real do seu teste)
 
----
+```
+02:32:05  signup adwords@aligator.com.br ✅
+02:32:07  GET /user → autenticado ✅
+02:32:07  create-checkout → sessão criada ✅
+02:32:57  Stripe webhook: checkout.session.completed ✅
+02:32:57  Stripe webhook: invoice.paid → role = premium ✅
+02:32:58  GET /admin/users → frontend buscou perfil ✅
+```
 
-### Alerta 1 — "Stripe price IDs exposed to anonymous users"
+Tudo no backend funcionou. O problema é **puramente no fluxo de redirect do frontend após o Stripe**. Você caiu em `/` (Home) em vez de `/payment-success` → `/boas-vindas`.
 
-**O que é:** A tabela `subscription_plans` está marcada como pública (qualquer visitante do site, mesmo sem login, pode lê-la). Isso é **proposital** — a landing page precisa mostrar os preços antes do cadastro. O problema apontado é que, junto com `nome`, `preço` e `descrição`, a tabela também expõe os campos `stripe_price_id_monthly` e `stripe_price_id_yearly`.
+### Causa raiz provável
 
-**Risco real:** Baixíssimo. Price IDs do Stripe (`price_1T0RbZJH...`) **não são segredos** — eles aparecem na URL do Checkout do Stripe quando o usuário clica em "Assinar". Não dão acesso a nada, não permitem fraude, não revelam dados do seu negócio. São apenas identificadores internos.
+O Stripe redireciona para a `success_url` que `create-checkout` define. Preciso confirmar duas coisas no código (vou ler quando aprovar):
 
-**Por que o scanner reclama:** Boa prática genérica diz "não exponha identificadores internos sem necessidade". Mas no nosso caso a página de planos é pública por design.
+1. **`create-checkout/index.ts`**: qual URL exata é passada como `success_url`? Se for `${origin}/` ou `${origin}/payment-success?session_id=...` sem o path correto, ou se faltar o parâmetro que `/payment-success` espera, a página redireciona pra Home.
 
-**Recomendação:** **Ignorar este alerta.** A exposição é intencional e inofensiva. Posso marcá-lo como "ignored" no scanner com justificativa registrada.
+2. **`PaymentSuccess.tsx`**: o auto-redirect para `/boas-vindas` só dispara se `session && status?.subscribed`. Se você abriu o checkout em **nova aba** (que é o comportamento atual em `useCheckout.ts` — `window.open(data.url, '_blank')`), o Stripe redireciona a **nova aba** para success_url, mas você provavelmente fechou ela ou o Stripe redirecionou pra aba errada. A aba original ficou em `/escolher-plano` ou `/` e nunca viu o success.
 
----
+### O bug estrutural que explica tudo
 
-### Alerta 2 — "WhatsApp validation codes accessible only to service role with no user-facing policy"
+`useCheckout.ts` linha 41: **`window.open(data.url, '_blank')`** — abre Stripe em nova aba. Isso é a fonte do caos:
 
-**O que é:** A tabela `whatsapp_validation_codes` (que guarda os códigos `DW-XXXX` por ~10 minutos) tem **apenas uma política de RLS** que permite acesso ao `service_role` (as edge functions). Não há política para usuários autenticados normais.
+- Aba nova: vai pro Stripe → paga → redireciona pra `/payment-success` → mostra sucesso → tenta redirecionar pra `/boas-vindas`
+- Aba original: continua em `/escolher-plano` parada, nunca recebe nada
+- Se o usuário fecha a aba nova achando que terminou (comportamento natural), volta pra aba original que está perdida → ele clica em algo e cai em `/`
 
-**Risco real:** **Zero.** Isso é exatamente o comportamento desejado:
-- Códigos OTP nunca devem ser legíveis pelo frontend
-- Apenas as edge functions (`whatsapp-claim-code`, `whatsapp-webhook`) precisam ler/escrever
-- Quando uma tabela tem RLS habilitado e não há política para `authenticated`, o Postgres **nega por padrão** — que é o que queremos
+Isso **quebra completamente o onboarding linear** que sua memória `fluxo-onboarding-unificado-obrigatorio` exige.
 
-**Por que o scanner reclama:** É um aviso defensivo: "confirme que isso é intencional". Não é um bug.
+### Solução
 
-**Recomendação:** **Ignorar este alerta.** O design está correto — códigos OTP devem ser opacos ao cliente.
+**1. Trocar `window.open(_, '_blank')` por `window.location.href = data.url`** em `useCheckout.ts`. Redirect na mesma aba é o padrão Stripe recomendado para onboarding linear. Elimina divergência de abas.
 
----
+**2. Garantir que `success_url` em `create-checkout` aponte para `/payment-success?session_id={CHECKOUT_SESSION_ID}`** (verificar e corrigir se necessário).
 
-## Plano de execução
+**3. Adicionar fallback em `PaymentSuccess.tsx`**: se após 8 segundos a sessão ainda não estiver `subscribed`, fazer 1 retry de `refreshStatus()` antes de mostrar o estado amber. Isso cobre a janela onde o webhook ainda está processando.
 
-Marcar os dois findings como **"ignored"** no scanner de segurança, com justificativa registrada para cada um, para que parem de aparecer na lista. Nenhuma alteração de código ou banco é necessária.
+**4. Verificar mobile**: o mesmo fix corrige mobile automaticamente, porque mobile **odeia popups/novas abas** (Safari iOS bloqueia `window.open` agressivamente — provavelmente quebraria 100% no celular).
 
-| Finding | Ação | Justificativa registrada |
+### Plano de execução
+
+| # | Arquivo | Mudança |
 |---|---|---|
-| `subscription_plans_stripe_price_ids_public` | Ignore | Price IDs do Stripe não são segredos; visíveis na URL do Checkout. Tabela é pública por design (landing page de planos). |
-| `whatsapp_validation_codes_no_user_policy` | Ignore | Comportamento intencional: códigos OTP só devem ser acessíveis ao service_role das edge functions. RLS sem política de authenticated nega por padrão, que é o objetivo. |
+| 1 | `src/hooks/useCheckout.ts` | Trocar `window.open(url, '_blank')` por `window.location.href = url`. Remover toast "Checkout aberto em nova aba". |
+| 2 | `supabase/functions/create-checkout/index.ts` | Confirmar `success_url: ${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}` e `cancel_url: ${origin}/payment-cancelled` |
+| 3 | `src/pages/PaymentSuccess.tsx` | Adicionar 1 retry automático de `refreshStatus()` após 5s se ainda não estiver `subscribed`, antes de cair no estado amber |
+| 4 | Suavizar alerta amber (já solicitado antes) | Mensagem: "Aguardando confirmação do pagamento, isso leva poucos segundos..." com botão "Verificar novamente" |
 
-Após aprovar, o scanner removerá esses dois itens da lista ativa (eles ficarão na aba "Ignored", auditáveis depois).
+### O que **não** vou fazer
+
+- Não vou mexer em `stripe-webhook` (está funcionando — log confirma)
+- Não vou mexer em `check-subscription` (está funcionando)
+- Não vou mexer em `Welcome.tsx` / `WelcomeScreen.tsx` (chega lá quando o redirect funcionar)
+- Não vou mexer em RLS, banco ou auth
+
+### Resultado esperado após o fix
+
+Desktop e mobile, mesmo fluxo:
+```
+/escolher-plano → [clica Assinar] → Stripe (mesma aba)
+→ paga → /payment-success (3s loading)
+→ /boas-vindas (welcome screen com nome)
+→ [clica Continuar] → /dashboard ou WhatsApp connect
+```
+
+Sem nova aba, sem popup, sem perda de contexto, sem cair em `/`. Funciona em iOS Safari, Android Chrome, desktop — todos iguais.
 
