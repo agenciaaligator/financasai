@@ -834,7 +834,12 @@
     "notFoundTitle": "Payment not found",
     "notFoundDescription": "We couldn't find an active subscription for your account. If you just paid, please wait a moment and click recheck. Otherwise, complete your sign-up by choosing a plan.",
     "goToCheckout": "Choose a plan",
-    "recheck": "Check again"
+    "recheck": "Check again",
+    "awaitingTitle": "Awaiting payment confirmation",
+    "awaitingDescription": "This usually takes just a few seconds. If it takes longer than a minute, click check again.",
+    "backToPlans": "Back to plans",
+    "loginToContinue": "Log in with the same account to connect your WhatsApp and start using.",
+    "nextStepWhatsApp": "Next step: connect WhatsApp"
   },
   "login": {
     "emailConfirmedBanner": "✅ Email confirmed successfully! Enter your credentials to access",

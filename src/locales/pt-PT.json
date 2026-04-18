@@ -293,7 +293,12 @@
     "notFoundTitle": "Pagamento não localizado",
     "notFoundDescription": "Não encontrámos uma subscrição ativa para a sua conta. Se acabou de pagar, aguarde alguns instantes e clique em verificar novamente. Caso contrário, finalize o seu registo escolhendo um plano.",
     "goToCheckout": "Escolher um plano",
-    "recheck": "Verificar novamente"
+    "recheck": "Verificar novamente",
+    "awaitingTitle": "A aguardar confirmação do pagamento",
+    "awaitingDescription": "Costuma demorar apenas alguns segundos. Se demorar mais de um minuto, clique em verificar novamente.",
+    "backToPlans": "Voltar para planos",
+    "loginToContinue": "Faça login com a mesma conta para ligar o seu WhatsApp e começar a usar.",
+    "nextStepWhatsApp": "Próximo passo: ligar o WhatsApp"
   },
   "login": {
     "emailConfirmedBanner": "✅ Email confirmado com sucesso! Introduza os seus dados para aceder",

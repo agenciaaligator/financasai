@@ -266,7 +266,12 @@
     "notFoundTitle": "Pagamento non trovato",
     "notFoundDescription": "Non abbiamo trovato un abbonamento attivo per il tuo account. Se hai appena pagato, attendi qualche istante e clicca su verifica di nuovo. Altrimenti, completa la registrazione scegliendo un piano.",
     "goToCheckout": "Scegli un piano",
-    "recheck": "Verifica di nuovo"
+    "recheck": "Verifica di nuovo",
+    "awaitingTitle": "In attesa di conferma del pagamento",
+    "awaitingDescription": "Di solito richiede solo pochi secondi. Se ci vuole più di un minuto, clicca su verifica di nuovo.",
+    "backToPlans": "Torna ai piani",
+    "loginToContinue": "Accedi con lo stesso account per connettere il tuo WhatsApp e iniziare.",
+    "nextStepWhatsApp": "Prossimo passo: connettere WhatsApp"
   },
   "login": {
     "emailConfirmedBanner": "✅ Email confermata con successo! Inserisci i tuoi dati per accedere",
