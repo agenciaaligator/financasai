@@ -101,18 +101,18 @@ export default function PaymentSuccess() {
             </div>
           </div>
           <div className="space-y-3">
-            <h1 className="text-2xl font-bold text-foreground">Aguardando confirmação do pagamento</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t('paymentSuccess.awaitingTitle')}</h1>
             <p className="text-muted-foreground">
-              Isso costuma levar apenas alguns segundos. Se demorar mais que um minuto, clique em verificar novamente.
+              {t('paymentSuccess.awaitingDescription')}
             </p>
           </div>
           <div className="space-y-2">
             <Button onClick={() => refreshStatus()} className="w-full group" size="lg">
-              Verificar novamente
+              {t('paymentSuccess.recheck')}
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Button>
             <Button onClick={() => navigate('/choose-plan', { replace: true })} variant="ghost" className="w-full" size="sm">
-              Voltar para planos
+              {t('paymentSuccess.backToPlans')}
             </Button>
           </div>
         </Card>
