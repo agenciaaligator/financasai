@@ -31,79 +31,11 @@ export function useAuth() {
   }, []);
 
 
-  const signUp = async (email: string, password: string, fullName: string) => {
-
-    const redirectUrl = `${window.location.origin}/auth/callback`;
-    
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            full_name: fullName
-          }
-        }
-      });
-
-      if (error) {
-        // Generic error messages to prevent user enumeration
-        if (error.message.includes('User already registered') || 
-            error.message.includes('already been registered') ||
-            error.message.includes('email address is already registered') ||
-            error.message.includes('already_registered') ||
-            error.message.includes('A user with this email address has already been registered')) {
-          toast({
-            title: "⚠️ Erro no cadastro",
-            description: "Não foi possível completar o cadastro. Verifique seus dados ou tente fazer login se já possui uma conta.",
-            variant: "destructive"
-          });
-        } else if (error.message.includes('Password should be at least')) {
-          toast({
-            title: "🔒 Senha muito fraca",
-            description: "A senha deve ter pelo menos 6 caracteres.",
-            variant: "destructive"
-          });
-        } else if (error.message.includes('Signup is disabled')) {
-          toast({
-            title: "⚠️ Cadastro temporariamente indisponível",
-            description: "Tente novamente em alguns minutos.",
-            variant: "destructive"
-          });
-        } else {
-          toast({
-            title: "❌ Erro no cadastro",
-            description: "Não foi possível completar o cadastro. Verifique seus dados e tente novamente.",
-            variant: "destructive"
-          });
-        }
-        return { error };
-      }
-
-      // Se o usuário foi criado mas precisa confirmar email
-      if (data.user && !data.user.email_confirmed_at) {
-        toast({
-          title: "✅ Cadastro realizado com sucesso!",
-          description: "Verifique seu email para confirmar a conta e fazer login. Confira também a pasta de spam ou lixo eletrônico.",
-        });
-      } else if (data.user) {
-        toast({
-          title: "✅ Cadastro realizado!",
-          description: "Bem-vindo! Você já pode começar a usar o sistema.",
-        });
-      }
-
-      return { error: null, data };
-    } catch (err: any) {
-      toast({
-        title: "💥 Erro no cadastro",
-        description: "Ocorreu um erro inesperado. Verifique sua conexão e tente novamente.",
-        variant: "destructive"
-      });
-      return { error: err };
-    }
-  };
+  // NOTE: signUp removed intentionally. The onboarding flow uses
+  // supabase.auth.signUp directly inside src/pages/Register.tsx, which
+  // performs RPC pre-checks (check_email_available, check_phone_available),
+  // localized error messages, and proper plan binding. Do not re-introduce
+  // a signUp helper here without those guarantees.
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -292,7 +224,6 @@ export function useAuth() {
     user,
     session,
     loading,
-    signUp,
     signIn,
     signOut,
     resetPassword,

@@ -544,13 +544,15 @@ const Index = () => {
         toast({ title: "✅ Conta confirmada!", description: "Bem-vindo ao Dona Wilma!" });
       }
       
+      const alreadyRedirected = sessionStorage.getItem('redirected_to_welcome') === 'true';
+
       const { data: whatsappSession } = await supabase
         .from('whatsapp_sessions')
         .select('id')
         .eq('user_id', user.id)
         .maybeSingle();
       
-      if (!whatsappSession) {
+      if (!whatsappSession && !alreadyRedirected) {
         sessionStorage.setItem('redirected_to_welcome', 'true');
         navigate('/boas-vindas', { replace: true });
         return;

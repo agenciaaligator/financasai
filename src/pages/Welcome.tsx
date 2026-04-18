@@ -370,16 +370,27 @@ export default function Welcome() {
               </div>
             </div>
 
-            <div className="text-center">
+            <div className="text-center space-y-3">
               <Button
                 size="lg"
                 className="bg-gradient-to-r from-[#25D366] to-[#1da851] text-white rounded-full px-12 py-4 text-lg font-bold shadow-[0_4px_20px_rgba(37,211,102,0.3)] hover:-translate-y-0.5 transition"
                 onClick={handleGoToDashboard}
-                disabled={step !== 'connected'}
               >
                 🚀 {t('welcome.startUsing')}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
+              {step !== 'connected' && (
+                <div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleGoToDashboard}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    {t('welcome.skipForNow')}
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>
