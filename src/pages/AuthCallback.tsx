@@ -25,17 +25,30 @@ export default function AuthCallback() {
           return;
         }
 
-        // Check if user has active subscription
-        const { data: sub } = await supabase
-          .from('user_subscriptions')
-          .select('status')
-          .eq('user_id', session.user.id)
-          .in('status', ['active', 'trialing'])
-          .maybeSingle();
+        // Check if user has active subscription (with 1 retry to handle Stripe webhook race)
+        const checkSub = async () => {
+          const { data } = await supabase
+            .from('user_subscriptions')
+            .select('status')
+            .eq('user_id', session.user.id)
+            .in('status', ['active', 'trialing'])
+            .maybeSingle();
+          return data;
+        };
+
+        let sub = await checkSub();
+        if (!sub) {
+          // Webhook may still be processing — wait 3s and retry once
+          console.log('No subscription found, retrying in 3s (webhook race)...');
+          await new Promise((r) => setTimeout(r, 3000));
+          sub = await checkSub();
+        }
 
         if (!sub) {
-          console.log('No active subscription, redirecting to /choose-plan');
-          navigate('/choose-plan', { replace: true });
+          // Still no sub: route to /payment-success which has its own retry/refresh logic
+          // (avoids sending users to /choose-plan and risking double-billing)
+          console.log('No active subscription after retry, redirecting to /payment-success');
+          navigate('/payment-success', { replace: true });
         } else {
           // Set flag for email confirmation banner (used by LoginForm if user goes there)
           sessionStorage.setItem('came_from_email_confirmation', 'true');
