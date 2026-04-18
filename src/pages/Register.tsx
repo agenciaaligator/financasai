@@ -401,7 +401,7 @@ export default function Register() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={t("register.passwordPlaceholder")}
                   required
-                  minLength={6}
+                  minLength={8}
                   disabled={loading}
                   className="!bg-white/10 !text-white border-white/20 placeholder:text-white/40 focus-visible:!bg-white/15"
                 />
