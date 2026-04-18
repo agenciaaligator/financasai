@@ -12,6 +12,7 @@ export default function PaymentSuccess() {
   const { session } = useAuth();
   const { status, refreshStatus } = useSubscriptionStatus(session);
   const [checking, setChecking] = useState(true);
+  const [retried, setRetried] = useState(false);
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -24,6 +25,18 @@ export default function PaymentSuccess() {
     };
     checkAndUpdate();
   }, [refreshStatus, session]);
+
+  // Auto-retry once after 5s if still not subscribed (covers webhook delay)
+  useEffect(() => {
+    if (!checking && session && !status?.subscribed && !retried) {
+      const timer = setTimeout(async () => {
+        console.log('[PAYMENT-SUCCESS] Auto-retrying subscription check...');
+        await refreshStatus();
+        setRetried(true);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [checking, session, status, retried, refreshStatus]);
 
   // Auto-redirect if logged in + subscription active
   useEffect(() => {
@@ -77,27 +90,29 @@ export default function PaymentSuccess() {
     );
   }
 
-  // Logged in but NO active subscription -> fallback: ofereça voltar pro checkout
+  // Logged in but NO active subscription -> webhook ainda processando, mensagem suave
   if (session && !status?.subscribed) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950 dark:to-background">
         <Card className="max-w-md w-full p-8 text-center space-y-6 shadow-xl">
           <div className="flex justify-center">
             <div className="rounded-full bg-amber-100 dark:bg-amber-900/30 p-4">
-              <AlertCircle className="h-16 w-16 text-amber-600 dark:text-amber-400" />
+              <Loader2 className="h-16 w-16 text-amber-600 dark:text-amber-400 animate-spin" />
             </div>
           </div>
           <div className="space-y-3">
-            <h1 className="text-2xl font-bold text-foreground">{t('paymentSuccess.notFoundTitle')}</h1>
-            <p className="text-muted-foreground">{t('paymentSuccess.notFoundDescription')}</p>
+            <h1 className="text-2xl font-bold text-foreground">Aguardando confirmação do pagamento</h1>
+            <p className="text-muted-foreground">
+              Isso costuma levar apenas alguns segundos. Se demorar mais que um minuto, clique em verificar novamente.
+            </p>
           </div>
           <div className="space-y-2">
-            <Button onClick={() => navigate('/escolher-plano', { replace: true })} className="w-full group" size="lg">
-              {t('paymentSuccess.goToCheckout')}
+            <Button onClick={() => refreshStatus()} className="w-full group" size="lg">
+              Verificar novamente
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Button>
-            <Button onClick={() => refreshStatus()} variant="ghost" className="w-full" size="sm">
-              {t('paymentSuccess.recheck')}
+            <Button onClick={() => navigate('/choose-plan', { replace: true })} variant="ghost" className="w-full" size="sm">
+              Voltar para planos
             </Button>
           </div>
         </Card>

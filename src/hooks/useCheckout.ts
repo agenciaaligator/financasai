@@ -31,25 +31,10 @@ export const useCheckout = () => {
         throw new Error('URL de checkout não retornada');
       }
 
-      console.log('[CHECKOUT] Session URL:', data.url);
+      console.log('[CHECKOUT] Redirecting to Stripe:', data.url);
 
-      // Abrir checkout em nova aba
-      const checkoutWindow = window.open(data.url, '_blank');
-      
-      if (!checkoutWindow) {
-        toast({
-          title: "⚠️ Pop-up bloqueado",
-          description: "Permita pop-ups para este site e tente novamente",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      toast({
-        title: "✅ Checkout aberto!",
-        description: "Complete o pagamento na nova aba. Esta janela pode ficar aberta.",
-        duration: 10000
-      });
+      // Redirecionar na mesma aba (onboarding linear, funciona em mobile)
+      window.location.href = data.url;
       
     } catch (error) {
       console.error('[CHECKOUT] Error:', error);
