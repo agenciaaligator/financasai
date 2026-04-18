@@ -804,7 +804,18 @@
     "weakPassword": "🔒 Weak password",
     "weakPasswordDesc": "Password must be at least 6 characters.",
     "rateLimitTitle": "⏳ Please wait",
-    "rateLimitDesc": "Too many attempts. Please wait a few minutes and try again."
+    "rateLimitDesc": "Too many attempts. Please wait a few minutes and try again.",
+    "checkingTitle": "Checking your details...",
+    "phoneAlreadyUsedTitle": "That WhatsApp is already in use",
+    "phoneAlreadyUsedDesc": "This number is already linked to another account. Use a different number or sign in to the existing account.",
+    "emailAlreadyUsedTitle": "That email already has an account",
+    "emailAlreadyUsedDesc": "Sign in to access it or recover your password.",
+    "invalidEmailTitle": "Invalid email",
+    "invalidEmailDesc": "Please check that you entered the email correctly.",
+    "networkErrorTitle": "No connection",
+    "networkErrorDesc": "Please check your internet and try again.",
+    "unexpectedTitle": "We couldn't finish right now",
+    "unexpectedDesc": "Try again in a few seconds. If it persists, contact support."
   },
   "paymentSuccess": {
     "title": "Payment Confirmed!",

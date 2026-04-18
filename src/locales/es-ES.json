@@ -636,7 +636,18 @@
     "weakPassword": "🔒 Contraseña débil",
     "weakPasswordDesc": "La contraseña debe tener al menos 6 caracteres.",
     "rateLimitTitle": "⏳ Espera un momento",
-    "rateLimitDesc": "Demasiados intentos. Espera unos minutos e inténtalo de nuevo."
+    "rateLimitDesc": "Demasiados intentos. Espera unos minutos e inténtalo de nuevo.",
+    "checkingTitle": "Verificando tus datos...",
+    "phoneAlreadyUsedTitle": "Ese WhatsApp ya está en uso",
+    "phoneAlreadyUsedDesc": "Este número ya está vinculado a otra cuenta. Usa otro número o inicia sesión en la cuenta existente.",
+    "emailAlreadyUsedTitle": "Ese correo ya tiene cuenta",
+    "emailAlreadyUsedDesc": "Inicia sesión para acceder o recupera tu contraseña.",
+    "invalidEmailTitle": "Correo inválido",
+    "invalidEmailDesc": "Verifica que escribiste el correo correctamente.",
+    "networkErrorTitle": "Sin conexión",
+    "networkErrorDesc": "Verifica tu internet e inténtalo de nuevo.",
+    "unexpectedTitle": "No pudimos completar ahora",
+    "unexpectedDesc": "Inténtalo de nuevo en unos segundos. Si continúa, contacta con soporte."
   },
   "paymentSuccess": {
     "title": "¡Pago Confirmado!",

@@ -80,15 +80,55 @@ export default function Register() {
     }
   };
 
+  const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !email.trim() || !password.trim()) return;
 
-    setFlow("creating");
     const normalizedEmail = email.toLowerCase().trim();
+
+    if (!isValidEmail(normalizedEmail)) {
+      toast({
+        title: t("register.invalidEmailTitle", "E-mail inválido"),
+        description: t("register.invalidEmailDesc", "Verifique se digitou o e-mail corretamente."),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setFlow("creating");
     console.log("[REGISTER] Starting signup for:", normalizedEmail, "plan:", plan);
 
     try {
+      // 0. PRE-CHECK: e-mail and phone availability before signUp
+      const [emailCheck, phoneCheck] = await Promise.all([
+        supabase.rpc("check_email_available", { p_email: normalizedEmail }),
+        phone
+          ? supabase.rpc("check_phone_available", { p_phone: phone })
+          : Promise.resolve({ data: true, error: null } as any),
+      ]);
+
+      if (!emailCheck.error && emailCheck.data === false) {
+        toast({
+          title: t("register.emailAlreadyUsedTitle", "Esse e-mail já tem conta"),
+          description: t("register.emailAlreadyUsedDesc", "Faça login para acessar ou recupere sua senha."),
+          variant: "destructive",
+        });
+        setFlow("idle");
+        return;
+      }
+
+      if (!phoneCheck.error && phoneCheck.data === false) {
+        toast({
+          title: t("register.phoneAlreadyUsedTitle", "Esse WhatsApp já está em uso"),
+          description: t("register.phoneAlreadyUsedDesc", "Esse número já está vinculado a outra conta. Use outro número ou faça login na conta existente."),
+          variant: "destructive",
+        });
+        setFlow("idle");
+        return;
+      }
+
       // 1. signUp
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: normalizedEmail,
@@ -108,12 +148,25 @@ export default function Register() {
         const status = (signUpError as any).status;
 
         if (msg.includes("already registered") || msg.includes("already been registered") || msg.includes("User already registered")) {
-          toast({ title: t("register.emailExists"), description: t("register.emailExistsDesc"), variant: "destructive" });
+          toast({
+            title: t("register.emailAlreadyUsedTitle", "Esse e-mail já tem conta"),
+            description: t("register.emailAlreadyUsedDesc", "Faça login para acessar ou recupere sua senha."),
+            variant: "destructive",
+          });
           setFlow("idle");
           return;
         }
-        if (msg.includes("Password should be at least")) {
+        if (msg.includes("Password should be at least") || msg.toLowerCase().includes("password")) {
           toast({ title: t("register.weakPassword"), description: t("register.weakPasswordDesc"), variant: "destructive" });
+          setFlow("idle");
+          return;
+        }
+        if (msg.toLowerCase().includes("invalid") && msg.toLowerCase().includes("email")) {
+          toast({
+            title: t("register.invalidEmailTitle", "E-mail inválido"),
+            description: t("register.invalidEmailDesc", "Verifique se digitou o e-mail corretamente."),
+            variant: "destructive",
+          });
           setFlow("idle");
           return;
         }
@@ -126,11 +179,10 @@ export default function Register() {
           setFlow("idle");
           return;
         }
-        // Phone-related errors raised by validate_profile_phone_number trigger or unique constraint
         if (msg.toLowerCase().includes("phone") || msg.includes("phone_number")) {
           toast({
-            title: t("register.phoneIssueTitle", "Telefone inválido ou já cadastrado"),
-            description: t("register.phoneIssueDesc", "Esse WhatsApp já está vinculado a outra conta ou está em formato inválido. Tente outro número ou deixe o campo em branco."),
+            title: t("register.phoneAlreadyUsedTitle", "Esse WhatsApp já está em uso"),
+            description: t("register.phoneAlreadyUsedDesc", "Esse número já está vinculado a outra conta. Use outro número ou faça login na conta existente."),
             variant: "destructive",
           });
           setFlow("idle");
@@ -143,7 +195,7 @@ export default function Register() {
         throw new Error("User creation failed");
       }
 
-      // 2. Wait for profile (created by trigger). Without it, downstream breaks.
+      // 2. Wait for profile (created by trigger).
       setFlow("verifying");
       const profileOk = await waitForProfile(signUpData.user.id, 8000);
       if (!profileOk) {
@@ -211,10 +263,16 @@ export default function Register() {
           description: t("register.timeoutDesc", "Sua conta foi criada. Tente novamente em alguns segundos."),
           variant: "destructive",
         });
+      } else if (!navigator.onLine || msg.toLowerCase().includes("network") || msg.toLowerCase().includes("fetch")) {
+        toast({
+          title: t("register.networkErrorTitle", "Sem conexão"),
+          description: t("register.networkErrorDesc", "Verifique sua internet e tente novamente."),
+          variant: "destructive",
+        });
       } else {
         toast({
-          title: t("common.error", "Algo deu errado"),
-          description: t("common.genericError", "Tente novamente em instantes."),
+          title: t("register.unexpectedTitle", "Não conseguimos concluir agora"),
+          description: t("register.unexpectedDesc", "Tente novamente em alguns segundos. Se continuar, fale com o suporte."),
           variant: "destructive",
         });
       }

@@ -1255,6 +1255,8 @@ export type Database = {
         Args: { p_organization_id: string }
         Returns: number
       }
+      check_email_available: { Args: { p_email: string }; Returns: boolean }
+      check_phone_available: { Args: { p_phone: string }; Returns: boolean }
       check_user_exists: { Args: { email_to_check: string }; Returns: boolean }
       clean_duplicate_profiles: { Args: never; Returns: undefined }
       cleanup_expired_validation_codes: { Args: never; Returns: undefined }
