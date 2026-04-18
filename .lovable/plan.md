@@ -1,107 +1,46 @@
 
-## Objetivo
 
-Eliminar o looping do cadastro com correção estrutural, fechar as lacunas de feedback/segurança do fluxo e aplicar os ajustes combinados da Fase 2 no onboarding.
+## O que significam os 2 alertas de segurança
 
-## O que encontrei ao revisar
+São **avisos (warnings)**, não erros críticos. O sistema não está vulnerável, mas o scanner sugere endurecer dois pontos. Vou explicar cada um em linguagem direta e dizer o que recomendo fazer.
 
-1. O `Register.tsx` está no fluxo novo correto: `signUp()` → `create-checkout` → Stripe.
-2. O contexto atual do projeto mostra um ponto crítico: **o banco está sem triggers ativos** (`<db-triggers>: There are no triggers in the database`).
-3. Sem o trigger `on_auth_user_created`, o usuário pode ser criado em `auth.users`, mas **não ganha `profiles`, `organizations` e `organization_members`**. Isso é compatível com o sintoma de “fica carregando / looping”.
-4. Há também desalinhamentos de onboarding:
-   - `/boas-vindas` ainda mostra a etapa **“Email Confirmado”**
-   - `/payment-success` ainda tem texto de **“enviamos um email”**
-   - o fluxo visual ainda comunica um onboarding antigo, mesmo com `Confirm email` desligado.
-5. Há uma lacuna de UX no cadastro: telefone duplicado ainda pode cair em erro genérico em vez de mensagem clara.
+---
 
-## Plano de implementação
+### Alerta 1 — "Stripe price IDs exposed to anonymous users"
 
-### Fase 1 — Corrigir o looping de forma definitiva
-1. **Validar e reaplicar os triggers no banco**
-   - Recriar:
-     - `on_auth_user_created` em `auth.users` → `public.handle_new_user_simple()`
-     - `on_auth_user_created_role` em `public.profiles` → `public.handle_new_user_role()`
-     - `on_profile_created_categories` em `public.profiles` → `public.create_default_categories()`
-   - Verificar no banco que eles realmente ficaram ativos após a migration.
+**O que é:** A tabela `subscription_plans` está marcada como pública (qualquer visitante do site, mesmo sem login, pode lê-la). Isso é **proposital** — a landing page precisa mostrar os preços antes do cadastro. O problema apontado é que, junto com `nome`, `preço` e `descrição`, a tabela também expõe os campos `stripe_price_id_monthly` e `stripe_price_id_yearly`.
 
-2. **Blindar o `Register.tsx` contra estado “órfão”**
-   - Depois do `signUp()`, confirmar se o `profile` do usuário existe antes de chamar `create-checkout`.
-   - Se o profile não existir após uma pequena espera/retry curto, interromper o fluxo com mensagem humana, sem deixar spinner infinito.
-   - Isso evita depender cegamente do trigger.
+**Risco real:** Baixíssimo. Price IDs do Stripe (`price_1T0RbZJH...`) **não são segredos** — eles aparecem na URL do Checkout do Stripe quando o usuário clica em "Assinar". Não dão acesso a nada, não permitem fraude, não revelam dados do seu negócio. São apenas identificadores internos.
 
-3. **Adicionar timeout e fallback no checkout**
-   - Colocar timeout controlado na chamada da edge function `create-checkout`.
-   - Se demorar demais ou falhar:
-     - sair do estado de redirecionamento,
-     - mostrar erro claro,
-     - exibir CTA para tentar novamente sem recarregar tudo.
+**Por que o scanner reclama:** Boa prática genérica diz "não exponha identificadores internos sem necessidade". Mas no nosso caso a página de planos é pública por design.
 
-4. **Tratar telefone duplicado com mensagem específica**
-   - Detectar conflito de `phone_number` no cadastro.
-   - Mostrar mensagem objetiva: telefone/WhatsApp já vinculado a outra conta.
+**Recomendação:** **Ignorar este alerta.** A exposição é intencional e inofensiva. Posso marcá-lo como "ignored" no scanner com justificativa registrada.
 
-### Fase 2 — Ajustar o onboarding para o fluxo real
-1. **Remover a narrativa antiga de confirmação por email**
-   - Atualizar `/payment-success`
-   - Atualizar `/boas-vindas`
-   - Atualizar stepper e microcopys
-   - O fluxo correto passa a ser:
+---
 
-```text
-Escolher plano -> Criar conta -> Pagamento -> Conectar WhatsApp -> Dashboard
-```
+### Alerta 2 — "WhatsApp validation codes accessible only to service role with no user-facing policy"
 
-2. **Revisar o stepper visual**
-   - Etapas novas:
-     - Conta criada
-     - Pagamento confirmado
-     - Conectar WhatsApp
-   - Remover “Email confirmado”.
+**O que é:** A tabela `whatsapp_validation_codes` (que guarda os códigos `DW-XXXX` por ~10 minutos) tem **apenas uma política de RLS** que permite acesso ao `service_role` (as edge functions). Não há política para usuários autenticados normais.
 
-3. **Adicionar resumo do plano no `/register`**
-   - Mostrar plano escolhido, cobrança mensal/anual, moeda/localização e CTA de continuidade.
-   - Isso reduz insegurança antes do clique final.
+**Risco real:** **Zero.** Isso é exatamente o comportamento desejado:
+- Códigos OTP nunca devem ser legíveis pelo frontend
+- Apenas as edge functions (`whatsapp-claim-code`, `whatsapp-webhook`) precisam ler/escrever
+- Quando uma tabela tem RLS habilitado e não há política para `authenticated`, o Postgres **nega por padrão** — que é o que queremos
 
-4. **Melhorar feedback de processamento**
-   - Trocar sensação de “travou” por estados claros:
-     - criando conta
-     - preparando pagamento
-     - redirecionando para checkout
-   - Sempre com saída visível em caso de erro.
+**Por que o scanner reclama:** É um aviso defensivo: "confirme que isso é intencional". Não é um bug.
 
-### Fase 3 — Polimento de confiança no padrão SaaS bom
-1. **Mensagens de segurança e clareza**
-   - Deixar explícito no cadastro:
-     - “Você criará sua conta agora”
-     - “O pagamento abre na próxima etapa”
-     - “Depois você conecta seu WhatsApp”
-   - Sem textos técnicos nem alarmistas.
+**Recomendação:** **Ignorar este alerta.** O design está correto — códigos OTP devem ser opacos ao cliente.
 
-2. **Revisão de consistência do fluxo**
-   - Garantir que `/payment-success`, `/auth/callback`, `/boas-vindas` e `/` não se contradigam.
-   - Ajustar os redirects para que o usuário nunca pareça “preso”.
+---
 
-3. **Teste end-to-end completo**
-   - Cadastro com email novo
-   - Telefone novo
-   - Telefone duplicado
-   - Email duplicado
-   - Falha proposital no checkout
-   - Fluxo completo até WhatsApp e dashboard
+## Plano de execução
 
-## Detalhes técnicos
+Marcar os dois findings como **"ignored"** no scanner de segurança, com justificativa registrada para cada um, para que parem de aparecer na lista. Nenhuma alteração de código ou banco é necessária.
 
-- A causa mais forte hoje é **backend estrutural**, não apenas UI: o projeto está reportando **zero triggers ativos**, e isso quebra a criação do ecossistema mínimo do usuário.
-- Além disso, o frontend atual assume sucesso rápido demais:
-  - entra em `redirecting`
-  - chama checkout
-  - não valida suficientemente a criação do profile antes da próxima etapa
-- O onboarding também está semanticamente defasado porque ainda reflete o modelo antigo com confirmação de email.
+| Finding | Ação | Justificativa registrada |
+|---|---|---|
+| `subscription_plans_stripe_price_ids_public` | Ignore | Price IDs do Stripe não são segredos; visíveis na URL do Checkout. Tabela é pública por design (landing page de planos). |
+| `whatsapp_validation_codes_no_user_policy` | Ignore | Comportamento intencional: códigos OTP só devem ser acessíveis ao service_role das edge functions. RLS sem política de authenticated nega por padrão, que é o objetivo. |
 
-## Resultado esperado após a implementação
+Após aprovar, o scanner removerá esses dois itens da lista ativa (eles ficarão na aba "Ignored", auditáveis depois).
 
-- O cadastro para de “loopar”.
-- Usuário novo avança com previsibilidade para o Stripe.
-- Se algo falhar, ele recebe uma explicação clara e recuperável.
-- O onboarding passa a refletir o fluxo real do produto, sem mensagens contraditórias.
-- A Fase 2 já entra junto com os ajustes que você vinha cobrando, sem perder o foco no bug principal.
