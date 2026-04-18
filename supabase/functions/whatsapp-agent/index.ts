@@ -7169,11 +7169,14 @@ serve(async (req) => {
             await sendWhatsAppMessage(welcomePhone,
               `Olá! Sou a *Dona Wilma*, sua assistente financeira pelo WhatsApp. 🎉\n\n` +
               `Sua conta foi conectada com sucesso! ✅\n\n` +
-              `*Como usar:*\n` +
+              `*Como usar pelo WhatsApp:*\n` +
               `📝 Envie "gasto 50 mercado" para registrar uma despesa\n` +
               `💰 Envie "receita 1000 salário" para registrar uma receita\n` +
               `📸 Envie uma foto de nota fiscal para registro automático\n` +
               `💵 Envie "saldo" para ver seu saldo atual\n\n` +
+              `🌐 *Acesse seu painel completo:*\n` +
+              `https://donawilma.lovable.app\n\n` +
+              `Lá você pode criar categorias personalizadas, definir metas mensais, ver relatórios detalhados e muito mais! 📊\n\n` +
               `Digite *ajuda* para ver todos os comandos disponíveis.`
             );
             console.log('[VALIDATE-CODE] ✅ Welcome message sent successfully');
