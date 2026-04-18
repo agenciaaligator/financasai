@@ -122,8 +122,8 @@ export default function ResetPassword() {
       return;
     }
 
-    if (password.length < 6) {
-      toast({ title: "🔒 Senha muito fraca", description: "A senha deve ter pelo menos 6 caracteres.", variant: "destructive" });
+    if (password.length < 8) {
+      toast({ title: "🔒 Senha muito fraca", description: "A senha deve ter pelo menos 8 caracteres.", variant: "destructive" });
       return;
     }
 

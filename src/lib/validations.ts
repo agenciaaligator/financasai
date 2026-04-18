@@ -77,7 +77,7 @@ export const profileSchema = z.object({
 // Validação de senha
 export const passwordSchema = z.object({
   password: z.string()
-    .min(6, "Senha deve ter no menos 6 caracteres")
+    .min(8, "Senha deve ter no mínimo 8 caracteres")
     .max(100, "Senha deve ter no máximo 100 caracteres"),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {

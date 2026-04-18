@@ -161,10 +161,10 @@ export function SignUpForm() {
       return;
     }
 
-    if (formData.password.length < 6) {
+    if (formData.password.length < 8) {
       toast({
         title: "Senha muito curta",
-        description: "A senha deve ter no mínimo 6 caracteres",
+        description: "A senha deve ter no mínimo 8 caracteres",
         variant: "destructive",
       });
       return;

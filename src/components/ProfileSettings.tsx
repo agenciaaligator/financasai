@@ -199,8 +199,8 @@ export function ProfileSettings() {
         }
         
         // Validar nova senha
-        if (newPassword.length < 6) {
-          throw new Error("A nova senha deve ter pelo menos 6 caracteres");
+        if (newPassword.length < 8) {
+          throw new Error("A nova senha deve ter pelo menos 8 caracteres");
         }
         
         if (newPassword !== confirmPassword) {
