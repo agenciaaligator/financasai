@@ -1,85 +1,60 @@
 
 
-## Diagnóstico — `alexandre@aligator.com.br` não existe, mas o cadastro falha
+## Auditoria do onboarding — 4 erros encontrados
 
-### Fato confirmado pelo print do Supabase
-Apenas 2 usuários existem:
-- `adwords@aligator.com.br`
-- `contato@aligator.com.br`
+Auditei o fluxo ponta a ponta (Index → ChoosePlan → Register → Stripe → PaymentSuccess → Welcome → Dashboard). O fluxo principal está sólido, mas encontrei **4 problemas reais** que precisam correção, em ordem de gravidade:
 
-`alexandre@aligator.com.br` **não está cadastrado**. Mesmo assim, o frontend mostrou "Não foi possível completar a ação. Tente novamente." (toast vermelho genérico). Isso significa que o erro **não é duplicata** — é outra coisa, e o tratamento atual está mascarando a causa real.
+### 🔴 ERRO 1 — `useAuth.signUp()` está obsoleto e vulnerável
+**Arquivo:** `src/hooks/useAuth.ts` (linhas 34-106)
 
-### Investigação que vou fazer (read-only nesta fase)
+A função `signUp` antiga ainda existe com mensagens hardcoded em português, sem i18n, sem pre-check de telefone, e sem o tratamento que adicionamos em `Register.tsx`. Se qualquer outro lugar do código chamar `useAuth().signUp(...)`, o usuário verá mensagens em português independente do idioma e sem proteção contra duplicatas.
 
-1. Ler `src/pages/Register.tsx` — onde nasce o toast genérico, ver o que é capturado vs ignorado.
-2. Ler `useAuth.ts signUp()` — confirmar todos os branches de erro tratados.
-3. Ler logs recentes de `auth_logs` e `postgres_logs` no momento da tentativa do `alexandre@` para ver o erro real do Supabase.
-4. Conferir trigger `handle_new_user_simple` (já visto no schema) — ele insere em `profiles` + cria `organizations` + `organization_members`. Se qualquer um falhar, o signup inteiro falha com erro 500 genérico.
-5. Verificar se existe constraint UNIQUE em `profiles.phone_number` (o telefone `+55 11 91175 1247` foi usado antes em outro teste e pode estar travando).
+**Correção:** Remover `signUp` de `useAuth.ts` (não é mais usado pelo onboarding) OU fazer com que apenas redirecione/sinalize uso indevido. Auditar todos os imports.
 
-### Causa raiz mais provável (hipótese forte)
+### 🔴 ERRO 2 — Welcome bloqueia botão "Começar a usar" se WhatsApp não conectado
+**Arquivo:** `src/pages/Welcome.tsx` linha 378
 
-O telefone `+5511911751247` provavelmente já está em `profiles.phone_number` de um teste anterior (mesmo que o e-mail seja novo), e:
-- **Não há constraint UNIQUE** declarada no schema → o trigger não rejeita por isso.
-- **Mas** o trigger `handle_new_user_simple` faz `ON CONFLICT (user_id) DO UPDATE` em `profiles` — que funciona.
-- O que pode estar quebrando: criar nova `organizations` com nome duplicado, ou alguma RLS bloqueando algo.
+`disabled={step !== 'connected'}` impede o usuário de pular a conexão WhatsApp. Se a Meta API falhar ou o usuário quiser configurar depois, ele fica preso para sempre nessa tela. Combinado com `Index.tsx` linha 553 que **força redirect de volta para `/boas-vindas` se não houver `whatsapp_sessions`**, cria um loop infinito.
 
-Vou confirmar com a query de logs antes de prescrever a correção exata.
+**Correção:** Permitir "Pular por enquanto" (botão secundário). Em `Index.tsx`, redirecionar para `/boas-vindas` apenas **uma vez** (já existe `redirected_to_welcome` flag mas ela não é checada antes do redirect — só é setada). Adicionar checagem: `if (!whatsappSession && !sessionStorage.getItem('redirected_to_welcome'))`.
 
-### Plano de correção (após investigação)
+### 🟡 ERRO 3 — Race condition em `PaymentSuccess` quando vem de outra aba/desktop
+**Arquivo:** `src/pages/PaymentSuccess.tsx`
 
-**A. Diagnóstico real exposto ao usuário**
-Em `useAuth.ts signUp()`, capturar:
-- `error.code` / `error.status` específicos do Supabase
-- Mapear cada um para mensagem clara, traduzida nos 5 idiomas (pt-BR, pt-PT, en-US, es-ES, it-IT)
-- Eliminar o catch-all "Não foi possível completar a ação"
+Se o usuário pagou no celular e abriu o link de sucesso no desktop (sem sessão), cai no estado "Not logged in" (linha 124). Está OK, mas o botão leva para `/login` sem indicação de que o pagamento foi confirmado. Pode ser confuso.
 
-**B. Pre-checagem antes do signUp (defesa em profundidade)**
-Criar 2 RPCs SECURITY DEFINER:
-- `check_email_available(p_email text) returns boolean` — checa em `auth.users`
-- `check_phone_available(p_phone text) returns boolean` — checa em `profiles.phone_number` normalizado (E.164)
+**Correção menor:** Adicionar mensagem clara "Pagamento processado. Faça login com o e-mail usado no checkout para continuar."
 
-`Register.tsx` chama ambas antes de `signUp()`. Se qualquer uma falhar, mostra mensagem amigável **traduzida** e oferece ação:
-- E-mail duplicado → "Esse e-mail já tem conta. [Fazer login] [Recuperar senha]"
-- Telefone duplicado → "Esse WhatsApp já está vinculado a outra conta. Use outro número ou faça login."
+### 🟡 ERRO 4 — `AuthCallback` redireciona usuário SEM assinatura para `/choose-plan`, mas Register exige `?plan=`
+**Arquivo:** `src/pages/AuthCallback.tsx` linha 36
 
-**C. Constraint UNIQUE em telefone**
-Migration adicionando:
-```
-CREATE UNIQUE INDEX profiles_phone_unique 
-ON profiles (phone_number) 
-WHERE phone_number IS NOT NULL;
-```
-Garantia dura no banco contra duplicatas, mesmo se o frontend falhar.
+Cenário: usuário clica no link de confirmação de e-mail → AuthCallback verifica → não tem assinatura → manda pra `/choose-plan`. Tudo bem. **Mas** se ele recém-pagou e o webhook ainda não processou, vai pra `/choose-plan` em vez de aguardar. Pode pagar duas vezes.
 
-**D. Trigger blindado**
-Ajustar `handle_new_user_simple` para:
-- Capturar exceções de unique_violation (`SQLSTATE 23505`)
-- Re-raise com mensagem clara que o frontend possa interpretar
+**Correção:** Em `AuthCallback`, fazer 1 retry com 3s antes de decidir o destino. Se ainda sem sub, ir pra `/payment-success` (que tem retry próprio) em vez de `/choose-plan`.
 
-**E. i18n completo dos erros**
-Adicionar chaves em todos os 5 arquivos de locale:
-- `auth.errors.email_already_exists`
-- `auth.errors.phone_already_exists`
-- `auth.errors.weak_password`
-- `auth.errors.invalid_email`
-- `auth.errors.network_error`
-- `auth.errors.unknown_with_action` (com botão "Tentar novamente" e link de suporte)
+---
 
-Cada uma com tom amigável, sugerindo ação concreta — alinhado à filosofia `alert-design-philosophy` (sugestão, não erro agressivo).
+### ✅ O que está OK (não vou tocar)
+- `Register.tsx` — pre-check, signUp, mensagens i18n: sólido
+- `create-checkout/index.ts` — success_url e auth fallback corretos
+- `stripe-webhook/index.ts` — idempotência, role update, master/admin protection: sólidos
+- Trigger `handle_new_user_simple` — captura unique_violation e loga em security_events
+- Constraint UNIQUE em `profiles.phone_number`: aplicada
+- `useCheckout.ts` — `window.location.href` (mesma aba): OK
 
-### Promessa concreta
+### Plano de execução (4 mudanças cirúrgicas)
 
-Após implementação:
-1. **Antes do clique em "Continuar"**: pre-check valida e-mail + telefone, exibindo mensagem clara se já existir.
-2. **No signUp()**: cada erro Supabase é mapeado a uma mensagem específica nos 5 idiomas.
-3. **No banco**: constraint UNIQUE impede fisicamente duplicatas de telefone.
-4. **Zero toast genérico**: o catch-all "Tente novamente" só aparece em erro de rede real (offline), com instrução clara.
-5. **Trilha de auditoria**: cada falha de cadastro registra em `audit_logs` para você ver no admin o que aconteceu.
+| # | Arquivo | Mudança |
+|---|---|---|
+| 1 | `src/hooks/useAuth.ts` | Remover `signUp` obsoleto. Buscar usos com search e migrar se houver. |
+| 2 | `src/pages/Welcome.tsx` | Adicionar botão "Conectar depois" + remover `disabled` do botão principal quando step!=='connected' (mantém o "Começar a usar" sempre clicável). |
+| 3 | `src/pages/Index.tsx` | Trocar redirect cego por: `if (!whatsappSession && !sessionStorage.getItem('redirected_to_welcome'))`. Garante 1 redirect único. |
+| 4 | `src/pages/AuthCallback.tsx` | Adicionar 1 retry de 3s na checagem de subscription antes de decidir destino. Se ambíguo, ir pra `/payment-success`. |
 
-### O que NÃO vou tocar
+### Resultado garantido após as correções
 
-- Stripe webhook, checkout, fluxo pós-pagamento (estável)
-- WhatsApp agent
-- Outras tabelas/RLS além de `profiles` (constraint) e novas RPCs
+- **Sem loops**: usuário nunca fica preso entre `/` e `/boas-vindas`
+- **Sem código morto inseguro**: `useAuth.signUp` obsoleto removido
+- **Sem cobrança dupla**: AuthCallback espera o webhook antes de oferecer `/choose-plan`
+- **Sem "preso na tela WhatsApp"**: usuário pode pular e configurar depois pelo dashboard
 
