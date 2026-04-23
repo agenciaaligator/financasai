@@ -5,8 +5,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UsersManagement } from "./UsersManagement";
 import { SubscriptionsManagement } from "./SubscriptionsManagement";
 import { AdminStats } from "./AdminStats";
-import { Shield, Users, CreditCard, BarChart3 } from "lucide-react";
+import { MessagesManagement } from "./MessagesManagement";
+import { Shield, Users, CreditCard, BarChart3, Mail } from "lucide-react";
 import { LanguageFlagSelector } from "@/components/LanguageFlagSelector";
+import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
+import { useEffect as useEffectHook } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export function AdminPanel() {
   const { t } = useTranslation();

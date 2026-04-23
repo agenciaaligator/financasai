@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Calendar, DollarSign, Shield, Smartphone, Zap, BarChart3, Brain, Menu, FolderOpen, Sparkles } from "lucide-react";
+import { ContactForm } from "@/components/ContactForm";
 import { FinancialDashboard } from "@/components/FinancialDashboard";
 import { LanguageFlagSelector } from "@/components/LanguageFlagSelector";
 import { LoginForm } from "@/components/auth/LoginForm";
@@ -380,38 +381,8 @@ const LandingPage = () => {
               {t('landing.contactSection.subtitle')}
             </p>
           </div>
-          <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto scroll-reveal delay-1">
-            {/* WhatsApp Card */}
-            <a
-              href="https://wa.me/5521972680128"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="glass-card rounded-2xl p-8 text-center hover:-translate-y-2 hover:shadow-card transition-all duration-300 group"
-            >
-              <div className="w-16 h-16 rounded-2xl bg-success/15 flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform">
-                <Smartphone className="h-8 w-8 text-success" />
-              </div>
-              <h3 className="font-display text-xl font-bold mb-2">{t('landing.contactSection.whatsappTitle')}</h3>
-              <p className="text-muted-foreground text-sm mb-5">{t('landing.contactSection.whatsappDesc')}</p>
-              <span className="inline-flex items-center gap-2 text-sm font-semibold text-success">
-                {t('landing.contactSection.whatsappButton')} →
-              </span>
-            </a>
-            {/* Email Card */}
-            <a
-              href="mailto:contato@donawilma.com.br"
-              className="glass-card rounded-2xl p-8 text-center hover:-translate-y-2 hover:shadow-card transition-all duration-300 group"
-            >
-              <div className="w-16 h-16 rounded-2xl bg-primary/15 flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform">
-                <Zap className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="font-display text-xl font-bold mb-2">{t('landing.contactSection.emailTitle')}</h3>
-              <p className="text-muted-foreground text-sm mb-2">contato@donawilma.com.br</p>
-              <p className="text-muted-foreground text-sm mb-5">{t('landing.contactSection.emailDesc')}</p>
-              <span className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
-                {t('landing.contactSection.emailButton')} →
-              </span>
-            </a>
+          <div className="max-w-2xl mx-auto scroll-reveal delay-1">
+            <ContactForm />
           </div>
         </div>
       </section>
@@ -440,9 +411,12 @@ const LandingPage = () => {
             </div>
             <div>
               <h3 className="font-display font-semibold text-secondary mb-5">{t('landing.nav.contact')}</h3>
-              <p className="text-sm text-white/60">
-                contato@donawilma.com.br
-              </p>
+              <button
+                onClick={() => scrollToSection('contato')}
+                className="text-sm text-white/60 hover:text-white hover:translate-x-1 inline-block transition-all"
+              >
+                {t('landing.contactSection.footerLink')}
+              </button>
             </div>
           </div>
           <div className="border-t border-white/10 mt-12 pt-8 text-center text-sm text-white/50 space-y-2">
