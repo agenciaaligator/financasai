@@ -227,6 +227,51 @@ export type Database = {
           },
         ]
       }
+      contact_messages: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          email: string
+          id: string
+          ip_address: string | null
+          message: string
+          name: string
+          read_at: string | null
+          replied_at: string | null
+          status: string
+          subject: string
+          user_agent: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          ip_address?: string | null
+          message: string
+          name: string
+          read_at?: string | null
+          replied_at?: string | null
+          status?: string
+          subject: string
+          user_agent?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          ip_address?: string | null
+          message?: string
+          name?: string
+          read_at?: string | null
+          replied_at?: string | null
+          status?: string
+          subject?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       eventos: {
         Row: {
           created_at: string
