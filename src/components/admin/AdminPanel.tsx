@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,14 +9,13 @@ import { MessagesManagement } from "./MessagesManagement";
 import { Shield, Users, CreditCard, BarChart3, Mail } from "lucide-react";
 import { LanguageFlagSelector } from "@/components/LanguageFlagSelector";
 import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
-import { useEffect as useEffectHook } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export function AdminPanel() {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'stats';
+  const [newMessagesCount, setNewMessagesCount] = useState(0);
 
   useEffect(() => {
     document.title = `${t('admin.title')} | Dona Wilma`;
@@ -42,6 +41,29 @@ export function AdminPanel() {
     canonical.setAttribute("href", `${window.location.origin}/admin`);
   }, [t]);
 
+  // Fetch new messages count + realtime
+  useEffect(() => {
+    const fetchCount = async () => {
+      const { count } = await supabase
+        .from("contact_messages")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "new");
+      setNewMessagesCount(count ?? 0);
+    };
+    fetchCount();
+
+    const channel = supabase
+      .channel("contact_messages_admin")
+      .on("postgres_changes", { event: "*", schema: "public", table: "contact_messages" }, () => {
+        fetchCount();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeTab]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-6">
@@ -62,7 +84,7 @@ export function AdminPanel() {
         onValueChange={(tab) => setSearchParams({ tab }, { replace: true })} 
         className="space-y-4"
       >
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-3 gap-2">
+        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 gap-2">
           <TabsTrigger value="stats" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             <span className="hidden sm:inline">{t('admin.stats')}</span>
@@ -74,6 +96,15 @@ export function AdminPanel() {
           <TabsTrigger value="subscriptions" className="flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
             <span className="hidden sm:inline">{t('admin.subscriptions')}</span>
+          </TabsTrigger>
+          <TabsTrigger value="messages" className="flex items-center gap-2 relative">
+            <Mail className="h-4 w-4" />
+            <span className="hidden sm:inline">{t('admin.messages.tab')}</span>
+            {newMessagesCount > 0 && (
+              <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
+                {newMessagesCount > 99 ? "99+" : newMessagesCount}
+              </Badge>
+            )}
           </TabsTrigger>
         </TabsList>
 
@@ -89,6 +120,9 @@ export function AdminPanel() {
           <SubscriptionsManagement />
         </TabsContent>
 
+        <TabsContent value="messages" className="space-y-4">
+          <MessagesManagement />
+        </TabsContent>
       </Tabs>
     </div>
   );
