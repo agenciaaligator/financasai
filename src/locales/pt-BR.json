@@ -221,7 +221,39 @@
     "unknown": "Desconhecido",
     "loadError": "Erro ao carregar",
     "loadUsersError": "Erro ao carregar usuários",
-    "loadSubscriptionsError": "Erro ao carregar assinaturas"
+    "loadSubscriptionsError": "Erro ao carregar assinaturas",
+    "messages": {
+      "tab": "Mensagens",
+      "title": "Mensagens de contato",
+      "subtitle": "Mensagens recebidas pelo formulário do site",
+      "search": "Buscar por nome, e-mail ou assunto",
+      "empty": "Nenhuma mensagem encontrada",
+      "error": "Erro ao carregar mensagens",
+      "retry": "Tentar novamente",
+      "updated": "Mensagem atualizada",
+      "deleted": "Mensagem excluída",
+      "pageOf": "Página {{current}} de {{total}}",
+      "filters": {
+        "all": "Todas",
+        "new": "Novas",
+        "read": "Lidas",
+        "replied": "Respondidas",
+        "archived": "Arquivadas"
+      },
+      "status": {
+        "new": "Nova",
+        "read": "Lida",
+        "replied": "Respondida",
+        "archived": "Arquivada"
+      },
+      "actions": {
+        "markRead": "Marcar como lida",
+        "markReplied": "Marcar como respondida",
+        "archive": "Arquivar",
+        "delete": "Excluir",
+        "reply": "Responder por e-mail"
+      }
+    }
   },
   "whatsapp": {
     "title": "WhatsApp",
@@ -726,17 +758,38 @@
       "title": "Por que escolher a Dona Wilma?",
       "subtitle": "Simplicidade e tecnologia para facilitar seu dia a dia",
       "items": {
-        "0": { "title": "Direto no WhatsApp", "description": "Registre finanças e compromissos sem abrir nenhum app" },
-        "1": { "title": "IA que entende você", "description": "Categorização automática com inteligência artificial" },
-        "2": { "title": "Disponível 24h", "description": "Sua assessora pessoal trabalhando o tempo todo" },
-        "3": { "title": "Seguro e privado", "description": "Seus dados protegidos com criptografia de ponta" }
+        "0": {
+          "title": "Direto no WhatsApp",
+          "description": "Registre finanças e compromissos sem abrir nenhum app"
+        },
+        "1": {
+          "title": "IA que entende você",
+          "description": "Categorização automática com inteligência artificial"
+        },
+        "2": {
+          "title": "Disponível 24h",
+          "description": "Sua assessora pessoal trabalhando o tempo todo"
+        },
+        "3": {
+          "title": "Seguro e privado",
+          "description": "Seus dados protegidos com criptografia de ponta"
+        }
       }
     },
     "steps": {
       "items": {
-        "0": { "title": "Envie uma mensagem", "description": "Mande um texto ou áudio pelo WhatsApp como 'gastei 50 no mercado' ou 'reunião amanhã às 10h'" },
-        "1": { "title": "A IA organiza tudo", "description": "A Dona Wilma entende, categoriza e registra automaticamente suas finanças e compromissos" },
-        "2": { "title": "Acompanhe no painel", "description": "Veja gráficos, relatórios e sua agenda completa no painel web ou receba resumos no WhatsApp" }
+        "0": {
+          "title": "Envie uma mensagem",
+          "description": "Mande um texto ou áudio pelo WhatsApp como 'gastei 50 no mercado' ou 'reunião amanhã às 10h'"
+        },
+        "1": {
+          "title": "A IA organiza tudo",
+          "description": "A Dona Wilma entende, categoriza e registra automaticamente suas finanças e compromissos"
+        },
+        "2": {
+          "title": "Acompanhe no painel",
+          "description": "Veja gráficos, relatórios e sua agenda completa no painel web ou receba resumos no WhatsApp"
+        }
       }
     },
     "footer": {
@@ -748,14 +801,45 @@
       "developedBy": "Desenvolvido por"
     },
     "contactSection": {
-      "title": "Entre em contato",
-      "subtitle": "Tire suas dúvidas ou fale com a gente",
+      "title": "Fale com a gente",
+      "subtitle": "Tem alguma dúvida, sugestão ou quer saber mais? Envie sua mensagem pelo formulário abaixo.",
       "whatsappTitle": "WhatsApp",
       "whatsappDesc": "Fale diretamente com a Dona Wilma",
       "whatsappButton": "Conversar no WhatsApp",
       "emailTitle": "E-mail",
       "emailDesc": "Envie sua mensagem",
-      "emailButton": "Enviar E-mail"
+      "emailButton": "Enviar E-mail",
+      "footerLink": "Envie uma mensagem",
+      "submit": "Enviar mensagem",
+      "submitting": "Enviando...",
+      "cooldown": "Aguarde {{seconds}}s",
+      "sendAnother": "Enviar outra mensagem",
+      "success": "Mensagem enviada! Em breve entraremos em contato.",
+      "successTitle": "Recebemos sua mensagem",
+      "fields": {
+        "name": {
+          "label": "Nome",
+          "placeholder": "Seu nome completo"
+        },
+        "email": {
+          "label": "E-mail",
+          "placeholder": "voce@exemplo.com"
+        },
+        "subject": {
+          "label": "Assunto",
+          "placeholder": "Sobre o que é a mensagem?"
+        },
+        "message": {
+          "label": "Mensagem",
+          "placeholder": "Escreva sua mensagem aqui..."
+        }
+      },
+      "errors": {
+        "generic": "Não foi possível enviar agora. Tente novamente em instantes.",
+        "rateLimit": "Você enviou muitas mensagens em pouco tempo. Aguarde alguns minutos.",
+        "duplicate": "Esta mensagem já foi enviada recentemente.",
+        "validation": "Verifique os campos preenchidos e tente novamente."
+      }
     }
   },
   "legal": {
@@ -764,30 +848,84 @@
       "title": "Termos de Serviço",
       "lastUpdated": "Última atualização: Fevereiro de 2025",
       "sections": {
-        "acceptance": { "title": "1. Aceitação dos Termos", "content": "Ao utilizar o serviço Dona Wilma (\"Serviço\"), você concorda com estes Termos de Serviço. Se não concordar, não utilize o Serviço. O Serviço é oferecido pela Aligator (\"Empresa\")." },
-        "description": { "title": "2. Descrição do Serviço", "content": "A Dona Wilma é uma plataforma de gestão financeira e de compromissos pessoais que utiliza inteligência artificial para categorizar transações e organizar agendas. O serviço inclui integração com WhatsApp, Google Calendar e painel web." },
-        "account": { "title": "3. Cadastro e Conta", "content": "Você é responsável por manter a confidencialidade de suas credenciais de acesso. Todas as atividades realizadas em sua conta são de sua responsabilidade. Você deve fornecer informações verdadeiras e atualizadas durante o cadastro." },
-        "payment": { "title": "4. Planos e Pagamento", "content": "O Serviço oferece planos pagos (mensal ou anual), cobrados de forma recorrente via Stripe. Você pode cancelar a qualquer momento através do portal de gerenciamento de assinatura. Não há reembolso proporcional para períodos já pagos." },
-        "acceptableUse": { "title": "5. Uso Aceitável", "content": "Você concorda em não utilizar o Serviço para fins ilegais, fraudulentos ou que violem direitos de terceiros. O uso abusivo do bot de WhatsApp (spam, mensagens em massa) pode resultar em suspensão da conta." },
-        "ip": { "title": "6. Propriedade Intelectual", "content": "Todo o conteúdo, design e código do Serviço são de propriedade da Empresa. Seus dados financeiros e pessoais permanecem sendo de sua propriedade." },
-        "liability": { "title": "7. Limitação de Responsabilidade", "content": "O Serviço é fornecido \"como está\". A Empresa não se responsabiliza por decisões financeiras tomadas com base nas informações do Serviço. A categorização automática por IA pode conter imprecisões e deve ser verificada pelo usuário." },
-        "modifications": { "title": "8. Modificações", "content": "A Empresa reserva o direito de modificar estes termos a qualquer momento. Alterações significativas serão comunicadas por e-mail ou notificação no Serviço." },
-        "contact": { "title": "9. Contato", "content": "Para dúvidas sobre estes termos, entre em contato pelo e-mail: contato@donawilma.com.br" }
+        "acceptance": {
+          "title": "1. Aceitação dos Termos",
+          "content": "Ao utilizar o serviço Dona Wilma (\"Serviço\"), você concorda com estes Termos de Serviço. Se não concordar, não utilize o Serviço. O Serviço é oferecido pela Aligator (\"Empresa\")."
+        },
+        "description": {
+          "title": "2. Descrição do Serviço",
+          "content": "A Dona Wilma é uma plataforma de gestão financeira e de compromissos pessoais que utiliza inteligência artificial para categorizar transações e organizar agendas. O serviço inclui integração com WhatsApp, Google Calendar e painel web."
+        },
+        "account": {
+          "title": "3. Cadastro e Conta",
+          "content": "Você é responsável por manter a confidencialidade de suas credenciais de acesso. Todas as atividades realizadas em sua conta são de sua responsabilidade. Você deve fornecer informações verdadeiras e atualizadas durante o cadastro."
+        },
+        "payment": {
+          "title": "4. Planos e Pagamento",
+          "content": "O Serviço oferece planos pagos (mensal ou anual), cobrados de forma recorrente via Stripe. Você pode cancelar a qualquer momento através do portal de gerenciamento de assinatura. Não há reembolso proporcional para períodos já pagos."
+        },
+        "acceptableUse": {
+          "title": "5. Uso Aceitável",
+          "content": "Você concorda em não utilizar o Serviço para fins ilegais, fraudulentos ou que violem direitos de terceiros. O uso abusivo do bot de WhatsApp (spam, mensagens em massa) pode resultar em suspensão da conta."
+        },
+        "ip": {
+          "title": "6. Propriedade Intelectual",
+          "content": "Todo o conteúdo, design e código do Serviço são de propriedade da Empresa. Seus dados financeiros e pessoais permanecem sendo de sua propriedade."
+        },
+        "liability": {
+          "title": "7. Limitação de Responsabilidade",
+          "content": "O Serviço é fornecido \"como está\". A Empresa não se responsabiliza por decisões financeiras tomadas com base nas informações do Serviço. A categorização automática por IA pode conter imprecisões e deve ser verificada pelo usuário."
+        },
+        "modifications": {
+          "title": "8. Modificações",
+          "content": "A Empresa reserva o direito de modificar estes termos a qualquer momento. Alterações significativas serão comunicadas por e-mail ou notificação no Serviço."
+        },
+        "contact": {
+          "title": "9. Contato",
+          "content": "Para dúvidas sobre estes termos, entre em contato pelo e-mail: contato@donawilma.com.br"
+        }
       }
     },
     "privacy": {
       "title": "Política de Privacidade",
       "lastUpdated": "Última atualização: Fevereiro de 2025",
       "sections": {
-        "dataCollected": { "title": "1. Dados Coletados", "content": "Coletamos os seguintes dados: e-mail, nome, número de telefone (WhatsApp), dados financeiros inseridos por você (transações, categorias), compromissos e informações de pagamento processadas pelo Stripe." },
-        "dataUsage": { "title": "2. Uso dos Dados", "content": "Seus dados são utilizados exclusivamente para: fornecer o Serviço (categorização, relatórios, lembretes), processar pagamentos, enviar notificações sobre sua conta e compromissos, e melhorar o Serviço com análises agregadas e anônimas." },
-        "sharing": { "title": "3. Compartilhamento", "content": "Não vendemos ou compartilhamos seus dados pessoais com terceiros para fins de marketing. Compartilhamos dados apenas com: Stripe (processamento de pagamentos), Meta/WhatsApp (envio de mensagens), Google (sincronização de calendário, quando autorizado por você) e Supabase (armazenamento seguro de dados)." },
-        "ai": { "title": "4. Inteligência Artificial", "content": "Utilizamos IA (OpenAI) para processar suas mensagens de WhatsApp e categorizar transações. As mensagens são enviadas de forma segura e não são utilizadas para treinar modelos de IA de terceiros. Os dados processados são armazenados apenas em sua conta." },
-        "security": { "title": "5. Segurança", "content": "Utilizamos criptografia em trânsito (HTTPS/TLS) e em repouso. Os dados são armazenados em servidores seguros com acesso restrito. Implementamos autenticação segura e políticas de acesso baseadas em função (RLS)." },
-        "rights": { "title": "6. Seus Direitos (LGPD)", "content": "Conforme a Lei Geral de Proteção de Dados (LGPD), você tem direito a: acessar seus dados, corrigir dados incorretos, solicitar exclusão de seus dados, revogar consentimento e solicitar portabilidade. Para exercer esses direitos, entre em contato pelo e-mail: contato@donawilma.com.br" },
-        "cookies": { "title": "7. Cookies", "content": "Utilizamos cookies essenciais para manter sua sessão de login ativa. Não utilizamos cookies de rastreamento ou publicidade." },
-        "retention": { "title": "8. Retenção de Dados", "content": "Seus dados são mantidos enquanto sua conta estiver ativa. Após o cancelamento, os dados são retidos por 30 dias para possível reativação e depois excluídos permanentemente." },
-        "dpo": { "title": "9. Contato do Encarregado (DPO)", "content": "Para questões relacionadas à privacidade e proteção de dados, entre em contato: contato@donawilma.com.br" }
+        "dataCollected": {
+          "title": "1. Dados Coletados",
+          "content": "Coletamos os seguintes dados: e-mail, nome, número de telefone (WhatsApp), dados financeiros inseridos por você (transações, categorias), compromissos e informações de pagamento processadas pelo Stripe."
+        },
+        "dataUsage": {
+          "title": "2. Uso dos Dados",
+          "content": "Seus dados são utilizados exclusivamente para: fornecer o Serviço (categorização, relatórios, lembretes), processar pagamentos, enviar notificações sobre sua conta e compromissos, e melhorar o Serviço com análises agregadas e anônimas."
+        },
+        "sharing": {
+          "title": "3. Compartilhamento",
+          "content": "Não vendemos ou compartilhamos seus dados pessoais com terceiros para fins de marketing. Compartilhamos dados apenas com: Stripe (processamento de pagamentos), Meta/WhatsApp (envio de mensagens), Google (sincronização de calendário, quando autorizado por você) e Supabase (armazenamento seguro de dados)."
+        },
+        "ai": {
+          "title": "4. Inteligência Artificial",
+          "content": "Utilizamos IA (OpenAI) para processar suas mensagens de WhatsApp e categorizar transações. As mensagens são enviadas de forma segura e não são utilizadas para treinar modelos de IA de terceiros. Os dados processados são armazenados apenas em sua conta."
+        },
+        "security": {
+          "title": "5. Segurança",
+          "content": "Utilizamos criptografia em trânsito (HTTPS/TLS) e em repouso. Os dados são armazenados em servidores seguros com acesso restrito. Implementamos autenticação segura e políticas de acesso baseadas em função (RLS)."
+        },
+        "rights": {
+          "title": "6. Seus Direitos (LGPD)",
+          "content": "Conforme a Lei Geral de Proteção de Dados (LGPD), você tem direito a: acessar seus dados, corrigir dados incorretos, solicitar exclusão de seus dados, revogar consentimento e solicitar portabilidade. Para exercer esses direitos, entre em contato pelo e-mail: contato@donawilma.com.br"
+        },
+        "cookies": {
+          "title": "7. Cookies",
+          "content": "Utilizamos cookies essenciais para manter sua sessão de login ativa. Não utilizamos cookies de rastreamento ou publicidade."
+        },
+        "retention": {
+          "title": "8. Retenção de Dados",
+          "content": "Seus dados são mantidos enquanto sua conta estiver ativa. Após o cancelamento, os dados são retidos por 30 dias para possível reativação e depois excluídos permanentemente."
+        },
+        "dpo": {
+          "title": "9. Contato do Encarregado (DPO)",
+          "content": "Para questões relacionadas à privacidade e proteção de dados, entre em contato: contato@donawilma.com.br"
+        }
       }
     }
   },
@@ -1070,6 +1208,18 @@
       "aiReports": "Relatórios com IA",
       "googleCalendar": "Google Calendar",
       "prioritySupport": "Suporte prioritário"
+    }
+  },
+  "validation": {
+    "contact": {
+      "nameMin": "Nome muito curto",
+      "nameMax": "Nome muito longo",
+      "emailInvalid": "E-mail inválido",
+      "emailMax": "E-mail muito longo",
+      "subjectMin": "Assunto muito curto",
+      "subjectMax": "Assunto muito longo",
+      "messageMin": "Mensagem muito curta (mínimo 10 caracteres)",
+      "messageMax": "Mensagem muito longa"
     }
   }
 }

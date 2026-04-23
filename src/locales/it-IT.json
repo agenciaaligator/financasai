@@ -41,53 +41,480 @@
       "3": "Crea obiettivi mensili per controllare le tue spese"
     }
   },
-  "summary": { "monthBalance": "Saldo del Mese", "balanceSubtitle": "Entrate meno spese di questo mese", "incomeSubtitle": "Totale ricevuto questo mese", "expensesSubtitle": "Totale speso questo mese", "yourAccess": "Il Tuo Accesso", "active": "Attivo", "fullAccess": "Accesso completo", "limitedAccess": "Accesso limitato", "manageSubscription": "Gestisci abbonamento" },
-  "sidebar": { "dashboard": "Dashboard", "dashboardDesc": "Panoramica finanziaria", "transactions": "Transazioni", "transactionsDesc": "Movimenti e registrazioni", "categories": "Categorie", "categoriesDesc": "Gestisci categorie", "reports": "Rapporti", "reportsDesc": "Analisi e grafici", "profile": "Profilo", "profileDesc": "Impostazioni personali", "admin": "Admin", "adminDesc": "Pannello amministrativo", "newTransaction": "Nuova Transazione", "subtitle": "La tua assistente personale", "goals": "Obiettivi", "goalsDesc": "Obiettivi mensili" },
-  "chart": { "incomeVsExpenses": "Entrate vs Spese", "byCategory": "Per Categoria", "noCategory": "Senza Categoria", "addTransactions": "Aggiungi transazioni per vedere i grafici", "financialChart": "Grafico Finanziario", "howIsYourMoney": "Come stanno le tue finanze questo mese" },
-  "transactionList": { "noTransactions": "Nessuna transazione trovata", "noTransactionsYet": "Non hai ancora movimenti. Che ne dici di registrare il primo?", "searchNoResults": "Non abbiamo trovato nulla. Prova con altri termini.", "yesterday": "Ieri", "yourLatestMovements": "I tuoi ultimi movimenti", "viewAllTransactions": "Vedi tutte le transazioni", "yourTransactions": "Le Tue Transazioni", "allIncomeAndExpenses": "Tutte le tue entrate e spese", "activeFilters": "Hai filtri attivi", "filtersHiding": "Le transazioni potrebbero essere nascoste dai filtri applicati.", "clearAllFilters": "Cancella tutti i filtri", "totalTransactions": "Ci sono {{count}} transazioni in totale", "tryReload": "Prova a ricaricare per vedere le transazioni più recenti.", "reloadTransactions": "Ricarica transazioni", "showing": "Mostrando {{start}}-{{end}} di {{total}} transazioni", "allTransactions": "Tutte le Transazioni", "ofTotal": "{{filtered}} di {{total}} transazioni", "activeFiltersInfo": "Filtri attivi:", "showingFiltered": "Mostrando {{filtered}} di {{total}} transazioni", "clearFilters": "Cancella filtri", "latestTransactions": "Ultime Transazioni", "recentTransactions": "Transazioni Recenti", "yourConversations": "Le tue transazioni finanziarie" },
-  "filters": { "filters": "Filtri", "activeFilter": "filtro attivo", "activeFilters": "filtri attivi", "clearFilters": "Cancella filtri", "period": "Periodo", "all": "Tutti", "today": "Oggi", "week": "Settimana", "month": "Mese", "lastMonth": "Mese scorso", "type": "Tipo", "allTransactions": "Tutte le transazioni", "allConversations": "Tutte le conversazioni", "onlyIncome": "Solo Entrate", "onlyExpenses": "Solo Spese", "search": "Cerca", "searchPlaceholder": "Scrivi per cercare..." },
-  "transactions": { "add": "Nuova Transazione", "list": "Tutte le Transazioni", "edit": "Modifica Transazione", "delete": "Elimina Transazione", "title": "Titolo", "amount": "Importo", "date": "Data", "category": "Categoria", "type": "Tipo", "income": "Entrata", "expense": "Spesa", "description": "Descrizione" },
-  "auth": { "login": "Accedi", "logout": "Esci", "signup": "Registrati", "email": "Email", "password": "Password", "forgotPassword": "Password dimenticata", "resetPassword": "Reimposta password" },
-  "common": { "save": "Salva", "cancel": "Annulla", "delete": "Elimina", "edit": "Modifica", "create": "Crea", "search": "Cerca", "loading": "Caricamento...", "noData": "Nessun dato trovato", "error": "Errore", "success": "Successo", "genericError": "Non è stato possibile completare l'azione. Riprova.", "back": "Indietro" },
-  "admin": { "title": "Pannello Amministrativo", "subtitle": "Gestisci utenti, abbonamenti e visualizza statistiche", "stats": "Statistiche", "users": "Utenti", "subscriptions": "Abbonamenti", "plans": "Piani", "team": "Team", "totalUsers": "Totale Utenti", "premiumUsers": "Utenti Premium", "noSubscriptionUsers": "Senza Abbonamento", "monthlyRevenue": "Entrate Mensili", "userDistribution": "Distribuzione Utenti", "generalSummary": "Riepilogo Generale", "noSubscription": "Senza abbonamento", "totalTransactions": "Totale Transazioni", "conversionRate": "Tasso di Conversione", "userManagement": "Gestione Utenti", "loadingUsers": "Caricamento utenti...", "loadingSubscriptions": "Caricamento abbonamenti...", "name": "Nome", "email": "Email", "status": "Stato", "registration": "Registrazione", "actions": "Azioni", "noEmail": "Senza email", "noName": "Senza nome", "premium": "Premium", "admin_role": "Admin", "master": "Master", "cannotChangeMaster": "Non è possibile modificare il ruolo dell'utente master.", "roleChanged": "Ruolo cambiato in {{role}} con successo!", "roleChangeError": "Errore nell'aggiornamento del permesso", "cannotDeleteSelf": "Non puoi eliminare il tuo account dal pannello admin", "cannotDeleteMaster": "Non è possibile eliminare l'utente master", "deleteConfirmTitle": "ATTENZIONE: Stai per ELIMINARE permanentemente:", "deleteConfirmEmail": "Email: {{email}}", "deleteConfirmId": "ID: {{id}}", "deleteConfirmWarning": "Questo ELIMINERÀ tutti i dati dell'utente. Questa azione è IRREVERSIBILE! Vuoi continuare?", "userDeleted": "Utente {{email}} eliminato permanentemente", "deleteError": "Errore nell'eliminazione dell'utente", "deleteUserTitle": "Elimina utente permanentemente", "activeSubscriptions": "Abbonamenti Attivi", "noActiveSubscriptions": "Nessun abbonamento attivo al momento", "recentInactiveSubscriptions": "Abbonamenti Recenti (Non Attivi)", "user": "Utente", "plan": "Piano", "cycle": "Ciclo", "nextPayment": "Prossimo Pagamento", "creationDate": "Data di Creazione", "monthly": "Mensile", "yearly": "Annuale", "active": "Attivo", "canceled": "Cancellato", "cancelSubscription": "Cancella", "subscriptionCanceled": "Abbonamento cancellato con successo!", "cancelError": "Errore nella cancellazione dell'abbonamento", "unknown": "Sconosciuto", "loadError": "Errore nel caricamento", "loadUsersError": "Errore nel caricamento utenti", "loadSubscriptionsError": "Errore nel caricamento abbonamenti" },
-  "whatsapp": {
-    "title": "WhatsApp", "connect": "Connetti WhatsApp", "disconnect": "Disconnetti", "connected": "Connesso", "notConnected": "Non connesso", "linkedTo": "Collegato a", "changeOrg": "Cambia Organizzazione", "lastActivity": "Ultima attività", "quickGuide": "Guida Rapida", "addTransactions": "Aggiungi Transazioni", "ocr": "Ricevuta (OCR)", "editDelete": "Modifica/Elimina", "queries": "Query e Report",
-    "setupIn2Min": "Configura in 2 minuti", "afterConnect": "Dopo la connessione, potrai:", "addByVoice": "Aggiungere transazioni con voce o testo", "sendReceipts": "Inviare foto di ricevute (OCR automatico)", "checkBalance": "Consultare saldo e report istantaneamente",
-    "phoneLabel": "Numero WhatsApp", "phonePlaceholder": "5511999999999", "phoneFormat": "Formato internazionale (senza +): 5511999999999", "codeLabel": "Codice di verifica", "codePlaceholder": "123456", "codeHint": "Inserisci il codice di 6 cifre generato", "sending": "Invio...", "verifyCode": "Verifica Codice", "number": "Numero", "sendHelpHint": "Invia \"aiuto\" su WhatsApp per vedere questa lista anche lì!",
-    "cmdAddExpense": "\"speso 50 supermercato\" - aggiunge spesa", "cmdAddIncome": "\"entrata 1000 stipendio\" - aggiunge entrata", "cmdAddPlus": "\"+100 freelance\" - aggiunge entrata", "cmdAddMinus": "\"-30 carburante oggi\" - aggiunge spesa",
-    "cmdOcrStep1": "Scatta una foto della ricevuta", "cmdOcrStep2": "Invia l'immagine via WhatsApp", "cmdOcrStep3": "L'IA estrae importo, luogo e categoria automaticamente!",
-    "cmdEditLast": "\"modifica ultima\" - modifica l'ultima transazione", "cmdDeleteLast": "\"elimina ultima\" - elimina l'ultima transazione",
-    "cmdBalance": "\"saldo\" - vedi saldo attuale", "cmdToday": "\"oggi\" - report giornaliero", "cmdWeek": "\"settimana\" - report settimanale", "cmdMonth": "\"mese\" - report mensile",
-    "disconnected": "WhatsApp disconnesso", "disconnectedDesc": "Puoi riconnetterti con un altro numero quando vuoi", "cannotDisconnect": "Impossibile disconnettere",
-    "numberRequired": "Numero necessario", "numberRequiredDesc": "Inserisci il tuo numero WhatsApp",
-    "codeSent": "Codice inviato!", "codeSentDesc": "Verifica il codice generato e inseriscilo qui sotto",
-    "numberNotRegistered": "Numero non registrato", "numberNotRegisteredDesc": "Aggiorna il numero nel profilo e riprova",
-    "connectedSuccess": "🎉 WhatsApp connesso!", "connectedSuccessDesc": "Ora puoi gestire le tue finanze via WhatsApp. Invia 'aiuto' per vedere i comandi.",
-    "invalidCode": "Codice non valido", "invalidCodeDesc": "Verifica il codice e riprova",
-    "codeRequired": "Codice necessario", "codeRequiredDesc": "Inserisci il codice di 6 cifre",
-    "lessThan1Hour": "meno di 1 ora fa", "oneHourAgo": "1 ora fa", "hoursAgo": "{{count}} ore fa", "oneDayAgo": "1 giorno fa", "daysAgo": "{{count}} giorni fa"
+  "summary": {
+    "monthBalance": "Saldo del Mese",
+    "balanceSubtitle": "Entrate meno spese di questo mese",
+    "incomeSubtitle": "Totale ricevuto questo mese",
+    "expensesSubtitle": "Totale speso questo mese",
+    "yourAccess": "Il Tuo Accesso",
+    "active": "Attivo",
+    "fullAccess": "Accesso completo",
+    "limitedAccess": "Accesso limitato",
+    "manageSubscription": "Gestisci abbonamento"
   },
-  "phone": { "label": "WhatsApp", "placeholder": "Inserisci il tuo numero con prefisso", "selectCountry": "Seleziona paese", "searchCountry": "Cerca paese...", "noCountryFound": "Paese non trovato", "errorInvalid": "Numero di telefono non valido. Verifica il formato.", "errorTooShort": "Numero incompleto.", "errorRequired": "WhatsApp è obbligatorio per ricevere il codice di verifica", "errorAlreadyLinked": "Questo WhatsApp è già collegato a un altro account", "wrongCountryWarning": "Hai selezionato un paese diverso. Verifica se è corretto.", "tooltipHelp": "Inserisci solo numeri con prefisso.", "error": { "invalid": "Sembra mancare qualche cifra. Controlla il prefisso e il numero", "required": "Si prega di fornire il proprio WhatsApp", "wrongCountry": "Verifica di aver selezionato il paese corretto" }, "helper": "Seleziona il tuo paese e inserisci il numero completo" },
-  "recurring": { "title": "Conti Fissi", "description": "Gestisci le tue entrate e spese ricorrenti", "add": "Nuovo Conto Fisso", "edit": "Modifica Conto Fisso", "delete": "Rimuovi Conto Fisso", "payBill": "Segna come Pagato", "postpone": "Rimanda", "pause": "Pausa", "resume": "Riprendi", "loading": "Caricamento conti fissi...", "registeredBills": "Conti Registrati", "noBills": "Nessun conto fisso registrato", "createFirst": "Crea Primo Conto", "upcomingDue": "Prossime Scadenze", "noPendingDue": "Nessuna scadenza in sospeso", "deleteConfirmTitle": "Rimuovi Conto Fisso", "deleteConfirmDesc": "Sei sicuro di voler rimuovere questo conto fisso? Tutte le istanze in sospeso verranno rimosse. Questa azione non può essere annullata.", "postponeTitle": "Rimanda Scadenza", "postponeNewDate": "Nuova Data di Scadenza", "postponeNotes": "Nota (opzionale)", "postponeReason": "Motivo del rinvio...", "confirm": "Conferma", "columns": { "bill": "Conto", "dueDate": "Scadenza", "amount": "Importo", "title": "Titolo", "type": "Tipo", "frequency": "Frequenza", "status": "Stato", "actions": "Azioni" }, "type": { "expense": "Spesa", "income": "Entrata" }, "frequency": { "daily": "Giornaliera", "weekly": "Settimanale", "monthly": "Mensile", "yearly": "Annuale", "custom": "Personalizzata" }, "status": { "active": "Attivo", "paused": "In pausa", "paid": "Pagato", "scheduled": "Programmato", "postponed": "Rimandato", "overdue": "Scaduto" }, "form": { "title": "Titolo", "titlePlaceholder": "Es: Affitto, Abbonamento...", "type": "Tipo", "amount": "Importo (€)", "amountPlaceholder": "0,00", "category": "Categoria", "categoryPlaceholder": "Seleziona una categoria", "frequencyLabel": "Frequenza", "dayOfMonth": "Giorno del Mese", "dayOfWeek": "Giorno della Settimana", "intervalDays": "Intervallo (giorni)", "startDate": "Data di Inizio", "endDate": "Data di Fine (opzionale)", "notes": "Note", "notesPlaceholder": "Informazioni aggiuntive...", "saveChanges": "Salva Modifiche", "createBill": "Crea Conto Fisso", "sunday": "Domenica", "monday": "Lunedì", "tuesday": "Martedì", "wednesday": "Mercoledì", "thursday": "Giovedì", "friday": "Venerdì", "saturday": "Sabato" } },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "dashboardDesc": "Panoramica finanziaria",
+    "transactions": "Transazioni",
+    "transactionsDesc": "Movimenti e registrazioni",
+    "categories": "Categorie",
+    "categoriesDesc": "Gestisci categorie",
+    "reports": "Rapporti",
+    "reportsDesc": "Analisi e grafici",
+    "profile": "Profilo",
+    "profileDesc": "Impostazioni personali",
+    "admin": "Admin",
+    "adminDesc": "Pannello amministrativo",
+    "newTransaction": "Nuova Transazione",
+    "subtitle": "La tua assistente personale",
+    "goals": "Obiettivi",
+    "goalsDesc": "Obiettivi mensili"
+  },
+  "chart": {
+    "incomeVsExpenses": "Entrate vs Spese",
+    "byCategory": "Per Categoria",
+    "noCategory": "Senza Categoria",
+    "addTransactions": "Aggiungi transazioni per vedere i grafici",
+    "financialChart": "Grafico Finanziario",
+    "howIsYourMoney": "Come stanno le tue finanze questo mese"
+  },
+  "transactionList": {
+    "noTransactions": "Nessuna transazione trovata",
+    "noTransactionsYet": "Non hai ancora movimenti. Che ne dici di registrare il primo?",
+    "searchNoResults": "Non abbiamo trovato nulla. Prova con altri termini.",
+    "yesterday": "Ieri",
+    "yourLatestMovements": "I tuoi ultimi movimenti",
+    "viewAllTransactions": "Vedi tutte le transazioni",
+    "yourTransactions": "Le Tue Transazioni",
+    "allIncomeAndExpenses": "Tutte le tue entrate e spese",
+    "activeFilters": "Hai filtri attivi",
+    "filtersHiding": "Le transazioni potrebbero essere nascoste dai filtri applicati.",
+    "clearAllFilters": "Cancella tutti i filtri",
+    "totalTransactions": "Ci sono {{count}} transazioni in totale",
+    "tryReload": "Prova a ricaricare per vedere le transazioni più recenti.",
+    "reloadTransactions": "Ricarica transazioni",
+    "showing": "Mostrando {{start}}-{{end}} di {{total}} transazioni",
+    "allTransactions": "Tutte le Transazioni",
+    "ofTotal": "{{filtered}} di {{total}} transazioni",
+    "activeFiltersInfo": "Filtri attivi:",
+    "showingFiltered": "Mostrando {{filtered}} di {{total}} transazioni",
+    "clearFilters": "Cancella filtri",
+    "latestTransactions": "Ultime Transazioni",
+    "recentTransactions": "Transazioni Recenti",
+    "yourConversations": "Le tue transazioni finanziarie"
+  },
+  "filters": {
+    "filters": "Filtri",
+    "activeFilter": "filtro attivo",
+    "activeFilters": "filtri attivi",
+    "clearFilters": "Cancella filtri",
+    "period": "Periodo",
+    "all": "Tutti",
+    "today": "Oggi",
+    "week": "Settimana",
+    "month": "Mese",
+    "lastMonth": "Mese scorso",
+    "type": "Tipo",
+    "allTransactions": "Tutte le transazioni",
+    "allConversations": "Tutte le conversazioni",
+    "onlyIncome": "Solo Entrate",
+    "onlyExpenses": "Solo Spese",
+    "search": "Cerca",
+    "searchPlaceholder": "Scrivi per cercare..."
+  },
+  "transactions": {
+    "add": "Nuova Transazione",
+    "list": "Tutte le Transazioni",
+    "edit": "Modifica Transazione",
+    "delete": "Elimina Transazione",
+    "title": "Titolo",
+    "amount": "Importo",
+    "date": "Data",
+    "category": "Categoria",
+    "type": "Tipo",
+    "income": "Entrata",
+    "expense": "Spesa",
+    "description": "Descrizione"
+  },
+  "auth": {
+    "login": "Accedi",
+    "logout": "Esci",
+    "signup": "Registrati",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Password dimenticata",
+    "resetPassword": "Reimposta password"
+  },
+  "common": {
+    "save": "Salva",
+    "cancel": "Annulla",
+    "delete": "Elimina",
+    "edit": "Modifica",
+    "create": "Crea",
+    "search": "Cerca",
+    "loading": "Caricamento...",
+    "noData": "Nessun dato trovato",
+    "error": "Errore",
+    "success": "Successo",
+    "genericError": "Non è stato possibile completare l'azione. Riprova.",
+    "back": "Indietro"
+  },
+  "admin": {
+    "title": "Pannello Amministrativo",
+    "subtitle": "Gestisci utenti, abbonamenti e visualizza statistiche",
+    "stats": "Statistiche",
+    "users": "Utenti",
+    "subscriptions": "Abbonamenti",
+    "plans": "Piani",
+    "team": "Team",
+    "totalUsers": "Totale Utenti",
+    "premiumUsers": "Utenti Premium",
+    "noSubscriptionUsers": "Senza Abbonamento",
+    "monthlyRevenue": "Entrate Mensili",
+    "userDistribution": "Distribuzione Utenti",
+    "generalSummary": "Riepilogo Generale",
+    "noSubscription": "Senza abbonamento",
+    "totalTransactions": "Totale Transazioni",
+    "conversionRate": "Tasso di Conversione",
+    "userManagement": "Gestione Utenti",
+    "loadingUsers": "Caricamento utenti...",
+    "loadingSubscriptions": "Caricamento abbonamenti...",
+    "name": "Nome",
+    "email": "Email",
+    "status": "Stato",
+    "registration": "Registrazione",
+    "actions": "Azioni",
+    "noEmail": "Senza email",
+    "noName": "Senza nome",
+    "premium": "Premium",
+    "admin_role": "Admin",
+    "master": "Master",
+    "cannotChangeMaster": "Non è possibile modificare il ruolo dell'utente master.",
+    "roleChanged": "Ruolo cambiato in {{role}} con successo!",
+    "roleChangeError": "Errore nell'aggiornamento del permesso",
+    "cannotDeleteSelf": "Non puoi eliminare il tuo account dal pannello admin",
+    "cannotDeleteMaster": "Non è possibile eliminare l'utente master",
+    "deleteConfirmTitle": "ATTENZIONE: Stai per ELIMINARE permanentemente:",
+    "deleteConfirmEmail": "Email: {{email}}",
+    "deleteConfirmId": "ID: {{id}}",
+    "deleteConfirmWarning": "Questo ELIMINERÀ tutti i dati dell'utente. Questa azione è IRREVERSIBILE! Vuoi continuare?",
+    "userDeleted": "Utente {{email}} eliminato permanentemente",
+    "deleteError": "Errore nell'eliminazione dell'utente",
+    "deleteUserTitle": "Elimina utente permanentemente",
+    "activeSubscriptions": "Abbonamenti Attivi",
+    "noActiveSubscriptions": "Nessun abbonamento attivo al momento",
+    "recentInactiveSubscriptions": "Abbonamenti Recenti (Non Attivi)",
+    "user": "Utente",
+    "plan": "Piano",
+    "cycle": "Ciclo",
+    "nextPayment": "Prossimo Pagamento",
+    "creationDate": "Data di Creazione",
+    "monthly": "Mensile",
+    "yearly": "Annuale",
+    "active": "Attivo",
+    "canceled": "Cancellato",
+    "cancelSubscription": "Cancella",
+    "subscriptionCanceled": "Abbonamento cancellato con successo!",
+    "cancelError": "Errore nella cancellazione dell'abbonamento",
+    "unknown": "Sconosciuto",
+    "loadError": "Errore nel caricamento",
+    "loadUsersError": "Errore nel caricamento utenti",
+    "loadSubscriptionsError": "Errore nel caricamento abbonamenti",
+    "messages": {
+      "tab": "Messaggi",
+      "title": "Messaggi di contatto",
+      "subtitle": "Messaggi ricevuti dal modulo del sito",
+      "search": "Cerca per nome, email o oggetto",
+      "empty": "Nessun messaggio trovato",
+      "error": "Errore nel caricamento dei messaggi",
+      "retry": "Riprova",
+      "updated": "Messaggio aggiornato",
+      "deleted": "Messaggio eliminato",
+      "pageOf": "Pagina {{current}} di {{total}}",
+      "filters": {
+        "all": "Tutti",
+        "new": "Nuovi",
+        "read": "Letti",
+        "replied": "Risposti",
+        "archived": "Archiviati"
+      },
+      "status": {
+        "new": "Nuovo",
+        "read": "Letto",
+        "replied": "Risposto",
+        "archived": "Archiviato"
+      },
+      "actions": {
+        "markRead": "Segna come letto",
+        "markReplied": "Segna come risposto",
+        "archive": "Archivia",
+        "delete": "Elimina",
+        "reply": "Rispondi via email"
+      }
+    }
+  },
+  "whatsapp": {
+    "title": "WhatsApp",
+    "connect": "Connetti WhatsApp",
+    "disconnect": "Disconnetti",
+    "connected": "Connesso",
+    "notConnected": "Non connesso",
+    "linkedTo": "Collegato a",
+    "changeOrg": "Cambia Organizzazione",
+    "lastActivity": "Ultima attività",
+    "quickGuide": "Guida Rapida",
+    "addTransactions": "Aggiungi Transazioni",
+    "ocr": "Ricevuta (OCR)",
+    "editDelete": "Modifica/Elimina",
+    "queries": "Query e Report",
+    "setupIn2Min": "Configura in 2 minuti",
+    "afterConnect": "Dopo la connessione, potrai:",
+    "addByVoice": "Aggiungere transazioni con voce o testo",
+    "sendReceipts": "Inviare foto di ricevute (OCR automatico)",
+    "checkBalance": "Consultare saldo e report istantaneamente",
+    "phoneLabel": "Numero WhatsApp",
+    "phonePlaceholder": "5511999999999",
+    "phoneFormat": "Formato internazionale (senza +): 5511999999999",
+    "codeLabel": "Codice di verifica",
+    "codePlaceholder": "123456",
+    "codeHint": "Inserisci il codice di 6 cifre generato",
+    "sending": "Invio...",
+    "verifyCode": "Verifica Codice",
+    "number": "Numero",
+    "sendHelpHint": "Invia \"aiuto\" su WhatsApp per vedere questa lista anche lì!",
+    "cmdAddExpense": "\"speso 50 supermercato\" - aggiunge spesa",
+    "cmdAddIncome": "\"entrata 1000 stipendio\" - aggiunge entrata",
+    "cmdAddPlus": "\"+100 freelance\" - aggiunge entrata",
+    "cmdAddMinus": "\"-30 carburante oggi\" - aggiunge spesa",
+    "cmdOcrStep1": "Scatta una foto della ricevuta",
+    "cmdOcrStep2": "Invia l'immagine via WhatsApp",
+    "cmdOcrStep3": "L'IA estrae importo, luogo e categoria automaticamente!",
+    "cmdEditLast": "\"modifica ultima\" - modifica l'ultima transazione",
+    "cmdDeleteLast": "\"elimina ultima\" - elimina l'ultima transazione",
+    "cmdBalance": "\"saldo\" - vedi saldo attuale",
+    "cmdToday": "\"oggi\" - report giornaliero",
+    "cmdWeek": "\"settimana\" - report settimanale",
+    "cmdMonth": "\"mese\" - report mensile",
+    "disconnected": "WhatsApp disconnesso",
+    "disconnectedDesc": "Puoi riconnetterti con un altro numero quando vuoi",
+    "cannotDisconnect": "Impossibile disconnettere",
+    "numberRequired": "Numero necessario",
+    "numberRequiredDesc": "Inserisci il tuo numero WhatsApp",
+    "codeSent": "Codice inviato!",
+    "codeSentDesc": "Verifica il codice generato e inseriscilo qui sotto",
+    "numberNotRegistered": "Numero non registrato",
+    "numberNotRegisteredDesc": "Aggiorna il numero nel profilo e riprova",
+    "connectedSuccess": "🎉 WhatsApp connesso!",
+    "connectedSuccessDesc": "Ora puoi gestire le tue finanze via WhatsApp. Invia 'aiuto' per vedere i comandi.",
+    "invalidCode": "Codice non valido",
+    "invalidCodeDesc": "Verifica il codice e riprova",
+    "codeRequired": "Codice necessario",
+    "codeRequiredDesc": "Inserisci il codice di 6 cifre",
+    "lessThan1Hour": "meno di 1 ora fa",
+    "oneHourAgo": "1 ora fa",
+    "hoursAgo": "{{count}} ore fa",
+    "oneDayAgo": "1 giorno fa",
+    "daysAgo": "{{count}} giorni fa"
+  },
+  "phone": {
+    "label": "WhatsApp",
+    "placeholder": "Inserisci il tuo numero con prefisso",
+    "selectCountry": "Seleziona paese",
+    "searchCountry": "Cerca paese...",
+    "noCountryFound": "Paese non trovato",
+    "errorInvalid": "Numero di telefono non valido. Verifica il formato.",
+    "errorTooShort": "Numero incompleto.",
+    "errorRequired": "WhatsApp è obbligatorio per ricevere il codice di verifica",
+    "errorAlreadyLinked": "Questo WhatsApp è già collegato a un altro account",
+    "wrongCountryWarning": "Hai selezionato un paese diverso. Verifica se è corretto.",
+    "tooltipHelp": "Inserisci solo numeri con prefisso.",
+    "error": {
+      "invalid": "Sembra mancare qualche cifra. Controlla il prefisso e il numero",
+      "required": "Si prega di fornire il proprio WhatsApp",
+      "wrongCountry": "Verifica di aver selezionato il paese corretto"
+    },
+    "helper": "Seleziona il tuo paese e inserisci il numero completo"
+  },
+  "recurring": {
+    "title": "Conti Fissi",
+    "description": "Gestisci le tue entrate e spese ricorrenti",
+    "add": "Nuovo Conto Fisso",
+    "edit": "Modifica Conto Fisso",
+    "delete": "Rimuovi Conto Fisso",
+    "payBill": "Segna come Pagato",
+    "postpone": "Rimanda",
+    "pause": "Pausa",
+    "resume": "Riprendi",
+    "loading": "Caricamento conti fissi...",
+    "registeredBills": "Conti Registrati",
+    "noBills": "Nessun conto fisso registrato",
+    "createFirst": "Crea Primo Conto",
+    "upcomingDue": "Prossime Scadenze",
+    "noPendingDue": "Nessuna scadenza in sospeso",
+    "deleteConfirmTitle": "Rimuovi Conto Fisso",
+    "deleteConfirmDesc": "Sei sicuro di voler rimuovere questo conto fisso? Tutte le istanze in sospeso verranno rimosse. Questa azione non può essere annullata.",
+    "postponeTitle": "Rimanda Scadenza",
+    "postponeNewDate": "Nuova Data di Scadenza",
+    "postponeNotes": "Nota (opzionale)",
+    "postponeReason": "Motivo del rinvio...",
+    "confirm": "Conferma",
+    "columns": {
+      "bill": "Conto",
+      "dueDate": "Scadenza",
+      "amount": "Importo",
+      "title": "Titolo",
+      "type": "Tipo",
+      "frequency": "Frequenza",
+      "status": "Stato",
+      "actions": "Azioni"
+    },
+    "type": {
+      "expense": "Spesa",
+      "income": "Entrata"
+    },
+    "frequency": {
+      "daily": "Giornaliera",
+      "weekly": "Settimanale",
+      "monthly": "Mensile",
+      "yearly": "Annuale",
+      "custom": "Personalizzata"
+    },
+    "status": {
+      "active": "Attivo",
+      "paused": "In pausa",
+      "paid": "Pagato",
+      "scheduled": "Programmato",
+      "postponed": "Rimandato",
+      "overdue": "Scaduto"
+    },
+    "form": {
+      "title": "Titolo",
+      "titlePlaceholder": "Es: Affitto, Abbonamento...",
+      "type": "Tipo",
+      "amount": "Importo (€)",
+      "amountPlaceholder": "0,00",
+      "category": "Categoria",
+      "categoryPlaceholder": "Seleziona una categoria",
+      "frequencyLabel": "Frequenza",
+      "dayOfMonth": "Giorno del Mese",
+      "dayOfWeek": "Giorno della Settimana",
+      "intervalDays": "Intervallo (giorni)",
+      "startDate": "Data di Inizio",
+      "endDate": "Data di Fine (opzionale)",
+      "notes": "Note",
+      "notesPlaceholder": "Informazioni aggiuntive...",
+      "saveChanges": "Salva Modifiche",
+      "createBill": "Crea Conto Fisso",
+      "sunday": "Domenica",
+      "monday": "Lunedì",
+      "tuesday": "Martedì",
+      "wednesday": "Mercoledì",
+      "thursday": "Giovedì",
+      "friday": "Venerdì",
+      "saturday": "Sabato"
+    }
+  },
   "profile": {
-    "language": "Lingua", "languageDesc": "Seleziona la lingua preferita",
-    "title": "Informazioni del Profilo", "description": "Gestisci le tue informazioni personali e i dati di contatto",
-    "email": "Email", "emailReadonly": "L'email non può essere modificata", "fullName": "Nome Completo", "fullNamePlaceholder": "Inserisci il tuo nome completo",
-    "security": "Sicurezza", "securityDesc": "Aggiorna la tua password", "securityHint": "💡 Lascia i campi password vuoti se non vuoi cambiarla",
-    "currentPassword": "Password Attuale", "currentPasswordRequired": "Obbligatorio per cambiare la password per sicurezza", "currentPasswordPlaceholder": "Inserisci la password attuale",
-    "newPassword": "Nuova Password", "newPasswordPlaceholder": "Inserisci la nuova password", "confirmPassword": "Conferma Nuova Password", "confirmPasswordPlaceholder": "Conferma la nuova password",
-    "saving": "Salvataggio...", "saveChanges": "💾 Salva Modifiche", "savedSuccess": "✅ Modifiche salvate!", "savedWithPassword": "Profilo e password aggiornati. Sarai reindirizzato per il login...", "savedProfile": "Informazioni del profilo aggiornate",
-    "saveError": "Errore nel salvare le modifiche", "passwordCurrentRequired": "Inserisci la password attuale per cambiarla", "passwordMinLength": "La nuova password deve avere almeno 8 caratteri", "passwordMismatch": "Le password non corrispondono", "passwordWrong": "Password attuale errata. Verifica e riprova.",
-    "whatsappConfig": "Configurazione WhatsApp", "whatsappConfigDesc": "Configura il tuo WhatsApp per gestire le finanze via messaggio.",
-    "status": "Stato", "connectedStatus": "✅ Connesso", "disconnectedStatus": "❌ Disconnesso", "connectedToNumber": "WhatsApp connesso al numero:", "disconnectWhatsApp": "Disconnetti WhatsApp", "disconnecting": "Disconnessione...",
-    "whatsappPhone": "Numero WhatsApp", "whatsappPhonePlaceholder": "5511999999999", "whatsappPhoneFormat": "Formato internazionale senza + (es: 5511999999999)",
-    "sendVerificationCode": "📲 Invia Codice di Verifica", "codeSentTo": "✅ Codice inviato a", "verificationCode6Digits": "Codice di Verifica (6 cifre)", "verifyCodeBtn": "✅ Verifica Codice", "changeNumber": "Cambia Numero", "didntReceive": "Non l'hai ricevuto? Attendi 30 secondi e richiedi di nuovo",
-    "howToUse": "💡 Come usare", "availableCommands": "📋 Comandi Disponibili", "hideCommands": "Nascondi", "showCommands": "Vedi comandi",
-    "cmdTransactions": "📝 Transazioni", "cmdQueries": "📊 Consulte", "cmdExpense": "\"speso 50 supermercato\"", "cmdIncome": "\"entrata 1000 stipendio\"", "cmdPlus": "\"+100 freelance\"", "cmdMinus": "\"-30 carburante\"", "cmdBalance": "\"saldo\" - Vedi saldo attuale", "cmdReport": "\"report\" - Riepilogo mensile", "cmdHelp": "\"aiuto\" - Lista comandi",
-    "subscription": "Il Mio Abbonamento", "subscriptionDesc": "Gestisci il tuo piano e vedi le funzionalità disponibili", "billingCycleYearly": "Annuale", "billingCycleMonthly": "Mensile", "premium": "Premium", "trial": "Trial", "free": "Nessun abbonamento", "renewsOn": "Rinnovo il:", "planUsage": "Utilizzo del Piano", "availableResources": "Funzionalità Disponibili", "bankIntegration": "Integrazione Bancaria", "prioritySupport": "Supporto Prioritario", "manageSubscription": "Gestisci Abbonamento", "opening": "Apertura...", "portalOpened": "Portale aperto!", "portalOpenedDesc": "Gestisci il tuo abbonamento nella nuova scheda", "portalError": "Errore nell'apertura del portale", "portalErrorDesc": "Riprova più tardi", "subscriptionId": "ID Abbonamento:",
-    "maintenance": "Manutenzione del Sistema", "maintenanceDesc": "Strumenti per risolvere problemi di cache e aggiornamento", "updateApp": "Aggiorna App", "updateAppDesc": "Cancella tutte le cache e forza il caricamento della versione più recente.", "forceUpdate": "Forza Aggiornamento Completo", "forceUpdateWarning": "⚠️ Questo cancellerà tutti i dati memorizzati localmente e ricaricherà la pagina", "updating": "🔄 Aggiornamento app...", "updatingDesc": "Ricaricamento con l'ultima versione",
-    "noRecentActivity": "Nessuna attività recente", "activeNow": "Attivo ora", "activeMinAgo": "Attivo {{count}} min fa", "activeHoursAgo": "Attivo {{count}}h fa", "activeDaysAgo": "Attivo {{count}}g fa", "sessionExpired": "Sessione scaduta - Riconvalida",
-    "numberAlreadyRegistered": "Numero già registrato", "numberAlreadyRegisteredDesc": "Questo WhatsApp è già collegato all'account {{email}}. Disconnettilo prima.", "whatsappInUse": "WhatsApp in uso", "whatsappInUseDesc": "Questo WhatsApp è già connesso a un altro account. Disconnettilo prima.", "whatsappAuthenticated": "✅ WhatsApp autenticato!", "whatsappAuthenticatedDesc": "Ora puoi gestire le tue finanze via WhatsApp", "whatsappDisconnected": "✅ WhatsApp disconnesso", "whatsappDisconnectedDesc": "Ora puoi cambiare il numero o riconnetterti", "disconnectError": "Errore nella disconnessione"
+    "language": "Lingua",
+    "languageDesc": "Seleziona la lingua preferita",
+    "title": "Informazioni del Profilo",
+    "description": "Gestisci le tue informazioni personali e i dati di contatto",
+    "email": "Email",
+    "emailReadonly": "L'email non può essere modificata",
+    "fullName": "Nome Completo",
+    "fullNamePlaceholder": "Inserisci il tuo nome completo",
+    "security": "Sicurezza",
+    "securityDesc": "Aggiorna la tua password",
+    "securityHint": "💡 Lascia i campi password vuoti se non vuoi cambiarla",
+    "currentPassword": "Password Attuale",
+    "currentPasswordRequired": "Obbligatorio per cambiare la password per sicurezza",
+    "currentPasswordPlaceholder": "Inserisci la password attuale",
+    "newPassword": "Nuova Password",
+    "newPasswordPlaceholder": "Inserisci la nuova password",
+    "confirmPassword": "Conferma Nuova Password",
+    "confirmPasswordPlaceholder": "Conferma la nuova password",
+    "saving": "Salvataggio...",
+    "saveChanges": "💾 Salva Modifiche",
+    "savedSuccess": "✅ Modifiche salvate!",
+    "savedWithPassword": "Profilo e password aggiornati. Sarai reindirizzato per il login...",
+    "savedProfile": "Informazioni del profilo aggiornate",
+    "saveError": "Errore nel salvare le modifiche",
+    "passwordCurrentRequired": "Inserisci la password attuale per cambiarla",
+    "passwordMinLength": "La nuova password deve avere almeno 8 caratteri",
+    "passwordMismatch": "Le password non corrispondono",
+    "passwordWrong": "Password attuale errata. Verifica e riprova.",
+    "whatsappConfig": "Configurazione WhatsApp",
+    "whatsappConfigDesc": "Configura il tuo WhatsApp per gestire le finanze via messaggio.",
+    "status": "Stato",
+    "connectedStatus": "✅ Connesso",
+    "disconnectedStatus": "❌ Disconnesso",
+    "connectedToNumber": "WhatsApp connesso al numero:",
+    "disconnectWhatsApp": "Disconnetti WhatsApp",
+    "disconnecting": "Disconnessione...",
+    "whatsappPhone": "Numero WhatsApp",
+    "whatsappPhonePlaceholder": "5511999999999",
+    "whatsappPhoneFormat": "Formato internazionale senza + (es: 5511999999999)",
+    "sendVerificationCode": "📲 Invia Codice di Verifica",
+    "codeSentTo": "✅ Codice inviato a",
+    "verificationCode6Digits": "Codice di Verifica (6 cifre)",
+    "verifyCodeBtn": "✅ Verifica Codice",
+    "changeNumber": "Cambia Numero",
+    "didntReceive": "Non l'hai ricevuto? Attendi 30 secondi e richiedi di nuovo",
+    "howToUse": "💡 Come usare",
+    "availableCommands": "📋 Comandi Disponibili",
+    "hideCommands": "Nascondi",
+    "showCommands": "Vedi comandi",
+    "cmdTransactions": "📝 Transazioni",
+    "cmdQueries": "📊 Consulte",
+    "cmdExpense": "\"speso 50 supermercato\"",
+    "cmdIncome": "\"entrata 1000 stipendio\"",
+    "cmdPlus": "\"+100 freelance\"",
+    "cmdMinus": "\"-30 carburante\"",
+    "cmdBalance": "\"saldo\" - Vedi saldo attuale",
+    "cmdReport": "\"report\" - Riepilogo mensile",
+    "cmdHelp": "\"aiuto\" - Lista comandi",
+    "subscription": "Il Mio Abbonamento",
+    "subscriptionDesc": "Gestisci il tuo piano e vedi le funzionalità disponibili",
+    "billingCycleYearly": "Annuale",
+    "billingCycleMonthly": "Mensile",
+    "premium": "Premium",
+    "trial": "Trial",
+    "free": "Nessun abbonamento",
+    "renewsOn": "Rinnovo il:",
+    "planUsage": "Utilizzo del Piano",
+    "availableResources": "Funzionalità Disponibili",
+    "bankIntegration": "Integrazione Bancaria",
+    "prioritySupport": "Supporto Prioritario",
+    "manageSubscription": "Gestisci Abbonamento",
+    "opening": "Apertura...",
+    "portalOpened": "Portale aperto!",
+    "portalOpenedDesc": "Gestisci il tuo abbonamento nella nuova scheda",
+    "portalError": "Errore nell'apertura del portale",
+    "portalErrorDesc": "Riprova più tardi",
+    "subscriptionId": "ID Abbonamento:",
+    "maintenance": "Manutenzione del Sistema",
+    "maintenanceDesc": "Strumenti per risolvere problemi di cache e aggiornamento",
+    "updateApp": "Aggiorna App",
+    "updateAppDesc": "Cancella tutte le cache e forza il caricamento della versione più recente.",
+    "forceUpdate": "Forza Aggiornamento Completo",
+    "forceUpdateWarning": "⚠️ Questo cancellerà tutti i dati memorizzati localmente e ricaricherà la pagina",
+    "updating": "🔄 Aggiornamento app...",
+    "updatingDesc": "Ricaricamento con l'ultima versione",
+    "noRecentActivity": "Nessuna attività recente",
+    "activeNow": "Attivo ora",
+    "activeMinAgo": "Attivo {{count}} min fa",
+    "activeHoursAgo": "Attivo {{count}}h fa",
+    "activeDaysAgo": "Attivo {{count}}g fa",
+    "sessionExpired": "Sessione scaduta - Riconvalida",
+    "numberAlreadyRegistered": "Numero già registrato",
+    "numberAlreadyRegisteredDesc": "Questo WhatsApp è già collegato all'account {{email}}. Disconnettilo prima.",
+    "whatsappInUse": "WhatsApp in uso",
+    "whatsappInUseDesc": "Questo WhatsApp è già connesso a un altro account. Disconnettilo prima.",
+    "whatsappAuthenticated": "✅ WhatsApp autenticato!",
+    "whatsappAuthenticatedDesc": "Ora puoi gestire le tue finanze via WhatsApp",
+    "whatsappDisconnected": "✅ WhatsApp disconnesso",
+    "whatsappDisconnectedDesc": "Ora puoi cambiare il numero o riconnetterti",
+    "disconnectError": "Errore nella disconnessione"
   },
   "welcome": {
     "title": "Benvenuto{{name}}!",
@@ -171,18 +598,236 @@
     "viewSubscription": "Vedi il mio abbonamento"
   },
   "landing": {
-    "nav": { "howItWorks": "Come funziona", "plans": "Piani", "contact": "Contatto" },
-    "hero": { "title": "Hai un'assistente personale che lavora", "highlight": "24 ore su 24", "titleEnd": "per te", "subtitle": "Gestisci le tue finanze in modo intelligente con Dona Wilma", "viewPlans": "Vedi piani", "learnMore": "Scopri di più", "badge": "Intelligenza Artificiale per la tua vita", "socialProofCount": "+500", "socialProofLabel": "utenti attivi", "floatingWhatsapp": "WhatsApp", "floatingMessage": "Speso 50 al supermercato", "floatingSuccess": "Registrato!" },
-    "howItWorks": { "subtitle": "Semplifica la tua vita con la tecnologia che lavora per te" },
-    "features": { "financial": { "tag": "FINANZIARIO", "title": "Controllo Finanziario su WhatsApp", "description": "Registra entrate e spese con messaggi come 'speso 50 al supermercato' direttamente su WhatsApp. L'IA capisce, categorizza e registra tutto automaticamente.", "h1": "Categorizzazione intelligente con IA", "h2": "Report per categoria", "h3": "Integrazione con il pannello web" }, "records": { "tag": "REGISTRI", "title": "Registra tutto su WhatsApp", "description": "Invia un messaggio e il nostro assistente registra tutto automaticamente.", "h1": "Testo o audio, scegli tu", "h2": "Categorizzazione intelligente", "h3": "Veloce, pratico e senza complicazioni" }, "dashboard": { "tag": "PANNELLO", "title": "Pannello Professionale", "description": "Visualizza report, grafici e dettagli delle tue transazioni con pochi clic.", "h1": "Grafici del flusso di cassa", "h2": "Vista per categoria", "h3": "Dettaglio per periodo", "h4": "Pratico e accessibile" }, "categories": { "tag": "CATEGORIE", "title": "Categorie Personalizzate", "description": "Usa quelle già pronte o creane quante vuoi.", "h1": "Categorie illimitate", "h2": "Classificazione automatica con IA", "h3": "Registrazione automatica su WhatsApp" } },
-    "howItWorksPractice": { "title": "Come funziona nella pratica", "subtitle": "In 3 semplici passaggi, organizzi la tua vita finanziaria" },
-    "plans": { "title": "Scegli il tuo piano", "subtitle": "Tutto ciò di cui hai bisogno in un unico piano", "sectionTitle": "La tua vita finanziaria sotto controllo.", "sectionSubtitle": "Senza fogli di calcolo. Senza complicazioni.", "monthlyTitle": "Premium Mensile", "annualTitle": "Premium Annuale", "bestValue": "Miglior valore", "perYear": "/anno", "equivalentTo": "Equivalente a", "chargedAnnually": "Fatturato annualmente.", "cancelAnytime": "Cancella quando vuoi", "noCommitment": "Nessun impegno a lungo termine", "startNow": "Inizia ora", "monthly": "Mensile", "yearly": "Annuale", "mostPopular": "Più popolare", "premiumTitle": "Premium", "premiumDesc": "Piano completo con tutte le funzionalità", "perMonth": "/mese", "billedAnnually": "Fatturato annualmente:", "goToPayment": "Vai al pagamento", "redirecting": "Reindirizzamento...", "couponHint": "💡 Hai un coupon? Inseriscilo nella pagina di pagamento Stripe.", "redirectingToast": "🔄 Reindirizzamento al checkout...", "redirectingToastDesc": "Attendi mentre prepariamo il tuo pagamento", "errorTitle": "❌ Errore", "errorDesc": "Non è stato possibile completare l'azione. Riprova.", "features": { "0": "Transazioni illimitate", "1": "Categorie illimitate", "2": "WhatsApp integrato", "3": "Classificazione automatica con IA", "4": "Consulenze finanziarie via WhatsApp", "5": "Supporto prioritario" }, "choosePlanTitle": "Scegli il tuo piano", "choosePlanDesc": "Gestisci le tue finanze e impegni con l'intelligenza artificiale", "securePayment": "Pagamento sicuro tramite Stripe. Cancella quando vuoi.", "termsAgreement": "Continuando, accetti i nostri termini di servizio" },
-    "faq": { "title": "Domande frequenti", "subtitle": "Risposte alle tue domande su Dona Wilma", "items": { "0": { "question": "Come funziona la sicurezza dei miei dati?", "answer": "Utilizziamo crittografia end-to-end e archiviazione sicura su Supabase, con certificazione ISO 27001." }, "1": { "question": "Posso cancellare il mio abbonamento in qualsiasi momento?", "answer": "Sì! Puoi cancellare in qualsiasi momento senza penali." }, "2": { "question": "Come funziona il WhatsApp integrato?", "answer": "Puoi registrare transazioni finanziarie e fare consulte parlando naturalmente con Dona Wilma su WhatsApp." }, "3": { "question": "Come posso provare Dona Wilma?", "answer": "Sottoscrivendo il piano, avrai accesso immediato a tutte le funzionalità di Dona Wilma." } } },
-    "interaction": { "title": "Interagisci con Dona Wilma 24 ore su 24", "subtitle": "Chiedi quello che vuoi sulle tue finanze o impegni.", "footer": "E molto altro... L'IA capisce il linguaggio naturale ed è sempre pronta ad aiutarti!", "examples": { "0": "Speso 200 con la carta", "1": "Ricevuto 10 mila di stipendio", "2": "Quanto ho speso oggi?", "3": "Saldo del mese?", "4": "Pagato 30 di benzina", "5": "Ho l'affitto il 22", "6": "Quanto ho speso questo mese?", "7": "Quali promemoria ho oggi?", "8": "Riunione domani alle 14", "9": "Ricordami di chiamare il cliente", "10": "Visita medica venerdì", "11": "Compleanno di Giovanni il 15" } },
-    "stats": { "title": "Perché scegliere Dona Wilma?", "subtitle": "Semplicità e tecnologia per facilitare la tua giornata", "items": { "0": { "title": "Direttamente su WhatsApp", "description": "Registra finanze e impegni senza aprire nessuna app" }, "1": { "title": "IA che ti capisce", "description": "Categorizzazione automatica con intelligenza artificiale" }, "2": { "title": "Disponibile 24h", "description": "La tua assistente personale che lavora tutto il tempo" }, "3": { "title": "Sicuro e privato", "description": "I tuoi dati protetti con crittografia avanzata" } } },
-    "steps": { "items": { "0": { "title": "Invia un messaggio", "description": "Manda un testo o audio su WhatsApp" }, "1": { "title": "L'IA organizza tutto", "description": "Dona Wilma capisce, categorizza e registra automaticamente" }, "2": { "title": "Segui sul pannello", "description": "Vedi grafici, report e la tua agenda completa sul pannello web" } } },
-    "footer": { "tagline": "La tua assistente personale per le finanze", "links": "Link", "terms": "Termini di Servizio", "privacy": "Informativa sulla Privacy", "copyright": "© 2025-2026 Dona Wilma. Tutti i diritti riservati.", "developedBy": "Sviluppato da" },
-    "contactSection": { "title": "Contattaci", "subtitle": "Hai domande? Scrivici", "whatsappTitle": "WhatsApp", "whatsappDesc": "Parla direttamente con Dona Wilma", "whatsappButton": "Chatta su WhatsApp", "emailTitle": "Email", "emailDesc": "Inviaci un messaggio", "emailButton": "Invia email" }
+    "nav": {
+      "howItWorks": "Come funziona",
+      "plans": "Piani",
+      "contact": "Contatto"
+    },
+    "hero": {
+      "title": "Hai un'assistente personale che lavora",
+      "highlight": "24 ore su 24",
+      "titleEnd": "per te",
+      "subtitle": "Gestisci le tue finanze in modo intelligente con Dona Wilma",
+      "viewPlans": "Vedi piani",
+      "learnMore": "Scopri di più",
+      "badge": "Intelligenza Artificiale per la tua vita",
+      "socialProofCount": "+500",
+      "socialProofLabel": "utenti attivi",
+      "floatingWhatsapp": "WhatsApp",
+      "floatingMessage": "Speso 50 al supermercato",
+      "floatingSuccess": "Registrato!"
+    },
+    "howItWorks": {
+      "subtitle": "Semplifica la tua vita con la tecnologia che lavora per te"
+    },
+    "features": {
+      "financial": {
+        "tag": "FINANZIARIO",
+        "title": "Controllo Finanziario su WhatsApp",
+        "description": "Registra entrate e spese con messaggi come 'speso 50 al supermercato' direttamente su WhatsApp. L'IA capisce, categorizza e registra tutto automaticamente.",
+        "h1": "Categorizzazione intelligente con IA",
+        "h2": "Report per categoria",
+        "h3": "Integrazione con il pannello web"
+      },
+      "records": {
+        "tag": "REGISTRI",
+        "title": "Registra tutto su WhatsApp",
+        "description": "Invia un messaggio e il nostro assistente registra tutto automaticamente.",
+        "h1": "Testo o audio, scegli tu",
+        "h2": "Categorizzazione intelligente",
+        "h3": "Veloce, pratico e senza complicazioni"
+      },
+      "dashboard": {
+        "tag": "PANNELLO",
+        "title": "Pannello Professionale",
+        "description": "Visualizza report, grafici e dettagli delle tue transazioni con pochi clic.",
+        "h1": "Grafici del flusso di cassa",
+        "h2": "Vista per categoria",
+        "h3": "Dettaglio per periodo",
+        "h4": "Pratico e accessibile"
+      },
+      "categories": {
+        "tag": "CATEGORIE",
+        "title": "Categorie Personalizzate",
+        "description": "Usa quelle già pronte o creane quante vuoi.",
+        "h1": "Categorie illimitate",
+        "h2": "Classificazione automatica con IA",
+        "h3": "Registrazione automatica su WhatsApp"
+      }
+    },
+    "howItWorksPractice": {
+      "title": "Come funziona nella pratica",
+      "subtitle": "In 3 semplici passaggi, organizzi la tua vita finanziaria"
+    },
+    "plans": {
+      "title": "Scegli il tuo piano",
+      "subtitle": "Tutto ciò di cui hai bisogno in un unico piano",
+      "sectionTitle": "La tua vita finanziaria sotto controllo.",
+      "sectionSubtitle": "Senza fogli di calcolo. Senza complicazioni.",
+      "monthlyTitle": "Premium Mensile",
+      "annualTitle": "Premium Annuale",
+      "bestValue": "Miglior valore",
+      "perYear": "/anno",
+      "equivalentTo": "Equivalente a",
+      "chargedAnnually": "Fatturato annualmente.",
+      "cancelAnytime": "Cancella quando vuoi",
+      "noCommitment": "Nessun impegno a lungo termine",
+      "startNow": "Inizia ora",
+      "monthly": "Mensile",
+      "yearly": "Annuale",
+      "mostPopular": "Più popolare",
+      "premiumTitle": "Premium",
+      "premiumDesc": "Piano completo con tutte le funzionalità",
+      "perMonth": "/mese",
+      "billedAnnually": "Fatturato annualmente:",
+      "goToPayment": "Vai al pagamento",
+      "redirecting": "Reindirizzamento...",
+      "couponHint": "💡 Hai un coupon? Inseriscilo nella pagina di pagamento Stripe.",
+      "redirectingToast": "🔄 Reindirizzamento al checkout...",
+      "redirectingToastDesc": "Attendi mentre prepariamo il tuo pagamento",
+      "errorTitle": "❌ Errore",
+      "errorDesc": "Non è stato possibile completare l'azione. Riprova.",
+      "features": {
+        "0": "Transazioni illimitate",
+        "1": "Categorie illimitate",
+        "2": "WhatsApp integrato",
+        "3": "Classificazione automatica con IA",
+        "4": "Consulenze finanziarie via WhatsApp",
+        "5": "Supporto prioritario"
+      },
+      "choosePlanTitle": "Scegli il tuo piano",
+      "choosePlanDesc": "Gestisci le tue finanze e impegni con l'intelligenza artificiale",
+      "securePayment": "Pagamento sicuro tramite Stripe. Cancella quando vuoi.",
+      "termsAgreement": "Continuando, accetti i nostri termini di servizio"
+    },
+    "faq": {
+      "title": "Domande frequenti",
+      "subtitle": "Risposte alle tue domande su Dona Wilma",
+      "items": {
+        "0": {
+          "question": "Come funziona la sicurezza dei miei dati?",
+          "answer": "Utilizziamo crittografia end-to-end e archiviazione sicura su Supabase, con certificazione ISO 27001."
+        },
+        "1": {
+          "question": "Posso cancellare il mio abbonamento in qualsiasi momento?",
+          "answer": "Sì! Puoi cancellare in qualsiasi momento senza penali."
+        },
+        "2": {
+          "question": "Come funziona il WhatsApp integrato?",
+          "answer": "Puoi registrare transazioni finanziarie e fare consulte parlando naturalmente con Dona Wilma su WhatsApp."
+        },
+        "3": {
+          "question": "Come posso provare Dona Wilma?",
+          "answer": "Sottoscrivendo il piano, avrai accesso immediato a tutte le funzionalità di Dona Wilma."
+        }
+      }
+    },
+    "interaction": {
+      "title": "Interagisci con Dona Wilma 24 ore su 24",
+      "subtitle": "Chiedi quello che vuoi sulle tue finanze o impegni.",
+      "footer": "E molto altro... L'IA capisce il linguaggio naturale ed è sempre pronta ad aiutarti!",
+      "examples": {
+        "0": "Speso 200 con la carta",
+        "1": "Ricevuto 10 mila di stipendio",
+        "2": "Quanto ho speso oggi?",
+        "3": "Saldo del mese?",
+        "4": "Pagato 30 di benzina",
+        "5": "Ho l'affitto il 22",
+        "6": "Quanto ho speso questo mese?",
+        "7": "Quali promemoria ho oggi?",
+        "8": "Riunione domani alle 14",
+        "9": "Ricordami di chiamare il cliente",
+        "10": "Visita medica venerdì",
+        "11": "Compleanno di Giovanni il 15"
+      }
+    },
+    "stats": {
+      "title": "Perché scegliere Dona Wilma?",
+      "subtitle": "Semplicità e tecnologia per facilitare la tua giornata",
+      "items": {
+        "0": {
+          "title": "Direttamente su WhatsApp",
+          "description": "Registra finanze e impegni senza aprire nessuna app"
+        },
+        "1": {
+          "title": "IA che ti capisce",
+          "description": "Categorizzazione automatica con intelligenza artificiale"
+        },
+        "2": {
+          "title": "Disponibile 24h",
+          "description": "La tua assistente personale che lavora tutto il tempo"
+        },
+        "3": {
+          "title": "Sicuro e privato",
+          "description": "I tuoi dati protetti con crittografia avanzata"
+        }
+      }
+    },
+    "steps": {
+      "items": {
+        "0": {
+          "title": "Invia un messaggio",
+          "description": "Manda un testo o audio su WhatsApp"
+        },
+        "1": {
+          "title": "L'IA organizza tutto",
+          "description": "Dona Wilma capisce, categorizza e registra automaticamente"
+        },
+        "2": {
+          "title": "Segui sul pannello",
+          "description": "Vedi grafici, report e la tua agenda completa sul pannello web"
+        }
+      }
+    },
+    "footer": {
+      "tagline": "La tua assistente personale per le finanze",
+      "links": "Link",
+      "terms": "Termini di Servizio",
+      "privacy": "Informativa sulla Privacy",
+      "copyright": "© 2025-2026 Dona Wilma. Tutti i diritti riservati.",
+      "developedBy": "Sviluppato da"
+    },
+    "contactSection": {
+      "title": "Contattaci",
+      "subtitle": "Hai una domanda, un suggerimento o vuoi saperne di più? Invia il tuo messaggio con il modulo qui sotto.",
+      "whatsappTitle": "WhatsApp",
+      "whatsappDesc": "Parla direttamente con Dona Wilma",
+      "whatsappButton": "Chatta su WhatsApp",
+      "emailTitle": "Email",
+      "emailDesc": "Inviaci un messaggio",
+      "emailButton": "Invia email",
+      "footerLink": "Invia un messaggio",
+      "submit": "Invia messaggio",
+      "submitting": "Invio in corso...",
+      "cooldown": "Attendi {{seconds}}s",
+      "sendAnother": "Invia un altro messaggio",
+      "success": "Messaggio inviato! Ti risponderemo presto.",
+      "successTitle": "Abbiamo ricevuto il tuo messaggio",
+      "fields": {
+        "name": {
+          "label": "Nome",
+          "placeholder": "Il tuo nome completo"
+        },
+        "email": {
+          "label": "Email",
+          "placeholder": "tu@esempio.com"
+        },
+        "subject": {
+          "label": "Oggetto",
+          "placeholder": "Di cosa si tratta?"
+        },
+        "message": {
+          "label": "Messaggio",
+          "placeholder": "Scrivi qui il tuo messaggio..."
+        }
+      },
+      "errors": {
+        "generic": "Impossibile inviare ora. Riprova tra poco.",
+        "rateLimit": "Hai inviato troppi messaggi in poco tempo. Attendi qualche minuto.",
+        "duplicate": "Questo messaggio è già stato inviato di recente.",
+        "validation": "Controlla i campi e riprova."
+      }
+    }
   },
   "legal": {
     "backButton": "Indietro",
@@ -190,30 +835,84 @@
       "title": "Termini di Servizio",
       "lastUpdated": "Ultimo aggiornamento: Febbraio 2025",
       "sections": {
-        "acceptance": { "title": "1. Accettazione dei Termini", "content": "Utilizzando il servizio Dona Wilma (\"Servizio\"), accetti questi Termini di Servizio. Se non sei d'accordo, non utilizzare il Servizio. Il Servizio è offerto da Aligator (\"Azienda\")." },
-        "description": { "title": "2. Descrizione del Servizio", "content": "Dona Wilma è una piattaforma di gestione finanziaria e impegni personali che utilizza l'intelligenza artificiale per categorizzare transazioni e organizzare agende. Il servizio include l'integrazione con WhatsApp, Google Calendar e pannello web." },
-        "account": { "title": "3. Registrazione e Account", "content": "Sei responsabile del mantenimento della riservatezza delle tue credenziali di accesso. Tutte le attività svolte sul tuo account sono sotto la tua responsabilità. Devi fornire informazioni veritiere e aggiornate durante la registrazione." },
-        "payment": { "title": "4. Piani e Pagamento", "content": "Il Servizio offre piani a pagamento (mensile o annuale), addebitati in modo ricorrente tramite Stripe. Puoi cancellare in qualsiasi momento tramite il portale di gestione dell'abbonamento. Non sono previsti rimborsi proporzionali per periodi già pagati." },
-        "acceptableUse": { "title": "5. Uso Accettabile", "content": "Accetti di non utilizzare il Servizio per scopi illegali, fraudolenti o che violino i diritti di terzi. L'uso abusivo del bot WhatsApp (spam, messaggi di massa) può comportare la sospensione dell'account." },
-        "ip": { "title": "6. Proprietà Intellettuale", "content": "Tutti i contenuti, il design e il codice del Servizio sono di proprietà dell'Azienda. I tuoi dati finanziari e personali rimangono di tua proprietà." },
-        "liability": { "title": "7. Limitazione di Responsabilità", "content": "Il Servizio è fornito \"così com'è\". L'Azienda non è responsabile per decisioni finanziarie prese sulla base delle informazioni del Servizio. La categorizzazione automatica tramite IA può contenere imprecisioni e deve essere verificata dall'utente." },
-        "modifications": { "title": "8. Modifiche", "content": "L'Azienda si riserva il diritto di modificare questi termini in qualsiasi momento. Le modifiche significative saranno comunicate via email o notifica nel Servizio." },
-        "contact": { "title": "9. Contatto", "content": "Per domande su questi termini, contattaci all'indirizzo: contato@donawilma.com.br" }
+        "acceptance": {
+          "title": "1. Accettazione dei Termini",
+          "content": "Utilizzando il servizio Dona Wilma (\"Servizio\"), accetti questi Termini di Servizio. Se non sei d'accordo, non utilizzare il Servizio. Il Servizio è offerto da Aligator (\"Azienda\")."
+        },
+        "description": {
+          "title": "2. Descrizione del Servizio",
+          "content": "Dona Wilma è una piattaforma di gestione finanziaria e impegni personali che utilizza l'intelligenza artificiale per categorizzare transazioni e organizzare agende. Il servizio include l'integrazione con WhatsApp, Google Calendar e pannello web."
+        },
+        "account": {
+          "title": "3. Registrazione e Account",
+          "content": "Sei responsabile del mantenimento della riservatezza delle tue credenziali di accesso. Tutte le attività svolte sul tuo account sono sotto la tua responsabilità. Devi fornire informazioni veritiere e aggiornate durante la registrazione."
+        },
+        "payment": {
+          "title": "4. Piani e Pagamento",
+          "content": "Il Servizio offre piani a pagamento (mensile o annuale), addebitati in modo ricorrente tramite Stripe. Puoi cancellare in qualsiasi momento tramite il portale di gestione dell'abbonamento. Non sono previsti rimborsi proporzionali per periodi già pagati."
+        },
+        "acceptableUse": {
+          "title": "5. Uso Accettabile",
+          "content": "Accetti di non utilizzare il Servizio per scopi illegali, fraudolenti o che violino i diritti di terzi. L'uso abusivo del bot WhatsApp (spam, messaggi di massa) può comportare la sospensione dell'account."
+        },
+        "ip": {
+          "title": "6. Proprietà Intellettuale",
+          "content": "Tutti i contenuti, il design e il codice del Servizio sono di proprietà dell'Azienda. I tuoi dati finanziari e personali rimangono di tua proprietà."
+        },
+        "liability": {
+          "title": "7. Limitazione di Responsabilità",
+          "content": "Il Servizio è fornito \"così com'è\". L'Azienda non è responsabile per decisioni finanziarie prese sulla base delle informazioni del Servizio. La categorizzazione automatica tramite IA può contenere imprecisioni e deve essere verificata dall'utente."
+        },
+        "modifications": {
+          "title": "8. Modifiche",
+          "content": "L'Azienda si riserva il diritto di modificare questi termini in qualsiasi momento. Le modifiche significative saranno comunicate via email o notifica nel Servizio."
+        },
+        "contact": {
+          "title": "9. Contatto",
+          "content": "Per domande su questi termini, contattaci all'indirizzo: contato@donawilma.com.br"
+        }
       }
     },
     "privacy": {
       "title": "Informativa sulla Privacy",
       "lastUpdated": "Ultimo aggiornamento: Febbraio 2025",
       "sections": {
-        "dataCollected": { "title": "1. Dati Raccolti", "content": "Raccogliamo i seguenti dati: email, nome, numero di telefono (WhatsApp), dati finanziari inseriti da te (transazioni, categorie), impegni e informazioni di pagamento elaborate da Stripe." },
-        "dataUsage": { "title": "2. Utilizzo dei Dati", "content": "I tuoi dati vengono utilizzati esclusivamente per: fornire il Servizio (categorizzazione, report, promemoria), elaborare pagamenti, inviare notifiche sul tuo account e impegni, e migliorare il Servizio con analisi aggregate e anonime." },
-        "sharing": { "title": "3. Condivisione", "content": "Non vendiamo né condividiamo i tuoi dati personali con terze parti per scopi di marketing. Condividiamo i dati solo con: Stripe (elaborazione pagamenti), Meta/WhatsApp (invio messaggi), Google (sincronizzazione calendario, quando autorizzato da te) e Supabase (archiviazione sicura dei dati)." },
-        "ai": { "title": "4. Intelligenza Artificiale", "content": "Utilizziamo l'IA (OpenAI) per elaborare i tuoi messaggi WhatsApp e categorizzare le transazioni. I messaggi vengono inviati in modo sicuro e non vengono utilizzati per addestrare modelli di IA di terze parti. I dati elaborati vengono archiviati solo nel tuo account." },
-        "security": { "title": "5. Sicurezza", "content": "Utilizziamo la crittografia in transito (HTTPS/TLS) e a riposo. I dati sono archiviati su server sicuri con accesso limitato. Implementiamo autenticazione sicura e politiche di accesso basate sui ruoli (RLS)." },
-        "rights": { "title": "6. I Tuoi Diritti (LGPD)", "content": "Ai sensi della Legge Generale sulla Protezione dei Dati (LGPD), hai il diritto di: accedere ai tuoi dati, correggere dati inesatti, richiedere la cancellazione dei tuoi dati, revocare il consenso e richiedere la portabilità. Per esercitare questi diritti, contattaci all'indirizzo: contato@donawilma.com.br" },
-        "cookies": { "title": "7. Cookie", "content": "Utilizziamo cookie essenziali per mantenere attiva la tua sessione di login. Non utilizziamo cookie di tracciamento o pubblicitari." },
-        "retention": { "title": "8. Conservazione dei Dati", "content": "I tuoi dati vengono conservati finché il tuo account è attivo. Dopo la cancellazione, i dati vengono conservati per 30 giorni per una possibile riattivazione e poi eliminati definitivamente." },
-        "dpo": { "title": "9. Responsabile della Protezione dei Dati (DPO)", "content": "Per questioni relative alla privacy e alla protezione dei dati, contattaci: contato@donawilma.com.br" }
+        "dataCollected": {
+          "title": "1. Dati Raccolti",
+          "content": "Raccogliamo i seguenti dati: email, nome, numero di telefono (WhatsApp), dati finanziari inseriti da te (transazioni, categorie), impegni e informazioni di pagamento elaborate da Stripe."
+        },
+        "dataUsage": {
+          "title": "2. Utilizzo dei Dati",
+          "content": "I tuoi dati vengono utilizzati esclusivamente per: fornire il Servizio (categorizzazione, report, promemoria), elaborare pagamenti, inviare notifiche sul tuo account e impegni, e migliorare il Servizio con analisi aggregate e anonime."
+        },
+        "sharing": {
+          "title": "3. Condivisione",
+          "content": "Non vendiamo né condividiamo i tuoi dati personali con terze parti per scopi di marketing. Condividiamo i dati solo con: Stripe (elaborazione pagamenti), Meta/WhatsApp (invio messaggi), Google (sincronizzazione calendario, quando autorizzato da te) e Supabase (archiviazione sicura dei dati)."
+        },
+        "ai": {
+          "title": "4. Intelligenza Artificiale",
+          "content": "Utilizziamo l'IA (OpenAI) per elaborare i tuoi messaggi WhatsApp e categorizzare le transazioni. I messaggi vengono inviati in modo sicuro e non vengono utilizzati per addestrare modelli di IA di terze parti. I dati elaborati vengono archiviati solo nel tuo account."
+        },
+        "security": {
+          "title": "5. Sicurezza",
+          "content": "Utilizziamo la crittografia in transito (HTTPS/TLS) e a riposo. I dati sono archiviati su server sicuri con accesso limitato. Implementiamo autenticazione sicura e politiche di accesso basate sui ruoli (RLS)."
+        },
+        "rights": {
+          "title": "6. I Tuoi Diritti (LGPD)",
+          "content": "Ai sensi della Legge Generale sulla Protezione dei Dati (LGPD), hai il diritto di: accedere ai tuoi dati, correggere dati inesatti, richiedere la cancellazione dei tuoi dati, revocare il consenso e richiedere la portabilità. Per esercitare questi diritti, contattaci all'indirizzo: contato@donawilma.com.br"
+        },
+        "cookies": {
+          "title": "7. Cookie",
+          "content": "Utilizziamo cookie essenziali per mantenere attiva la tua sessione di login. Non utilizziamo cookie di tracciamento o pubblicitari."
+        },
+        "retention": {
+          "title": "8. Conservazione dei Dati",
+          "content": "I tuoi dati vengono conservati finché il tuo account è attivo. Dopo la cancellazione, i dati vengono conservati per 30 giorni per una possibile riattivazione e poi eliminati definitivamente."
+        },
+        "dpo": {
+          "title": "9. Responsabile della Protezione dei Dati (DPO)",
+          "content": "Per questioni relative alla privacy e alla protezione dei dati, contattaci: contato@donawilma.com.br"
+        }
       }
     }
   },
@@ -496,6 +1195,18 @@
       "aiReports": "Report con IA",
       "googleCalendar": "Google Calendar",
       "prioritySupport": "Supporto prioritario"
+    }
+  },
+  "validation": {
+    "contact": {
+      "nameMin": "Nome troppo corto",
+      "nameMax": "Nome troppo lungo",
+      "emailInvalid": "Email non valida",
+      "emailMax": "Email troppo lunga",
+      "subjectMin": "Oggetto troppo corto",
+      "subjectMax": "Oggetto troppo lungo",
+      "messageMin": "Messaggio troppo corto (minimo 10 caratteri)",
+      "messageMax": "Messaggio troppo lungo"
     }
   }
 }

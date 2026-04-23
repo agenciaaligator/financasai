@@ -195,9 +195,12 @@ export default function Privacy() {
             </div>
             <div>
               <h3 className="font-display font-semibold text-secondary mb-5">{t('landing.nav.contact')}</h3>
-              <p className="text-sm text-white/60">
-                contato@donawilma.com.br
-              </p>
+              <button
+                onClick={() => navigate("/#contato")}
+                className="text-sm text-white/60 hover:text-white hover:translate-x-1 inline-block transition-all"
+              >
+                {t('landing.contactSection.footerLink')}
+              </button>
             </div>
           </div>
           <div className="border-t border-white/10 mt-12 pt-8 text-center text-sm text-white/50 space-y-2">
