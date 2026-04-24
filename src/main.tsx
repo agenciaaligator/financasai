@@ -150,4 +150,5 @@ if (isLogout) {
     // Renderizar app normalmente (sem background interval)
     createRoot(document.getElementById("root")!).render(<App />);
   })();
+  }
 }
