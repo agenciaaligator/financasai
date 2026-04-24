@@ -1,127 +1,78 @@
-## Diagnóstico — por que o link de reset abriu na home
+## Objetivo
+Fazer o fluxo de recuperação de senha funcionar de ponta a ponta e deixar todas as URLs/rotas alinhadas ao domínio final, preservando o que já está estável.
 
-Ao clicar no link do email, você foi para `https://donawilma.com.br/reset-password#access_token=...&type=recovery`. O esperado era ver o formulário de nova senha. Em vez disso, abriu a home.
+## Diagnóstico confirmado
+Hoje o principal bloqueio não está só no React/Supabase:
 
-**Causa raiz:** o sistema de "version check" em `src/main.tsx` detectou nova versão do app, fez `clearAllAndReload(...)` e redirecionou via `window.location.replace(targetPath + '?v=' + newVersion)`. O problema é que `window.location.replace` **descarta o `#hash`** da URL — exatamente onde o Supabase coloca o `access_token` e o `type=recovery`.
+- O app responde corretamente em `donawilma.lovable.app` nas rotas internas como `/reset-password`, `/auth/callback` e `/set-password`.
+- No domínio `donawilma.com.br`, essas rotas profundas retornam `404`.
+- O domínio ainda redireciona para `www.donawilma.com.br`, e esse host também devolve `404` nas rotas internas.
+- Resultado: quando o usuário clica no link de recuperação, o Supabase abre o domínio novo, mas esse domínio não está servindo corretamente as rotas SPA do app; por isso o fluxo quebra e o usuário acaba fora da tela esperada.
+- Além disso, ainda existem referências antigas a `donawilma.lovable.app` em funções do WhatsApp e em documentação interna, o que impede fechar a auditoria de URLs com segurança.
 
-Existe uma tentativa de preservar isso salvando `supabase_recovery_hash` no sessionStorage **antes** de limpar (linhas 76-78), e restaurando depois (86-89). Mas há duas falhas:
+## Plano
+### 1. Corrigir a origem publicada do domínio
+- Confirmar qual host será o oficial: `https://donawilma.com.br` ou `https://www.donawilma.com.br`.
+- Ajustar a publicação para que esse domínio aponte para o app que está rodando no Lovable, com fallback SPA funcionando para todas as rotas internas.
+- Validar especificamente estas rotas no domínio final:
+  - `/`
+  - `/reset-password`
+  - `/set-password`
+  - `/auth/callback`
+  - `/boas-vindas`
+  - `/payment-success`
+  - `/payment-cancelled`
+  - `/subscription-inactive`
+  - `/termos`
+  - `/privacidade`
 
-1. O `sessionStorage.clear()` na linha 83 acontece **antes** da captura do hash em `index.html` (linhas 60-71) ter chance de rodar de novo após o reload — porque o reload vai para `?v=...` **sem o hash**, então o snippet de captura no `index.html` não acha mais `type=recovery` e não re-salva nada. A primeira captura **sim** funciona (na primeira carga, antes do reload). Mas depois disso o hash é descartado da URL.
-2. O fluxo então cai em `/reset-password?v=...` **sem hash e sem flag de recovery válida** → `ResetPassword.tsx` não consegue estabelecer sessão → após 10s do timeout, faz `navigate('/')`. Como sua percepção foi "abriu a home", provavelmente caiu nesse timeout (ou no fallback).
+### 2. Fechar o fluxo de recuperação de senha no frontend
+- Revisar o fluxo atual de recovery para garantir que, ao detectar `type=recovery`, nada mais redirecione o usuário para a home antes da tela de reset.
+- Tornar o redirecionamento para `/reset-password` ainda mais defensivo para funcionar mesmo quando o link chegar por hash, sessão restaurada ou evento `PASSWORD_RECOVERY`.
+- Garantir compatibilidade entre `/reset-password` e `/set-password` sem alterar o fluxo de onboarding já funcional.
 
-Confirmação adicional: a URL que você está vendo agora é `/?v=1777043923973` — exatamente o padrão do `clearAllAndReload`.
+### 3. Padronizar URLs de autenticação no Supabase
+- Definir o `Site URL` com o domínio oficial único.
+- Revisar a lista de `Redirect URLs` para cobrir produção e, se necessário, o domínio Lovable apenas como contingência controlada.
+- Garantir que cadastro, confirmação de e-mail e recuperação de senha usem a mesma base de domínio.
 
----
+### 4. Limpar referências antigas de domínio no código
+- Substituir referências remanescentes de `donawilma.lovable.app` por URLs finais onde isso impacta usuário ou integrações.
+- Revisar especialmente:
+  - Edge functions de WhatsApp
+  - textos com links enviados ao cliente
+  - customer portal / checkout fallbacks
+  - documentação interna de configuração
 
-## Correção (1 arquivo)
+### 5. Fazer auditoria final de rotas e URLs
+- Mapear todas as rotas públicas e autenticadas do app.
+- Conferir quais dependem de acesso direto por link, e-mail, Stripe ou WhatsApp.
+- Entregar uma checklist final com o que ficou:
+  - correto no código
+  - correto no Supabase
+  - correto no domínio publicado
+  - corrigido nas integrações
 
-**`src/main.tsx`** — preservar o hash no redirect:
+## Entregáveis
+- Fluxo de “Esqueci minha senha” abrindo a tela correta no domínio final
+- Domínio oficial respondendo sem 404 nas rotas internas principais
+- URLs do Supabase alinhadas e sem conflito
+- Referências antigas ao `.lovable.app` removidas dos pontos críticos
+- Checklist final de URLs/rotas para você liberar o sistema
 
-```ts
-// linha ~110
-const targetPath = recoveryPath || window.location.pathname || '/';
-const hashToPreserve = recoveryHash || window.location.hash || '';
-window.location.replace(targetPath + '?v=' + newVersion + hashToPreserve);
+## Detalhes técnicos
+```text
+Fluxo esperado:
+Email do Supabase
+  -> domínio oficial
+  -> /reset-password ou /auth/callback com tokens/hash
+  -> app captura sessão/token
+  -> tela de redefinição
+  -> atualização de senha
+  -> redirecionamento final controlado
 ```
 
-E também: **se for um fluxo de recovery, pular o version-check e renderizar direto**, evitando o reload destrutivo logo no clique do email:
+## Observação importante
+O maior problema hoje é de publicação/domínio, não apenas de código. Mesmo com o fluxo de recovery já reforçado no app, ele continuará falhando enquanto `donawilma.com.br` e `www.donawilma.com.br` não servirem corretamente as rotas SPA do projeto.
 
-```ts
-// no início do bloco "else" (linha 124), antes do version check:
-const isRecoveryFlow = 
-  sessionStorage.getItem('supabase_recovery') === 'true' || 
-  window.location.hash.includes('type=recovery');
-
-if (isRecoveryFlow) {
-  console.log('[MAIN] Fluxo de recovery detectado - pulando version check');
-  createRoot(document.getElementById("root")!).render(<App />);
-} else {
-  // ... lógica de version check existente
-}
-```
-
-Isso resolve a raiz: durante recuperação de senha, **nada** de cache-busting acontece. O hash chega intacto em `ResetPassword.tsx` e o formulário aparece.
-
----
-
-## Revisão de todas as URLs e rotas
-
-### Redirect URLs do Supabase (sua screenshot) — ✅ OK
-
-Você já adicionou as 4 do `donawilma.com.br`:
-- `https://donawilma.com.br/**` (wildcard cobre tudo)
-- `/reset-password`, `/set-password`, `/payment-success`
-
-**Sugestão (opcional):** as URLs específicas (`reset-password`, `set-password`, `payment-success`, `boas-vindas`, `auth/callback`) já estão **cobertas pelo wildcard** `https://donawilma.com.br/**`. Pode deletar as específicas para limpar a lista — funciona igual. As do `donawilma.lovable.app` pode manter como fallback ou remover (você não usa mais).
-
-### Rotas no app — ✅ OK
-
-Todas as rotas declaradas em `App.tsx` são consistentes com o que é usado em `redirectTo` / `emailRedirectTo`:
-
-| Origem | Destino | Status |
-|---|---|---|
-| `useAuth.resetPassword()` | `${origin}/reset-password` | ✅ |
-| `SignUpForm` | `${origin}/?pending_checkout=...` | ✅ |
-| `Register.tsx` | `${origin}/auth/callback` | ✅ |
-| `Index.tsx` (set-password) | `/set-password` | ✅ |
-| `create-checkout` (origin fallback) | `https://donawilma.lovable.app` | ⚠️ ver abaixo |
-
-### Pequena pendência — `create-checkout` fallback
-
-`supabase/functions/create-checkout/index.ts:81`:
-```ts
-const origin = req.headers.get("origin") || "https://donawilma.lovable.app";
-```
-
-Em produção o header `Origin` chega corretamente como `https://donawilma.com.br`, então o fallback **nunca é usado** na prática. Mas por consistência, atualizar o fallback para `https://donawilma.com.br`.
-
-### `index.html`, `robots.txt`, `sitemap.xml`, Stripe Portal, locales — ✅ OK
-
-Tudo já apontando para `donawilma.com.br`.
-
----
-
-## Sobre o email do remetente (sua observação)
-
-Você disse: "preciso melhorar isso, talvez um gmail para o cliente não estranhar e achar suspeito".
-
-**Não use Gmail.** Email pessoal como remetente em sistema de produção fica muito mais suspeito (cai em spam, sem DKIM/SPF, sem domínio próprio). O caminho profissional é usar o **próprio domínio** que você já tem: `noreply@donawilma.com.br` ou `contato@donawilma.com.br`.
-
-Você tem **duas opções** para fazer isso (NÃO vou implementar agora, só apresento):
-
-**Opção A — Lovable Cloud Emails (mais simples, gerenciado):**
-Como o projeto está em Supabase externo, esse caminho não se aplica diretamente.
-
-**Opção B — Resend via domínio próprio (você já tem `RESEND_API_KEY` configurado nos secrets):**
-1. Adicionar o domínio `donawilma.com.br` no Resend Dashboard
-2. Adicionar registros DNS (SPF, DKIM, DMARC) no provedor do `donawilma.com.br`
-3. Verificar o domínio
-4. Criar uma edge function `auth-email-hook` que substitui os emails padrão do Supabase, enviando via Resend com remetente `Dona Wilma <noreply@donawilma.com.br>`, com template em português, branding e logo
-5. Configurar o webhook no Supabase Dashboard → Authentication → Email Templates → "Send email hook"
-
-Resultado: emails de confirmação/recuperação chegam de `Dona Wilma <noreply@donawilma.com.br>` com template branded em português, sem cara de "default Supabase".
-
-Existe também o documento `CONFIGURACAO_SUPABASE.md` na raiz do projeto que menciona uma edge function `custom-auth-emails` — vou verificar se já existe algo nessa linha quando formos implementar.
-
----
-
-## O que será alterado nesta etapa (apenas correção)
-
-1. **`src/main.tsx`** — pular version check em fluxo de recovery + preservar hash no `window.location.replace`
-2. **`supabase/functions/create-checkout/index.ts`** — fallback de `origin` para `donawilma.com.br`
-
-Nada que está funcionando será alterado. As correções são cirúrgicas.
-
----
-
-## Próximos passos (suas decisões)
-
-Depois que eu aplicar as correções acima:
-
-1. **Testar reset de senha novamente** — agora deve abrir o formulário direito
-2. **Decidir sobre o email do remetente:**
-   - (a) deixar como está por enquanto (emails padrão do Supabase)
-   - (b) implementar agora o template branded via Resend com `noreply@donawilma.com.br`
-3. **Limpar (opcional)** as redirect URLs específicas do Supabase, mantendo só o wildcard
-
-Aprovando, eu já aplico as 2 correções e te aviso para testar o link de reset.
+Quando você aprovar, eu sigo com a implementação e a auditoria completa, sem mexer no que já está funcionando.
