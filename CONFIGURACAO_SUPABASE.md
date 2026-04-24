@@ -1,84 +1,77 @@
 # 🔧 Configurações Necessárias no Supabase Dashboard
 
-## ⚠️ IMPORTANTE: Configure estas opções no painel do Supabase para os emails funcionarem corretamente
-
-### 📧 **1. Configurar Webhook para Emails Customizados**
-
-1. **Acesse o Supabase Dashboard:**
-   - Vá para: https://supabase.com/dashboard/project/fsamlnlabdjoqpiuhgex
-
-2. **Navegue para Configurações de Email:**
-   - Clique em `Authentication` no menu lateral
-   - Clique na aba `Email Templates`
-
-3. **Configure Custom SMTP/Webhook:**
-   - Marque a opção `Enable custom SMTP`
-   - **Webhook URL:** `https://fsamlnlabdjoqpiuhgex.supabase.co/functions/v1/custom-auth-emails`
-   - Ative para os tipos: `Signup` e `Recovery`
+> Documento atualizado para o domínio oficial **`https://donawilma.com.br`**.
 
 ---
 
-### 🌐 **2. Configurar URLs de Redirecionamento (CRÍTICO)**
+## 1. URL Configuration (Authentication → URL Configuration)
 
-1. **Acesse Authentication Settings:**
-   - Vá para: `Authentication` > `URL Configuration`
+### Site URL (campo único, no topo)
 
-2. **Site URL:**
-   ```
-   https://donawilma.lovable.app
-   ```
+```
+https://donawilma.com.br
+```
 
-3. **Redirect URLs (ADICIONAR TODAS):**
-   ```
-   https://donawilma.lovable.app/**
-   https://donawilma.lovable.app/auth/callback
-   https://donawilma.lovable.app/set-password
-   ```
+> Use **um único** Site URL — o domínio canônico oficial. Não coloque `donawilma.lovable.app` aqui.
 
-**⚠️ CONFIGURAÇÃO ESSENCIAL:**
-- Sem estas URLs configuradas, o reset de senha não funcionará
-- O Supabase precisa saber para onde direcionar após verificação
-- A URL `/reset-password` é fundamental para o fluxo funcionar
+### Redirect URLs
+
+```
+https://donawilma.com.br/**
+https://donawilma.lovable.app/**          (opcional, contingência durante migração)
+http://localhost:5173/**                  (opcional, ambiente local)
+```
+
+O wildcard `/**` cobre todas as rotas internas (`/reset-password`, `/set-password`, `/auth/callback`, `/boas-vindas`, `/payment-success`, etc.).
 
 ---
 
-### ✅ **3. Testar as Configurações**
+## 2. Domínio publicado (CRÍTICO antes de liberar o sistema)
 
-Após configurar, teste:
+O domínio oficial precisa servir o app Lovable (SPA), com **fallback para `index.html`** em qualquer rota interna.
 
-1. **Teste de Cadastro:**
-   - Crie uma nova conta
-   - Verifique se o email chega em português
-   - Clique no link e confirme se direciona corretamente
+Teste no navegador (ou `curl -I`) cada uma destas rotas no domínio oficial. Todas devem **carregar a tela do app** (não 404):
 
-2. **Teste de Recuperação:**
-   - Use "Esqueci minha senha"
-   - Verifique se o email chega em português
-   - Clique no link e confirme se abre a tela de reset
+- `/`
+- `/reset-password`
+- `/set-password`
+- `/auth/callback`
+- `/boas-vindas`
+- `/payment-success`
+- `/payment-cancelled`
+- `/subscription-inactive`
+- `/login`
+- `/choose-plan`
+- `/register`
+- `/termos`
+- `/privacidade`
+- `/admin`
+
+Se qualquer uma retornar `404 NOT_FOUND`, o problema é de publicação/DNS, **não de código**. Nesse caso o link de recuperação de senha sempre vai cair na home, mesmo que o app esteja correto.
 
 ---
 
-### 🎯 **Resultado Esperado**
+## 3. E-mails de autenticação
 
-✅ Emails em português com design personalizado
-✅ Links funcionando corretamente
-✅ Redirecionamentos para `donawilma.lovable.app`
-✅ Menu mobile funcionando sem tela branca
+Atualmente os e-mails de signup e recovery são enviados pelo próprio Supabase (`noreply@mail.app.supabase.io`).
+
+Se quiser personalizar (recomendado, para não parecer spam):
+
+1. Configurar domínio próprio (ex.: `mail.donawilma.com.br`) em Resend (já temos `RESEND_API_KEY`).
+2. Ativar template customizado via `auth-email-hook` para enviar pelo seu domínio.
+
+> Isso é **opcional** para liberar o sistema — os e-mails padrão do Supabase já funcionam e levam para o link correto, desde que as URLs acima estejam configuradas.
 
 ---
 
-### 🚨 **Solução de Problemas**
+## 4. Checklist final antes de liberar
 
-**Se os emails ainda estão em inglês:**
-- Verifique se o webhook está configurado corretamente
-- Confirme se a URL do webhook está correta
-- Verifique se a edge function `custom-auth-emails` está ativa
+- [ ] Site URL = `https://donawilma.com.br`
+- [ ] Redirect URLs incluem `https://donawilma.com.br/**`
+- [ ] Domínio oficial responde **sem 404** em todas as rotas listadas no item 2
+- [ ] Teste real: solicitar reset de senha → e-mail chega → link abre `/reset-password` no domínio oficial → tela de redefinição aparece → trocar senha → login funciona
+- [ ] Teste real: criar conta → e-mail de confirmação chega → link abre `/auth/callback` no domínio oficial → redireciona corretamente
+- [ ] Teste real: pagamento Stripe → retorna em `https://donawilma.com.br/payment-success`
+- [ ] Customer Portal Stripe configurado com return URL `https://donawilma.com.br`
 
-**Se os links não funcionam:**
-- Confirme as URLs de redirecionamento
-- Verifique se o Site URL está correto
-- Teste com uma nova conta para confirmar
-
-**Se o menu mobile vai para tela branca:**
-- O problema foi corrigido no código
-- Recarregue a página para aplicar as alterações
+Quando todos estiverem ✅, o sistema está pronto para liberar.
