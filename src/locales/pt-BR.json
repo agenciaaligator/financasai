@@ -252,6 +252,9 @@
         "archive": "Arquivar",
         "delete": "Excluir",
         "reply": "Responder por e-mail"
+      },
+      "fields": {
+        "phone": "Telefone"
       }
     }
   },
