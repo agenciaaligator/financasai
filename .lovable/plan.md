@@ -1,78 +1,71 @@
-## Objetivo
-Fazer o fluxo de recuperação de senha funcionar de ponta a ponta e deixar todas as URLs/rotas alinhadas ao domínio final, preservando o que já está estável.
+## Plano de correção completa de URLs
 
-## Diagnóstico confirmado
-Hoje o principal bloqueio não está só no React/Supabase:
+Vou corrigir o problema pela raiz, centralizando o domínio canônico e removendo qualquer dependência de `window.location.origin`, `origin` do request ou hosts antigos que possam mandar o usuário para a home errada.
 
-- O app responde corretamente em `donawilma.lovable.app` nas rotas internas como `/reset-password`, `/auth/callback` e `/set-password`.
-- No domínio `donawilma.com.br`, essas rotas profundas retornam `404`.
-- O domínio ainda redireciona para `www.donawilma.com.br`, e esse host também devolve `404` nas rotas internas.
-- Resultado: quando o usuário clica no link de recuperação, o Supabase abre o domínio novo, mas esse domínio não está servindo corretamente as rotas SPA do app; por isso o fluxo quebra e o usuário acaba fora da tela esperada.
-- Além disso, ainda existem referências antigas a `donawilma.lovable.app` em funções do WhatsApp e em documentação interna, o que impede fechar a auditoria de URLs com segurança.
+### O que será corrigido
 
-## Plano
-### 1. Corrigir a origem publicada do domínio
-- Confirmar qual host será o oficial: `https://donawilma.com.br` ou `https://www.donawilma.com.br`.
-- Ajustar a publicação para que esse domínio aponte para o app que está rodando no Lovable, com fallback SPA funcionando para todas as rotas internas.
-- Validar especificamente estas rotas no domínio final:
-  - `/`
-  - `/reset-password`
-  - `/set-password`
-  - `/auth/callback`
-  - `/boas-vindas`
-  - `/payment-success`
-  - `/payment-cancelled`
-  - `/subscription-inactive`
-  - `/termos`
-  - `/privacidade`
+1. Centralizar a URL oficial do sistema
+- Criar uma origem canônica única para produção (`https://donawilma.com.br`).
+- Fazer o app usar essa URL nos fluxos críticos de autenticação e retorno.
+- Manter fallback seguro para ambiente local/preview sem contaminar links reais enviados ao cliente.
 
-### 2. Fechar o fluxo de recuperação de senha no frontend
-- Revisar o fluxo atual de recovery para garantir que, ao detectar `type=recovery`, nada mais redirecione o usuário para a home antes da tela de reset.
-- Tornar o redirecionamento para `/reset-password` ainda mais defensivo para funcionar mesmo quando o link chegar por hash, sessão restaurada ou evento `PASSWORD_RECOVERY`.
-- Garantir compatibilidade entre `/reset-password` e `/set-password` sem alterar o fluxo de onboarding já funcional.
+2. Corrigir links de e-mail do Supabase
+- Ajustar o reset de senha para não depender mais do host atual do navegador.
+- Ajustar o link de confirmação/callback de cadastro para não depender do domínio onde o usuário abriu o app.
+- Revisar também fluxos alternativos de cadastro já existentes no projeto para evitar regressão.
 
-### 3. Padronizar URLs de autenticação no Supabase
-- Definir o `Site URL` com o domínio oficial único.
-- Revisar a lista de `Redirect URLs` para cobrir produção e, se necessário, o domínio Lovable apenas como contingência controlada.
-- Garantir que cadastro, confirmação de e-mail e recuperação de senha usem a mesma base de domínio.
+3. Corrigir retornos do Stripe
+- Ajustar `create-checkout` para usar URLs de sucesso/cancelamento consistentes e corretas.
+- Ajustar `customer-portal` para voltar para a rota correta no domínio oficial, sem cair indevidamente na home por host errado.
 
-### 4. Limpar referências antigas de domínio no código
-- Substituir referências remanescentes de `donawilma.lovable.app` por URLs finais onde isso impacta usuário ou integrações.
-- Revisar especialmente:
-  - Edge functions de WhatsApp
-  - textos com links enviados ao cliente
-  - customer portal / checkout fallbacks
-  - documentação interna de configuração
+4. Corrigir links antigos e inconsistentes fora do fluxo principal
+- Remover links ainda apontando para `lovableproject.com`.
+- Remover fallback derivado automaticamente para `.vercel.app` em mensagens do WhatsApp.
+- Revisar mensagens e links auxiliares para usar apenas o domínio correto.
 
-### 5. Fazer auditoria final de rotas e URLs
-- Mapear todas as rotas públicas e autenticadas do app.
-- Conferir quais dependem de acesso direto por link, e-mail, Stripe ou WhatsApp.
-- Entregar uma checklist final com o que ficou:
-  - correto no código
-  - correto no Supabase
-  - correto no domínio publicado
-  - corrigido nas integrações
+5. Fazer uma auditoria final de rotas e URLs críticas
+- Validar estas rotas no código e no deploy: `/reset-password`, `/set-password`, `/auth/callback`, `/payment-success`, `/payment-cancelled`, `/subscription-inactive`, `/boas-vindas`, `/choose-plan`.
+- Confirmar que nenhum fluxo legítimo depende de redirecionamento para `/` quando deveria ir para uma rota específica.
 
-## Entregáveis
-- Fluxo de “Esqueci minha senha” abrindo a tela correta no domínio final
-- Domínio oficial respondendo sem 404 nas rotas internas principais
-- URLs do Supabase alinhadas e sem conflito
-- Referências antigas ao `.lovable.app` removidas dos pontos críticos
-- Checklist final de URLs/rotas para você liberar o sistema
+### Problemas encontrados na revisão
 
-## Detalhes técnicos
-```text
-Fluxo esperado:
-Email do Supabase
-  -> domínio oficial
-  -> /reset-password ou /auth/callback com tokens/hash
-  -> app captura sessão/token
-  -> tela de redefinição
-  -> atualização de senha
-  -> redirecionamento final controlado
-```
+- `src/hooks/useAuth.ts`: o reset de senha usa `window.location.origin/reset-password`.
+- `src/pages/Register.tsx`: a confirmação de cadastro usa `window.location.origin/auth/callback`.
+- `src/components/auth/SignUpForm.tsx`: existe um fluxo alternativo antigo que ainda monta redirect para a home com query string.
+- `supabase/functions/create-checkout/index.ts`: `success_url` e `cancel_url` dependem do header `origin`.
+- `supabase/functions/customer-portal/index.ts`: `return_url` depende do header `origin`.
+- `supabase/functions/whatsapp-agent/index.ts`: ainda existem links apontando para `bc45aac3-c622-434f-ad58-afc37c18c6c2.lovableproject.com` e fallback para `.vercel.app`.
 
-## Observação importante
-O maior problema hoje é de publicação/domínio, não apenas de código. Mesmo com o fluxo de recovery já reforçado no app, ele continuará falhando enquanto `donawilma.com.br` e `www.donawilma.com.br` não servirem corretamente as rotas SPA do projeto.
+### Arquivos que pretendo ajustar
 
-Quando você aprovar, eu sigo com a implementação e a auditoria completa, sem mexer no que já está funcionando.
+- `src/hooks/useAuth.ts`
+- `src/pages/Register.tsx`
+- `src/components/auth/SignUpForm.tsx`
+- `supabase/functions/create-checkout/index.ts`
+- `supabase/functions/customer-portal/index.ts`
+- `supabase/functions/whatsapp-agent/index.ts`
+- possivelmente um util/config compartilhado para domínio canônico
+- documentação operacional (`CONFIGURACAO_SUPABASE.md`) se necessário para refletir o comportamento final
+
+### Detalhes técnicos
+
+- Substituir montagem dinâmica de URLs baseada no host atual por uma estratégia canônica, por exemplo:
+  - produção: `https://donawilma.com.br`
+  - desenvolvimento local: `http://localhost:5173`
+  - preview apenas para navegação interna, nunca como base confiável de links enviados por e-mail ao cliente
+- Garantir consistência entre:
+  - Supabase Auth `redirectTo` / `emailRedirectTo`
+  - Stripe `success_url` / `cancel_url` / `return_url`
+  - links exibidos em mensagens automatizadas
+- Preservar o fluxo robusto já existente de recuperação de senha (`index.html` + `main.tsx` + `App.tsx` + `ResetPassword.tsx`), porque ele está correto conceitualmente; o foco é impedir que o link inicial já nasça com domínio errado.
+
+### Resultado esperado
+
+Depois dessa correção:
+- o e-mail de redefinição abrirá diretamente a rota correta,
+- o e-mail de confirmação abrirá o callback correto,
+- Stripe sempre voltará para as páginas corretas,
+- mensagens automáticas não exibirão hosts errados,
+- e o sistema deixará de cair na home por inconsistência de domínio/URL.
+
+Aprovação dessa etapa me permite implementar as correções agora.
