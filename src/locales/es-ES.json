@@ -815,6 +815,10 @@
           "label": "Correo",
           "placeholder": "tu@ejemplo.com"
         },
+        "phone": {
+          "label": "Teléfono (opcional)",
+          "placeholder": "+34 612 345 678"
+        },
         "subject": {
           "label": "Asunto",
           "placeholder": "¿De qué se trata?"
