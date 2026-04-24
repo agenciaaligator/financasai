@@ -236,6 +236,7 @@ export type Database = {
           ip_address: string | null
           message: string
           name: string
+          phone: string | null
           read_at: string | null
           replied_at: string | null
           status: string
@@ -250,6 +251,7 @@ export type Database = {
           ip_address?: string | null
           message: string
           name: string
+          phone?: string | null
           read_at?: string | null
           replied_at?: string | null
           status?: string
@@ -264,6 +266,7 @@ export type Database = {
           ip_address?: string | null
           message?: string
           name?: string
+          phone?: string | null
           read_at?: string | null
           replied_at?: string | null
           status?: string
