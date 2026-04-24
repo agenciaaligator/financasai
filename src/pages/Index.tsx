@@ -16,6 +16,7 @@ import { InteractionExamplesSection } from "@/components/InteractionExamplesSect
 import { StatsSection } from "@/components/StatsSection";
 import { Loader2 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useSubscriptionGuard } from "@/hooks/useSubscriptionGuard";
@@ -26,9 +27,18 @@ import donaWilmaLandingHero from "@/assets/dona-wilma-landing-hero.jpg";
 const LandingPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  // Defensive: close any open overlays as soon as a user session exists
+  useEffect(() => {
+    if (user) {
+      setShowLogin(false);
+      setSheetOpen(false);
+    }
+  }, [user]);
 
   // Scroll detection for nav
   useEffect(() => {
@@ -115,30 +125,14 @@ const LandingPage = () => {
       </header>
 
       {/* Login modal */}
-      {showLogin && (
-        <div 
-          className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm flex items-center justify-center p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label={t('auth.login')}
-          onClick={(e) => e.target === e.currentTarget && setShowLogin(false)}
-        >
-          <div className="relative animate-fadeInUp">
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="absolute -top-3 -right-3 z-10 bg-background rounded-full shadow-md"
-              onClick={() => setShowLogin(false)}
-            >
-              ✕
-            </Button>
-            <div className="flex justify-center mb-4">
-              <img src="/images/logo.png" alt="Dona Wilma" className="h-12" />
-            </div>
-            <LoginForm />
+      <Dialog open={showLogin} onOpenChange={setShowLogin}>
+        <DialogContent className="max-w-md p-0 bg-transparent border-0 shadow-none">
+          <div className="flex justify-center mb-4">
+            <img src="/images/logo.png" alt="Dona Wilma" className="h-12" />
           </div>
-        </div>
-      )}
+          <LoginForm onSuccess={() => setShowLogin(false)} />
+        </DialogContent>
+      </Dialog>
 
       {/* Hero Section */}
       <section id="home" className="container mx-auto px-4 pt-16 pb-24 md:pt-24 md:pb-32">

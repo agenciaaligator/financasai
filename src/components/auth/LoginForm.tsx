@@ -11,7 +11,11 @@ import { ForgotPasswordModal } from "@/components/ForgotPasswordModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useTranslation } from "react-i18next";
 
-export function LoginForm() {
+interface LoginFormProps {
+  onSuccess?: () => void;
+}
+
+export function LoginForm({ onSuccess }: LoginFormProps = {}) {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -47,6 +51,7 @@ export function LoginForm() {
       if (result && !result.error) {
         setPassword('');
         setErrorMessage(null);
+        onSuccess?.();
         navigate('/', { replace: true });
 
         // Background: update password_set (non-blocking)
