@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { buildSiteUrl } from '@/lib/siteUrl';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -155,8 +156,10 @@ export function useAuth() {
   };
 
   const resetPassword = async (email: string) => {
-    // Usar URL da aplicação atual para o redirect
-    const redirectUrl = `${window.location.origin}/reset-password`;
+    // SEMPRE usar o domínio canônico oficial. Nunca usar window.location.origin
+    // aqui — caso contrário, o link do e-mail apontaria para o host onde o usuário
+    // estava (ex.: domínio de preview), levando a página inexistente.
+    const redirectUrl = buildSiteUrl('/reset-password');
     
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
