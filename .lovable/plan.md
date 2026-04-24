@@ -1,87 +1,108 @@
+## Bug: Dashboard travado atrás do overlay do modal de login
 
+### Causa raiz
 
-## Correção do autofill + revisão geral do sistema
+Não existe rota `/dashboard` no `App.tsx`. A rota `/` renderiza `Index.tsx`, que faz roteamento condicional:
+- Se `!user` → `<LandingPage />` (que contém o modal de login)
+- Se `user` → `<ProtectedDashboard />` (renderiza `<FinancialDashboard />`)
 
-### Problema raiz identificado
+Quando o usuário clica em "Login" na landing, o `LandingPage` abre o modal (`showLogin = true`) — um overlay full-screen `fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm` (Index.tsx linhas 118–141).
 
-Em `src/index.css` (linhas 124–132) existe uma regra **global com `!important`** que força texto branco no autofill:
+No submit do `LoginForm` (linha 50), ele chama `navigate('/', { replace: true })`. Como já estávamos em `/`, o React Router **não desmonta** `Index` — apenas re-renderiza. O `useAuth` detecta a sessão nova, `user` passa a existir, e `Index` decide renderizar `<ProtectedDashboard />` no lugar de `<LandingPage />`.
 
-```css
-input:-webkit-autofill { -webkit-text-fill-color: white !important; ... }
+**Mas** o `LandingPage` foi desmontado, e com ele o modal de login... só que a screenshot mostra claramente o overlay escuro cobrindo o dashboard. Isso acontece porque, no fluxo normal:
+
+1. `LoginForm` chama `signIn` → sucesso
+2. `navigate('/')` (mesma URL — no-op)
+3. O `Index` re-renderiza, mas durante a checagem `checkUserStatus` (linha 507) ele entra no estado `checkingFirstLogin = true` e mostra um loader. Para usuários **com** WhatsApp já vinculado, o loader some e renderiza o dashboard. Para usuários **sem** WhatsApp, redireciona para `/boas-vindas`.
+
+O problema visual da screenshot é diferente: o usuário fez login, foi para o dashboard, **mas o overlay continua visível**. Isso indica que o `LandingPage` continua montado em paralelo OU que ficou um portal/dialog órfão (provavelmente do `ForgotPasswordModal` ou do próprio modal de login).
+
+Olhando de novo: o modal de login do `Index.tsx` é **renderizado dentro do componente `LandingPage`** que só monta quando `!user`. Quando `user` aparece, `LandingPage` desmonta e o modal vai junto. **Então o overlay visível na screenshot tem outra fonte.**
+
+Suspeitos reais:
+1. **`ForgotPasswordModal`** — usa Radix Dialog (portal), e se o estado ficar travado em `open=true` quando o componente pai desmonta, o overlay pode ficar órfão. Mas pela imagem o usuário não estava no fluxo de "esqueci senha".
+2. **A `LoginForm` usa `navigate('/')` sem fechar o modal antes.** O re-render é síncrono mas o `setState` interno do React Router pode causar uma janela onde `LandingPage` ainda existe com `showLogin=true` enquanto o `useAuth` propaga o novo user. Em um único frame isso seria invisível, mas há um efeito de transição com `animate-fadeInUp` no modal.
+3. **Mais provável:** o overlay que aparece na imagem é o `bg-foreground/40 backdrop-blur-sm` do modal de login que ficou renderizado porque o **Sidebar/dashboard renderiza dentro do mesmo Index, e o `showLogin` permaneceu `true` após o login** — não, isso não cola, pois `LandingPage` desmontou.
+
+Vou investigar uma hipótese mais simples na implementação: **o overlay na imagem pode ser o do `Sheet` (menu mobile)** que ficou aberto. O `Sheet` do Radix renderiza um overlay `fixed inset-0 bg-black/80` em portal. Se `sheetOpen` ficou `true` quando `LandingPage` desmontou, o portal pode ficar pendurado momentaneamente. Mas como ele é desmontado junto com o pai, deveria sumir.
+
+### Correção pragmática
+
+Independente da causa exata (precisaria ver replay), as correções abaixo eliminam todas as fontes possíveis do overlay órfão:
+
+#### 1. `LoginForm.tsx` — emitir callback de sucesso
+
+Adicionar prop opcional `onSuccess?: () => void` e chamá-la **antes** de navegar. No submit:
+
+```tsx
+if (result && !result.error) {
+  setPassword('');
+  setErrorMessage(null);
+  onSuccess?.();           // fecha modal pai imediatamente
+  navigate('/', { replace: true });
+  // ...
+}
 ```
 
-Essa regra foi criada para a tela escura de Login/Register, mas é aplicada em **todos os inputs do site** — inclusive o ContactForm que tem fundo claro (`#F8F9FA`). Resultado: texto branco sobre fundo branco = **invisível**, exatamente o que aparece nas imagens enviadas.
+#### 2. `Index.tsx` (LandingPage) — fechar modal no sucesso
 
-A regra inline no `Input.tsx` não consegue sobrescrever porque a global usa `!important`.
+Passar callback ao `LoginForm`:
 
----
+```tsx
+<LoginForm onSuccess={() => setShowLogin(false)} />
+```
 
-### 1. Correção do autofill (escopada por contexto)
+E também: garantir que o modal feche se `user` mudar (defesa em profundidade):
 
-Reescrever o bloco `input:-webkit-autofill` em `src/index.css` para ser **contextual**:
+```tsx
+useEffect(() => {
+  if (user) {
+    setShowLogin(false);
+    setSheetOpen(false);
+  }
+}, [user]);
+```
 
-- **Padrão (tema claro / landing / dashboard):** usar `hsl(var(--foreground))` (cor escura `#2C3E50`) como `-webkit-text-fill-color`, com `box-shadow inset` transparente para preservar o fundo claro do input.
-- **Telas escuras (Login, Register, ResetPassword):** manter texto branco. Aplicar via seletor escopado, ex.: `.auth-dark input:-webkit-autofill { ... white ... }`, e adicionar a classe `auth-dark` no container raiz dessas três páginas.
-- Remover o `!important` da regra padrão; manter apenas onde absolutamente necessário no escopo escuro.
-- Limpar a regra duplicada inline em `src/components/ui/input.tsx` (fica redundante).
+(`user` viria de `useAuth` no `LandingPage`, que hoje não consome — adicionar.)
 
-Resultado: nome, e-mail, telefone autopreenchidos ficam **visíveis** no formulário de contato e em qualquer outro input claro, sem quebrar Login/Register.
+#### 3. Substituir o modal manual por `Dialog` do shadcn
 
----
+O modal atual é uma `<div fixed inset-0>` artesanal. Trocar por `<Dialog>` do shadcn garante:
+- Cleanup automático do overlay ao desmontar.
+- Acessibilidade (focus trap, ESC, aria correto).
+- Sem risco de overlay órfão.
 
-### 2. Revisão geral — itens encontrados
+```tsx
+<Dialog open={showLogin} onOpenChange={setShowLogin}>
+  <DialogContent className="max-w-md p-0 bg-transparent border-0 shadow-none">
+    <LoginForm onSuccess={() => setShowLogin(false)} />
+  </DialogContent>
+</Dialog>
+```
 
-**a) Domínio personalizado (`donawilma.com.br`)**
-Vários arquivos ainda usam `donawilma.lovable.app`:
-- `index.html` — canonical, og:url, og:image, twitter:image, JSON-LD `url`
-- `public/robots.txt` — Sitemap
-- `public/sitemap.xml` — todas as `<loc>`
+#### 4. Defesa extra: resetar `sheetOpen` ao logar
 
-Atualizar todas para `https://donawilma.com.br` (mantendo o caminho). Isso melhora SEO, OG previews (WhatsApp/Facebook), e indexação no Google após a publicação no domínio próprio.
-
-**b) Textarea sem o mesmo padrão visual dos Inputs**
-`src/components/ui/textarea.tsx` ainda usa `text-sm`, `border` (1px), `rounded-md` — destoa do `Input` (que é `rounded-[16px]`, `border-2`, `h-12`, foco com glow). No ContactForm o campo Mensagem visualmente "quebra" em relação aos outros. Alinhar o estilo do Textarea ao do Input para consistência premium.
-
-**c) Footer / Contato — referências antigas a e-mail fixo**
-`src/pages/Terms.tsx` (linha 199) e os 5 locales (Terms + Privacy) ainda mostram `contato@donawilma.com.br` como canal de contato. Decisão de produto recente: contato é **apenas pelo formulário**. Substituir por uma frase localizada apontando para `/#contato` (ex.: "Entre em contato pelo nosso formulário"). Não removo o e-mail dos textos legais da LGPD se você preferir manter um endereço formal — me confirme.
-
-**d) Acessibilidade do ContactForm**
-- Falta `aria-describedby` ligando os erros aos inputs (atualmente só `aria-invalid`).
-- Faltam `autoComplete="name|email|tel"` nos campos — isso melhora a UX de autofill e confiabilidade do navegador.
-Adicionar ambos.
-
-**e) Limpeza menor**
-- `src/components/ui/input.tsx`: remover as classes inline de autofill (já tratadas globalmente).
-- Verificar se a página `/auth-dark` realmente precisa do escopo (Login, Register, ResetPassword) — adicionar a classe no wrapper raiz dessas três páginas.
-
----
-
-### 3. O que NÃO será alterado
-
-- Stripe / checkout / webhook
-- Onboarding / WhatsApp core
-- Auth flow / dashboard financeiro
-- Tabela `contact_messages`, RLS, edge function `submit-contact-message`
-- Lógica anti-spam (honeypot, cooldown, rate-limit, dedupe)
-
----
+Mesmo tratamento para o `Sheet` mobile, no mesmo `useEffect` acima.
 
 ### Arquivos a editar
 
-- `src/index.css` — regra autofill escopada (correção principal)
-- `src/components/ui/input.tsx` — remover override redundante
-- `src/components/ui/textarea.tsx` — alinhar estilo ao Input
-- `src/components/ContactForm.tsx` — `autoComplete` + `aria-describedby`
-- `src/pages/Login.tsx`, `src/pages/Register.tsx`, `src/pages/ResetPassword.tsx` — adicionar `auth-dark` no wrapper
-- `index.html` — substituir domínio para `donawilma.com.br` em canonical / OG / Twitter / JSON-LD
-- `public/robots.txt`, `public/sitemap.xml` — substituir domínio
-- `src/pages/Terms.tsx` + 5 locales (Terms + Privacy) — substituir e-mail fixo por link para o formulário (sujeito à sua confirmação para os textos legais)
+- `src/components/auth/LoginForm.tsx` — adicionar prop `onSuccess` e chamar antes do `navigate`.
+- `src/pages/Index.tsx`:
+  - Trocar overlay manual por `<Dialog>` do shadcn (`@/components/ui/dialog`).
+  - Adicionar `useAuth` no `LandingPage` e `useEffect` que fecha `showLogin` e `sheetOpen` quando `user` aparece.
 
-### Critérios de sucesso
+### Validação após o fix
 
-- Autofill no formulário de contato mostra texto **escuro e legível** sobre fundo claro.
-- Autofill no Login/Register continua **branco e legível** sobre fundo escuro.
-- Meta tags, sitemap e robots apontam para `donawilma.com.br`.
-- Textarea visualmente consistente com Inputs.
-- Sem regressão em formulários existentes, dashboard ou auth.
+1. Logar pelo desktop → modal fecha imediatamente, dashboard renderiza limpo, navegação no sidebar funciona.
+2. Logar pelo mobile (via Sheet) → menu lateral fecha, modal fecha, dashboard limpo.
+3. Tecla ESC fecha modal corretamente (ganho do `Dialog`).
+4. Sem regressão em "Esqueci minha senha".
 
+### Critério de sucesso
+
+- Não há overlay escuro residual após login.
+- Sidebar e botões do dashboard são clicáveis imediatamente após login.
+- `Dialog` substitui o modal artesanal sem quebrar layout do `LoginForm`.
+
+**Confirma para eu aplicar?**
