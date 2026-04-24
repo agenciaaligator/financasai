@@ -12,6 +12,7 @@ import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
 import "@/components/ui/phone-input.css";
 import { getPriceId, getDisplayPrice, getCurrencyFromLocale, formatPrice } from "@/config/pricing";
+import { buildSiteUrl } from "@/lib/siteUrl";
 
 type FlowState = "idle" | "creating" | "verifying" | "preparing" | "redirecting";
 
@@ -134,7 +135,9 @@ export default function Register() {
         email: normalizedEmail,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          // Usar SEMPRE o domínio canônico para que o link de confirmação
+          // de e-mail volte ao app oficial (donawilma.com.br/auth/callback).
+          emailRedirectTo: buildSiteUrl('/auth/callback'),
           data: {
             full_name: name.trim(),
             phone_number: phone || undefined,

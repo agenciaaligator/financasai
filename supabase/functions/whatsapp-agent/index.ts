@@ -3589,7 +3589,7 @@ class WhatsAppAgent {
       };
 
       return {
-        response: `✅ ${fieldNameMap[field]} atualizado com sucesso!\n\n📊 Para visualizar mais detalhes e relatórios, acesse a plataforma:\n🔗 https://bc45aac3-c622-434f-ad58-afc37c18c6c2.lovableproject.com`,
+        response: `✅ ${fieldNameMap[field]} atualizado com sucesso!\n\n📊 Para visualizar mais detalhes e relatórios, acesse a plataforma:\n🔗 https://donawilma.com.br`,
         sessionData: { ...sessionData, conversation_state: 'idle', pending_edit: undefined }
       };
 
@@ -3690,7 +3690,7 @@ class WhatsAppAgent {
       });
 
       return {
-        response: `✅ Transação excluída com sucesso!\n\n🗑️ ${pendingDelete.transaction_title} - R$ ${pendingDelete.transaction_amount}\n\n📊 Para visualizar mais detalhes e relatórios, acesse a plataforma:\n🔗 https://bc45aac3-c622-434f-ad58-afc37c18c6c2.lovableproject.com`,
+        response: `✅ Transação excluída com sucesso!\n\n🗑️ ${pendingDelete.transaction_title} - R$ ${pendingDelete.transaction_amount}\n\n📊 Para visualizar mais detalhes e relatórios, acesse a plataforma:\n🔗 https://donawilma.com.br`,
         sessionData: { ...sessionData, conversation_state: 'idle', pending_delete: undefined }
       };
 
@@ -7396,7 +7396,7 @@ serve(async (req) => {
         response: `🔐 *Autenticação Necessária*\n\n` +
                  `Para usar o assistente, digite: *codigo*\n\n` +
                  `Ou se ainda não tem conta, cadastre-se em:\n` +
-                 `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '')}.vercel.app`
+                 `https://donawilma.com.br`
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });

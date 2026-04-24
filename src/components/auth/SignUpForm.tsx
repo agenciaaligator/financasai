@@ -14,6 +14,7 @@ import { isValidPhoneNumber } from "react-phone-number-input";
 import { useTranslation } from "react-i18next";
 import { useCheckout } from "@/hooks/useCheckout";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
+import { buildSiteUrl } from "@/lib/siteUrl";
 
 export function SignUpForm() {
   const navigate = useNavigate();
@@ -289,7 +290,7 @@ export function SignUpForm() {
             full_name: formData.fullName,
             phone_number: formData.phoneNumber,
           },
-          emailRedirectTo: `${window.location.origin}/?pending_checkout=true&cycle=${selectedCycle}${couponCode ? `&coupon=${couponCode}` : ''}`,
+          emailRedirectTo: buildSiteUrl(`/?pending_checkout=true&cycle=${selectedCycle}${couponCode ? `&coupon=${couponCode}` : ''}`),
         },
       });
 

@@ -78,7 +78,11 @@ serve(async (req) => {
       logStep("Found existing Stripe customer", { customerId });
     }
 
-    const origin = req.headers.get("origin") || "https://donawilma.com.br";
+    // SEMPRE usar o domínio canônico oficial (SITE_URL) para os retornos do
+    // Stripe. Nunca derivar de req.headers.get("origin"), porque isso faria
+    // o usuário voltar para o host onde abriu o checkout (preview, lovable.app,
+    // vercel.app, etc.) em vez do domínio oficial donawilma.com.br.
+    const origin = Deno.env.get("SITE_URL") || "https://donawilma.com.br";
     logStep("Creating checkout session", { origin, priceId });
 
     const checkoutConfig: Stripe.Checkout.SessionCreateParams = {
