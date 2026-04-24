@@ -283,7 +283,7 @@ export default function Register() {
   // Full-screen "redirecting" overlay only on the last step
   if (flow === "redirecting") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 flex items-center justify-center p-4">
+      <div className="auth-dark min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 flex items-center justify-center p-4">
         <div className="text-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
           <p className="text-white text-lg">{flowLabel()}</p>
@@ -296,7 +296,7 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950">
+    <div className="auth-dark min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950">
       <header className="border-b border-white/10 bg-white/5 backdrop-blur-sm">
         <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")}>

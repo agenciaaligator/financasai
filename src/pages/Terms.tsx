@@ -196,7 +196,12 @@ export default function Terms() {
             <div>
               <h3 className="font-display font-semibold text-secondary mb-5">{t('landing.nav.contact')}</h3>
               <p className="text-sm text-white/60">
-                contato@donawilma.com.br
+                <button
+                  onClick={() => navigate("/#contato")}
+                  className="hover:text-white hover:translate-x-1 inline-block transition-all text-left"
+                >
+                  {t('landing.footer.contactViaForm', 'Fale conosco pelo formulário')}
+                </button>
               </p>
             </div>
           </div>
