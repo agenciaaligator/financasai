@@ -815,6 +815,10 @@
           "label": "E-mail",
           "placeholder": "voce@exemplo.com"
         },
+        "phone": {
+          "label": "Telefone (opcional)",
+          "placeholder": "+351 912 345 678"
+        },
         "subject": {
           "label": "Assunto",
           "placeholder": "Sobre o que é a mensagem?"
