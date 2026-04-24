@@ -744,7 +744,7 @@ const handler = async (req: Request): Promise<Response> => {
             if (!isActive && !isMaster && !isAdmin) {
               console.log(`[WEBHOOK][CLAIM] ⚠️ User ${codeRow.user_id} has no active subscription (status=${subStatus}). Blocking claim.`);
               await sendWhatsAppMessage(message.from,
-                '👋 Olá! Sua conta na Dona Wilma ainda não tem uma assinatura ativa.\n\n💳 Acesse https://donawilma.lovable.app/escolher-plano para finalizar seu cadastro e depois reenvie este código aqui.\n\nVamos te esperar! 💚'
+                '👋 Olá! Sua conta na Dona Wilma ainda não tem uma assinatura ativa.\n\n💳 Acesse https://donawilma.com.br/escolher-plano para finalizar seu cadastro e depois reenvie este código aqui.\n\nVamos te esperar! 💚'
               );
               // NÃO marcar como used — o usuário pode reenviar após pagar
               return new Response(JSON.stringify({ success: true, claim: 'no_subscription' }), {
@@ -811,7 +811,7 @@ const handler = async (req: Request): Promise<Response> => {
               `📅 *Agenda:* "marcar dentista amanhã 14h"\n` +
               `📊 *Relatórios:* "meus gastos este mês"\n\n` +
               `🌐 *Acesse seu painel completo:*\n` +
-              `https://donawilma.lovable.app\n\n` +
+              `https://donawilma.com.br\n\n` +
               `Lá você cria categorias personalizadas, define metas mensais, vê relatórios detalhados e gerencia tudo com mais conforto. 📊\n\n` +
               `💡 *Dica:* Digite *"ajuda"* para ver todos os comandos!\n\n` +
               `Estou aqui para facilitar sua vida financeira 🚀`
@@ -1069,7 +1069,7 @@ const handler = async (req: Request): Promise<Response> => {
             from,
             `👋 Olá! Ainda não encontramos uma conta associada a este número.\n\n` +
             `Para usar a Dona Wilma, você precisa:\n` +
-            `1️⃣ Acesse nosso site: donawilma.lovable.app\n` +
+            `1️⃣ Acesse nosso site: donawilma.com.br\n` +
             `2️⃣ Escolha seu plano e complete o cadastro\n` +
             `3️⃣ Conecte seu WhatsApp no sistema\n\n` +
             `💡 Após conectar, você poderá registrar despesas, consultar saldos e muito mais - tudo pelo WhatsApp!`

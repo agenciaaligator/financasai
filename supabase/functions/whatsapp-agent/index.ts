@@ -1630,7 +1630,7 @@ class WhatsAppAgent {
             response:
               '👋 Olá! No momento sua conta está *sem assinatura ativa*.\n\n' +
               'Para continuar usando a Dona Wilma, finalize seu pagamento aqui:\n' +
-              '👉 https://donawilma.lovable.app/choose-plan\n\n' +
+              '👉 https://donawilma.com.br/choose-plan\n\n' +
               'Assim que o pagamento for confirmado, é só me mandar uma mensagem novamente que eu retomo nosso atendimento. 💛',
             sessionData,
           };
@@ -3928,7 +3928,7 @@ class WhatsAppAgent {
         `📅 *Data:* ${new Date(transaction.date!).toLocaleDateString('pt-BR')}\n\n` +
         `💰 *Saldo atual:* R$ ${currentBalance.toFixed(2)}\n\n` +
         `📊 Para visualizar mais detalhes e relatórios, acesse a plataforma:\n` +
-        `🔗 https://donawilma.lovable.app`;
+        `🔗 https://donawilma.com.br`;
 
       // 💡 Detectar se a transação parece recorrente
       const recurringKeywords = [
@@ -7175,7 +7175,7 @@ serve(async (req) => {
               `📸 Envie uma foto de nota fiscal para registro automático\n` +
               `💵 Envie "saldo" para ver seu saldo atual\n\n` +
               `🌐 *Acesse seu painel completo:*\n` +
-              `https://donawilma.lovable.app\n\n` +
+              `https://donawilma.com.br\n\n` +
               `Lá você pode criar categorias personalizadas, definir metas mensais, ver relatórios detalhados e muito mais! 📊\n\n` +
               `Digite *ajuda* para ver todos os comandos disponíveis.`
             );
@@ -7248,7 +7248,7 @@ serve(async (req) => {
         response: `👋 *Bem-vinda à Dona Wilma!*\n\n` +
                  `Para usar este WhatsApp, você precisa:\n\n` +
                  `*1.* Criar sua conta (se ainda não tem):\n` +
-                 `🔗 https://donawilma.lovable.app\n\n` +
+                 `🔗 https://donawilma.com.br\n\n` +
                  `*2.* Vincular seu WhatsApp:\n` +
                  `• Acesse *Perfil* na plataforma\n` +
                  `• Preencha o campo *WhatsApp* com: ${cleanPhone}\n` +
@@ -7280,7 +7280,7 @@ serve(async (req) => {
       // Enviar mensagem orientando o usuário a validar pelo site
       const welcomeMessage = `👋 Olá! Seu número está cadastrado mas ainda não foi validado.\n\n` +
         `Para começar a usar o sistema:\n` +
-        `1️⃣ Acesse: https://donawilma.lovable.app/boas-vindas\n` +
+        `1️⃣ Acesse: https://donawilma.com.br/boas-vindas\n` +
         `2️⃣ Digite seu número e clique em "Enviar código"\n` +
         `3️⃣ Digite aqui o código de 6 dígitos que você vai receber\n\n` +
         `Após validar, você poderá usar todos os comandos! 🎉`;
@@ -7326,7 +7326,7 @@ serve(async (req) => {
                      `📅 *Agenda:* "marcar dentista amanhã 14h"\n` +
                      `📊 *Relatórios:* "meus gastos este mês"\n\n` +
                      `🌐 *Acesse seu painel completo:*\n` +
-                     `https://donawilma.lovable.app\n\n` +
+                     `https://donawilma.com.br\n\n` +
                      `Lá você cria categorias, define metas mensais, vê relatórios detalhados e gerencia tudo com mais conforto. 📊\n\n` +
                      `💡 *Dica:* Digite *"ajuda"* para ver todos os comandos!\n\n` +
                      `Estou aqui para facilitar sua vida financeira 🚀`
@@ -7372,7 +7372,7 @@ serve(async (req) => {
               success: true,
               response: `❌ *Usuário não encontrado*\n\n` +
                        `Cadastre-se gratuitamente em:\n` +
-                       `https://donawilma.lovable.app`
+                       `https://donawilma.com.br`
             }), {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
