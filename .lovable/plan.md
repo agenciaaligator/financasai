@@ -1,108 +1,127 @@
-## Bug: Dashboard travado atrás do overlay do modal de login
+## Diagnóstico — por que o link de reset abriu na home
 
-### Causa raiz
+Ao clicar no link do email, você foi para `https://donawilma.com.br/reset-password#access_token=...&type=recovery`. O esperado era ver o formulário de nova senha. Em vez disso, abriu a home.
 
-Não existe rota `/dashboard` no `App.tsx`. A rota `/` renderiza `Index.tsx`, que faz roteamento condicional:
-- Se `!user` → `<LandingPage />` (que contém o modal de login)
-- Se `user` → `<ProtectedDashboard />` (renderiza `<FinancialDashboard />`)
+**Causa raiz:** o sistema de "version check" em `src/main.tsx` detectou nova versão do app, fez `clearAllAndReload(...)` e redirecionou via `window.location.replace(targetPath + '?v=' + newVersion)`. O problema é que `window.location.replace` **descarta o `#hash`** da URL — exatamente onde o Supabase coloca o `access_token` e o `type=recovery`.
 
-Quando o usuário clica em "Login" na landing, o `LandingPage` abre o modal (`showLogin = true`) — um overlay full-screen `fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm` (Index.tsx linhas 118–141).
+Existe uma tentativa de preservar isso salvando `supabase_recovery_hash` no sessionStorage **antes** de limpar (linhas 76-78), e restaurando depois (86-89). Mas há duas falhas:
 
-No submit do `LoginForm` (linha 50), ele chama `navigate('/', { replace: true })`. Como já estávamos em `/`, o React Router **não desmonta** `Index` — apenas re-renderiza. O `useAuth` detecta a sessão nova, `user` passa a existir, e `Index` decide renderizar `<ProtectedDashboard />` no lugar de `<LandingPage />`.
+1. O `sessionStorage.clear()` na linha 83 acontece **antes** da captura do hash em `index.html` (linhas 60-71) ter chance de rodar de novo após o reload — porque o reload vai para `?v=...` **sem o hash**, então o snippet de captura no `index.html` não acha mais `type=recovery` e não re-salva nada. A primeira captura **sim** funciona (na primeira carga, antes do reload). Mas depois disso o hash é descartado da URL.
+2. O fluxo então cai em `/reset-password?v=...` **sem hash e sem flag de recovery válida** → `ResetPassword.tsx` não consegue estabelecer sessão → após 10s do timeout, faz `navigate('/')`. Como sua percepção foi "abriu a home", provavelmente caiu nesse timeout (ou no fallback).
 
-**Mas** o `LandingPage` foi desmontado, e com ele o modal de login... só que a screenshot mostra claramente o overlay escuro cobrindo o dashboard. Isso acontece porque, no fluxo normal:
+Confirmação adicional: a URL que você está vendo agora é `/?v=1777043923973` — exatamente o padrão do `clearAllAndReload`.
 
-1. `LoginForm` chama `signIn` → sucesso
-2. `navigate('/')` (mesma URL — no-op)
-3. O `Index` re-renderiza, mas durante a checagem `checkUserStatus` (linha 507) ele entra no estado `checkingFirstLogin = true` e mostra um loader. Para usuários **com** WhatsApp já vinculado, o loader some e renderiza o dashboard. Para usuários **sem** WhatsApp, redireciona para `/boas-vindas`.
+---
 
-O problema visual da screenshot é diferente: o usuário fez login, foi para o dashboard, **mas o overlay continua visível**. Isso indica que o `LandingPage` continua montado em paralelo OU que ficou um portal/dialog órfão (provavelmente do `ForgotPasswordModal` ou do próprio modal de login).
+## Correção (1 arquivo)
 
-Olhando de novo: o modal de login do `Index.tsx` é **renderizado dentro do componente `LandingPage`** que só monta quando `!user`. Quando `user` aparece, `LandingPage` desmonta e o modal vai junto. **Então o overlay visível na screenshot tem outra fonte.**
+**`src/main.tsx`** — preservar o hash no redirect:
 
-Suspeitos reais:
-1. **`ForgotPasswordModal`** — usa Radix Dialog (portal), e se o estado ficar travado em `open=true` quando o componente pai desmonta, o overlay pode ficar órfão. Mas pela imagem o usuário não estava no fluxo de "esqueci senha".
-2. **A `LoginForm` usa `navigate('/')` sem fechar o modal antes.** O re-render é síncrono mas o `setState` interno do React Router pode causar uma janela onde `LandingPage` ainda existe com `showLogin=true` enquanto o `useAuth` propaga o novo user. Em um único frame isso seria invisível, mas há um efeito de transição com `animate-fadeInUp` no modal.
-3. **Mais provável:** o overlay que aparece na imagem é o `bg-foreground/40 backdrop-blur-sm` do modal de login que ficou renderizado porque o **Sidebar/dashboard renderiza dentro do mesmo Index, e o `showLogin` permaneceu `true` após o login** — não, isso não cola, pois `LandingPage` desmontou.
+```ts
+// linha ~110
+const targetPath = recoveryPath || window.location.pathname || '/';
+const hashToPreserve = recoveryHash || window.location.hash || '';
+window.location.replace(targetPath + '?v=' + newVersion + hashToPreserve);
+```
 
-Vou investigar uma hipótese mais simples na implementação: **o overlay na imagem pode ser o do `Sheet` (menu mobile)** que ficou aberto. O `Sheet` do Radix renderiza um overlay `fixed inset-0 bg-black/80` em portal. Se `sheetOpen` ficou `true` quando `LandingPage` desmontou, o portal pode ficar pendurado momentaneamente. Mas como ele é desmontado junto com o pai, deveria sumir.
+E também: **se for um fluxo de recovery, pular o version-check e renderizar direto**, evitando o reload destrutivo logo no clique do email:
 
-### Correção pragmática
+```ts
+// no início do bloco "else" (linha 124), antes do version check:
+const isRecoveryFlow = 
+  sessionStorage.getItem('supabase_recovery') === 'true' || 
+  window.location.hash.includes('type=recovery');
 
-Independente da causa exata (precisaria ver replay), as correções abaixo eliminam todas as fontes possíveis do overlay órfão:
-
-#### 1. `LoginForm.tsx` — emitir callback de sucesso
-
-Adicionar prop opcional `onSuccess?: () => void` e chamá-la **antes** de navegar. No submit:
-
-```tsx
-if (result && !result.error) {
-  setPassword('');
-  setErrorMessage(null);
-  onSuccess?.();           // fecha modal pai imediatamente
-  navigate('/', { replace: true });
-  // ...
+if (isRecoveryFlow) {
+  console.log('[MAIN] Fluxo de recovery detectado - pulando version check');
+  createRoot(document.getElementById("root")!).render(<App />);
+} else {
+  // ... lógica de version check existente
 }
 ```
 
-#### 2. `Index.tsx` (LandingPage) — fechar modal no sucesso
+Isso resolve a raiz: durante recuperação de senha, **nada** de cache-busting acontece. O hash chega intacto em `ResetPassword.tsx` e o formulário aparece.
 
-Passar callback ao `LoginForm`:
+---
 
-```tsx
-<LoginForm onSuccess={() => setShowLogin(false)} />
+## Revisão de todas as URLs e rotas
+
+### Redirect URLs do Supabase (sua screenshot) — ✅ OK
+
+Você já adicionou as 4 do `donawilma.com.br`:
+- `https://donawilma.com.br/**` (wildcard cobre tudo)
+- `/reset-password`, `/set-password`, `/payment-success`
+
+**Sugestão (opcional):** as URLs específicas (`reset-password`, `set-password`, `payment-success`, `boas-vindas`, `auth/callback`) já estão **cobertas pelo wildcard** `https://donawilma.com.br/**`. Pode deletar as específicas para limpar a lista — funciona igual. As do `donawilma.lovable.app` pode manter como fallback ou remover (você não usa mais).
+
+### Rotas no app — ✅ OK
+
+Todas as rotas declaradas em `App.tsx` são consistentes com o que é usado em `redirectTo` / `emailRedirectTo`:
+
+| Origem | Destino | Status |
+|---|---|---|
+| `useAuth.resetPassword()` | `${origin}/reset-password` | ✅ |
+| `SignUpForm` | `${origin}/?pending_checkout=...` | ✅ |
+| `Register.tsx` | `${origin}/auth/callback` | ✅ |
+| `Index.tsx` (set-password) | `/set-password` | ✅ |
+| `create-checkout` (origin fallback) | `https://donawilma.lovable.app` | ⚠️ ver abaixo |
+
+### Pequena pendência — `create-checkout` fallback
+
+`supabase/functions/create-checkout/index.ts:81`:
+```ts
+const origin = req.headers.get("origin") || "https://donawilma.lovable.app";
 ```
 
-E também: garantir que o modal feche se `user` mudar (defesa em profundidade):
+Em produção o header `Origin` chega corretamente como `https://donawilma.com.br`, então o fallback **nunca é usado** na prática. Mas por consistência, atualizar o fallback para `https://donawilma.com.br`.
 
-```tsx
-useEffect(() => {
-  if (user) {
-    setShowLogin(false);
-    setSheetOpen(false);
-  }
-}, [user]);
-```
+### `index.html`, `robots.txt`, `sitemap.xml`, Stripe Portal, locales — ✅ OK
 
-(`user` viria de `useAuth` no `LandingPage`, que hoje não consome — adicionar.)
+Tudo já apontando para `donawilma.com.br`.
 
-#### 3. Substituir o modal manual por `Dialog` do shadcn
+---
 
-O modal atual é uma `<div fixed inset-0>` artesanal. Trocar por `<Dialog>` do shadcn garante:
-- Cleanup automático do overlay ao desmontar.
-- Acessibilidade (focus trap, ESC, aria correto).
-- Sem risco de overlay órfão.
+## Sobre o email do remetente (sua observação)
 
-```tsx
-<Dialog open={showLogin} onOpenChange={setShowLogin}>
-  <DialogContent className="max-w-md p-0 bg-transparent border-0 shadow-none">
-    <LoginForm onSuccess={() => setShowLogin(false)} />
-  </DialogContent>
-</Dialog>
-```
+Você disse: "preciso melhorar isso, talvez um gmail para o cliente não estranhar e achar suspeito".
 
-#### 4. Defesa extra: resetar `sheetOpen` ao logar
+**Não use Gmail.** Email pessoal como remetente em sistema de produção fica muito mais suspeito (cai em spam, sem DKIM/SPF, sem domínio próprio). O caminho profissional é usar o **próprio domínio** que você já tem: `noreply@donawilma.com.br` ou `contato@donawilma.com.br`.
 
-Mesmo tratamento para o `Sheet` mobile, no mesmo `useEffect` acima.
+Você tem **duas opções** para fazer isso (NÃO vou implementar agora, só apresento):
 
-### Arquivos a editar
+**Opção A — Lovable Cloud Emails (mais simples, gerenciado):**
+Como o projeto está em Supabase externo, esse caminho não se aplica diretamente.
 
-- `src/components/auth/LoginForm.tsx` — adicionar prop `onSuccess` e chamar antes do `navigate`.
-- `src/pages/Index.tsx`:
-  - Trocar overlay manual por `<Dialog>` do shadcn (`@/components/ui/dialog`).
-  - Adicionar `useAuth` no `LandingPage` e `useEffect` que fecha `showLogin` e `sheetOpen` quando `user` aparece.
+**Opção B — Resend via domínio próprio (você já tem `RESEND_API_KEY` configurado nos secrets):**
+1. Adicionar o domínio `donawilma.com.br` no Resend Dashboard
+2. Adicionar registros DNS (SPF, DKIM, DMARC) no provedor do `donawilma.com.br`
+3. Verificar o domínio
+4. Criar uma edge function `auth-email-hook` que substitui os emails padrão do Supabase, enviando via Resend com remetente `Dona Wilma <noreply@donawilma.com.br>`, com template em português, branding e logo
+5. Configurar o webhook no Supabase Dashboard → Authentication → Email Templates → "Send email hook"
 
-### Validação após o fix
+Resultado: emails de confirmação/recuperação chegam de `Dona Wilma <noreply@donawilma.com.br>` com template branded em português, sem cara de "default Supabase".
 
-1. Logar pelo desktop → modal fecha imediatamente, dashboard renderiza limpo, navegação no sidebar funciona.
-2. Logar pelo mobile (via Sheet) → menu lateral fecha, modal fecha, dashboard limpo.
-3. Tecla ESC fecha modal corretamente (ganho do `Dialog`).
-4. Sem regressão em "Esqueci minha senha".
+Existe também o documento `CONFIGURACAO_SUPABASE.md` na raiz do projeto que menciona uma edge function `custom-auth-emails` — vou verificar se já existe algo nessa linha quando formos implementar.
 
-### Critério de sucesso
+---
 
-- Não há overlay escuro residual após login.
-- Sidebar e botões do dashboard são clicáveis imediatamente após login.
-- `Dialog` substitui o modal artesanal sem quebrar layout do `LoginForm`.
+## O que será alterado nesta etapa (apenas correção)
 
-**Confirma para eu aplicar?**
+1. **`src/main.tsx`** — pular version check em fluxo de recovery + preservar hash no `window.location.replace`
+2. **`supabase/functions/create-checkout/index.ts`** — fallback de `origin` para `donawilma.com.br`
+
+Nada que está funcionando será alterado. As correções são cirúrgicas.
+
+---
+
+## Próximos passos (suas decisões)
+
+Depois que eu aplicar as correções acima:
+
+1. **Testar reset de senha novamente** — agora deve abrir o formulário direito
+2. **Decidir sobre o email do remetente:**
+   - (a) deixar como está por enquanto (emails padrão do Supabase)
+   - (b) implementar agora o template branded via Resend com `noreply@donawilma.com.br`
+3. **Limpar (opcional)** as redirect URLs específicas do Supabase, mantendo só o wildcard
+
+Aprovando, eu já aplico as 2 correções e te aviso para testar o link de reset.

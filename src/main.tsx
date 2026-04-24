@@ -107,8 +107,10 @@ async function clearAllAndReload(newVersion: string) {
     console.error('[VERSION] Erro ao limpar caches:', e);
   } finally {
     // Redirecionar para o path original (não sempre /)
+    // CRÍTICO: preservar o hash (contém access_token de recovery do Supabase)
     const targetPath = recoveryPath || window.location.pathname || '/';
-    window.location.replace(targetPath + '?v=' + newVersion);
+    const hashToPreserve = recoveryHash || window.location.hash || '';
+    window.location.replace(targetPath + '?v=' + newVersion + hashToPreserve);
   }
 }
 
@@ -122,6 +124,16 @@ if (isLogout) {
     window.history.replaceState({}, document.title, '/');
   });
 } else {
+  // Se for fluxo de recuperação de senha, pular o version check para
+  // não destruir o hash com access_token vindo do email do Supabase
+  const isRecoveryFlow =
+    sessionStorage.getItem('supabase_recovery') === 'true' ||
+    window.location.hash.includes('type=recovery');
+
+  if (isRecoveryFlow) {
+    console.log('[MAIN] Fluxo de recovery detectado - pulando version check');
+    createRoot(document.getElementById("root")!).render(<App />);
+  } else {
   // Verificação de versão remota ANTES de renderizar
   (async () => {
     const localVersion = localStorage.getItem('app_version') || '';
@@ -138,4 +150,5 @@ if (isLogout) {
     // Renderizar app normalmente (sem background interval)
     createRoot(document.getElementById("root")!).render(<App />);
   })();
+  }
 }

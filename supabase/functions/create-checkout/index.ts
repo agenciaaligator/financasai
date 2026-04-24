@@ -78,7 +78,7 @@ serve(async (req) => {
       logStep("Found existing Stripe customer", { customerId });
     }
 
-    const origin = req.headers.get("origin") || "https://donawilma.lovable.app";
+    const origin = req.headers.get("origin") || "https://donawilma.com.br";
     logStep("Creating checkout session", { origin, priceId });
 
     const checkoutConfig: Stripe.Checkout.SessionCreateParams = {
