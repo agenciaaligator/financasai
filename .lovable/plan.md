@@ -1,71 +1,77 @@
-## Configuração de envio de e-mails via SMTP da Hostinger
+# Próximos passos após ativar SMTP no Supabase
 
-Vamos usar a conta `contato@donawilma.com.br` como remetente único para os 3 fluxos: autenticação (Supabase), confirmação de formulário de contato e notificações do app.
+SMTP customizado ativo no Supabase é o último bloqueio técnico para os e-mails de autenticação. Agora o trabalho é: (1) validar que tudo realmente funciona em produção, (2) limpar resquícios da Vercel, (3) garantir que não sobraram pontos onde o sistema poderia voltar a usar o domínio errado.
 
-### Arquitetura escolhida
+Não posso "garantir matematicamente zero bugs" — isso só vem dos testes reais com e-mail e cartão de verdade. Mas posso eliminar todos os riscos conhecidos e te entregar um checklist objetivo. É isso que esta etapa faz.
 
-```text
-                   ┌─────────────────────────────────────┐
-                   │  smtp.hostinger.com:465 (SSL)       │
-                   │  user: contato@donawilma.com.br     │
-                   └──────────────┬──────────────────────┘
-                                  │
-        ┌─────────────────────────┼─────────────────────────┐
-        │                         │                         │
-┌───────▼────────┐      ┌─────────▼──────────┐    ┌─────────▼──────────┐
-│ Supabase Auth  │      │ send-app-email     │    │ submit-contact-    │
-│ (SMTP custom)  │      │ (edge function)    │    │ message (já existe)│
-│ reset/signup   │      │ notificações       │    │ + envio confirmação│
-└────────────────┘      └────────────────────┘    └────────────────────┘
+---
+
+## O que vou alterar no código
+
+### 1. Remover `vercel.json` (resquício da hospedagem antiga)
+Você migrou para a Hostinger, mas o arquivo `vercel.json` ainda está no repositório. Não causa erro hoje, mas:
+- Confunde quem ler o projeto depois.
+- Se um dia alguém reconectar a Vercel por engano, ela vai aplicar configurações antigas.
+
+Ação: deletar `vercel.json`.
+
+### 2. Corrigir o canonical do `/admin`
+No `src/components/admin/AdminPanel.tsx` (linha 41) ainda existe:
+```ts
+canonical.setAttribute("href", `${window.location.origin}/admin`);
 ```
+Em produção isso fica certo, mas se alguém abrir o admin por um domínio de preview o canonical aponta pro domínio errado (ruim pra SEO e indexa páginas que não deveriam).
 
-### O que será feito
+Ação: trocar por `buildSiteUrl('/admin')` usando o helper `src/lib/siteUrl.ts` que já existe.
 
-**1. Supabase Auth → SMTP customizado da Hostinger**
-- Configuração feita no painel do Supabase (Authentication → Emails → SMTP Settings) por você, com os valores que vou te entregar prontos. Isso faz com que confirmação de cadastro, recuperação de senha e magic links saiam de `contato@donawilma.com.br` em vez de `noreply@mail.app.supabase.io`.
-- Personalizar os 4 templates de e-mail do Supabase (Confirm signup, Reset password, Magic link, Change email) com a identidade visual da Dona Wilma e o domínio canônico `https://donawilma.com.br`.
+### 3. Confirmar `submit-contact-message`
+Já está chamando `send-app-email` corretamente para os dois lados (admin + usuário). Vou apenas reler o fluxo após deploy e checar logs no primeiro envio real.
 
-**2. Nova edge function `send-app-email` (genérica via SMTP)**
-- Usa a biblioteca `denomailer` (SMTP nativo Deno) — sem dependência de Resend ou serviços terceiros.
-- Lê credenciais SMTP de secrets do Supabase: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM_NAME`.
-- Aceita `{ to, subject, html, text, replyTo? }` com validação Zod.
-- Será o ponto único para qualquer notificação transacional do app (alertas de meta, boas-vindas pós-onboarding, avisos de assinatura, etc.).
-- CORS, validação de input, logs e rate-limit por IP.
+Nenhuma outra mudança de código é necessária — todas as outras URLs de saída (`create-checkout`, `customer-portal`, signup, reset de senha, links no WhatsApp) já usam `donawilma.com.br` via `getSiteUrl()` ou constantes fixas.
 
-**3. Atualizar `submit-contact-message`**
-- Após inserir a mensagem na tabela, chamar `send-app-email` para:
-  - Notificar `contato@donawilma.com.br` com os dados do contato (`replyTo` = e-mail do remetente, para responder direto).
-  - Enviar confirmação de recebimento ao usuário ("Recebemos sua mensagem, retornaremos em breve").
-- Templates HTML inline com a identidade visual.
+---
 
-**4. Adicionar 3 secrets no Supabase**
-- `SMTP_HOST` = `smtp.hostinger.com`
-- `SMTP_PORT` = `465`
-- `SMTP_USER` = `contato@donawilma.com.br`
-- `SMTP_PASS` = (senha da caixa de e-mail Hostinger — você fornece via prompt seguro)
-- `SMTP_FROM_NAME` = `Dona Wilma`
+## Checklist de testes que você precisa fazer (depois do deploy)
 
-**5. Documentação**
-- Atualizar `CONFIGURACAO_SUPABASE.md` com o passo a passo SMTP no Supabase Auth e os templates customizados.
-- Criar memória técnica `mem://infrastructure/smtp-hostinger-config` com host, porta, encoding e regra de uso.
+Sem esses testes não é possível afirmar "está sem bugs". Cada item leva ~1 min:
 
-### O que VOCÊ precisa fazer (passo a passo simples)
+**A. SMTP / e-mails de autenticação**
+1. No Supabase → **Authentication → Emails → SMTP Settings**, clicar em **Send test email** e enviar pra você mesmo. Tem que chegar de `contato@donawilma.com.br`.
+2. Criar uma conta nova de teste em `https://donawilma.com.br/register` → e-mail de confirmação chega → link abre `/auth/callback` no domínio oficial → cai em `/payment-success` ou `/boas-vindas`.
+3. Pedir reset de senha em `https://donawilma.com.br/login` → e-mail chega → link leva pra `/reset-password` → consegue trocar a senha → consegue logar com a nova.
 
-1. **Aguardar propagação DNS** (já em andamento — verifique em https://dnschecker.org).
-2. **Quando eu pedir, fornecer a senha da caixa `contato@donawilma.com.br`** (a mesma usada no webmail da Hostinger). Vou pedir via prompt seguro do Lovable, não vai ficar no código.
-3. **No painel do Supabase**, depois que eu te avisar, colar as configurações SMTP (vou te entregar o bloco pronto: host, porta, user, sender name, sender email).
-4. **Cole os 4 templates HTML** que vou gerar nos campos correspondentes em Authentication → Emails → Templates.
+**B. Formulário de contato**
+4. Enviar uma mensagem pelo formulário. Esperado: você recebe a notificação em `contato@donawilma.com.br` (com botão "Responder" indo pro usuário) E o usuário recebe a confirmação automática.
 
-### Limites e observações importantes
+**C. Pagamento**
+5. Clicar em "Assinar" → checkout Stripe abre → após pagar (use cartão real ou modo de teste) → volta para `https://donawilma.com.br/payment-success`.
+6. Logado, abrir o portal do cliente Stripe → também volta para `donawilma.com.br`.
 
-- **Volume**: o SMTP da Hostinger tem limite típico de **~100 e-mails por hora** e ~3000/dia por conta (varia por plano). Para o estágio atual (MVP), é mais que suficiente.
-- **Entregabilidade**: como os DNS estão na Hostinger, SPF e DKIM já vêm configurados automaticamente para a conta — a entregabilidade fica boa nativamente.
-- **Senha de e-mail ≠ senha do painel Hostinger**: é a senha específica da caixa de e-mail (criada quando você criou a conta `contato@`).
-- **Se um dia o volume crescer** (>3k/dia), migramos para Resend ou Lovable Emails sem alterar o código do app — só trocamos a config SMTP nos secrets.
+**D. Rotas SPA da Hostinger**
+7. Abrir direto no navegador (não via menu): `https://donawilma.com.br/reset-password`, `/auth/callback`, `/admin`, `/termos`. Se alguma der 404 → abrir chamado na Hostinger pedindo "rewrite all routes to /index.html for SPA".
 
-### Detalhes técnicos (para minha referência)
+**E. WhatsApp (smoke test)**
+8. Mandar um áudio/texto pro número conectado e confirmar que a transação aparece no dashboard. (Os links que o agente envia já usam `donawilma.com.br`.)
 
-- Lib SMTP: `denomailer@1.6.0` (ESM compatível com edge functions Deno).
-- Conexão: TLS implícito na porta 465 (`tls: true`), fallback para 587 STARTTLS se necessário.
-- O `auth-email-hook` do Lovable NÃO será usado — o Supabase nativo envia direto via SMTP customizado, mais simples e sem orquestração extra.
-- O helper `buildSiteUrl()` (já existente) será usado em todos os links dentro dos templates HTML para garantir que apontem para `https://donawilma.com.br`.
+---
+
+## Detalhes técnicos (resumo)
+
+- **Arquivos editados nesta etapa**: `src/components/AdminPanel.tsx` (1 linha), `vercel.json` (deletado).
+- **Sem migrations**, sem novas Edge Functions, sem novos secrets.
+- **Logs pra acompanhar no primeiro teste real**:
+  - `send-app-email`: confirma se o SMTP autenticou.
+  - `submit-contact-message`: confirma os 2 disparos.
+  - `auth` (Supabase Logs): confirma que o template de signup/recovery foi enviado pelo SMTP custom.
+
+---
+
+## O que continua sendo responsabilidade sua (não automatizável)
+
+- Conferir no painel da **Hostinger** que o build mais recente está publicado.
+- Aguardar 100% da propagação DNS (`https://dnschecker.org` em verde para `donawilma.com.br` e `www`).
+- No **Supabase → Auth → URL Configuration**, confirmar:
+  - Site URL = `https://donawilma.com.br`
+  - Redirect URLs incluem `https://donawilma.com.br/**`
+
+Aprovando este plano, eu faço as 2 alterações de código, e em seguida você roda o checklist de 8 testes acima. Qualquer item que falhar, me manda o print/log e eu corrijo direto.

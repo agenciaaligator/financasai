@@ -10,6 +10,7 @@ import { Shield, Users, CreditCard, BarChart3, Mail } from "lucide-react";
 import { LanguageFlagSelector } from "@/components/LanguageFlagSelector";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { buildSiteUrl } from "@/lib/siteUrl";
 
 export function AdminPanel() {
   const { t } = useTranslation();
@@ -38,7 +39,7 @@ export function AdminPanel() {
       canonical.setAttribute("rel", "canonical");
       document.head.appendChild(canonical);
     }
-    canonical.setAttribute("href", `${window.location.origin}/admin`);
+    canonical.setAttribute("href", buildSiteUrl("/admin"));
   }, [t]);
 
   // Fetch new messages count + realtime
