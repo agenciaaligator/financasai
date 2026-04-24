@@ -1213,7 +1213,8 @@
       "subjectMin": "Oggetto troppo corto",
       "subjectMax": "Oggetto troppo lungo",
       "messageMin": "Messaggio troppo corto (minimo 10 caratteri)",
-      "messageMax": "Messaggio troppo lungo"
+      "messageMax": "Messaggio troppo lungo",
+      "phoneInvalid": "Telefono non valido (8-20 caratteri)"
     }
   }
 }
