@@ -1220,7 +1220,8 @@
       "subjectMin": "Subject too short",
       "subjectMax": "Subject too long",
       "messageMin": "Message too short (minimum 10 characters)",
-      "messageMax": "Message too long"
+      "messageMax": "Message too long",
+      "phoneInvalid": "Invalid phone (8-20 characters)"
     }
   }
 }
