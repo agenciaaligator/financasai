@@ -49,7 +49,11 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     logStep("Found Stripe customer", { customerId });
 
-    const origin = req.headers.get("origin") || "https://donawilma.com.br";
+    // SEMPRE retornar para o domínio canônico oficial (SITE_URL).
+    // Não usar req.headers.get("origin") — isso devolveria o usuário ao host
+    // de onde ele abriu o portal (preview/lovable.app/vercel.app), em vez do
+    // domínio oficial donawilma.com.br.
+    const origin = Deno.env.get("SITE_URL") || "https://donawilma.com.br";
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,
       return_url: `${origin}/`,
