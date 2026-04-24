@@ -252,6 +252,9 @@
         "archive": "Archive",
         "delete": "Delete",
         "reply": "Reply by email"
+      },
+      "fields": {
+        "phone": "Phone"
       }
     }
   },
@@ -819,6 +822,10 @@
           "label": "Email",
           "placeholder": "you@example.com"
         },
+        "phone": {
+          "label": "Phone (optional)",
+          "placeholder": "+1 555 123 4567"
+        },
         "subject": {
           "label": "Subject",
           "placeholder": "What is this about?"
@@ -1213,7 +1220,8 @@
       "subjectMin": "Subject too short",
       "subjectMax": "Subject too long",
       "messageMin": "Message too short (minimum 10 characters)",
-      "messageMax": "Message too long"
+      "messageMax": "Message too long",
+      "phoneInvalid": "Invalid phone (8-20 characters)"
     }
   }
 }

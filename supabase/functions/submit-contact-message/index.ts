@@ -10,6 +10,7 @@ const corsHeaders = {
 const BodySchema = z.object({
   name: z.string().trim().min(2).max(120),
   email: z.string().trim().email().max(255),
+  phone: z.string().trim().max(20).optional().or(z.literal("")),
   subject: z.string().trim().min(3).max(200),
   message: z.string().trim().min(10).max(5000),
   website: z.string().optional(), // honeypot
@@ -36,13 +37,15 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "validation" }, 400);
     }
 
-    const { name, email, subject, message, website, user_agent } = parsed.data;
+    const { name, email, phone, subject, message, website, user_agent } = parsed.data;
 
     // Honeypot: se preenchido, finge sucesso e descarta
     if (website && website.trim().length > 0) {
       console.log("[submit-contact-message] honeypot triggered");
       return jsonResponse({ success: true });
     }
+
+    const normalizedPhone = phone && phone.trim().length > 0 ? phone.trim() : null;
 
     // Captura IP real
     const xff = req.headers.get("x-forwarded-for") ?? "";
@@ -56,6 +59,7 @@ Deno.serve(async (req) => {
     const { error } = await supabase.from("contact_messages").insert({
       name,
       email,
+      phone: normalizedPhone,
       subject,
       message,
       ip_address,

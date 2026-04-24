@@ -250,6 +250,9 @@
         "archive": "Archivar",
         "delete": "Eliminar",
         "reply": "Responder por correo"
+      },
+      "fields": {
+        "phone": "Teléfono"
       }
     }
   },
@@ -812,6 +815,10 @@
           "label": "Correo",
           "placeholder": "tu@ejemplo.com"
         },
+        "phone": {
+          "label": "Teléfono (opcional)",
+          "placeholder": "+34 612 345 678"
+        },
         "subject": {
           "label": "Asunto",
           "placeholder": "¿De qué se trata?"
@@ -1206,7 +1213,8 @@
       "subjectMin": "Asunto muy corto",
       "subjectMax": "Asunto muy largo",
       "messageMin": "Mensaje muy corto (mínimo 10 caracteres)",
-      "messageMax": "Mensaje muy largo"
+      "messageMax": "Mensaje muy largo",
+      "phoneInvalid": "Teléfono inválido (8-20 caracteres)"
     }
   }
 }

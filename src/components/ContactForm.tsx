@@ -18,11 +18,15 @@ export function ContactForm() {
   const schema = z.object({
     name: z.string().trim().min(2, t("validation.contact.nameMin")).max(120, t("validation.contact.nameMax")),
     email: z.string().trim().email(t("validation.contact.emailInvalid")).max(255, t("validation.contact.emailMax")),
+    phone: z.string().trim().max(20, t("validation.contact.phoneInvalid"))
+      .refine((v) => !v || /^[0-9 +()\-]{8,20}$/.test(v), { message: t("validation.contact.phoneInvalid") })
+      .optional()
+      .or(z.literal("")),
     subject: z.string().trim().min(3, t("validation.contact.subjectMin")).max(200, t("validation.contact.subjectMax")),
     message: z.string().trim().min(10, t("validation.contact.messageMin")).max(5000, t("validation.contact.messageMax")),
   });
 
-  const [form, setForm] = useState({ name: "", email: "", subject: "", message: "", website: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", subject: "", message: "", website: "" });
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -97,7 +101,7 @@ export function ContactForm() {
       const until = Date.now() + COOLDOWN_SECONDS * 1000;
       sessionStorage.setItem(COOLDOWN_KEY, String(until));
       setSuccess(true);
-      setForm({ name: "", email: "", subject: "", message: "", website: "" });
+      setForm({ name: "", email: "", phone: "", subject: "", message: "", website: "" });
       toast.success(t("landing.contactSection.success"));
     } catch (err) {
       console.log("[ContactForm] exception", err);
@@ -165,8 +169,23 @@ export function ContactForm() {
             maxLength={255}
             aria-invalid={!!errors.email}
           />
-          {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="contact-phone">{t("landing.contactSection.fields.phone.label")}</Label>
+        <Input
+          id="contact-phone"
+          type="tel"
+          inputMode="tel"
+          value={form.phone}
+          onChange={(e) => update("phone", e.target.value)}
+          placeholder={t("landing.contactSection.fields.phone.placeholder")}
+          disabled={loading}
+          maxLength={20}
+          aria-invalid={!!errors.phone}
+        />
+        {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
       </div>
 
       <div className="space-y-2">

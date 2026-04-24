@@ -252,6 +252,9 @@
         "archive": "Arquivar",
         "delete": "Excluir",
         "reply": "Responder por e-mail"
+      },
+      "fields": {
+        "phone": "Telefone"
       }
     }
   },
@@ -825,6 +828,10 @@
           "label": "E-mail",
           "placeholder": "voce@exemplo.com"
         },
+        "phone": {
+          "label": "Telefone (opcional)",
+          "placeholder": "(11) 99999-9999"
+        },
         "subject": {
           "label": "Assunto",
           "placeholder": "Sobre o que é a mensagem?"
@@ -1219,7 +1226,8 @@
       "subjectMin": "Assunto muito curto",
       "subjectMax": "Assunto muito longo",
       "messageMin": "Mensagem muito curta (mínimo 10 caracteres)",
-      "messageMax": "Mensagem muito longa"
+      "messageMax": "Mensagem muito longa",
+      "phoneInvalid": "Telefone inválido (8-20 caracteres)"
     }
   }
 }

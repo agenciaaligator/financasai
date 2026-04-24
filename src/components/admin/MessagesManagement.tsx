@@ -30,6 +30,7 @@ type ContactMessage = {
   id: string;
   name: string;
   email: string;
+  phone: string | null;
   subject: string;
   message: string;
   status: "new" | "read" | "replied" | "archived";
@@ -208,6 +209,9 @@ export function MessagesManagement() {
                         {msg.name}
                       </span>
                       <span className="text-xs text-muted-foreground truncate">&lt;{msg.email}&gt;</span>
+                      {msg.phone && (
+                        <span className="text-xs text-muted-foreground truncate">· {msg.phone}</span>
+                      )}
                       <Badge variant={statusVariant(msg.status) as any} className="text-xs">
                         {t(`admin.messages.status.${msg.status}`)}
                       </Badge>
@@ -249,6 +253,15 @@ export function MessagesManagement() {
                 <DialogTitle className="break-words">{selected.subject}</DialogTitle>
                 <DialogDescription>
                   <span className="font-medium">{selected.name}</span> &lt;{selected.email}&gt; · {formatDate(selected.created_at)}
+                  {selected.phone && (
+                    <>
+                      {" · "}
+                      <span className="font-medium">{t("admin.messages.fields.phone")}: </span>
+                      <a href={`tel:${selected.phone}`} className="underline hover:text-primary">
+                        {selected.phone}
+                      </a>
+                    </>
+                  )}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3">
