@@ -169,8 +169,23 @@ export function ContactForm() {
             maxLength={255}
             aria-invalid={!!errors.email}
           />
-          {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="contact-phone">{t("landing.contactSection.fields.phone.label")}</Label>
+        <Input
+          id="contact-phone"
+          type="tel"
+          inputMode="tel"
+          value={form.phone}
+          onChange={(e) => update("phone", e.target.value)}
+          placeholder={t("landing.contactSection.fields.phone.placeholder")}
+          disabled={loading}
+          maxLength={20}
+          aria-invalid={!!errors.phone}
+        />
+        {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
       </div>
 
       <div className="space-y-2">
