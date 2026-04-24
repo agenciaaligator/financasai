@@ -209,6 +209,9 @@ export function MessagesManagement() {
                         {msg.name}
                       </span>
                       <span className="text-xs text-muted-foreground truncate">&lt;{msg.email}&gt;</span>
+                      {msg.phone && (
+                        <span className="text-xs text-muted-foreground truncate">· {msg.phone}</span>
+                      )}
                       <Badge variant={statusVariant(msg.status) as any} className="text-xs">
                         {t(`admin.messages.status.${msg.status}`)}
                       </Badge>
