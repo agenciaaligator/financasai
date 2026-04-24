@@ -29,24 +29,31 @@ const AuthEventHandler = ({ children }: { children: ReactNode }) => {
   const location = useLocation();
   
   const [isRecovery] = useState(() => {
-    return sessionStorage.getItem('supabase_recovery') === 'true' || 
-           window.location.hash.includes('type=recovery');
+    return sessionStorage.getItem('supabase_recovery') === 'true' ||
+           window.location.hash.includes('type=recovery') ||
+           window.location.search.includes('type=recovery');
   });
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event) => {
         if (event === 'PASSWORD_RECOVERY') {
-          navigate('/reset-password', { replace: true });
+          // Garantir que o hash com access_token (se houver) seja preservado
+          const hash = sessionStorage.getItem('supabase_recovery_hash') || window.location.hash || '';
+          navigate(`/reset-password${hash}`, { replace: true });
         }
       }
     );
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Redirecionar APENAS se nao estamos ja em /reset-password
-  if (isRecovery && location.pathname !== '/reset-password') {
-    const hash = window.location.hash;
+  // Redirecionar APENAS se nao estamos ja em /reset-password ou /set-password
+  if (
+    isRecovery &&
+    location.pathname !== '/reset-password' &&
+    location.pathname !== '/set-password'
+  ) {
+    const hash = sessionStorage.getItem('supabase_recovery_hash') || window.location.hash || '';
     return <Navigate to={`/reset-password${hash}`} replace />;
   }
 
