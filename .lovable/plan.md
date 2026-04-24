@@ -1,71 +1,71 @@
-## Plano de correção completa de URLs
+## Configuração de envio de e-mails via SMTP da Hostinger
 
-Vou corrigir o problema pela raiz, centralizando o domínio canônico e removendo qualquer dependência de `window.location.origin`, `origin` do request ou hosts antigos que possam mandar o usuário para a home errada.
+Vamos usar a conta `contato@donawilma.com.br` como remetente único para os 3 fluxos: autenticação (Supabase), confirmação de formulário de contato e notificações do app.
 
-### O que será corrigido
+### Arquitetura escolhida
 
-1. Centralizar a URL oficial do sistema
-- Criar uma origem canônica única para produção (`https://donawilma.com.br`).
-- Fazer o app usar essa URL nos fluxos críticos de autenticação e retorno.
-- Manter fallback seguro para ambiente local/preview sem contaminar links reais enviados ao cliente.
+```text
+                   ┌─────────────────────────────────────┐
+                   │  smtp.hostinger.com:465 (SSL)       │
+                   │  user: contato@donawilma.com.br     │
+                   └──────────────┬──────────────────────┘
+                                  │
+        ┌─────────────────────────┼─────────────────────────┐
+        │                         │                         │
+┌───────▼────────┐      ┌─────────▼──────────┐    ┌─────────▼──────────┐
+│ Supabase Auth  │      │ send-app-email     │    │ submit-contact-    │
+│ (SMTP custom)  │      │ (edge function)    │    │ message (já existe)│
+│ reset/signup   │      │ notificações       │    │ + envio confirmação│
+└────────────────┘      └────────────────────┘    └────────────────────┘
+```
 
-2. Corrigir links de e-mail do Supabase
-- Ajustar o reset de senha para não depender mais do host atual do navegador.
-- Ajustar o link de confirmação/callback de cadastro para não depender do domínio onde o usuário abriu o app.
-- Revisar também fluxos alternativos de cadastro já existentes no projeto para evitar regressão.
+### O que será feito
 
-3. Corrigir retornos do Stripe
-- Ajustar `create-checkout` para usar URLs de sucesso/cancelamento consistentes e corretas.
-- Ajustar `customer-portal` para voltar para a rota correta no domínio oficial, sem cair indevidamente na home por host errado.
+**1. Supabase Auth → SMTP customizado da Hostinger**
+- Configuração feita no painel do Supabase (Authentication → Emails → SMTP Settings) por você, com os valores que vou te entregar prontos. Isso faz com que confirmação de cadastro, recuperação de senha e magic links saiam de `contato@donawilma.com.br` em vez de `noreply@mail.app.supabase.io`.
+- Personalizar os 4 templates de e-mail do Supabase (Confirm signup, Reset password, Magic link, Change email) com a identidade visual da Dona Wilma e o domínio canônico `https://donawilma.com.br`.
 
-4. Corrigir links antigos e inconsistentes fora do fluxo principal
-- Remover links ainda apontando para `lovableproject.com`.
-- Remover fallback derivado automaticamente para `.vercel.app` em mensagens do WhatsApp.
-- Revisar mensagens e links auxiliares para usar apenas o domínio correto.
+**2. Nova edge function `send-app-email` (genérica via SMTP)**
+- Usa a biblioteca `denomailer` (SMTP nativo Deno) — sem dependência de Resend ou serviços terceiros.
+- Lê credenciais SMTP de secrets do Supabase: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM_NAME`.
+- Aceita `{ to, subject, html, text, replyTo? }` com validação Zod.
+- Será o ponto único para qualquer notificação transacional do app (alertas de meta, boas-vindas pós-onboarding, avisos de assinatura, etc.).
+- CORS, validação de input, logs e rate-limit por IP.
 
-5. Fazer uma auditoria final de rotas e URLs críticas
-- Validar estas rotas no código e no deploy: `/reset-password`, `/set-password`, `/auth/callback`, `/payment-success`, `/payment-cancelled`, `/subscription-inactive`, `/boas-vindas`, `/choose-plan`.
-- Confirmar que nenhum fluxo legítimo depende de redirecionamento para `/` quando deveria ir para uma rota específica.
+**3. Atualizar `submit-contact-message`**
+- Após inserir a mensagem na tabela, chamar `send-app-email` para:
+  - Notificar `contato@donawilma.com.br` com os dados do contato (`replyTo` = e-mail do remetente, para responder direto).
+  - Enviar confirmação de recebimento ao usuário ("Recebemos sua mensagem, retornaremos em breve").
+- Templates HTML inline com a identidade visual.
 
-### Problemas encontrados na revisão
+**4. Adicionar 3 secrets no Supabase**
+- `SMTP_HOST` = `smtp.hostinger.com`
+- `SMTP_PORT` = `465`
+- `SMTP_USER` = `contato@donawilma.com.br`
+- `SMTP_PASS` = (senha da caixa de e-mail Hostinger — você fornece via prompt seguro)
+- `SMTP_FROM_NAME` = `Dona Wilma`
 
-- `src/hooks/useAuth.ts`: o reset de senha usa `window.location.origin/reset-password`.
-- `src/pages/Register.tsx`: a confirmação de cadastro usa `window.location.origin/auth/callback`.
-- `src/components/auth/SignUpForm.tsx`: existe um fluxo alternativo antigo que ainda monta redirect para a home com query string.
-- `supabase/functions/create-checkout/index.ts`: `success_url` e `cancel_url` dependem do header `origin`.
-- `supabase/functions/customer-portal/index.ts`: `return_url` depende do header `origin`.
-- `supabase/functions/whatsapp-agent/index.ts`: ainda existem links apontando para `bc45aac3-c622-434f-ad58-afc37c18c6c2.lovableproject.com` e fallback para `.vercel.app`.
+**5. Documentação**
+- Atualizar `CONFIGURACAO_SUPABASE.md` com o passo a passo SMTP no Supabase Auth e os templates customizados.
+- Criar memória técnica `mem://infrastructure/smtp-hostinger-config` com host, porta, encoding e regra de uso.
 
-### Arquivos que pretendo ajustar
+### O que VOCÊ precisa fazer (passo a passo simples)
 
-- `src/hooks/useAuth.ts`
-- `src/pages/Register.tsx`
-- `src/components/auth/SignUpForm.tsx`
-- `supabase/functions/create-checkout/index.ts`
-- `supabase/functions/customer-portal/index.ts`
-- `supabase/functions/whatsapp-agent/index.ts`
-- possivelmente um util/config compartilhado para domínio canônico
-- documentação operacional (`CONFIGURACAO_SUPABASE.md`) se necessário para refletir o comportamento final
+1. **Aguardar propagação DNS** (já em andamento — verifique em https://dnschecker.org).
+2. **Quando eu pedir, fornecer a senha da caixa `contato@donawilma.com.br`** (a mesma usada no webmail da Hostinger). Vou pedir via prompt seguro do Lovable, não vai ficar no código.
+3. **No painel do Supabase**, depois que eu te avisar, colar as configurações SMTP (vou te entregar o bloco pronto: host, porta, user, sender name, sender email).
+4. **Cole os 4 templates HTML** que vou gerar nos campos correspondentes em Authentication → Emails → Templates.
 
-### Detalhes técnicos
+### Limites e observações importantes
 
-- Substituir montagem dinâmica de URLs baseada no host atual por uma estratégia canônica, por exemplo:
-  - produção: `https://donawilma.com.br`
-  - desenvolvimento local: `http://localhost:5173`
-  - preview apenas para navegação interna, nunca como base confiável de links enviados por e-mail ao cliente
-- Garantir consistência entre:
-  - Supabase Auth `redirectTo` / `emailRedirectTo`
-  - Stripe `success_url` / `cancel_url` / `return_url`
-  - links exibidos em mensagens automatizadas
-- Preservar o fluxo robusto já existente de recuperação de senha (`index.html` + `main.tsx` + `App.tsx` + `ResetPassword.tsx`), porque ele está correto conceitualmente; o foco é impedir que o link inicial já nasça com domínio errado.
+- **Volume**: o SMTP da Hostinger tem limite típico de **~100 e-mails por hora** e ~3000/dia por conta (varia por plano). Para o estágio atual (MVP), é mais que suficiente.
+- **Entregabilidade**: como os DNS estão na Hostinger, SPF e DKIM já vêm configurados automaticamente para a conta — a entregabilidade fica boa nativamente.
+- **Senha de e-mail ≠ senha do painel Hostinger**: é a senha específica da caixa de e-mail (criada quando você criou a conta `contato@`).
+- **Se um dia o volume crescer** (>3k/dia), migramos para Resend ou Lovable Emails sem alterar o código do app — só trocamos a config SMTP nos secrets.
 
-### Resultado esperado
+### Detalhes técnicos (para minha referência)
 
-Depois dessa correção:
-- o e-mail de redefinição abrirá diretamente a rota correta,
-- o e-mail de confirmação abrirá o callback correto,
-- Stripe sempre voltará para as páginas corretas,
-- mensagens automáticas não exibirão hosts errados,
-- e o sistema deixará de cair na home por inconsistência de domínio/URL.
-
-Aprovação dessa etapa me permite implementar as correções agora.
+- Lib SMTP: `denomailer@1.6.0` (ESM compatível com edge functions Deno).
+- Conexão: TLS implícito na porta 465 (`tls: true`), fallback para 587 STARTTLS se necessário.
+- O `auth-email-hook` do Lovable NÃO será usado — o Supabase nativo envia direto via SMTP customizado, mais simples e sem orquestração extra.
+- O helper `buildSiteUrl()` (já existente) será usado em todos os links dentro dos templates HTML para garantir que apontem para `https://donawilma.com.br`.
