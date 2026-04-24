@@ -101,7 +101,7 @@ export function ContactForm() {
       const until = Date.now() + COOLDOWN_SECONDS * 1000;
       sessionStorage.setItem(COOLDOWN_KEY, String(until));
       setSuccess(true);
-      setForm({ name: "", email: "", subject: "", message: "", website: "" });
+      setForm({ name: "", email: "", phone: "", subject: "", message: "", website: "" });
       toast.success(t("landing.contactSection.success"));
     } catch (err) {
       console.log("[ContactForm] exception", err);
