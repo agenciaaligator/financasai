@@ -815,6 +815,10 @@
           "label": "Email",
           "placeholder": "tu@esempio.com"
         },
+        "phone": {
+          "label": "Telefono (opzionale)",
+          "placeholder": "+39 333 123 4567"
+        },
         "subject": {
           "label": "Oggetto",
           "placeholder": "Di cosa si tratta?"
