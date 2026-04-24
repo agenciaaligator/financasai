@@ -250,6 +250,9 @@
         "archive": "Arquivar",
         "delete": "Eliminar",
         "reply": "Responder por e-mail"
+      },
+      "fields": {
+        "phone": "Telefone"
       }
     }
   },
