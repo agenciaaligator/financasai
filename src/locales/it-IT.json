@@ -250,6 +250,9 @@
         "archive": "Archivia",
         "delete": "Elimina",
         "reply": "Rispondi via email"
+      },
+      "fields": {
+        "phone": "Telefono"
       }
     }
   },
