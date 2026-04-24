@@ -152,9 +152,11 @@ export function ContactForm() {
             placeholder={t("landing.contactSection.fields.name.placeholder")}
             disabled={loading}
             maxLength={120}
+            autoComplete="name"
             aria-invalid={!!errors.name}
+            aria-describedby={errors.name ? "contact-name-error" : undefined}
           />
-          {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
+          {errors.name && <p id="contact-name-error" className="text-xs text-destructive">{errors.name}</p>}
         </div>
 
         <div className="space-y-2">
@@ -167,8 +169,11 @@ export function ContactForm() {
             placeholder={t("landing.contactSection.fields.email.placeholder")}
             disabled={loading}
             maxLength={255}
+            autoComplete="email"
             aria-invalid={!!errors.email}
+            aria-describedby={errors.email ? "contact-email-error" : undefined}
           />
+          {errors.email && <p id="contact-email-error" className="text-xs text-destructive">{errors.email}</p>}
         </div>
       </div>
 
@@ -183,9 +188,11 @@ export function ContactForm() {
           placeholder={t("landing.contactSection.fields.phone.placeholder")}
           disabled={loading}
           maxLength={20}
+          autoComplete="tel"
           aria-invalid={!!errors.phone}
+          aria-describedby={errors.phone ? "contact-phone-error" : undefined}
         />
-        {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
+        {errors.phone && <p id="contact-phone-error" className="text-xs text-destructive">{errors.phone}</p>}
       </div>
 
       <div className="space-y-2">

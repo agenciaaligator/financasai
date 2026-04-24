@@ -121,13 +121,26 @@ Paleta de cores extraída do ícone: tons de azul com gradientes
     font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
   }
 
-  /* Fix Chrome autofill making text invisible on dark/translucent inputs (e.g. Register page) */
+  /* Default autofill — light backgrounds (landing, dashboard, contact form).
+     Use the foreground (dark) color so autofilled text stays legible. */
   input:-webkit-autofill,
   input:-webkit-autofill:hover,
-  input:-webkit-autofill:focus {
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus {
+    -webkit-text-fill-color: hsl(var(--foreground));
+    -webkit-box-shadow: 0 0 0 1000px hsl(var(--background)) inset;
+    transition: background-color 9999s ease-in-out 0s;
+    caret-color: hsl(var(--foreground));
+  }
+
+  /* Dark auth screens (Login, Register, ResetPassword) — keep autofill text white. */
+  .auth-dark input:-webkit-autofill,
+  .auth-dark input:-webkit-autofill:hover,
+  .auth-dark input:-webkit-autofill:focus {
     -webkit-text-fill-color: white !important;
     -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.10) inset !important;
-    transition: background-color 9999s ease-in-out 0s;
     caret-color: white;
   }
 }

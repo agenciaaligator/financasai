@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://donawilma.lovable.app/sitemap.xml
+Sitemap: https://donawilma.com.br/sitemap.xml
