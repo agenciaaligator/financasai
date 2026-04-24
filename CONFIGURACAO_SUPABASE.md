@@ -73,9 +73,27 @@ A Edge Function **`send-app-email`** é o ponto único de envio de e-mails do ap
 
 ---
 
-## 5. Domínio publicado (Hostinger Node.js)
+## 5. Domínio publicado (Hostinger) — Fallback SPA
 
-O app está hospedado na Hostinger. Para que rotas como `/reset-password` funcionem ao serem abertas direto (link de e-mail), o servidor precisa fazer **fallback SPA para `index.html`**. O painel da Hostinger Node.js já cuida disso por padrão para apps Vite, mas teste no navegador cada uma destas rotas após a propagação do DNS:
+O app é uma SPA (React Router em modo `BrowserRouter`). Para que rotas como `/login` ou `/reset-password` abram quando digitadas direto na barra do navegador (ou clicadas em link de e-mail), o servidor precisa fazer **fallback para `index.html`** sempre que o caminho não for um arquivo real.
+
+> ⚠️ Sintoma atual observado: ao abrir `https://donawilma.com.br/login` ou `/reset-password`, o servidor responde **HTTP 404 da Hostinger** (página "This Page Does Not Exist") em vez de carregar o `index.html`. Isso significa que o fallback SPA ainda **não** está ativo no host. Enquanto isso não for resolvido, qualquer link interno aberto direto pelo domínio vai aparentar bug, mas o problema é só de configuração do servidor — o app React e as rotas estão corretos no código (`src/App.tsx`).
+
+### Como resolver (escolha o que se aplica ao seu plano Hostinger)
+
+- **Hospedagem estática / “Site Builder de arquivos”**: adicione um `.htaccess` na raiz do site com:
+  ```apache
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+  ```
+- **Hostinger Node.js / app Vite**: garanta no painel que o "fallback to index.html for SPA" está ligado.
+- **Se nada disso resolver**: abra um chamado no suporte da Hostinger pedindo "rewrite all routes to /index.html for SPA app".
+
+### Rotas para testar depois de aplicar o fallback
 
 - `/`
 - `/reset-password`
@@ -102,7 +120,7 @@ Se alguma retornar 404, o fallback SPA não está ativo na Hostinger — abra um
 - [ ] Site URL no Supabase = `https://donawilma.com.br`
 - [ ] Redirect URLs incluem `https://donawilma.com.br/**`
 - [ ] SMTP customizado ativo no Supabase com os valores do item 2
-- [ ] Teste real de SMTP: clicar em "Send test email" no Supabase e receber em `contato@donawilma.com.br`
+- [ ] Teste real de SMTP: clicar em "Send test email" no **Supabase → Authentication → Emails → SMTP Settings** e receber em `contato@donawilma.com.br` _(este teste só valida e-mails de autenticação; o formulário de contato do site é validado de outra forma — ver nota abaixo)_
 - [ ] Templates de e-mail personalizados (item 3)
 - [ ] Domínio oficial responde **sem 404** em todas as rotas listadas no item 5
 - [ ] Teste real de signup → e-mail chega no inbox → link abre `/auth/callback` no domínio oficial → redireciona corretamente
@@ -111,6 +129,8 @@ Se alguma retornar 404, o fallback SPA não está ativo na Hostinger — abra um
 - [ ] Teste real de pagamento Stripe → retorna em `https://donawilma.com.br/payment-success`
 
 Quando todos estiverem ✅, o sistema está pronto para liberar.
+
+> 💡 **Sobre o teste do formulário de contato**: não existe um botão de teste no Supabase para esse fluxo — ele é uma Edge Function customizada (`submit-contact-message` → `send-app-email`). A validação correta é submeter o formulário no site e confirmar que o e-mail chegou em `contato@donawilma.com.br` **e** a confirmação chegou no e-mail do remetente. Esse teste já foi realizado com sucesso ✅.
 
 ---
 

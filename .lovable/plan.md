@@ -1,77 +1,43 @@
-# Próximos passos após ativar SMTP no Supabase
+## Plano para finalizar os testes sem falsos erros
 
-SMTP customizado ativo no Supabase é o último bloqueio técnico para os e-mails de autenticação. Agora o trabalho é: (1) validar que tudo realmente funciona em produção, (2) limpar resquícios da Vercel, (3) garantir que não sobraram pontos onde o sistema poderia voltar a usar o domínio errado.
+1. Confirmar o que já está validado
+- Considerar o teste do formulário de contato como válido, porque ele já gerou o e-mail real na caixa `contato@donawilma.com.br`.
+- Esclarecer no app/documentação que esse fluxo não é testado pelo painel do Supabase; o teste do painel do Supabase serve para e-mails de autenticação, não para o formulário do site.
 
-Não posso "garantir matematicamente zero bugs" — isso só vem dos testes reais com e-mail e cartão de verdade. Mas posso eliminar todos os riscos conhecidos e te entregar um checklist objetivo. É isso que esta etapa faz.
+2. Tratar o bloqueio principal do momento: rotas internas do domínio
+- Corrigir a publicação para que `/login`, `/reset-password`, `/auth/callback` e outras rotas do React abram diretamente no domínio.
+- O código já possui essas rotas em `src/App.tsx`, então o problema atual é de hospedagem/publicação, não da aplicação React.
+- Ajustar o fallback SPA na Hostinger para sempre servir `index.html` em rotas internas.
+- Verificar também se `donawilma.com.br` e `www.donawilma.com.br` estão apontando de forma consistente para o mesmo deploy, evitando comportamento misto de 404.
 
----
+3. Fazer uma checagem final de URLs críticas antes dos testes completos
+- Validar abertura direta destas rotas no domínio oficial:
+  - `/login`
+  - `/register`
+  - `/reset-password`
+  - `/auth/callback`
+  - `/payment-success`
+  - `/admin`
+- Confirmar que os links gerados por autenticação e redirecionamentos continuam usando `https://donawilma.com.br`.
 
-## O que vou alterar no código
+4. Executar a bateria final de testes funcionais
+- Cadastro com confirmação por e-mail.
+- Esqueci minha senha.
+- Formulário de contato.
+- Checkout Stripe e retorno ao site.
+- Notificações do app.
+- Fluxo de validação do WhatsApp.
 
-### 1. Remover `vercel.json` (resquício da hospedagem antiga)
-Você migrou para a Hostinger, mas o arquivo `vercel.json` ainda está no repositório. Não causa erro hoje, mas:
-- Confunde quem ler o projeto depois.
-- Se um dia alguém reconectar a Vercel por engano, ela vai aplicar configurações antigas.
+## O que já ficou claro
+- Não existe um “botão de teste” no Supabase para o formulário de contato do site. Esse fluxo é customizado e já foi validado pelo e-mail real que você recebeu.
+- O teste do Supabase só é útil para os e-mails nativos de autenticação (signup, recovery, magic link).
+- Hoje o erro mais importante não é de SMTP nem de React: é o domínio publicado não resolvendo rotas internas como SPA.
 
-Ação: deletar `vercel.json`.
+## Detalhes técnicos
+- `src/App.tsx` já registra as rotas `/login` e `/reset-password`.
+- `useAuth.ts` já gera o reset usando a URL canônica `https://donawilma.com.br/reset-password`.
+- Ao acessar o domínio publicado diretamente, o servidor está respondendo 404 antes da aplicação React assumir a rota, o que indica falta de rewrite/fallback SPA na hospedagem.
+- Depois que isso for corrigido, os testes de login/reset passam a refletir o app real em vez do erro do servidor.
 
-### 2. Corrigir o canonical do `/admin`
-No `src/components/admin/AdminPanel.tsx` (linha 41) ainda existe:
-```ts
-canonical.setAttribute("href", `${window.location.origin}/admin`);
-```
-Em produção isso fica certo, mas se alguém abrir o admin por um domínio de preview o canonical aponta pro domínio errado (ruim pra SEO e indexa páginas que não deveriam).
-
-Ação: trocar por `buildSiteUrl('/admin')` usando o helper `src/lib/siteUrl.ts` que já existe.
-
-### 3. Confirmar `submit-contact-message`
-Já está chamando `send-app-email` corretamente para os dois lados (admin + usuário). Vou apenas reler o fluxo após deploy e checar logs no primeiro envio real.
-
-Nenhuma outra mudança de código é necessária — todas as outras URLs de saída (`create-checkout`, `customer-portal`, signup, reset de senha, links no WhatsApp) já usam `donawilma.com.br` via `getSiteUrl()` ou constantes fixas.
-
----
-
-## Checklist de testes que você precisa fazer (depois do deploy)
-
-Sem esses testes não é possível afirmar "está sem bugs". Cada item leva ~1 min:
-
-**A. SMTP / e-mails de autenticação**
-1. No Supabase → **Authentication → Emails → SMTP Settings**, clicar em **Send test email** e enviar pra você mesmo. Tem que chegar de `contato@donawilma.com.br`.
-2. Criar uma conta nova de teste em `https://donawilma.com.br/register` → e-mail de confirmação chega → link abre `/auth/callback` no domínio oficial → cai em `/payment-success` ou `/boas-vindas`.
-3. Pedir reset de senha em `https://donawilma.com.br/login` → e-mail chega → link leva pra `/reset-password` → consegue trocar a senha → consegue logar com a nova.
-
-**B. Formulário de contato**
-4. Enviar uma mensagem pelo formulário. Esperado: você recebe a notificação em `contato@donawilma.com.br` (com botão "Responder" indo pro usuário) E o usuário recebe a confirmação automática.
-
-**C. Pagamento**
-5. Clicar em "Assinar" → checkout Stripe abre → após pagar (use cartão real ou modo de teste) → volta para `https://donawilma.com.br/payment-success`.
-6. Logado, abrir o portal do cliente Stripe → também volta para `donawilma.com.br`.
-
-**D. Rotas SPA da Hostinger**
-7. Abrir direto no navegador (não via menu): `https://donawilma.com.br/reset-password`, `/auth/callback`, `/admin`, `/termos`. Se alguma der 404 → abrir chamado na Hostinger pedindo "rewrite all routes to /index.html for SPA".
-
-**E. WhatsApp (smoke test)**
-8. Mandar um áudio/texto pro número conectado e confirmar que a transação aparece no dashboard. (Os links que o agente envia já usam `donawilma.com.br`.)
-
----
-
-## Detalhes técnicos (resumo)
-
-- **Arquivos editados nesta etapa**: `src/components/AdminPanel.tsx` (1 linha), `vercel.json` (deletado).
-- **Sem migrations**, sem novas Edge Functions, sem novos secrets.
-- **Logs pra acompanhar no primeiro teste real**:
-  - `send-app-email`: confirma se o SMTP autenticou.
-  - `submit-contact-message`: confirma os 2 disparos.
-  - `auth` (Supabase Logs): confirma que o template de signup/recovery foi enviado pelo SMTP custom.
-
----
-
-## O que continua sendo responsabilidade sua (não automatizável)
-
-- Conferir no painel da **Hostinger** que o build mais recente está publicado.
-- Aguardar 100% da propagação DNS (`https://dnschecker.org` em verde para `donawilma.com.br` e `www`).
-- No **Supabase → Auth → URL Configuration**, confirmar:
-  - Site URL = `https://donawilma.com.br`
-  - Redirect URLs incluem `https://donawilma.com.br/**`
-
-Aprovando este plano, eu faço as 2 alterações de código, e em seguida você roda o checklist de 8 testes acima. Qualquer item que falhar, me manda o print/log e eu corrijo direto.
+## Resultado esperado
+Ao final, o domínio abrirá qualquer rota interna corretamente e você poderá fazer os testes reais de cadastro, recuperação de senha, checkout, notificações e WhatsApp sem esbarrar em 404 de hospedagem.
