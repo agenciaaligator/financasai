@@ -1,0 +1,1 @@
+DELETE FROM public.user_subscriptions WHERE user_id = '2efec051-aa64-4f31-8c1b-c22ac51d7d7b';
