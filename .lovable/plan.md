@@ -1,65 +1,49 @@
-## Plano para eliminar os 404 em `/login` e `/reset-password`
+## Decisão: hospedagem fica na Hostinger
 
-1. Confirmar a origem correta da publicação
-- Considerar `https://donawilma.lovable.app` como a referência funcional atual, porque nela `/login` e `/reset-password` já abrem corretamente.
-- Tratar `donawilma.com.br` como configuração de domínio/hosting, não como bug do React Router.
+A hospedagem oficial de `donawilma.com.br` é a **Hostinger**. Não vamos migrar para Lovable nem para Vercel.
 
-2. Corrigir o apontamento do domínio público
-- Conectar `donawilma.com.br` e `www.donawilma.com.br` diretamente em **Project Settings → Domains** no Lovable, se ainda não estiverem conectados.
-- Definir um deles como **Primary** e deixar o outro apenas redirecionar para o principal.
-- Ajustar o DNS no provedor para apontar para o Lovable conforme a configuração exibida no painel.
-- Remover conflitos antigos de hospedagem (Hostinger/Vercel) que ainda estejam respondendo pelo domínio.
+## Problema
+- `/login` retorna 404 da Hostinger
+- `/reset-password` retorna 404 da Vercel
 
-3. Eliminar conflito entre provedores
-- Revisar os registros DNS e qualquer forwarding ativo para garantir que o mesmo domínio não esteja dividido entre ambientes diferentes.
-- Garantir que não existam respostas híbridas como as atuais:
-  - `/login` retornando página 404 da Hostinger
-  - `/reset-password` retornando 404 da Vercel
-- Se houver registros antigos de A, CNAME, redirect ou proxy, consolidar tudo para um único destino.
+Causas:
+1. Ainda existe um deploy/registro DNS da Vercel ativo para o domínio.
+2. O fallback SPA (`index.html`) não está ativo na Hostinger.
 
-4. Validar as rotas críticas após a troca
-- Testar no domínio final:
-  - `/`
-  - `/login`
-  - `/reset-password`
-  - `/auth/callback`
-  - `/register`
-  - `/payment-success`
-  - `/admin`
-- Confirmar que todas carregam o app e que o fallback SPA está funcionando no host correto.
+O código React está correto — as mesmas rotas funcionam no preview `donawilma.lovable.app`.
 
-5. Fechar a validação dos fluxos de autenticação
-- Depois que o domínio estiver servindo o app certo, executar os testes reais de:
-  - login
-  - recuperação de senha
-  - cadastro com confirmação por e-mail
-- Confirmar que os links do Supabase abrem no domínio oficial sem 404.
+## O que o usuário faz nos painéis
 
-## O que já foi confirmado
-- No código, as rotas existem e estão corretas em `src/App.tsx`.
-- Em `https://donawilma.lovable.app`:
-  - `/login` funciona
-  - `/reset-password` funciona
-- Em `https://donawilma.com.br`:
-  - a home abre
-  - `/login` retorna 404 da Hostinger
-  - `/reset-password` retorna 404 da Vercel
+### 1. Vercel — remover o domínio
+- Settings → Domains → remover `donawilma.com.br` e `www.donawilma.com.br`.
+- Pausar/excluir o deploy antigo se possível.
 
-## Conclusão técnica
-Isso indica um problema de infraestrutura/publicação, não de código da aplicação. O domínio público ainda não está apontando de forma limpa para uma única origem.
+### 2. Hostinger — DNS Zone Editor
+- Manter apenas registros `A`/`CNAME` apontando para o IP da Hostinger.
+- Apagar qualquer registro antigo apontando para Vercel (`cname.vercel-dns.com`, `76.76.21.21`, etc.).
 
-## Detalhes técnicos
-```text
-Situação atual observada:
-- Código da SPA: OK
-- Publicação Lovable: OK
-- Domínio customizado: inconsistente
-- Resposta por rota profunda: vinda de provedores diferentes
-
-Diagnóstico:
-DNS/hosting ainda está misturado entre Hostinger, Vercel e/ou publicação fora do Lovable.
-Enquanto isso não for unificado, links como /login e /reset-password continuarão dando 404.
+### 3. Hostinger — `.htaccess` na pasta `public_html/`
+```apache
+RewriteEngine On
+RewriteBase /
+RewriteRule ^index\.html$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.html [L]
 ```
 
+### 4. Hostinger — confirmar build atualizado
+- Conteúdo de `dist/` deve estar em `public_html/` (com `index.html` e pasta `assets/`).
+
+### 5. Validar URLs digitando direto no navegador
+`/`, `/login`, `/reset-password`, `/auth/callback`, `/payment-success`, `/admin`.
+
+Se ainda der 404 da Hostinger após o `.htaccess`, abrir chamado pedindo:
+*"ativar rewrite de todas as rotas para /index.html (SPA fallback)"*.
+
+## O que o Lovable já fez
+- Atualizou `CONFIGURACAO_SUPABASE.md` deixando Hostinger como único caminho oficial.
+- Atualizou este plano.
+
 ## Resultado esperado
-Ao final, `donawilma.com.br` deverá servir exatamente o mesmo app que hoje já funciona em `donawilma.lovable.app`, inclusive nas rotas internas acessadas diretamente.
+`donawilma.com.br` servido somente pela Hostinger, com todas as rotas internas funcionando ao serem digitadas direto na barra ou abertas via link de e-mail do Supabase.
