@@ -75,9 +75,20 @@ A Edge Function **`send-app-email`** é o ponto único de envio de e-mails do ap
 
 ## 5. Domínio publicado (Hostinger) — Fallback SPA
 
+> 🏠 **Hospedagem oficial: Hostinger.** O domínio `donawilma.com.br` é servido exclusivamente pela Hostinger. Não usar Lovable hosting nem Vercel para este domínio.
+
 O app é uma SPA (React Router em modo `BrowserRouter`). Para que rotas como `/login` ou `/reset-password` abram quando digitadas direto na barra do navegador (ou clicadas em link de e-mail), o servidor precisa fazer **fallback para `index.html`** sempre que o caminho não for um arquivo real.
 
-> ⚠️ Sintoma atual observado: ao abrir `https://donawilma.com.br/login` ou `/reset-password`, o servidor responde **HTTP 404 da Hostinger** (página "This Page Does Not Exist") em vez de carregar o `index.html`. Isso significa que o fallback SPA ainda **não** está ativo no host. Enquanto isso não for resolvido, qualquer link interno aberto direto pelo domínio vai aparentar bug, mas o problema é só de configuração do servidor — o app React e as rotas estão corretos no código (`src/App.tsx`).
+### ⚠️ Diagnóstico atual — dois problemas combinados
+
+1. **Resíduo da Vercel**: `https://donawilma.com.br/reset-password` está retornando 404 da **Vercel**, o que prova que ainda existe um deploy/registro DNS antigo da Vercel respondendo pelo domínio. **Ação**: entrar no painel da Vercel → projeto antigo → **Settings → Domains** → remover `donawilma.com.br` e `www.donawilma.com.br`. Pausar/excluir o deploy se possível.
+2. **Fallback SPA inativo na Hostinger**: `https://donawilma.com.br/login` retorna **HTTP 404 da Hostinger** ("This Page Does Not Exist"). O servidor não está redirecionando rotas inexistentes para `index.html`. Resolver com o `.htaccess` abaixo.
+
+### Limpeza de DNS na Hostinger
+
+Em **Hostinger → DNS Zone Editor**, garantir:
+- Apenas registros `A`/`CNAME` apontando para o IP da Hostinger.
+- **Apagar** qualquer registro antigo apontando para Vercel (`cname.vercel-dns.com`, `76.76.21.21`) ou outro provedor.
 
 ### Como resolver (escolha o que se aplica ao seu plano Hostinger)
 
