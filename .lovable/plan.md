@@ -1,124 +1,96 @@
-# Plano de ação — Validação final antes de liberar o sistema
+## Objetivo
 
-## ✅ Infraestrutura resolvida (status atual)
+1) Limpar todos os dados financeiros (despesas, receitas, recorrências, metas e alertas) do usuário admin `contato@aligator.com.br` (`user_id: 2efec051-aa64-4f31-8c1b-c22ac51d7d7b`), preservando a conta, perfil, organização, plano, papel admin, configurações de WhatsApp e categorias.
 
-| Item | Status |
+2) Confirmar como o sistema bloqueia cadastros com e-mail ou celular já existentes.
+
+---
+
+## Parte 1 — Limpeza de dados do admin
+
+Volume atual encontrado no banco:
+
+| Item | Quantidade |
 |---|---|
-| Hospedagem na Hostinger (`212.85.9.48`) | ✅ Ativa |
-| DNS apontando corretamente (`@` A → `212.85.9.48`) | ✅ Propagado mundialmente |
-| `.htaccess` com SPA fallback (React Router) | ✅ Configurado |
-| Build atual (`dist/`) em `public_html/` | ✅ Publicado |
-| Rotas internas (`/login`, `/reset-password`, etc.) | ✅ Abrindo sem 404 |
-| SMTP customizado Hostinger no Supabase | ✅ Ativo |
-| E-mail de reset de senha chegando de `contato@donawilma.com.br` | ✅ Validado |
-| Link do e-mail abre `/reset-password` corretamente | ✅ Validado |
+| Transações | 114 |
+| Transações recorrentes | 4 |
+| Instâncias recorrentes | 0 |
+| Metas mensais | 2 |
+| Alertas de meta enviados | 8 |
+| Categorias | 15 (preservadas) |
 
-> Os DNS atuais estão funcionando e **não devem ser mexidos**. O CNAME `www` apontando para `donawilma.com.br` está OK porque o A `@` resolve para o IP correto.
+### O que será apagado (migration SQL)
 
----
+Na ordem correta, respeitando dependências:
 
-## 📋 Checklist final de validação (testes manuais)
+1. `goal_alerts_sent` do user_id → 8 registros
+2. `monthly_goals` do user_id → 2 registros
+3. `recurring_instances` ligadas às `recurring_transactions` do user_id → 0
+4. `recurring_transactions` do user_id → 4 registros
+5. `transactions` do user_id → 114 registros
 
-Faça cada teste em **aba anônima** (para garantir que não está usando sessão antiga em cache).
+### O que NÃO será tocado
 
-### A) Autenticação completa
-- [ ] **Cadastro novo**: criar conta com e-mail real → receber e-mail de confirmação → clicar no link → cair em `/auth/callback` → ser redirecionado para o fluxo de boas-vindas
-- [ ] **Login** com a conta criada → entrar no dashboard
-- [ ] **Logout** → sessão encerrada, volta pra home
-- [ ] **Esqueci minha senha** (a partir do `/login`) → receber e-mail → clicar no link → trocar senha em `/reset-password` → fazer login com a nova senha
-- [ ] **E-mail duplicado**: tentar criar conta com e-mail já existente → mensagem de erro clara
+- `auth.users`, `profiles`, `user_roles` (admin), `master_users`
+- `organizations`, `organization_members`
+- `user_subscriptions` (plano ativo)
+- `categories` (mantém as 15 personalizadas + padrão)
+- `whatsapp_sessions`, `whatsapp_settings` (sessão permanente preservada)
+- `calendar_connections`, `work_hours`, `reminder_settings`, `commitments`
 
-### B) Onboarding e fluxo de pagamento
-- [ ] **Escolha de plano** (`/choose-plan`) → selecionar plano mensal → ir pro Stripe Checkout em português (BRL)
-- [ ] **Pagamento aprovado** → redireciona para `https://donawilma.com.br/payment-success`
-- [ ] **Pagamento cancelado** → redireciona para `/payment-cancelled`
-- [ ] **Tela de boas-vindas** (`/boas-vindas`) → exibida após pagamento
-- [ ] **Conexão WhatsApp** → código numérico recebido no WhatsApp → validar → conexão ativa
+### Por que via migration e não app
 
-### C) Dashboard e funcionalidades core
-- [ ] **Hero card** com avatar da Dona Wilma carrega corretamente
-- [ ] **Adicionar transação** (receita e despesa) manualmente
-- [ ] **Editar transação** existente
-- [ ] **Excluir transação** (com diálogo de confirmação digitando "DELETAR")
-- [ ] **Filtros** por data, tipo, categoria funcionam
-- [ ] **Categorias personalizadas**: criar, editar, excluir
-- [ ] **Metas mensais**: criar meta, ver progresso, receber alerta
-- [ ] **Relatórios avançados**: filtros, gráficos, exportação
-- [ ] **Transações recorrentes**: criar, ver instâncias geradas
-
-### D) WhatsApp Agent
-- [ ] Enviar **mensagem de texto** com transação ("gastei 50 no mercado") → registrada com categoria correta
-- [ ] Enviar **áudio** descrevendo gasto → transcrito e registrado
-- [ ] Enviar **foto de comprovante** → OCR extrai valor e data
-- [ ] Mencionar **recorrência** ("todo mês 100 de internet") → confirma e cria transação recorrente
-- [ ] Consultar **saldo** → resposta correta
-- [ ] Consultar **gastos do mês** → resposta correta
-
-### E) Formulário de contato (landing page)
-- [ ] Enviar mensagem pelo formulário → você recebe em `contato@donawilma.com.br` **e** o remetente recebe confirmação ✅ (já testado)
-
-### F) Multi-idioma
-- [ ] Trocar idioma na home (PT-BR, PT-PT, EN, ES, IT) → textos traduzidos
-- [ ] Stripe Checkout abre no idioma selecionado
-- [ ] Categorias traduzidas no dashboard conforme idioma
-
-### G) Mobile (80% do tráfego esperado)
-- [ ] Testar **todos os fluxos acima** em celular real (Android e iPhone se possível)
-- [ ] Menu mobile (Sheet) abre e fecha sem travar
-- [ ] Inputs numéricos abrem teclado numérico
-- [ ] Modal de transação não corta na tela pequena
-- [ ] Navegação por âncoras (#planos, #contato) funciona
-
-### H) Painel Admin
-- [ ] Acessar `/admin` com conta de admin
-- [ ] Listar usuários, ver assinaturas ativas
-- [ ] Ver mensagens recebidas pelo formulário de contato
-- [ ] Estatísticas carregando
-
-### I) Assinatura — ciclo completo
-- [ ] Conta com `status = active` → acesso liberado
-- [ ] Conta com `status = past_due` → banner de aviso (grace period)
-- [ ] Conta com `status = canceled` → bloqueada em `/subscription-inactive`
-- [ ] Botão "Gerenciar assinatura" → abre Stripe Customer Portal
-
-### J) SEO e performance
-- [ ] `https://donawilma.com.br/sitemap.xml` carrega
-- [ ] `https://donawilma.com.br/robots.txt` carrega
-- [ ] Página inicial tem `<title>` único (<60 chars) e `<meta description>` (<160 chars)
-- [ ] Lighthouse mobile com nota razoável (>70 performance, >90 SEO)
-
-### K) Segurança
-- [ ] HTTPS funcionando com certificado válido em `donawilma.com.br` e `www.donawilma.com.br`
-- [ ] Tentar acessar `/admin` sem ser admin → bloqueado
-- [ ] Tentar acessar dados de outra organização via API → bloqueado pela RLS
+Estas tabelas têm RLS por `user_id`/organização — não dá pra limpar em massa via UI. Migration garante atomicidade (tudo num transaction) e auditoria.
 
 ---
 
-## 🚀 Quando todos os ✅ estiverem marcados
+## Parte 2 — Validação de duplicidade no cadastro
 
-O sistema está pronto para liberar para os primeiros usuários reais.
+**Resposta curta: sim, está bloqueado nas duas pontas (e-mail e celular).**
 
-### Recomendações pós-lançamento
-1. **Monitorar** as Edge Functions na Supabase nos primeiros dias (`stripe-webhook`, `whatsapp-webhook`, `send-app-email`)
-2. **Verificar** semanalmente o limite de envios SMTP da Hostinger (~100/h, 3000/dia)
-3. **Backup** automático do Supabase já está ativo (verificar retenção)
-4. **Acompanhar** os primeiros pagamentos no Stripe Dashboard para confirmar webhook idempotente
-5. Se o volume de e-mails crescer muito, trocar os secrets `SMTP_*` para Resend/SendGrid sem mexer em código
+Verifiquei o fluxo em `src/pages/Register.tsx` (linhas 105–135) e as funções no banco:
+
+### Camada 1 — Pré-check no frontend (antes do signUp)
+
+Ao clicar em "Criar conta", o app chama em paralelo:
+
+- `check_email_available(p_email)` → `SELECT NOT EXISTS (... FROM auth.users WHERE lower(email) = lower(trim(p_email)))`
+- `check_phone_available(p_phone)` → compara apenas dígitos do telefone contra `profiles.phone_number` normalizado (regex remove `+`, espaços, parênteses, hífen)
+
+Se qualquer um retornar `false`, o cadastro é bloqueado **antes** de criar usuário no Supabase, com toast localizado:
+
+- E-mail duplicado → "Esse e-mail já tem conta. Faça login para acessar ou recupere sua senha."
+- Telefone duplicado → mensagem equivalente para o telefone.
+
+### Camada 2 — Banco de dados (defesa em profundidade)
+
+- `auth.users.email` tem unique constraint nativa do Supabase (signUp falharia mesmo se o pré-check passasse).
+- Trigger `handle_new_user_simple` captura `unique_violation` no telefone, registra evento em `security_events` (`signup_phone_duplicate_dropped`) e cria o profile sem o telefone — mas isso é fallback de segurança; na prática o pré-check do frontend já barra.
+
+### Conclusão
+
+Você pode rodar o checklist tranquilo. Tentar criar conta com `contato@aligator.com.br` ou com seu celular atual vai mostrar o erro e bloquear o cadastro.
 
 ---
 
-## Histórico (para referência)
+## Detalhes técnicos
 
-- **Problema inicial**: 404 em `/login` e `/reset-password`
-- **Causa raiz**: `.htaccess` no `public_html` continha apenas a regra `RewriteRule ^\.builds - [F,L]`, sem o bloco de SPA fallback do React Router
-- **Solução aplicada**: substituído o `.htaccess` por:
-  ```apache
-  RewriteEngine On
-  RewriteRule ^\.builds - [F,L]
-  RewriteBase /
-  RewriteRule ^index\.html$ - [L]
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule . /index.html [L]
-  ```
-- **Resultado**: todas as rotas internas passaram a abrir corretamente.
+**Migration SQL a executar:**
+
+```sql
+DO $$
+DECLARE
+  v_uid uuid := '2efec051-aa64-4f31-8c1b-c22ac51d7d7b';
+BEGIN
+  DELETE FROM public.goal_alerts_sent WHERE user_id = v_uid;
+  DELETE FROM public.monthly_goals WHERE user_id = v_uid;
+  DELETE FROM public.recurring_instances
+    WHERE recurring_transaction_id IN (
+      SELECT id FROM public.recurring_transactions WHERE user_id = v_uid
+    );
+  DELETE FROM public.recurring_transactions WHERE user_id = v_uid;
+  DELETE FROM public.transactions WHERE user_id = v_uid;
+END $$;
+```
+
+Após aprovação do plano, eu rodo a migration e confirmo as contagens zeradas. Você abre o dashboard e começa a cadastrar suas despesas e receitas reais — o saldo, gráficos e relatórios partem do zero.
