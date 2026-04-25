@@ -1,96 +1,36 @@
-## Objetivo
+## O que está acontecendo
 
-1) Limpar todos os dados financeiros (despesas, receitas, recorrências, metas e alertas) do usuário admin `contato@aligator.com.br` (`user_id: 2efec051-aa64-4f31-8c1b-c22ac51d7d7b`), preservando a conta, perfil, organização, plano, papel admin, configurações de WhatsApp e categorias.
+Sua conta admin (`contato@aligator.com.br`) aparece como **"Cancelada"** no painel administrativo na seção "Assinaturas Recentes (Não Ativas)".
 
-2) Confirmar como o sistema bloqueia cadastros com e-mail ou celular já existentes.
+### Causa raiz
+No banco de dados, sua linha em `user_subscriptions` está com `status = 'cancelled'` (registro criado em 14/10/2025, atualizado em 16/02/2026). A assinatura referenciada no Stripe (`sub_1T1GJC...`) é do ambiente **LIVE**, mas como você é **admin**, o sistema te dá acesso total independentemente do status da assinatura — por isso você não percebeu nenhum bloqueio funcional.
 
----
+### Isso é um problema?
+**Não afeta seu acesso ao app** — admins têm acesso total garantido pela função `has_role(uid, 'admin')`, independentemente da tabela `user_subscriptions`. O `useSubscription` exibe "Admin (Acesso Total)" para você.
 
-## Parte 1 — Limpeza de dados do admin
+**Mas afeta a aparência do painel admin**, que mostra sua própria conta como assinatura cancelada — visualmente confuso e pode preocupar quando você for revisar o painel.
 
-Volume atual encontrado no banco:
+## Plano de ação
 
-| Item | Quantidade |
-|---|---|
-| Transações | 114 |
-| Transações recorrentes | 4 |
-| Instâncias recorrentes | 0 |
-| Metas mensais | 2 |
-| Alertas de meta enviados | 8 |
-| Categorias | 15 (preservadas) |
+Você tem duas opções. Recomendo a **Opção A** (mais limpa).
 
-### O que será apagado (migration SQL)
+### Opção A — Remover o registro de assinatura do admin (recomendado)
+Como admin não precisa de assinatura paga (acesso é via role), o registro em `user_subscriptions` é redundante e está poluindo o painel.
 
-Na ordem correta, respeitando dependências:
+1. **Migração SQL**: deletar a linha de `user_subscriptions` onde `user_id = 2efec051-aa64-4f31-8c1b-c22ac51d7d7b`.
+2. Resultado: sua conta some da seção "Assinaturas Recentes (Não Ativas)" no admin. O hook `useSubscription` continua exibindo "Admin (Acesso Total)" normalmente (não depende dessa tabela quando há role admin).
 
-1. `goal_alerts_sent` do user_id → 8 registros
-2. `monthly_goals` do user_id → 2 registros
-3. `recurring_instances` ligadas às `recurring_transactions` do user_id → 0
-4. `recurring_transactions` do user_id → 4 registros
-5. `transactions` do user_id → 114 registros
+### Opção B — Filtrar admins/masters do painel de assinaturas
+Manter a linha no banco mas esconder admins e masters do componente `SubscriptionsManagement.tsx`.
 
-### O que NÃO será tocado
-
-- `auth.users`, `profiles`, `user_roles` (admin), `master_users`
-- `organizations`, `organization_members`
-- `user_subscriptions` (plano ativo)
-- `categories` (mantém as 15 personalizadas + padrão)
-- `whatsapp_sessions`, `whatsapp_settings` (sessão permanente preservada)
-- `calendar_connections`, `work_hours`, `reminder_settings`, `commitments`
-
-### Por que via migration e não app
-
-Estas tabelas têm RLS por `user_id`/organização — não dá pra limpar em massa via UI. Migration garante atomicidade (tudo num transaction) e auditoria.
-
----
-
-## Parte 2 — Validação de duplicidade no cadastro
-
-**Resposta curta: sim, está bloqueado nas duas pontas (e-mail e celular).**
-
-Verifiquei o fluxo em `src/pages/Register.tsx` (linhas 105–135) e as funções no banco:
-
-### Camada 1 — Pré-check no frontend (antes do signUp)
-
-Ao clicar em "Criar conta", o app chama em paralelo:
-
-- `check_email_available(p_email)` → `SELECT NOT EXISTS (... FROM auth.users WHERE lower(email) = lower(trim(p_email)))`
-- `check_phone_available(p_phone)` → compara apenas dígitos do telefone contra `profiles.phone_number` normalizado (regex remove `+`, espaços, parênteses, hífen)
-
-Se qualquer um retornar `false`, o cadastro é bloqueado **antes** de criar usuário no Supabase, com toast localizado:
-
-- E-mail duplicado → "Esse e-mail já tem conta. Faça login para acessar ou recupere sua senha."
-- Telefone duplicado → mensagem equivalente para o telefone.
-
-### Camada 2 — Banco de dados (defesa em profundidade)
-
-- `auth.users.email` tem unique constraint nativa do Supabase (signUp falharia mesmo se o pré-check passasse).
-- Trigger `handle_new_user_simple` captura `unique_violation` no telefone, registra evento em `security_events` (`signup_phone_duplicate_dropped`) e cria o profile sem o telefone — mas isso é fallback de segurança; na prática o pré-check do frontend já barra.
-
-### Conclusão
-
-Você pode rodar o checklist tranquilo. Tentar criar conta com `contato@aligator.com.br` ou com seu celular atual vai mostrar o erro e bloquear o cadastro.
-
----
+1. **Edição de código**: em `src/components/admin/SubscriptionsManagement.tsx`, ao montar `subsData`, buscar roles via `user_roles` e filtrar quem tem role `admin` ou está em `master_users`.
+2. Vantagem: histórico preservado. Desvantagem: mais código e mantém a confusão se um dia você consultar a tabela direto.
 
 ## Detalhes técnicos
+- Tabela afetada: `public.user_subscriptions` (1 linha do admin será removida na Opção A).
+- Stripe: nenhuma alteração — a assinatura no Stripe permanece como está (já está em estado cancelado lá também, em modo live).
+- Acesso preservado: `useAuth` + `useUserRole` + `has_role()` continuam reconhecendo o admin via `user_roles` (você tem `admin` e `premium` lá).
+- Painel: `SubscriptionsManagement.tsx` lista somente `user_subscriptions`, então remover a linha resolve definitivamente.
 
-**Migration SQL a executar:**
-
-```sql
-DO $$
-DECLARE
-  v_uid uuid := '2efec051-aa64-4f31-8c1b-c22ac51d7d7b';
-BEGIN
-  DELETE FROM public.goal_alerts_sent WHERE user_id = v_uid;
-  DELETE FROM public.monthly_goals WHERE user_id = v_uid;
-  DELETE FROM public.recurring_instances
-    WHERE recurring_transaction_id IN (
-      SELECT id FROM public.recurring_transactions WHERE user_id = v_uid
-    );
-  DELETE FROM public.recurring_transactions WHERE user_id = v_uid;
-  DELETE FROM public.transactions WHERE user_id = v_uid;
-END $$;
-```
-
-Após aprovação do plano, eu rodo a migration e confirmo as contagens zeradas. Você abre o dashboard e começa a cadastrar suas despesas e receitas reais — o saldo, gráficos e relatórios partem do zero.
+## Confirmação necessária
+Confirme qual opção prefere (recomendo **A**) e eu executo a migração.
