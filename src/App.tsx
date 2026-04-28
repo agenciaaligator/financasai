@@ -17,6 +17,7 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import SubscriptionInactive from "./pages/SubscriptionInactive";
 import AuthCallback from "./pages/AuthCallback";
+import ConnectCalendar from "./pages/ConnectCalendar";
 import { AdminPanel } from "@/components/admin/AdminPanel";
 import { useUserRole } from "@/hooks/useUserRole";
 import { SignUpForm } from "@/components/auth/SignUpForm";
@@ -96,6 +97,8 @@ const App = () => {
               <Route path="/payment-cancelled" element={<PaymentCancelled />} />
               <Route path="/subscription-inactive" element={<SubscriptionInactive />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route path="/conectar-agenda" element={<ConnectCalendar />} />
+              <Route path="/agenda" element={<Navigate to="/?tab=agenda" replace />} />
               <Route path="/termos" element={<Terms />} />
               <Route path="/privacidade" element={<Privacy />} />
               <Route path="*" element={<NotFound />} />

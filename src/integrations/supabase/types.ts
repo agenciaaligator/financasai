@@ -47,6 +47,33 @@ export type Database = {
         }
         Relationships: []
       }
+      calendar_connection_tokens: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          id: string
+          token: string
+          used: boolean | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          token?: string
+          used?: boolean | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          token?: string
+          used?: boolean | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       calendar_connections: {
         Row: {
           access_token: string
@@ -58,11 +85,17 @@ export type Database = {
           expires_at: string
           id: string
           is_active: boolean | null
+          last_sync_at: string | null
+          needs_reauth: boolean | null
           provider: string
           refresh_token: string | null
           sync_preferences: Json | null
+          sync_token: string | null
           updated_at: string | null
           user_id: string
+          webhook_channel_id: string | null
+          webhook_expires_at: string | null
+          webhook_resource_id: string | null
         }
         Insert: {
           access_token: string
@@ -74,11 +107,17 @@ export type Database = {
           expires_at: string
           id?: string
           is_active?: boolean | null
+          last_sync_at?: string | null
+          needs_reauth?: boolean | null
           provider: string
           refresh_token?: string | null
           sync_preferences?: Json | null
+          sync_token?: string | null
           updated_at?: string | null
           user_id: string
+          webhook_channel_id?: string | null
+          webhook_expires_at?: string | null
+          webhook_resource_id?: string | null
         }
         Update: {
           access_token?: string
@@ -90,11 +129,17 @@ export type Database = {
           expires_at?: string
           id?: string
           is_active?: boolean | null
+          last_sync_at?: string | null
+          needs_reauth?: boolean | null
           provider?: string
           refresh_token?: string | null
           sync_preferences?: Json | null
+          sync_token?: string | null
           updated_at?: string | null
           user_id?: string
+          webhook_channel_id?: string | null
+          webhook_expires_at?: string | null
+          webhook_resource_id?: string | null
         }
         Relationships: []
       }

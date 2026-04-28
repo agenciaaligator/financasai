@@ -38,6 +38,7 @@ import {
 import { toZonedTime } from "date-fns-tz";
 import { ErrorBoundary } from "../ErrorBoundary";
 import { WhatsAppPage } from "./WhatsAppPage";
+import { AgendaPage } from "./AgendaPage";
 import { useTranslation } from "react-i18next";
 
 const TIMEZONE = 'America/Sao_Paulo';
@@ -533,6 +534,10 @@ export function DashboardContent({
 
   if (currentTab === "profile") {
     return <ProfileSettings />;
+  }
+
+  if (currentTab === "agenda") {
+    return <AgendaPage />;
   }
 
   if (currentTab === "whatsapp") {
