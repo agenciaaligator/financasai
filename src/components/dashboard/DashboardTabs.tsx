@@ -18,8 +18,6 @@ import {
   Shield,
 } from "lucide-react";
 import { AdminPanel } from "../admin/AdminPanel";
-import { AgendaPage } from "./AgendaPage";
-import { Calendar as CalendarIcon } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { 
   startOfDay, 
@@ -119,7 +117,7 @@ export function DashboardTabs({
 
   return (
     <Tabs value={currentTab} onValueChange={onTabChange} className="w-full">
-      <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-7' : 'grid-cols-6'} bg-muted/30`}>
+      <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-6' : 'grid-cols-5'} bg-muted/30`}>
         <TabsTrigger value="dashboard" className="flex items-center space-x-2">
           <DollarSign className="h-4 w-4" />
           <span>Dashboard</span>
@@ -135,10 +133,6 @@ export function DashboardTabs({
         <TabsTrigger value="reports" className="flex items-center space-x-2">
           <BarChart className="h-4 w-4" />
           <span>Relatórios</span>
-        </TabsTrigger>
-        <TabsTrigger value="agenda" className="flex items-center space-x-2">
-          <CalendarIcon className="h-4 w-4" />
-          <span>Agenda</span>
         </TabsTrigger>
         <TabsTrigger value="profile" className="flex items-center space-x-2">
           <User className="h-4 w-4" />
@@ -212,10 +206,6 @@ export function DashboardTabs({
 
       <TabsContent value="reports">
         <ReportsPage />
-      </TabsContent>
-
-      <TabsContent value="agenda">
-        <AgendaPage />
       </TabsContent>
 
       <TabsContent value="profile">
