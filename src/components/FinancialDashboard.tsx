@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { TransactionForm } from "./TransactionForm";
 import { EditTransactionModal } from "./EditTransactionModal";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,7 +22,9 @@ import { useTranslation } from "react-i18next";
 
 export function FinancialDashboard() {
   const [showForm, setShowForm] = useState(false);
-  const [currentTab, setCurrentTab] = useState("dashboard");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") || "dashboard";
+  const [currentTab, setCurrentTab] = useState(initialTab);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, signOut } = useAuth();
@@ -32,12 +35,21 @@ export function FinancialDashboard() {
   const isMobile = useIsMobile();
   const { t } = useTranslation();
 
+  // Sincroniza tab da URL (?tab=agenda) ao montar e quando muda
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam && tabParam !== currentTab) {
+      setCurrentTab(tabParam);
+    }
+  }, [searchParams]);
+
   const tabTitleMap: Record<string, string> = {
     dashboard: t('dashboard.title', 'Dashboard Financeiro'),
     transactions: t('dashboard.transactions', 'Transações'),
     categories: t('dashboard.categories', 'Categorias'),
     reports: t('dashboard.reports', 'Relatórios'),
     goals: t('dashboard.goals', 'Metas Mensais'),
+    agenda: t('dashboard.agenda', 'Agenda'),
     whatsapp: t('dashboard.whatsapp', 'WhatsApp'),
     profile: t('dashboard.profile', 'Perfil'),
     admin: t('dashboard.admin', 'Painel Administrativo'),
