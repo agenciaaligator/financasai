@@ -4,7 +4,7 @@
  * - Troca por access_token + refresh_token
  * - Salva em calendar_connections
  * - Marca o magic_token como usado (se aplicável)
- * - Redireciona para donawilma.com.br/agenda?connected=true
+ * - Redireciona para donawilma.com.br/?tab=agenda&connected=true
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -18,22 +18,22 @@ Deno.serve(async (req) => {
     const errorParam = url.searchParams.get("error");
 
     if (errorParam) {
-      return Response.redirect(`${SITE_URL}/agenda?error=${encodeURIComponent(errorParam)}`, 302);
+      return Response.redirect(`${SITE_URL}/?tab=agenda&error=${encodeURIComponent(errorParam)}`, 302);
     }
     if (!code || !state) {
-      return Response.redirect(`${SITE_URL}/agenda?error=missing_params`, 302);
+      return Response.redirect(`${SITE_URL}/?tab=agenda&error=missing_params`, 302);
     }
 
     let stateObj: { uid: string; n: string; t: number };
     try {
       stateObj = JSON.parse(atob(state));
     } catch {
-      return Response.redirect(`${SITE_URL}/agenda?error=invalid_state`, 302);
+      return Response.redirect(`${SITE_URL}/?tab=agenda&error=invalid_state`, 302);
     }
 
     // State expira em 15min
     if (Date.now() - stateObj.t > 15 * 60 * 1000) {
-      return Response.redirect(`${SITE_URL}/agenda?error=state_expired`, 302);
+      return Response.redirect(`${SITE_URL}/?tab=agenda&error=state_expired`, 302);
     }
 
     const clientId = Deno.env.get("GOOGLE_CLIENT_ID")!;
@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
     if (!tokenRes.ok) {
       const errText = await tokenRes.text();
       console.error("Token exchange failed:", errText);
-      return Response.redirect(`${SITE_URL}/agenda?error=token_exchange_failed`, 302);
+      return Response.redirect(`${SITE_URL}/?tab=agenda&error=token_exchange_failed`, 302);
     }
 
     const tokenData = await tokenRes.json();
@@ -120,6 +120,6 @@ Deno.serve(async (req) => {
     return Response.redirect(`${SITE_URL}/?tab=agenda&connected=true`, 302);
   } catch (err) {
     console.error("google-calendar-callback error:", err);
-    return Response.redirect(`${SITE_URL}/agenda?error=internal`, 302);
+    return Response.redirect(`${SITE_URL}/?tab=agenda&error=internal`, 302);
   }
 });
