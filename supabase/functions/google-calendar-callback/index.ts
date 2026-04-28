@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
       .eq("user_id", stateObj.uid)
       .eq("used", false);
 
-    return Response.redirect(`${SITE_URL}/agenda?connected=true`, 302);
+    return Response.redirect(`${SITE_URL}/?tab=agenda&connected=true`, 302);
   } catch (err) {
     console.error("google-calendar-callback error:", err);
     return Response.redirect(`${SITE_URL}/agenda?error=internal`, 302);
