@@ -2134,38 +2134,48 @@ class WhatsAppAgent {
     }
     
     // PRIORIDADE 2: Comandos de AGENDA (ANTES de outros comandos genéricos)
-    // ✨ VERIFICAÇÃO EXPLÍCITA ENDURECIDA para "meus compromissos"
-    if (normalizedText.includes('compromiss') && 
-        (normalizedText.includes('meu') || normalizedText.includes('meus') || 
-         normalizedText.includes('ver') || normalizedText.includes('mostrar') || 
-         normalizedText.includes('quais') || normalizedText.includes('hoje') || 
-         normalizedText.includes('amanha') || normalizedText.includes('semana') ||
-         normalizedText.includes('listar') || normalizedText.includes('proximos'))) {
-      console.log('[Agenda Debug][WhatsApp] 🎯 HARD MATCH: "meus compromissos" detected via explicit check');
-      console.log('🗓️ Listando compromissos');
-      return await this.listCommitments(session.user_id!);
-    }
-    
-    // Aceita singular/plural e variações sem acento usando normalizedText
-    if (/(\b(agendar|agenda|marc)\w*\b|\bcompromiss\w*\b|\breunia\w*\b|\bconsult\w*\b|\bevento\w*\b)/.test(normalizedText)) {
-      console.log('[Agenda Debug][WhatsApp] Agenda regex match:', {
-        messageText,
-        normalizedText,
-        matched: /(\b(agendar|agenda|marc)\w*\b|\bcompromiss\w*\b|\breunia\w*\b|\bconsult\w*\b|\bevento\w*\b)/.test(normalizedText)
-      });
+    // Detecta verbo de CRIAÇÃO de compromisso — tem prioridade absoluta sobre listagem
+    const createVerbRegex = /\b(agendar?|agende|marcar?|marque|criar?|adicionar?|registrar?|anotar?|coloca\w*|bota\w*|poe|põe|remarcar?|remarque)\b/;
+    const hasCreateVerb = createVerbRegex.test(normalizedText);
 
-      // Listar compromissos - variações naturais
-      const isList = /\b(meus?|ver|mostrar?|listar?|quais|tenho|tem|hoje|amanhã|amanha|próximos?|proximos?|semana)\b/i.test(normalizedText);
-      console.log('[Agenda Debug] isList:', isList, 'normalizedText:', normalizedText);
+    // Sinais de tempo/horário típicos de novo evento
+    const hasTimeSignal = /\b(\d{1,2}\s*h(?:oras?)?\b|\d{1,2}:\d{2}|\d{1,2}\s*(?:da|de)\s*(?:manh[aã]|tarde|noite)|meio[- ]?dia|meia[- ]?noite)\b/.test(normalizedText)
+      || /\b(amanh[aã]|hoje|depois\s*de\s*amanh[aã]|segunda|terca|terça|quarta|quinta|sexta|sabado|sábado|domingo|dia\s+\d{1,2})\b/.test(normalizedText);
 
-      if (!isList) {
-        console.log('[AGENDA FIX] Criando compromisso por padrão:', normalizedText);
+    // Padrão claro de CONSULTA/listagem
+    const listIntentRegex = /\b(quais|quando|tenho\s+(?:algum|algo|compromiss|reunia|consult|evento)|o\s+que\s+tenho|me\s+(?:mostra|lista|diga)|mostrar?|listar?|ver(?:\s+meus)?|meus\s+(?:proximos?|próximos?|compromissos?))\b/;
+    const isListQuestion = listIntentRegex.test(normalizedText)
+      || /^(meus?\s+compromissos?|próximos?\s+compromissos?|proximos?\s+compromissos?|compromissos?\s+(?:de\s+)?(?:hoje|amanh[aã]|da\s+semana))\b/.test(normalizedText.trim());
+
+    const hasAgendaTerm = /(\b(agendar?|agende|agenda|marc)\w*\b|\bcompromiss\w*\b|\breunia\w*\b|\bconsult\w*\b|\bevento\w*\b)/.test(normalizedText);
+
+    if (hasAgendaTerm || hasCreateVerb) {
+      console.log('[Agenda Debug] routing:', { messageText, hasCreateVerb, hasTimeSignal, isListQuestion });
+
+      // 1) Verbo de criação SEMPRE cria — mesmo com "hoje/amanhã" na frase
+      if (hasCreateVerb) {
+        console.log('🗓️ Criando compromisso (verbo de criação detectado)');
         return await this.addCommitment(session.user_id!, messageText);
       }
 
-      console.log('🗓️ Listando compromissos (match por isList)');
-      return await this.listCommitments(session.user_id!);
+      // 2) Pergunta clara de listagem
+      if (isListQuestion) {
+        console.log('🗓️ Listando compromissos (consulta detectada)');
+        return await this.listCommitments(session.user_id!, messageText);
+      }
 
+      // 3) Sem verbo de criação mas com sinal de tempo + termo de agenda → criar
+      //    ex: "dentista amanhã 11h", "reunião sexta 10h"
+      if (hasAgendaTerm && hasTimeSignal) {
+        console.log('🗓️ Criando compromisso (termo de agenda + tempo)');
+        return await this.addCommitment(session.user_id!, messageText);
+      }
+
+      // 4) Fallback: termo de agenda solto ("compromissos", "agenda") → listar
+      if (hasAgendaTerm) {
+        console.log('🗓️ Listando compromissos (fallback)');
+        return await this.listCommitments(session.user_id!, messageText);
+      }
     }
     
     // PRIORIDADE 2.3: Comandos de CONTAS FIXAS / RECORRENTES
