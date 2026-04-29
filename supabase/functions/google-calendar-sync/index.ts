@@ -95,18 +95,14 @@ Deno.serve(async (req) => {
         duration_minutes: durationMinutes,
       };
 
-      // Upsert por google_event_id
-      const { data: existing } = await supabase
+      // UPSERT atômico via constraint única (user_id, google_event_id)
+      const { error: upsertError } = await supabase
         .from("commitments")
-        .select("id")
-        .eq("google_event_id", ev.id)
-        .eq("user_id", userId)
-        .maybeSingle();
+        .upsert(payload, { onConflict: "user_id,google_event_id", ignoreDuplicates: false });
 
-      if (existing) {
-        await supabase.from("commitments").update(payload).eq("id", existing.id);
-      } else {
-        await supabase.from("commitments").insert(payload);
+      if (upsertError) {
+        console.error("[sync] upsert failed for event", ev.id, upsertError);
+        continue;
       }
       synced++;
     }
