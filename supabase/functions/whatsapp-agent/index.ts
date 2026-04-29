@@ -180,18 +180,25 @@ async function syncWithGoogleCalendar(
   googleEventIdHint?: string
 ): Promise<{ success: boolean; google_event_id?: string; error?: string }> {
   try {
-    // Busca conexão ativa do Google
+    // Busca conexão Google (qualquer status) para diferenciar motivos
     const { data: conn } = await supabase
       .from('calendar_connections')
       .select('*')
       .eq('user_id', userId)
       .eq('provider', 'google')
-      .eq('is_active', true)
       .maybeSingle();
 
     if (!conn) {
-      console.log('[syncWithGoogleCalendar] No active Google connection for user', userId);
+      console.log('[syncWithGoogleCalendar] no_connection for user', userId);
       return { success: false, error: 'no_connection' };
+    }
+    if ((conn as any).needs_reauth) {
+      console.log('[syncWithGoogleCalendar] needs_reauth for user', userId);
+      return { success: false, error: 'needs_reauth' };
+    }
+    if (!(conn as any).is_active) {
+      console.log('[syncWithGoogleCalendar] inactive_connection for user', userId);
+      return { success: false, error: 'inactive_connection' };
     }
 
     const accessToken = await getValidGoogleToken(supabase as any, conn as any);
