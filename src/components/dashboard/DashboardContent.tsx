@@ -89,6 +89,8 @@ export function DashboardContent({
   const { goalsWithProgress, loading: goalsLoading, addGoal, deleteGoal } = useMonthlyGoals(transactions, categories);
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { connection: calendarConnection } = useGoogleCalendar();
+  const calendarConnected = !!calendarConnection?.is_active && !calendarConnection?.needs_reauth;
   
   const [filters, setFilters] = useState<TransactionFiltersState>(() => {
     try {
