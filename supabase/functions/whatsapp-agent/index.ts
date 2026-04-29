@@ -4818,30 +4818,65 @@ Se não especificar hora, retorne scheduled_at: null.`
     }
   }
 
-  static async listCommitments(userId: string): Promise<{ response: string, sessionData: SessionData }> {
+  static async listCommitments(userId: string, messageText: string = ''): Promise<{ response: string, sessionData: SessionData }> {
     try {
       const supabase = createClient(
         Deno.env.get('SUPABASE_URL')!,
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
       );
 
-      const now = new Date().toISOString();
-      const { data: commitments, error } = await supabase
+      // Janela temporal a partir do texto (timezone America/Sao_Paulo)
+      const norm = messageText.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      // "agora" em São Paulo via offset -03:00
+      const nowUtc = new Date();
+      const spOffsetMs = -3 * 60 * 60 * 1000;
+      const spNow = new Date(nowUtc.getTime() + spOffsetMs);
+      const y = spNow.getUTCFullYear(), m = spNow.getUTCMonth(), d = spNow.getUTCDate();
+      // Início do dia SP em UTC = 00:00 SP = 03:00 UTC
+      const startOfDaySP = (offsetDays: number) => new Date(Date.UTC(y, m, d + offsetDays, 3, 0, 0));
+
+      let fromDate: Date = nowUtc;
+      let toDate: Date | null = null;
+      let windowLabel = '';
+
+      if (/\bhoje\b/.test(norm)) {
+        fromDate = nowUtc;
+        toDate = startOfDaySP(1);
+        windowLabel = 'de hoje';
+      } else if (/\bdepois\s*de\s*amanha\b/.test(norm)) {
+        fromDate = startOfDaySP(2);
+        toDate = startOfDaySP(3);
+        windowLabel = 'de depois de amanhã';
+      } else if (/\bamanha\b/.test(norm)) {
+        fromDate = startOfDaySP(1);
+        toDate = startOfDaySP(2);
+        windowLabel = 'de amanhã';
+      } else if (/\bsemana\b/.test(norm)) {
+        fromDate = nowUtc;
+        toDate = startOfDaySP(7);
+        windowLabel = 'desta semana';
+      }
+
+      let query = supabase
         .from('commitments')
         .select('*')
         .eq('user_id', userId)
-        .gte('scheduled_at', now)
+        .gte('scheduled_at', fromDate.toISOString())
         .order('scheduled_at', { ascending: true })
-        .limit(5);
+        .limit(toDate ? 50 : 5);
+
+      if (toDate) query = query.lt('scheduled_at', toDate.toISOString());
+
+      const { data: commitments, error } = await query;
 
       if (error) throw error;
 
       if (!commitments || commitments.length === 0) {
+        const emptyMsg = windowLabel
+          ? `📭 *Você não tem compromissos ${windowLabel}.*`
+          : '📭 *Você não tem compromissos agendados.*';
         return {
-          response: '📭 *Você não tem compromissos agendados.*\n\n' +
-                   'Para agendar, digite:\n' +
-                   '• "agendar dentista amanhã 14h"\n' +
-                   '• "compromisso reunião sexta 10h"',
+          response: emptyMsg + '\n\nPara agendar, digite:\n• "agendar dentista amanhã 14h"\n• "marcar reunião sexta 10h"',
           sessionData: {}
         };
       }
@@ -4853,7 +4888,10 @@ Se não especificar hora, retorne scheduled_at: null.`
         other: '📌'
       };
 
-      let response = `📅 *Seus próximos ${commitments.length} compromissos:*\n\n`;
+      const header = windowLabel
+        ? `📅 *Seus compromissos ${windowLabel}:*\n\n`
+        : `📅 *Seus próximos ${commitments.length} compromissos:*\n\n`;
+      let response = header;
       
       commitments.forEach((c, i) => {
         const date = new Date(c.scheduled_at);
