@@ -5987,14 +5987,23 @@ Se não especificar hora, retorne scheduled_at: null.`
         successMsg += `\n• Você receberá notificação do Google`;
       }
       
-      // ✅ Adicionar informações sobre lembretes
+      // ✅ Adicionar informações sobre lembretes (apenas os efetivamente configurados)
       successMsg += `\n\n⏰ *Lembretes configurados:*`;
       successMsg += `\n• 📱 WhatsApp: 24h, 2h e 1h antes`;
-      successMsg += `\n• 📅 Google Calendar: 24h, 2h, 1h e 30min antes`;
-      
-      // ✅ Notificar se sincronização falhou
+      if (syncResult.success) {
+        successMsg += `\n• 📅 Google Calendar: 24h, 2h, 1h e 30min antes`;
+      }
+
+      // ✅ Notificar se sincronização falhou — mensagem específica por motivo
       if (!syncResult.success) {
-        successMsg += `\n\n⚠️ *Atenção:* O compromisso foi salvo no sistema, mas a sincronização com o Google Calendar falhou. Tente reconectar sua conta do Google.`;
+        const reason = (syncResult as any).error;
+        if (reason === 'no_connection') {
+          successMsg += `\n\n💡 *Dica:* Conecte sua Google Agenda no painel para receber lembretes também pelo Google.`;
+        } else if (reason === 'needs_reauth' || reason === 'inactive_connection') {
+          successMsg += `\n\n⚠️ *Atenção:* O compromisso foi salvo, mas sua Google Agenda está desconectada. Acesse o painel em *Agenda* e clique em *Reconectar Google Agenda* para que os próximos compromissos apareçam no Google.`;
+        } else {
+          successMsg += `\n\n⚠️ *Atenção:* O compromisso foi salvo, mas não consegui sincronizar com o Google Agenda agora. Tente novamente pelo painel em *Agenda → Sincronizar agora*.`;
+        }
       }
       
       // Limpar estado
