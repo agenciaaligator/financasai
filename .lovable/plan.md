@@ -1,63 +1,62 @@
 ## Diagnóstico
 
-O erro continua vindo da função **whatsapp-agent** ao confirmar o compromisso. Os logs recentes mostram exatamente:
+O agendamento foi salvo corretamente no sistema, mas não apareceu no Google Agenda porque a conexão Google do usuário está marcada como inativa no banco:
 
 ```text
-ReferenceError: syncWithGoogleCalendar is not defined
-at Function.handleCommitmentConfirmation
+calendar_email: adwords@aligator.com.br
+is_active: false
+needs_reauth: false
+google_event_id do compromisso: vazio
 ```
 
-Também confirmei que:
+Como o `whatsapp-agent` só sincroniza quando encontra uma conexão Google com `is_active = true`, ele não tentou criar o evento no Google e retornou a mensagem de falha parcial.
 
-- O compromisso chega a ser salvo no banco antes da falha.
-- A falha acontece logo depois, na etapa de sincronizar com Google Calendar.
-- O aviso por e-mail/screenshot parece ser o diff de código da função, mas a imagem está muito comprimida; o erro real e acionável está nos logs da Edge Function.
-- O código local já contém `syncWithGoogleCalendar`, mas a função publicada ainda está executando uma versão/empacotamento onde essa referência não existe no escopo correto.
+Também encontrei dois problemas de experiência:
+
+- A tela de Agenda trata qualquer conexão com `needs_reauth = false` como “Conectado”, mesmo quando `is_active = false`.
+- A resposta do WhatsApp sempre promete “Google Calendar: 24h, 2h, 1h e 30min antes”, mesmo quando a sincronização falhou.
 
 ## Plano de correção
 
-1. **Corrigir o escopo da sincronização no whatsapp-agent**
-   - Remover a dependência frágil da chamada direta `syncWithGoogleCalendar(...)` dentro dos métodos estáticos.
-   - Substituir por um helper estável no mesmo escopo usado pelo runtime da função, ou por uma chamada interna controlada à Edge Function `google-calendar-event`/Google API.
-   - Garantir que, mesmo se o Google Calendar falhar, o usuário não receba a mensagem genérica de erro depois que o compromisso já foi salvo.
+1. **Corrigir a lógica de status da conexão Google**
+   - No painel de Agenda, considerar conectado somente quando `is_active = true` e `needs_reauth = false`.
+   - Se existir conexão inativa, mostrar aviso claro para reconectar em vez de “Conectado”.
 
-2. **Evitar compromissos órfãos/duplicados quando a confirmação falha**
-   - Ajustar o fluxo para não salvar múltiplas vezes se o usuário reenviar “Confirmar”.
-   - Usar o `pending_commitment.commitment_id` ou uma busca por mesmo usuário/data/título antes de inserir novamente.
-   - Limpar o estado da sessão após sucesso real para impedir repetição do mesmo agendamento.
+2. **Melhorar a resposta do WhatsApp quando o Google não sincronizar**
+   - Quando não houver conexão ativa, não listar os lembretes do Google como configurados.
+   - Informar de forma direta: “Compromisso salvo, mas sua Google Agenda precisa ser reconectada.”
+   - Manter os lembretes do WhatsApp como configurados.
 
-3. **Melhorar a resposta do WhatsApp**
-   - Se o compromisso for salvo mas a sincronização com Google falhar, responder algo claro como:
-     - “Compromisso salvo, mas não consegui sincronizar com Google Agenda agora. Você pode sincronizar pelo painel.”
-   - Se tudo der certo, responder confirmação normal.
+3. **Tornar a sincronização mais autoexplicativa no backend**
+   - Ajustar `syncWithGoogleCalendar` para diferenciar:
+     - sem conexão ativa,
+     - conexão inativa,
+     - reconexão necessária,
+     - erro real da API Google.
+   - Logar o motivo exato para facilitar depuração futura.
 
-4. **Verificar configuração e deploy da função**
-   - Garantir que `whatsapp-agent` continue com `verify_jwt = false` no `supabase/config.toml`.
-   - Confirmar que os segredos necessários existem sem expor valores:
-     - `SUPABASE_URL`
-     - `SUPABASE_SERVICE_ROLE_KEY`
-     - `GOOGLE_CLIENT_ID`
-     - `GOOGLE_CLIENT_SECRET`
-     - `WHATSAPP_ACCESS_TOKEN`
-     - `WHATSAPP_PHONE_NUMBER_ID`
-   - Depois da correção, redeployar explicitamente a Edge Function `whatsapp-agent` para não depender apenas do deploy automático.
+4. **Garantir que a reconexão resolva o caso atual**
+   - Após o usuário clicar em “Reconectar Google Agenda”, o callback já atualiza `is_active = true`, `needs_reauth = false`, `access_token` e `refresh_token`.
+   - Depois disso, novos agendamentos pelo WhatsApp devem receber `google_event_id` e aparecer no Google Agenda.
 
-5. **Validar ponta a ponta**
-   - Testar a função implantada com um fluxo equivalente a “agendar dentista amanhã 11h” e “confirmar”.
-   - Conferir logs novos do `whatsapp-agent` para garantir que não aparece mais `syncWithGoogleCalendar is not defined`.
-   - Conferir no banco se o compromisso foi criado uma única vez e se recebeu `google_event_id` quando a agenda estiver conectada.
+5. **Validação pós-correção**
+   - Consultar o banco para confirmar que a conexão atual aparece como inativa antes da reconexão.
+   - Validar que a interface não mostra mais “Conectado” para conexão inativa.
+   - Após reconectar e testar novo agendamento, verificar se o compromisso recebeu `google_event_id`.
 
-## Arquivos envolvidos
+## Arquivos a ajustar
 
+- `src/hooks/useGoogleCalendar.ts`
+- `src/components/dashboard/AgendaPage.tsx`
 - `supabase/functions/whatsapp-agent/index.ts`
-- `supabase/functions/_shared/google-token.ts` somente se for necessário ajustar import/uso do token
-- `supabase/config.toml` somente se alguma função de agenda estiver sem configuração correta
 
-## Resultado esperado
+## Ação necessária do usuário depois da correção
 
-Ao enviar “agendar dentista amanhã 11h” e depois “confirmar”, o agente deve:
+Você precisará reconectar a conta Google no painel de Agenda, porque a conexão atual está desativada. Depois disso, envie novamente pelo WhatsApp:
 
-1. confirmar o pedido,
-2. salvar um único compromisso,
-3. verificar/sincronizar com Google Calendar quando houver conexão ativa,
-4. responder ao WhatsApp com sucesso ou com uma mensagem clara de falha parcial, sem a mensagem genérica de dificuldade.
+```text
+agendar dentista amanhã às 11h
+sim
+```
+
+O novo compromisso deve aparecer no Google Agenda.

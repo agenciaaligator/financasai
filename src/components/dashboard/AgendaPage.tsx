@@ -59,16 +59,18 @@ export function AgendaPage() {
                 Os lembretes são enviados pelo próprio Google (push e e-mail).
               </p>
             </div>
-          ) : connection.needs_reauth ? (
+          ) : (connection.needs_reauth || !connection.is_active) ? (
             <div className="space-y-3">
               <div className="flex items-start gap-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
                 <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
                 <div className="text-sm">
-                  <p className="font-medium">Sua conexão expirou</p>
-                  <p className="text-muted-foreground">Reconecte para continuar recebendo lembretes.</p>
+                  <p className="font-medium">Sua conexão com o Google Agenda está inativa</p>
+                  <p className="text-muted-foreground">
+                    Reconecte agora para que os compromissos agendados pelo WhatsApp apareçam no seu Google Agenda.
+                  </p>
                 </div>
               </div>
-              <Button onClick={connect} className="w-full sm:w-auto">Reconectar agora</Button>
+              <Button onClick={connect} className="w-full sm:w-auto">Reconectar Google Agenda</Button>
             </div>
           ) : (
             <div className="space-y-3">
