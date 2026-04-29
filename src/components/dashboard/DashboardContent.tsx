@@ -40,6 +40,8 @@ import { ErrorBoundary } from "../ErrorBoundary";
 import { WhatsAppPage } from "./WhatsAppPage";
 import { AgendaPage } from "./AgendaPage";
 import { useTranslation } from "react-i18next";
+import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
+import { Calendar as CalendarIcon } from "lucide-react";
 
 const TIMEZONE = 'America/Sao_Paulo';
 const ITEMS_PER_PAGE = 10;
@@ -87,6 +89,8 @@ export function DashboardContent({
   const { goalsWithProgress, loading: goalsLoading, addGoal, deleteGoal } = useMonthlyGoals(transactions, categories);
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { connection: calendarConnection } = useGoogleCalendar();
+  const calendarConnected = !!calendarConnection?.is_active && !calendarConnection?.needs_reauth;
   
   const [filters, setFilters] = useState<TransactionFiltersState>(() => {
     try {
@@ -277,11 +281,24 @@ export function DashboardContent({
                 <p className="text-sm text-muted-foreground">
                   {t('dashboard.greetingSubtitle', 'Dona Wilma está pronta. Suas finanças hoje:')}
                 </p>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <span className="inline-flex items-center gap-1 text-xs bg-success/10 text-success px-2 py-0.5 rounded-full font-medium">
                     <span className="w-1.5 h-1.5 bg-success rounded-full animate-pulse" />
                     WhatsApp
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => onTabChange("agenda")}
+                    className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium transition-colors ${
+                      calendarConnected
+                        ? "bg-success/10 text-success hover:bg-success/20"
+                        : "bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20"
+                    }`}
+                    aria-label="Ir para a aba Agenda"
+                  >
+                    <CalendarIcon className="w-3 h-3" />
+                    {calendarConnected ? "Agenda conectada" : "Conectar Agenda"}
+                  </button>
                 </div>
               </div>
             </CardContent>

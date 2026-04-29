@@ -5,64 +5,30 @@ import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
 import { useCommitments } from "@/hooks/useCommitments";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { toast } from "@/hooks/use-toast";
+
 import { CommitmentForm } from "./CommitmentForm";
 import { Badge } from "@/components/ui/badge";
 
 export function AgendaPage() {
   const { connection, loading, syncing, connect, disconnect, sync, refresh: refreshConnection } = useGoogleCalendar();
   const { commitments, loading: loadingCommitments, refresh } = useCommitments();
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
   const [showForm, setShowForm] = useState(false);
 
+  // Quando o usuário aterrissa nessa aba após o OAuth (?connected=true),
+  // o FinancialDashboard já mostrou o toast e limpou os params.
+  // Aqui só recarregamos a conexão e disparamos sync para refletir o estado atualizado.
   useEffect(() => {
-    const connected = params.get("connected");
-    const error = params.get("error");
-    const errorDetail = params.get("error_detail");
-    if (connected === "true") {
-      toast({ title: "Agenda conectada!", description: "Seus compromissos estão sincronizando." });
-      params.delete("connected");
-      setParams(params, { replace: true });
-      // Recarrega a conexão antes de sincronizar para garantir is_active=true
+    if (params.get("connected") === "true" || connection?.is_active) {
       (async () => {
         await refreshConnection();
-        await sync();
-      })();
-    }
-    if (error) {
-      const friendly = (() => {
-        switch (error) {
-          case "access_denied":
-            return "Você cancelou a autorização no Google. Tente novamente e clique em Permitir.";
-          case "redirect_uri_mismatch":
-            return "Configuração do Google fora de sincronia (redirect_uri_mismatch). Avise o suporte.";
-          case "invalid_client":
-            return "Credenciais do Google inválidas. Avise o suporte.";
-          case "state_expired":
-            return "O link de conexão expirou. Tente novamente.";
-          case "token_exchange_failed":
-            return errorDetail
-              ? `Google rejeitou a autorização: ${decodeURIComponent(errorDetail)}`
-              : "Google rejeitou a autorização. Tente novamente.";
-          case "server_misconfigured":
-            return "Servidor sem credenciais OAuth. Avise o suporte.";
-          case "save_failed":
-            return errorDetail
-              ? `Não foi possível salvar a conexão: ${decodeURIComponent(errorDetail)}`
-              : "Não foi possível salvar a conexão.";
-          case "missing_params":
-          case "invalid_state":
-            return "Resposta do Google incompleta. Tente novamente.";
-          default:
-            return errorDetail ? decodeURIComponent(errorDetail) : error;
+        if (connection?.is_active && !connection?.needs_reauth) {
+          await sync();
         }
       })();
-      toast({ title: "Erro ao conectar Google Agenda", description: friendly, variant: "destructive" });
-      params.delete("error");
-      params.delete("error_detail");
-      setParams(params, { replace: true });
     }
-  }, [params]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (loading) {
     return <div className="flex justify-center p-8"><RefreshCw className="animate-spin" /></div>;
