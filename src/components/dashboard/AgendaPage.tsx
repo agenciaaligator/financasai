@@ -5,7 +5,7 @@ import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
 import { useCommitments } from "@/hooks/useCommitments";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { toast } from "@/hooks/use-toast";
+
 import { CommitmentForm } from "./CommitmentForm";
 import { Badge } from "@/components/ui/badge";
 
