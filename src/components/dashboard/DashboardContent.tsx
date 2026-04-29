@@ -40,6 +40,8 @@ import { ErrorBoundary } from "../ErrorBoundary";
 import { WhatsAppPage } from "./WhatsAppPage";
 import { AgendaPage } from "./AgendaPage";
 import { useTranslation } from "react-i18next";
+import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
+import { Calendar as CalendarIcon } from "lucide-react";
 
 const TIMEZONE = 'America/Sao_Paulo';
 const ITEMS_PER_PAGE = 10;
