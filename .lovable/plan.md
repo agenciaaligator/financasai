@@ -1,224 +1,60 @@
+# Corrigir lógica de intent do agente WhatsApp para agendamentos
 
-# Integração Google Agenda — Plano Final
-**Domínio donawilma.com.br + zero custo de lembretes no Supabase**
+## Problema identificado
 
----
+Ao enviar **"agendar dentista amanhã as 11h"**, o agente respondeu com a lista dos próximos 5 compromissos em vez de criar o agendamento.
 
-## Princípios
+**Causa raiz** (em `supabase/functions/whatsapp-agent/index.ts`, linhas 2138–2168):
 
-1. **Domínio**: usuário só vê `https://donawilma.com.br`. Nenhum link `lovable.app`.
-2. **Lembretes 100% pelo Google** — push no celular + e-mail nativos. **Nenhum cron de lembrete no Supabase.**
-3. **Conexão permanente** — 4 mecanismos garantem que ninguém precise reconectar manualmente.
-4. **2 caminhos de conexão**: pelo app OU pelo WhatsApp (link mágico).
-5. **Zero impacto** nas funcionalidades atuais.
+1. Existe um "HARD MATCH" que dispara listagem sempre que a mensagem contém `compromiss*` + qualquer uma das palavras: `meu, ver, mostrar, quais, hoje, amanha, semana, listar, proximos`. A palavra **"amanha"** sozinha já força listagem, mesmo quando o verbo é "agendar".
+2. Logo abaixo, o regex `isList` repete o mesmo erro: a presença de "amanha", "hoje", "semana", "tenho", etc., classifica como listagem mesmo em mensagens claramente de criação ("agendar...", "marcar...").
 
----
+Resultado: qualquer frase de criação que mencione um dia relativo cai em listagem.
 
-## ⚠️ Garantia de custo zero com lembretes
+## O que vou corrigir
 
-| Item | Esta proposta | O que causou bloqueio antes |
-|---|---|---|
-| Cron de lembrete por minuto | ❌ NÃO EXISTE | ✅ Existia (1×/min = 43.200 execuções/mês) |
-| Cron de lembrete diário | ❌ NÃO EXISTE | — |
-| Polling da agenda | ❌ NÃO EXISTE | — |
-| Mensagens de lembrete pelo WhatsApp | ❌ NÃO EXISTE | — |
-| Quem dispara o lembrete | **Google** (push + e-mail) | Supabase |
-| Custo recorrente Supabase para lembretes | **R$ 0** | Alto |
+### 1. Priorizar verbos de criação sobre palavras de tempo
+Antes de qualquer regra de listagem, detectar verbos/intenção de **criar** compromisso e roteá-los para `addCommitment`:
 
-**Cron antigo `send-commitment-reminders-5min` será DESATIVADO/REMOVIDO.**
+- Verbos de criação: `agendar, marcar, criar, adicionar, registrar, anotar, colocar, bota, põe, agende, marque`
+- Sinais de novo evento: presença de horário (`11h`, `às 14:00`, `9 da manhã`) **ou** dia específico (`segunda`, `dia 15`, `amanhã`, `hoje`) combinado com um verbo de criação ou um substantivo de evento + valor de tempo.
 
-A única coisa que roda no Supabase de forma agendada é **1 cron por dia às 03:00** que renova os tokens dos webhooks do Google que estão prestes a expirar (ver "Conexão permanente"). É 1 execução por dia por usuário com agenda conectada — custo desprezível e tem natureza de manutenção, não de envio de mensagens.
+Se houver verbo de criação → sempre `addCommitment`, mesmo que a frase contenha "hoje"/"amanhã".
 
----
+### 2. Restringir o "HARD MATCH" de listagem
+A listagem só dispara quando a frase é claramente uma consulta:
 
-## Como o usuário recebe os lembretes
+- Padrões de pergunta: começa com `quais`, `quando`, `tenho algum`, `o que tenho`, `me mostra`, `me lista`, `mostrar`, `listar`, `ver meus`, `meus próximos`, `próximos compromissos`, `compromissos de hoje/amanhã/da semana`.
+- E **não** contém verbo de criação.
 
-Ao criar um compromisso (pelo app ou pelo WhatsApp), os lembretes são definidos como propriedades do **evento no Google Calendar**. Daí em diante:
+### 3. Garantir checagem de conflito (já existe, validar fluxo)
+A função `addCommitment` (linha 4245) já consulta conflitos numa janela de ±1h e responde com a mensagem `❌ Não posso agendar "X" às HH:MM — Você já tem: ...` oferecendo opções (manter, remarcar, cancelar). Vou confirmar que o caminho corrigido entra nesse fluxo e que a resposta de conflito está clara e curta.
 
-- Push notification no celular (app Google Calendar / Gmail)
-- E-mail automático do Google (opcional, configurável pelo usuário)
-- Funciona mesmo se o app Dona Wilma estiver offline
-- Funciona mesmo se o Supabase estiver offline
-- Custo: **R$ 0** — Google envia tudo
+### 4. Ajustar mensagem quando o usuário pede a lista
+Manter o comportamento atual (listar próximos compromissos), mas garantir que **"compromissos de hoje"** filtre de fato pelo dia de hoje (e não retorne os próximos 5 quaisquer). Hoje a `listCommitments` retorna 5 fixos; vou aceitar parâmetro de janela (`hoje`, `amanhã`, `semana`, default = próximos 5) e filtrar a query por `scheduled_at` no intervalo correspondente em America/Sao_Paulo.
 
-Por padrão configuramos 2 lembretes nativos do Google:
-- **30 minutos antes** (popup/push)
-- **1 dia antes às 9h** (e-mail)
+## Arquivos afetados
 
-O usuário pode customizar na aba Agenda (3 a 5 cliques) ou direto no Google Calendar.
+- `supabase/functions/whatsapp-agent/index.ts` — única alteração:
+  - Bloco de roteamento de intent de agenda (≈ linhas 2137–2170): nova ordem de prioridade (criação > listagem) e regex mais estrito para listagem.
+  - `listCommitments`: aceitar janela temporal extraída da mensagem.
 
----
+Nenhuma mudança em banco, edge functions adicionais, ou frontend.
 
-## URLs (todas em donawilma.com.br)
-
-| Onde aparece | URL |
-|---|---|
-| Link enviado no WhatsApp | `https://donawilma.com.br/conectar-agenda?token=xxx` |
-| Botão de conectar no app | `https://donawilma.com.br/agenda` |
-| Callback do Google (Google → Supabase, invisível) | `https://fsamlnlabdjoqpiuhgex.supabase.co/functions/v1/google-calendar-callback` |
-| Redirect final pós-autorização | `https://donawilma.com.br/agenda?connected=true` |
-| Listagem de compromissos | `https://donawilma.com.br/agenda` |
-
-Todas construídas via `buildSiteUrl()` do `src/lib/siteUrl.ts`.
-
----
-
-## Por que a agenda desconectava antes — soluções aplicadas
-
-### 1. Refresh token sempre solicitado
-URL OAuth construída com `access_type=offline` + `prompt=consent`. Sem isso o Google não devolve refresh token e tudo expira em 1h.
-
-### 2. Auto-renovação transparente do access token
-Helper `getValidGoogleToken(connection_id)` usado por todas as funções: verifica `expires_at`, se expirou troca refresh_token por novo access_token e salva. Usuário nunca percebe.
-
-### 3. Renovação automática do webhook do Google
-Webhooks do Google Calendar expiram em até 7 dias. Cron `renew-google-watches` roda **1× por dia às 03:00** e renova qualquer watch que vence em <24h. Único cron deste plano.
-
-### 4. Detecção e aviso proativo
-Se chamada à API do Google retorna 401 (usuário revogou no painel Google):
-- Marca `calendar_connections.needs_reauth = true`
-- Envia 1 mensagem WhatsApp informando: *"Sua agenda Google se desconectou, toque aqui pra reconectar"*
-
-### 5. Passo manual seu (te guio na hora)
-Publicar app no Google Cloud Console em modo "In production". Sem isso, Google força reautenticação a cada 7 dias mesmo com refresh token. Para escopo `calendar.events` **não exige verificação do Google**, é só clicar em publicar.
-
----
-
-## UX do usuário
-
-### Caminho A — Pelo app
-1. Aba **"Agenda"** no dashboard → botão "Conectar Google Agenda"
-2. Janela do Google → autoriza → volta com "Conectado ✓"
-
-### Caminho B — Pelo WhatsApp (Dona Wilma)
-1. Manda: *"quero conectar minha agenda"*
-2. Bot responde com `https://donawilma.com.br/conectar-agenda?token=xxx`
-3. Toca no link → autoriza no Google → bot confirma
-
-### Criar compromisso pelo WhatsApp
-1. *"agenda dentista quinta às 15h"*
-2. Bot cria evento direto no Google Calendar (já com lembretes nativos configurados)
-3. Google entrega o lembrete na hora certa — Supabase nem é acionado
-
----
-
-## Edge Functions (apenas 5, todas sob demanda — exceto 1 cron de manutenção)
-
-| Função | Quando roda | Custo |
-|---|---|---|
-| `google-calendar-auth` | Sob demanda (clique do usuário) | Desprezível |
-| `google-calendar-callback` | Sob demanda (1× ao conectar) | Desprezível |
-| `google-calendar-webhook` | Quando Google avisa que houve mudança na agenda | Push, não polling — desprezível |
-| `google-calendar-sync` | Sob demanda (botão "sincronizar agora") | Desprezível |
-| `renew-google-watches` | **1× por dia às 03:00** (única coisa agendada) | ~30 execuções/mês |
-
-Helper compartilhado: `supabase/functions/_shared/google-token.ts` com `getValidGoogleToken()`.
-
-**NÃO existirão**: `send-commitment-reminders`, `send-daily-agenda`, nem variações.
-
----
-
-## Banco de dados — alterações mínimas
-
-```sql
-ALTER TABLE calendar_connections
-  ADD COLUMN last_sync_at TIMESTAMPTZ,
-  ADD COLUMN webhook_channel_id TEXT,
-  ADD COLUMN webhook_resource_id TEXT,
-  ADD COLUMN webhook_expires_at TIMESTAMPTZ,
-  ADD COLUMN needs_reauth BOOLEAN DEFAULT false;
-
-CREATE TABLE calendar_connection_tokens (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL,
-  token UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
-  expires_at TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '15 minutes'),
-  used BOOLEAN DEFAULT false,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
--- RLS: service_role only
-```
-
-A tabela `commitments` continua existindo só para listar/exibir os compromissos no app (espelho do que está no Google). Os campos `reminder_sent` / `reminders_sent` ficam ali mas **não serão mais usados** — podem ser removidos depois numa limpeza.
-
----
-
-## Limpeza de crons existentes (importante!)
-
-Função `get_cron_jobs_status()` mostra que existem hoje:
-- `send-commitment-reminders-5min` ← **REMOVER**
-- `send-daily-agenda-8am` ← **REMOVER**
-- `sync-all-google-calendars-10min` ← **REMOVER**
-
-Migration vai dropar os 3 com `cron.unschedule(...)`. Único cron novo: `renew-google-watches` (diário 03:00).
-
----
-
-## Frontend novo
+## Casos de teste manuais (após implementar)
 
 ```text
-src/components/dashboard/
-├── AgendaPage.tsx
-├── AgendaConnectionCard.tsx
-├── AgendaReminderSettings.tsx     ← define defaults dos lembretes do Google
-├── CommitmentsList.tsx
-├── CommitmentForm.tsx             ← inclui lembretes do Google
-└── CommitmentCard.tsx
-
-src/pages/
-└── ConnectCalendar.tsx            ← /conectar-agenda?token=xxx
-
-src/hooks/
-├── useGoogleCalendar.ts
-└── useCommitments.ts
+agendar dentista amanhã às 11h     → cria (ou avisa conflito se houver)
+marcar reunião hoje 15h            → cria
+remarcar dentista amanhã 14h       → fluxo de edição
+quais meus compromissos hoje?      → lista só de hoje
+meus próximos compromissos         → lista próximos 5
+tenho algo amanhã?                 → lista de amanhã
+agendar consulta dia 15 às 9h      → cria
 ```
 
-`DashboardTabs.tsx`: nova aba **"Agenda"**.
-`whatsapp-agent`: 2 intents novas — "conectar agenda" e "meus compromissos".
+## Impacto
 
----
-
-## Configuração no Google Cloud Console (te guio na hora)
-
-1. **APIs & Services → Library**: ativar Google Calendar API
-2. **OAuth consent screen → Authorized domains**: `donawilma.com.br` e `supabase.co`
-3. **OAuth consent screen → Publish App** → "In production"
-4. **Credentials → Authorized redirect URIs**:
-   `https://fsamlnlabdjoqpiuhgex.supabase.co/functions/v1/google-calendar-callback`
-5. **Authorized JavaScript origins**: `https://donawilma.com.br`
-
-Secrets `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` já existem.
-
----
-
-## Controle de acesso
-Usa `subscription_plans.has_google_calendar` que já existe. Admin tem acesso total.
-
----
-
-## Internacionalização
-Chaves novas em pt-BR, pt-PT, en-US, es-ES, it-IT.
-
----
-
-## Impacto no que já funciona
-
-| Área | Impacto |
-|---|---|
-| Transações, categorias, relatórios | Nenhum |
-| Agente WhatsApp atual | Ganha 2 intents novas (não-destrutivo) |
-| `recurring_transactions` (lembretes financeiros) | Nenhum |
-| 3 crons antigos que pesavam no Supabase | **Removidos** — alívio imediato no consumo |
-| Assinatura/admin | Nenhum |
-
----
-
-## Estimativas
-- **Tempo de implementação**: 1-2 dias
-- **Custo Google API**: R$ 0 (Calendar API é gratuita)
-- **Custo Supabase recorrente**: praticamente zero — só 30 execuções/mês do cron de manutenção de webhooks
-- **Frequência de reconexão pelo usuário**: nunca (com as 4 proteções + app publicado)
-
----
-
-Aprovação libera implementação completa.
+- Não afeta transações financeiras, login, Stripe, Google Calendar nem outras intents.
+- Nenhum custo novo no Supabase: a checagem de conflito já existia, só estava sendo pulada pelo roteamento incorreto.
+- Sem alteração de schema, sem cron, sem nova função.
