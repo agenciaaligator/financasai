@@ -22,8 +22,21 @@ Deno.serve(async (req) => {
 
   try {
     const clientId = Deno.env.get("GOOGLE_CLIENT_ID");
+    const clientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
     const redirectUri = Deno.env.get("GOOGLE_CALENDAR_REDIRECT_URI");
-    if (!clientId || !redirectUri) throw new Error("Google OAuth not configured");
+
+    if (!clientId || !clientSecret || !redirectUri) {
+      console.error("[google-calendar-auth] Missing config", {
+        hasClientId: !!clientId,
+        hasClientSecret: !!clientSecret,
+        hasRedirectUri: !!redirectUri,
+      });
+      throw new Error(
+        "Configuração do Google ausente no servidor. Avise o suporte (faltam credenciais OAuth)."
+      );
+    }
+
+    console.log("[google-calendar-auth] Using redirect_uri:", redirectUri);
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -36,30 +49,27 @@ Deno.serve(async (req) => {
     let userId: string | null = null;
 
     if (magicToken) {
-      // Fluxo via WhatsApp: validar token mágico
       const { data: tokenRow, error } = await supabase
         .from("calendar_connection_tokens")
         .select("user_id, expires_at, used")
         .eq("token", magicToken)
         .maybeSingle();
 
-      if (error || !tokenRow) throw new Error("Token mágico inválido");
-      if (tokenRow.used) throw new Error("Token mágico já utilizado");
+      if (error || !tokenRow) throw new Error("Token de conexão inválido. Peça um novo link no WhatsApp.");
+      if (tokenRow.used) throw new Error("Esse link já foi usado. Peça um novo no WhatsApp.");
       if (new Date(tokenRow.expires_at).getTime() < Date.now()) {
-        throw new Error("Token mágico expirou");
+        throw new Error("Link expirado. Peça um novo no WhatsApp.");
       }
       userId = tokenRow.user_id as string;
     } else {
-      // Fluxo via app: validar JWT
       const authHeader = req.headers.get("Authorization");
-      if (!authHeader) throw new Error("Authorization required");
+      if (!authHeader) throw new Error("Você precisa estar logado para conectar a Google Agenda.");
       const jwt = authHeader.replace("Bearer ", "");
       const { data: userData, error } = await supabase.auth.getUser(jwt);
-      if (error || !userData.user) throw new Error("Invalid session");
+      if (error || !userData.user) throw new Error("Sessão inválida. Faça login novamente e tente outra vez.");
       userId = userData.user.id;
     }
 
-    // State carrega userId + nonce. Vamos assinar com HMAC simples (chave do service role).
     const stateObj = { uid: userId, n: crypto.randomUUID(), t: Date.now() };
     const state = btoa(JSON.stringify(stateObj));
 
@@ -72,6 +82,8 @@ Deno.serve(async (req) => {
     authUrl.searchParams.set("prompt", "consent");
     authUrl.searchParams.set("state", state);
     authUrl.searchParams.set("include_granted_scopes", "true");
+
+    console.log("[google-calendar-auth] Authorization URL generated for user", userId);
 
     return new Response(
       JSON.stringify({ url: authUrl.toString() }),
