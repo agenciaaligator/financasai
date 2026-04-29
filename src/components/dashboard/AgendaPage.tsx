@@ -99,7 +99,7 @@ export function AgendaPage() {
         </CardContent>
       </Card>
 
-      {connection && !connection.needs_reauth && (
+      {connection && !connection.needs_reauth && connection.is_active && (
         <Card className="bg-gradient-card shadow-card border-0">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Próximos compromissos</CardTitle>
