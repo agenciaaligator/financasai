@@ -44,6 +44,68 @@ export function FinancialDashboard() {
     }
   }, [searchParams]);
 
+  // Processa retorno do OAuth do Google Agenda em qualquer aba.
+  // Garante que o usuário veja o feedback mesmo caindo na aba Início.
+  useEffect(() => {
+    const connected = searchParams.get("connected");
+    const error = searchParams.get("error");
+    const errorDetail = searchParams.get("error_detail");
+
+    if (!connected && !error) return;
+
+    if (connected === "true") {
+      toast({
+        title: "Google Agenda conectada! ✅",
+        description: "Seus compromissos do WhatsApp serão sincronizados automaticamente.",
+      });
+      setCurrentTab("agenda");
+    }
+
+    if (error) {
+      const friendly = (() => {
+        switch (error) {
+          case "access_denied":
+            return "Você cancelou a autorização no Google. Tente novamente e clique em Permitir.";
+          case "redirect_uri_mismatch":
+            return "Configuração do Google fora de sincronia. Avise o suporte.";
+          case "invalid_client":
+            return "Credenciais do Google inválidas. Avise o suporte.";
+          case "state_expired":
+            return "O link de conexão expirou. Tente novamente.";
+          case "token_exchange_failed":
+            return errorDetail
+              ? `Google rejeitou a autorização: ${decodeURIComponent(errorDetail)}`
+              : "Google rejeitou a autorização. Tente novamente.";
+          case "server_misconfigured":
+            return "Servidor sem credenciais OAuth. Avise o suporte.";
+          case "save_failed":
+            return errorDetail
+              ? `Não foi possível salvar a conexão: ${decodeURIComponent(errorDetail)}`
+              : "Não foi possível salvar a conexão.";
+          case "missing_params":
+          case "invalid_state":
+            return "Resposta do Google incompleta. Tente novamente.";
+          default:
+            return errorDetail ? decodeURIComponent(errorDetail) : error;
+        }
+      })();
+      toast({
+        title: "Erro ao conectar Google Agenda",
+        description: friendly,
+        variant: "destructive",
+      });
+      setCurrentTab("agenda");
+    }
+
+    // Limpa params da URL para evitar disparo duplicado
+    const next = new URLSearchParams(searchParams);
+    next.delete("connected");
+    next.delete("error");
+    next.delete("error_detail");
+    next.set("tab", "agenda");
+    setSearchParams(next, { replace: true });
+  }, [searchParams]);
+
   const tabTitleMap: Record<string, string> = {
     dashboard: t('dashboard.title', 'Dashboard Financeiro'),
     transactions: t('dashboard.transactions', 'Transações'),
