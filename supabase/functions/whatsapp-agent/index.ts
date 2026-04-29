@@ -5887,22 +5887,53 @@ Se não especificar hora, retorne scheduled_at: null.`
       if (pending.contactPhone) description += `Telefone: ${pending.contactPhone}\n`;
       if (pending.participants) description += `Participantes: ${pending.participants}\n`;
       
-      // ✅ Inserir no banco (ÚNICO PONTO DE INSERÇÃO)
+      // ✅ Inserir no banco de forma idempotente (evita duplicar se o usuário reenviar "confirmar")
       console.log('[COMMITMENT-FLOW] Saving after user confirmation');
-      const { data: commitment, error: insertErr } = await supabase
-        .from('commitments')
-        .insert({
-          user_id: session.user_id,
-          title: finalTitle,
-          description: description.trim() || null,
-          scheduled_at: pending.scheduledISO,
-          category: pending.category,
-          location: pending.location || null,
-          participants: pending.participants || null,
-          notes: pending.specialty || pending.company ? `${pending.specialty || ''}${pending.company || ''}`.trim() : null
-        })
-        .select()
-        .single();
+      let commitment: any = null;
+      let insertErr: any = null;
+
+      if (pending.commitment_id) {
+        const { data: existingById } = await supabase
+          .from('commitments')
+          .select()
+          .eq('id', pending.commitment_id)
+          .eq('user_id', session.user_id)
+          .maybeSingle();
+        commitment = existingById;
+      }
+
+      if (!commitment) {
+        const { data: existingSameSlot } = await supabase
+          .from('commitments')
+          .select()
+          .eq('user_id', session.user_id)
+          .eq('title', finalTitle)
+          .eq('scheduled_at', pending.scheduledISO)
+          .maybeSingle();
+        commitment = existingSameSlot;
+      }
+
+      if (!commitment) {
+        const result = await supabase
+          .from('commitments')
+          .insert({
+            user_id: session.user_id,
+            title: finalTitle,
+            description: description.trim() || null,
+            scheduled_at: pending.scheduledISO,
+            category: pending.category,
+            location: pending.location || null,
+            participants: pending.participants || null,
+            notes: pending.specialty || pending.company ? `${pending.specialty || ''}${pending.company || ''}`.trim() : null
+          })
+          .select()
+          .single();
+
+        commitment = result.data;
+        insertErr = result.error;
+      } else {
+        console.log('♻️ [COMMITMENT-FLOW] Reusing existing commitment:', commitment.id);
+      }
       
       if (insertErr) {
         console.error('❌ [COMMITMENT-FLOW] Error inserting commitment:', insertErr);
@@ -5918,9 +5949,14 @@ Se não especificar hora, retorne scheduled_at: null.`
       
       console.log('✅ [COMMITMENT-FLOW] Commitment saved:', commitment.id);
       
-      // ✅ Sincronizar com Google Calendar APÓS confirmação
+      // ✅ Sincronizar com Google Calendar APÓS confirmação sem derrubar o fluxo principal
       console.log('[WHATSAPP-AGENT] Triggering Google Calendar sync: create');
-      const syncResult = await syncWithGoogleCalendar('create', commitment.id, session.user_id!);
+      let syncResult = { success: false, error: 'not_attempted' };
+      try {
+        syncResult = await syncWithGoogleCalendar('create', commitment.id, session.user_id!);
+      } catch (syncError) {
+        console.error('⚠️ [COMMITMENT-FLOW] Google Calendar sync failed after save:', syncError);
+      }
       
       // Gerar mensagem personalizada ✨
       let successMsg = PersonalizedResponses.generateCommitmentSuccessMessage(
