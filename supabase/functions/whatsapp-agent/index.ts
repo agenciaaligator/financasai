@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.5";
+import { getValidGoogleToken } from "../_shared/google-token.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
 const corsHeaders = {
@@ -193,8 +194,6 @@ async function syncWithGoogleCalendar(
       return { success: false, error: 'no_connection' };
     }
 
-    // Importa helper de token
-    const { getValidGoogleToken } = await import('../_shared/google-token.ts');
     const accessToken = await getValidGoogleToken(supabase as any, conn as any);
     const calId = (conn as any).calendar_id || 'primary';
     const baseUrl = `https://www.googleapis.com/calendar/v3/calendars/${calId}/events`;
