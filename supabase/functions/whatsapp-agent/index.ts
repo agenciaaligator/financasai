@@ -168,6 +168,125 @@ const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
   }
 });
 
+// ============================================================
+// Sincroniza um commitment com o Google Calendar (push)
+// action: 'create' | 'update' | 'delete'
+// ============================================================
+async function syncWithGoogleCalendar(
+  action: 'create' | 'update' | 'delete',
+  commitmentId: string,
+  userId: string,
+  googleEventIdHint?: string
+): Promise<{ success: boolean; google_event_id?: string; error?: string }> {
+  try {
+    // Busca conexão ativa do Google
+    const { data: conn } = await supabase
+      .from('calendar_connections')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('provider', 'google')
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (!conn) {
+      console.log('[syncWithGoogleCalendar] No active Google connection for user', userId);
+      return { success: false, error: 'no_connection' };
+    }
+
+    // Importa helper de token
+    const { getValidGoogleToken } = await import('../_shared/google-token.ts');
+    const accessToken = await getValidGoogleToken(supabase as any, conn as any);
+    const calId = (conn as any).calendar_id || 'primary';
+    const baseUrl = `https://www.googleapis.com/calendar/v3/calendars/${calId}/events`;
+
+    if (action === 'delete') {
+      const evId = googleEventIdHint;
+      if (!evId) return { success: true };
+      const res = await fetch(`${baseUrl}/${evId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok && res.status !== 404 && res.status !== 410) {
+        const t = await res.text();
+        console.error('[syncWithGoogleCalendar] delete failed:', res.status, t);
+        return { success: false, error: t };
+      }
+      return { success: true };
+    }
+
+    // Carrega o commitment
+    const { data: commitment, error: cErr } = await supabase
+      .from('commitments')
+      .select('*')
+      .eq('id', commitmentId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (cErr || !commitment) {
+      console.error('[syncWithGoogleCalendar] commitment not found', cErr);
+      return { success: false, error: 'commitment_not_found' };
+    }
+
+    const startISO = new Date((commitment as any).scheduled_at).toISOString();
+    const durationMinutes = (commitment as any).duration_minutes ?? 60;
+    const endISO = new Date(new Date(startISO).getTime() + durationMinutes * 60_000).toISOString();
+
+    const eventPayload: any = {
+      summary: (commitment as any).title,
+      description: (commitment as any).description ?? undefined,
+      location: (commitment as any).location ?? undefined,
+      start: { dateTime: startISO, timeZone: 'America/Sao_Paulo' },
+      end: { dateTime: endISO, timeZone: 'America/Sao_Paulo' },
+      reminders: {
+        useDefault: false,
+        overrides: [
+          { method: 'email', minutes: 1440 },
+          { method: 'popup', minutes: 30 },
+        ],
+      },
+    };
+
+    const existingEventId = (commitment as any).google_event_id || googleEventIdHint;
+    let res: Response;
+
+    if (action === 'update' && existingEventId) {
+      res = await fetch(`${baseUrl}/${existingEventId}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventPayload),
+      });
+    } else {
+      res = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventPayload),
+      });
+    }
+
+    if (!res.ok) {
+      const t = await res.text();
+      console.error('[syncWithGoogleCalendar] Google API error:', res.status, t);
+      return { success: false, error: t };
+    }
+
+    const ev = await res.json();
+    const newEventId = ev.id as string;
+
+    if (newEventId && newEventId !== existingEventId) {
+      await supabase
+        .from('commitments')
+        .update({ google_event_id: newEventId })
+        .eq('id', commitmentId);
+    }
+
+    return { success: true, google_event_id: newEventId };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'unknown';
+    console.error('[syncWithGoogleCalendar] error:', msg);
+    return { success: false, error: msg };
+  }
+}
+
 // Função auxiliar para obter a data/hora local do Brasil (UTC-3)
 function getBrazilTime(): Date {
   const now = new Date();
