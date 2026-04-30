@@ -598,7 +598,18 @@
     "perYear": "ano",
     "getStarted": "Comece agora",
     "goToDashboard": "Ir para o Dashboard",
-    "viewSubscription": "Ver a minha subscrição"
+    "viewSubscription": "Ver a minha subscrição",
+    "webPanelTitle": "📌 O que fazer no painel web",
+    "webPanelSubtitle": "Algumas configurações ficam só aqui no navegador. Faça uma vez e esqueça.",
+    "webPanelCalendarTitle": "📅 Ligar Google Agenda",
+    "webPanelCalendarDesc": "A sincronização da agenda é feita <strong>só pelo painel web</strong>. Vá ao separador <strong>Agenda</strong> e clique em <strong>Ligar Google Agenda</strong>. Depois, basta pedir compromissos pelo WhatsApp.",
+    "webPanelCategoriesTitle": "🏷️ Categorias e metas",
+    "webPanelCategoriesDesc": "Separador <strong>Categorias</strong>: personalize as suas e crie metas mensais. A Dona Wilma avisa no WhatsApp quando se aproximar do limite.",
+    "webPanelReportsTitle": "📊 Relatórios e histórico",
+    "webPanelReportsDesc": "Separador <strong>Relatórios</strong>: gráficos de 12 meses e comparativos. Separador <strong>Movimentos</strong>: edite ou apague qualquer lançamento.",
+    "webPanelSettingsTitle": "⚙️ Definições da conta",
+    "webPanelSettingsDesc": "Atualize os seus dados, plano e WhatsApp em <strong>Definições</strong>. Aceda ao painel pelo computador ou telemóvel: <strong>donawilma.com.br</strong>.",
+    "agendaWebOnlyNotice": "Este passo só funciona pelo painel web (aqui no navegador). Não é possível ligar a Google Agenda pelo WhatsApp."
   },
   "landing": {
     "nav": {
