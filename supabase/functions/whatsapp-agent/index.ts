@@ -247,7 +247,7 @@ async function syncWithGoogleCalendar(
         useDefault: false,
         overrides: [
           { method: 'email', minutes: 1440 },
-          { method: 'popup', minutes: 30 },
+          { method: 'popup', minutes: 60 },
         ],
       },
     };
@@ -4931,7 +4931,7 @@ Se não especificar hora, retorne scheduled_at: null.`
         response: `✅ *Compromisso agendado!*\n\n` +
                  `📌 ${commitmentData.title}\n` +
                  `🗓️ ${formattedDate}\n\n` +
-                 `Você receberá um lembrete antes do horário.`,
+                 `🔔 Lembretes: 1 dia e 1 hora antes (WhatsApp e Google Agenda).`,
         sessionData: {}
       };
     } catch (error) {
@@ -5779,7 +5779,7 @@ Se não especificar hora, retorne scheduled_at: null.`
     }
 
     // Lembretes (versão compacta)
-    confirmMsg += `\n🔔 Você receberá lembretes automáticos`;
+    confirmMsg += `\n🔔 *Lembretes:* 1 dia e 1 hora antes (WhatsApp + Google Agenda)`;
 
     // Google Meet (apenas se for reunião)
     if (pending.category === 'meeting') {
@@ -5987,11 +5987,11 @@ Se não especificar hora, retorne scheduled_at: null.`
         successMsg += `\n• Você receberá notificação do Google`;
       }
       
-      // ✅ Adicionar informações sobre lembretes (apenas os efetivamente configurados)
-      successMsg += `\n\n⏰ *Lembretes configurados:*`;
-      successMsg += `\n• 📱 WhatsApp: 24h, 2h e 1h antes`;
+      // ✅ Adicionar informações sobre lembretes (padronizados: 1 dia + 1 hora)
+      successMsg += `\n\n⏰ *Lembretes:*`;
+      successMsg += `\n• 📱 WhatsApp: 1 dia e 1 hora antes`;
       if (syncResult.success) {
-        successMsg += `\n• 📅 Google Calendar: 24h, 2h, 1h e 30min antes`;
+        successMsg += `\n• 📅 Google Agenda: 1 dia e 1 hora antes`;
       }
 
       // ✅ Notificar se sincronização falhou — mensagem específica por motivo

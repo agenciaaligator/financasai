@@ -656,6 +656,15 @@
         "h1": "Categorías ilimitadas",
         "h2": "Clasificación automática por IA",
         "h3": "Registro automático en WhatsApp"
+      },
+      "calendar": {
+        "tag": "GOOGLE CALENDAR",
+        "title": "Compromisos en tu Google Calendar",
+        "description": "Agenda citas, reuniones y pagos por WhatsApp o desde el panel. Todo aparece automáticamente en tu Google Calendar, con recordatorios 1 día y 1 hora antes.",
+        "h1": "Agenda por mensaje o voz en WhatsApp",
+        "h2": "Sincronización automática con Google Calendar",
+        "h3": "Recordatorios estándar: 1 día y 1 hora antes",
+        "h4": "Detección de conflicto de horario"
       }
     },
     "howItWorksPractice": {
@@ -722,6 +731,14 @@
         "3": {
           "question": "¿Cómo puedo probar Dona Wilma?",
           "answer": "Al suscribirte al plan, tendrás acceso inmediato a todas las funcionalidades de Dona Wilma."
+        },
+        "4": {
+          "question": "¿Cómo funciona la integración con Google Calendar?",
+          "answer": "Conectas tu cuenta Google una vez en el panel. A partir de ahí, cada compromiso que crees por WhatsApp o por el panel de Dona Wilma se envía automáticamente a tu Google Calendar con recordatorios configurados."
+        },
+        "5": {
+          "question": "¿Puedo recibir recordatorios por WhatsApp y por Google al mismo tiempo?",
+          "answer": "Sí. Por defecto, recibes dos recordatorios en cada canal: 1 día antes y 1 hora antes del compromiso. El recordatorio de WhatsApp llega como mensaje de Dona Wilma y el de Google como notificación push y correo."
         }
       }
     },
@@ -741,7 +758,9 @@
         "8": "Reunión mañana a las 14h",
         "9": "Recordarme llamar al cliente",
         "10": "Cita médica el viernes",
-        "11": "Cumpleaños de Juan el día 15"
+        "11": "Cumpleaños de Juan el día 15",
+        "12": "Agenda dentista el miércoles a las 15h",
+        "13": "Reunión mañana a las 10h con cliente"
       }
     },
     "stats": {

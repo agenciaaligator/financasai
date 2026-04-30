@@ -93,6 +93,11 @@ export function AgendaPage() {
                   Desconectar
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Compromissos criados aqui ou pelo WhatsApp aparecem automaticamente no Google Agenda.
+                Use <strong>Sincronizar agora</strong> apenas para puxar eventos criados direto no Google.
+                Lembretes padrão: <strong>1 dia e 1 hora antes</strong>.
+              </p>
             </div>
           )}
         </CardContent>

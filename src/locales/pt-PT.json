@@ -656,6 +656,15 @@
         "h1": "Categorias ilimitadas",
         "h2": "Classificação automática por IA",
         "h3": "Registo automático no WhatsApp"
+      },
+      "calendar": {
+        "tag": "GOOGLE AGENDA",
+        "title": "Compromissos no seu Google Agenda",
+        "description": "Agende consultas, reuniões e pagamentos pelo WhatsApp ou pelo painel. Tudo aparece automaticamente no seu Google Agenda, com lembretes 1 dia e 1 hora antes.",
+        "h1": "Agendamento por mensagem ou voz no WhatsApp",
+        "h2": "Sincronização automática com o Google Agenda",
+        "h3": "Lembretes padrão: 1 dia e 1 hora antes",
+        "h4": "Deteção de conflito de horário"
       }
     },
     "howItWorksPractice": {
@@ -722,6 +731,14 @@
         "3": {
           "question": "Como posso experimentar a Dona Wilma?",
           "answer": "Ao subscrever o plano, terá acesso imediato a todas as funcionalidades da Dona Wilma."
+        },
+        "4": {
+          "question": "Como funciona a integração com o Google Agenda?",
+          "answer": "Liga a sua conta Google uma vez no painel. A partir daí, cada compromisso criado pelo WhatsApp ou pelo painel da Dona Wilma é enviado automaticamente para o seu Google Agenda com lembretes configurados."
+        },
+        "5": {
+          "question": "Posso receber lembretes pelo WhatsApp e pelo Google ao mesmo tempo?",
+          "answer": "Sim. Por defeito, recebe dois lembretes em cada canal: 1 dia antes e 1 hora antes do compromisso. O lembrete do WhatsApp chega como mensagem da Dona Wilma e o do Google chega como notificação push e e-mail."
         }
       }
     },
@@ -741,7 +758,9 @@
         "8": "Reunião amanhã às 14h",
         "9": "Lembrar de ligar ao cliente",
         "10": "Consulta médica na sexta",
-        "11": "Aniversário do João dia 15"
+        "11": "Aniversário do João dia 15",
+        "12": "Marca consulta com dentista quarta às 15h",
+        "13": "Reunião amanhã às 10h com cliente"
       }
     },
     "stats": {

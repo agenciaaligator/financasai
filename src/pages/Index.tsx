@@ -300,6 +300,24 @@ const LandingPage = () => {
               icon={<FolderOpen className="h-6 w-6 text-primary" />}
             />
           </div>
+
+          <div className="scroll-reveal delay-3">
+            <FeatureBlock
+              title={t('landing.features.calendar.tag')}
+              subtitle={t('landing.features.calendar.title')}
+              description={t('landing.features.calendar.description')}
+              highlights={[
+                t('landing.features.calendar.h1'),
+                t('landing.features.calendar.h2'),
+                t('landing.features.calendar.h3'),
+                t('landing.features.calendar.h4')
+              ]}
+              imageSrc="/images/landing/dashboard-painel.png"
+              imageAlt="Compromissos integrados ao Google Agenda"
+              imagePosition="left"
+              icon={<Calendar className="h-6 w-6 text-primary" />}
+            />
+          </div>
         </div>
       </section>
 

@@ -663,6 +663,15 @@
         "h1": "Unlimited categories",
         "h2": "Automatic AI classification",
         "h3": "Auto-register on WhatsApp"
+      },
+      "calendar": {
+        "tag": "GOOGLE CALENDAR",
+        "title": "Appointments in your Google Calendar",
+        "description": "Schedule visits, meetings and payments via WhatsApp or the dashboard. Everything appears automatically in your Google Calendar with reminders 1 day and 1 hour before.",
+        "h1": "Schedule by message or voice on WhatsApp",
+        "h2": "Automatic sync with Google Calendar",
+        "h3": "Default reminders: 1 day and 1 hour before",
+        "h4": "Time conflict detection"
       }
     },
     "howItWorksPractice": {
@@ -729,6 +738,14 @@
         "3": {
           "question": "How can I try Dona Wilma?",
           "answer": "When you subscribe to the plan, you'll have immediate access to all Dona Wilma features. Discount coupons may occasionally be available for new users."
+        },
+        "4": {
+          "question": "How does the Google Calendar integration work?",
+          "answer": "You connect your Google account once in the dashboard. From then on, every appointment you create via WhatsApp or the Dona Wilma dashboard is automatically sent to your Google Calendar with reminders configured."
+        },
+        "5": {
+          "question": "Can I get reminders on WhatsApp and Google at the same time?",
+          "answer": "Yes. By default you receive two reminders on each channel: 1 day before and 1 hour before the appointment. WhatsApp reminders arrive as a message from Dona Wilma; Google reminders arrive as push and email notifications."
         }
       }
     },
@@ -748,7 +765,9 @@
         "8": "Meeting tomorrow at 2pm",
         "9": "Remind me to call the client",
         "10": "Doctor's appointment on Friday",
-        "11": "John's birthday on the 15th"
+        "11": "John's birthday on the 15th",
+        "12": "Book dentist Wednesday at 3pm",
+        "13": "Meeting tomorrow at 10am with client"
       }
     },
     "stats": {
