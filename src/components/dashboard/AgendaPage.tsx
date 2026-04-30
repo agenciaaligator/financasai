@@ -99,6 +99,9 @@ export function AgendaPage() {
               <p className="text-xs text-muted-foreground">
                 Lembretes pelo Google (push e e-mail) e <strong>1 hora antes pelo WhatsApp</strong>.
               </p>
+              <div className="mx-auto max-w-md text-xs text-muted-foreground bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+                💻 Esta etapa só funciona pelo painel web (aqui pelo navegador). Não é possível conectar a Google Agenda pelo WhatsApp.
+              </div>
             </div>
           ) : (connection.needs_reauth || !connection.is_active) ? (
             <div className="space-y-3">
