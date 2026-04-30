@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.renew-google-watches]
 verify_jwt = false
+
+[functions.send-commitment-reminders]
+verify_jwt = false
