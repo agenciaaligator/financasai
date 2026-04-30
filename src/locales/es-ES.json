@@ -598,7 +598,18 @@
     "perYear": "año",
     "getStarted": "Empieza ahora",
     "goToDashboard": "Ir al Dashboard",
-    "viewSubscription": "Ver mi suscripción"
+    "viewSubscription": "Ver mi suscripción",
+    "webPanelTitle": "📌 Qué hacer en el panel web",
+    "webPanelSubtitle": "Algunas configuraciones están solo aquí en el navegador. Hazlas una vez y olvídate.",
+    "webPanelCalendarTitle": "📅 Conectar Google Calendar",
+    "webPanelCalendarDesc": "La sincronización del calendario se hace <strong>solo desde el panel web</strong>. Ve a la pestaña <strong>Agenda</strong> y pulsa <strong>Conectar Google Calendar</strong>. Después, solo pide compromisos por WhatsApp.",
+    "webPanelCategoriesTitle": "🏷️ Categorías y metas",
+    "webPanelCategoriesDesc": "Pestaña <strong>Categorías</strong>: personaliza las tuyas y crea metas mensuales. Dona Wilma te avisa por WhatsApp cuando te acerques al límite.",
+    "webPanelReportsTitle": "📊 Informes e historial",
+    "webPanelReportsDesc": "Pestaña <strong>Informes</strong>: gráficos de 12 meses y comparativas. Pestaña <strong>Movimientos</strong>: edita o elimina cualquier registro.",
+    "webPanelSettingsTitle": "⚙️ Ajustes de la cuenta",
+    "webPanelSettingsDesc": "Actualiza tus datos, plan y WhatsApp en <strong>Ajustes</strong>. Accede al panel desde el ordenador o el móvil: <strong>donawilma.com.br</strong>.",
+    "agendaWebOnlyNotice": "Este paso solo funciona desde el panel web (aquí en el navegador). No se puede conectar Google Calendar por WhatsApp."
   },
   "landing": {
     "nav": {
