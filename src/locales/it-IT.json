@@ -656,6 +656,15 @@
         "h1": "Categorie illimitate",
         "h2": "Classificazione automatica con IA",
         "h3": "Registrazione automatica su WhatsApp"
+      },
+      "calendar": {
+        "tag": "GOOGLE CALENDAR",
+        "title": "Impegni nel tuo Google Calendar",
+        "description": "Pianifica visite, riunioni e pagamenti tramite WhatsApp o dalla dashboard. Tutto appare automaticamente nel tuo Google Calendar, con promemoria 1 giorno e 1 ora prima.",
+        "h1": "Pianificazione tramite messaggio o voce su WhatsApp",
+        "h2": "Sincronizzazione automatica con Google Calendar",
+        "h3": "Promemoria standard: 1 giorno e 1 ora prima",
+        "h4": "Rilevamento conflitti di orario"
       }
     },
     "howItWorksPractice": {
@@ -722,6 +731,14 @@
         "3": {
           "question": "Come posso provare Dona Wilma?",
           "answer": "Sottoscrivendo il piano, avrai accesso immediato a tutte le funzionalità di Dona Wilma."
+        },
+        "4": {
+          "question": "Come funziona l'integrazione con Google Calendar?",
+          "answer": "Colleghi il tuo account Google una volta dalla dashboard. Da quel momento, ogni impegno creato tramite WhatsApp o dalla dashboard di Dona Wilma viene inviato automaticamente al tuo Google Calendar con promemoria configurati."
+        },
+        "5": {
+          "question": "Posso ricevere promemoria su WhatsApp e Google contemporaneamente?",
+          "answer": "Sì. Per impostazione predefinita ricevi due promemoria su ciascun canale: 1 giorno prima e 1 ora prima dell'impegno. Il promemoria WhatsApp arriva come messaggio di Dona Wilma e quello Google come notifica push ed e-mail."
         }
       }
     },
@@ -741,7 +758,9 @@
         "8": "Riunione domani alle 14",
         "9": "Ricordami di chiamare il cliente",
         "10": "Visita medica venerdì",
-        "11": "Compleanno di Giovanni il 15"
+        "11": "Compleanno di Giovanni il 15",
+        "12": "Prenota dentista mercoledì alle 15",
+        "13": "Riunione domani alle 10 con il cliente"
       }
     },
     "stats": {
