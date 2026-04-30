@@ -197,6 +197,7 @@ export type Database = {
           organization_id: string | null
           participants: string | null
           reminder_sent: boolean | null
+          reminder_sent_1h: boolean
           reminders_sent: Json | null
           scheduled_at: string
           scheduled_reminders: Json | null
@@ -219,6 +220,7 @@ export type Database = {
           organization_id?: string | null
           participants?: string | null
           reminder_sent?: boolean | null
+          reminder_sent_1h?: boolean
           reminders_sent?: Json | null
           scheduled_at: string
           scheduled_reminders?: Json | null
@@ -241,6 +243,7 @@ export type Database = {
           organization_id?: string | null
           participants?: string | null
           reminder_sent?: boolean | null
+          reminder_sent_1h?: boolean
           reminders_sent?: Json | null
           scheduled_at?: string
           scheduled_reminders?: Json | null
