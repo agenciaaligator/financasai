@@ -16,9 +16,20 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+interface InitialValues {
+  id?: string;
+  google_event_id?: string | null;
+  title?: string;
+  description?: string | null;
+  location?: string | null;
+  scheduled_at?: string; // ISO
+  duration_minutes?: number | null;
+}
+
 interface Props {
   onSuccess: () => void;
   onCancel: () => void;
+  initial?: InitialValues; // se presente, modo edição
 }
 
 interface ConflictItem {
@@ -27,15 +38,28 @@ interface ConflictItem {
   duration_minutes: number | null;
 }
 
-export function CommitmentForm({ onSuccess, onCancel }: Props) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [location, setLocation] = useState("");
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
-  const [duration, setDuration] = useState(60);
-  const [reminder1] = useState(1440); // 1 dia antes (padrão)
-  const [reminder2, setReminder2] = useState(60); // 1 hora antes (padrão)
+function isoToDateTimeLocal(iso?: string): { date: string; time: string } {
+  if (!iso) return { date: "", time: "" };
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return {
+    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+  };
+}
+
+export function CommitmentForm({ onSuccess, onCancel, initial }: Props) {
+  const isEdit = Boolean(initial?.id);
+  const initDT = isoToDateTimeLocal(initial?.scheduled_at);
+
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [location, setLocation] = useState(initial?.location ?? "");
+  const [date, setDate] = useState(initDT.date);
+  const [time, setTime] = useState(initDT.time);
+  const [duration, setDuration] = useState(initial?.duration_minutes ?? 60);
+  const [reminder1] = useState(1440); // 1 dia antes (e-mail Google)
+  const [reminder2, setReminder2] = useState(60); // 1 hora antes (push Google + WhatsApp)
   const [submitting, setSubmitting] = useState(false);
   const [conflicts, setConflicts] = useState<ConflictItem[]>([]);
   const [showConflict, setShowConflict] = useState(false);
@@ -44,7 +68,8 @@ export function CommitmentForm({ onSuccess, onCancel }: Props) {
     const scheduled_at = new Date(`${date}T${time}:00`).toISOString();
     const { error } = await supabase.functions.invoke("google-calendar-event", {
       body: {
-        action: "create",
+        action: isEdit ? "update" : "create",
+        google_event_id: initial?.google_event_id ?? undefined,
         title,
         description: description || undefined,
         location: location || undefined,
@@ -54,7 +79,10 @@ export function CommitmentForm({ onSuccess, onCancel }: Props) {
       },
     });
     if (error) throw error;
-    toast({ title: "Compromisso criado", description: "Lembretes: 1 dia e 1 hora antes." });
+    toast({
+      title: isEdit ? "Compromisso atualizado" : "Compromisso criado",
+      description: "Lembretes: 1 dia antes (Google), 1 hora antes (Google + WhatsApp).",
+    });
     onSuccess();
   };
 
@@ -68,7 +96,6 @@ export function CommitmentForm({ onSuccess, onCancel }: Props) {
       const start = new Date(`${date}T${time}:00`);
       const end = new Date(start.getTime() + duration * 60_000);
 
-      // Buscar conflitos do usuário no mesmo dia
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const dayStart = new Date(start);
@@ -76,12 +103,16 @@ export function CommitmentForm({ onSuccess, onCancel }: Props) {
         const dayEnd = new Date(start);
         dayEnd.setHours(23, 59, 59, 999);
 
-        const { data: existing } = await supabase
+        let query = supabase
           .from("commitments")
-          .select("title, scheduled_at, duration_minutes")
+          .select("id, title, scheduled_at, duration_minutes")
           .eq("user_id", user.id)
           .gte("scheduled_at", dayStart.toISOString())
           .lte("scheduled_at", dayEnd.toISOString());
+
+        if (initial?.id) query = query.neq("id", initial.id);
+
+        const { data: existing } = await query;
 
         const overlaps = (existing ?? []).filter((c: any) => {
           const cStart = new Date(c.scheduled_at);
@@ -100,7 +131,7 @@ export function CommitmentForm({ onSuccess, onCancel }: Props) {
       await persist();
     } catch (e) {
       toast({
-        title: "Erro ao criar",
+        title: isEdit ? "Erro ao atualizar" : "Erro ao criar",
         description: e instanceof Error ? e.message : "Tente novamente",
         variant: "destructive",
       });
@@ -116,7 +147,7 @@ export function CommitmentForm({ onSuccess, onCancel }: Props) {
       await persist();
     } catch (e) {
       toast({
-        title: "Erro ao criar",
+        title: "Erro ao salvar",
         description: e instanceof Error ? e.message : "Tente novamente",
         variant: "destructive",
       });
@@ -143,11 +174,11 @@ export function CommitmentForm({ onSuccess, onCancel }: Props) {
       </div>
       <div>
         <Label htmlFor="location">Local</Label>
-        <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Opcional" />
+        <Input id="location" value={location ?? ""} onChange={(e) => setLocation(e.target.value)} placeholder="Opcional" />
       </div>
       <div>
         <Label htmlFor="desc">Observações</Label>
-        <Textarea id="desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+        <Textarea id="desc" value={description ?? ""} onChange={(e) => setDescription(e.target.value)} rows={2} />
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div>
@@ -160,12 +191,12 @@ export function CommitmentForm({ onSuccess, onCancel }: Props) {
         </div>
       </div>
       <p className="text-xs text-muted-foreground">
-        Lembretes pelo Google: 1 dia antes (e-mail) e {reminder2} min antes (push).
+        Lembretes: <strong>1 dia antes</strong> (e-mail Google) e <strong>{reminder2} min antes</strong> (push Google + WhatsApp).
       </p>
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" onClick={onCancel}>Cancelar</Button>
         <Button onClick={submit} disabled={submitting}>
-          {submitting ? "Salvando..." : "Criar"}
+          {submitting ? "Salvando..." : isEdit ? "Salvar alterações" : "Criar"}
         </Button>
       </div>
 

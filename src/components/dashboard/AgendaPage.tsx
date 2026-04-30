@@ -1,10 +1,22 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, RefreshCw, AlertTriangle, CheckCircle2, Plus, MapPin, Clock } from "lucide-react";
+import { Calendar, RefreshCw, AlertTriangle, CheckCircle2, Plus, MapPin, Clock, Pencil, Trash2 } from "lucide-react";
 import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
-import { useCommitments } from "@/hooks/useCommitments";
+import { useCommitments, type Commitment } from "@/hooks/useCommitments";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import { CommitmentForm } from "./CommitmentForm";
 import { Badge } from "@/components/ui/badge";
@@ -14,10 +26,10 @@ export function AgendaPage() {
   const { commitments, loading: loadingCommitments, refresh } = useCommitments();
   const [params] = useSearchParams();
   const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<Commitment | null>(null);
+  const [deleting, setDeleting] = useState<Commitment | null>(null);
+  const [deletingInProgress, setDeletingInProgress] = useState(false);
 
-  // Quando o usuário aterrissa nessa aba após o OAuth (?connected=true),
-  // o FinancialDashboard já mostrou o toast e limpou os params.
-  // Aqui só recarregamos a conexão e disparamos sync para refletir o estado atualizado.
   useEffect(() => {
     if (params.get("connected") === "true" || connection?.is_active) {
       (async () => {
@@ -29,6 +41,36 @@ export function AgendaPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    setDeletingInProgress(true);
+    try {
+      if (deleting.google_event_id) {
+        const { error } = await supabase.functions.invoke("google-calendar-event", {
+          body: { action: "delete", google_event_id: deleting.google_event_id },
+        });
+        if (error) throw error;
+      } else {
+        // Sem evento Google — apenas remover do banco
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from("commitments").delete().eq("id", deleting.id).eq("user_id", user.id);
+        }
+      }
+      toast({ title: "Compromisso excluído" });
+      setDeleting(null);
+      refresh();
+    } catch (e) {
+      toast({
+        title: "Erro ao excluir",
+        description: e instanceof Error ? e.message : "Tente novamente",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingInProgress(false);
+    }
+  };
 
   if (loading) {
     return <div className="flex justify-center p-8"><RefreshCw className="animate-spin" /></div>;
@@ -55,7 +97,7 @@ export function AgendaPage() {
                 Conectar Google Agenda
               </Button>
               <p className="text-xs text-muted-foreground">
-                Os lembretes são enviados pelo próprio Google (push e e-mail).
+                Lembretes pelo Google (push e e-mail) e <strong>1 hora antes pelo WhatsApp</strong>.
               </p>
             </div>
           ) : (connection.needs_reauth || !connection.is_active) ? (
@@ -95,8 +137,7 @@ export function AgendaPage() {
               </div>
               <p className="text-xs text-muted-foreground">
                 Compromissos criados aqui ou pelo WhatsApp aparecem automaticamente no Google Agenda.
-                Use <strong>Sincronizar agora</strong> apenas para puxar eventos criados direto no Google.
-                Lembretes padrão: <strong>1 dia e 1 hora antes</strong>.
+                Lembretes: <strong>1 dia antes</strong> (Google) e <strong>1 hora antes</strong> (Google + WhatsApp).
               </p>
             </div>
           )}
@@ -107,16 +148,23 @@ export function AgendaPage() {
         <Card className="bg-gradient-card shadow-card border-0">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Próximos compromissos</CardTitle>
-            <Button onClick={() => setShowForm(!showForm)} size="sm">
+            <Button
+              onClick={() => {
+                setEditing(null);
+                setShowForm(!showForm);
+              }}
+              size="sm"
+            >
               <Plus className="h-4 w-4 mr-1" /> Novo
             </Button>
           </CardHeader>
           <CardContent>
-            {showForm && (
+            {(showForm || editing) && (
               <div className="mb-4">
                 <CommitmentForm
-                  onSuccess={() => { setShowForm(false); refresh(); }}
-                  onCancel={() => setShowForm(false)}
+                  initial={editing ?? undefined}
+                  onSuccess={() => { setShowForm(false); setEditing(null); refresh(); }}
+                  onCancel={() => { setShowForm(false); setEditing(null); }}
                 />
               </div>
             )}
@@ -129,21 +177,43 @@ export function AgendaPage() {
             ) : (
               <ul className="space-y-3">
                 {commitments.map((c) => (
-                  <li key={c.id} className="border rounded-lg p-3 space-y-1">
+                  <li key={c.id} className="border rounded-lg p-3 space-y-2">
                     <div className="flex items-start justify-between gap-2">
-                      <h4 className="font-medium">{c.title}</h4>
-                      {c.google_event_id && <Badge variant="secondary" className="text-xs">Google</Badge>}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-medium">{c.title}</h4>
+                          {c.google_event_id && <Badge variant="secondary" className="text-xs">Google</Badge>}
+                        </div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap mt-1">
+                          <Clock className="h-3 w-3" />
+                          {new Date(c.scheduled_at).toLocaleString("pt-BR")}
+                          {c.location && (
+                            <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {c.location}</span>
+                          )}
+                        </div>
+                        {c.description && (
+                          <p className="text-sm text-muted-foreground mt-1">{c.description}</p>
+                        )}
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          aria-label="Editar"
+                          onClick={() => { setEditing(c); setShowForm(false); }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          aria-label="Excluir"
+                          onClick={() => setDeleting(c)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                      <Clock className="h-3 w-3" />
-                      {new Date(c.scheduled_at).toLocaleString("pt-BR")}
-                      {c.location && (
-                        <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {c.location}</span>
-                      )}
-                    </div>
-                    {c.description && (
-                      <p className="text-sm text-muted-foreground">{c.description}</p>
-                    )}
                   </li>
                 ))}
               </ul>
@@ -151,6 +221,30 @@ export function AgendaPage() {
           </CardContent>
         </Card>
       )}
+
+      <AlertDialog open={Boolean(deleting)} onOpenChange={(o) => !o && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir compromisso?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleting && (
+                <>
+                  <strong>{deleting.title}</strong> —{" "}
+                  {new Date(deleting.scheduled_at).toLocaleString("pt-BR")}
+                  <br />
+                  Será removido também do seu Google Agenda e os lembretes serão cancelados.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingInProgress}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} disabled={deletingInProgress}>
+              {deletingInProgress ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
