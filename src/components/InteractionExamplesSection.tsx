@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 export function InteractionExamplesSection() {
   const { t } = useTranslation();
 
-  const examples = Array.from({ length: 12 }, (_, i) => t(`landing.interaction.examples.${i}`));
+  const examples = Array.from({ length: 14 }, (_, i) => t(`landing.interaction.examples.${i}`));
 
   return (
     <section className="container mx-auto px-4 py-20">
