@@ -410,6 +410,7 @@ export default function Welcome() {
               </div>
             </div>
 
+            <div className="text-center space-y-3">
               <Button
                 size="lg"
                 className="bg-gradient-to-r from-[#25D366] to-[#1da851] text-white rounded-full px-12 py-4 text-lg font-bold shadow-[0_4px_20px_rgba(37,211,102,0.3)] hover:-translate-y-0.5 transition"
