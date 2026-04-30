@@ -370,7 +370,46 @@ export default function Welcome() {
               </div>
             </div>
 
-            <div className="text-center space-y-3">
+            {/* Próximos passos no painel web */}
+            <div className="bg-primary/5 border border-primary/15 rounded-[20px] p-8 mb-8">
+              <h3 className="text-xl font-semibold text-center mb-2">
+                {t('welcome.webPanelTitle')}
+              </h3>
+              <p className="text-sm text-muted-foreground text-center mb-6">
+                {t('welcome.webPanelSubtitle')}
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white rounded-[16px] p-5 shadow-[0_2px_10px_rgba(43,91,132,0.05)] border-2 border-primary/40">
+                  <h4 className="font-semibold mb-2">{t('welcome.webPanelCalendarTitle')}</h4>
+                  <p
+                    className="text-sm text-muted-foreground leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: t('welcome.webPanelCalendarDesc') }}
+                  />
+                </div>
+                <div className="bg-white rounded-[16px] p-5 shadow-[0_2px_10px_rgba(43,91,132,0.05)] border border-[#E9ECEF]">
+                  <h4 className="font-semibold mb-2">{t('welcome.webPanelCategoriesTitle')}</h4>
+                  <p
+                    className="text-sm text-muted-foreground leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: t('welcome.webPanelCategoriesDesc') }}
+                  />
+                </div>
+                <div className="bg-white rounded-[16px] p-5 shadow-[0_2px_10px_rgba(43,91,132,0.05)] border border-[#E9ECEF]">
+                  <h4 className="font-semibold mb-2">{t('welcome.webPanelReportsTitle')}</h4>
+                  <p
+                    className="text-sm text-muted-foreground leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: t('welcome.webPanelReportsDesc') }}
+                  />
+                </div>
+                <div className="bg-white rounded-[16px] p-5 shadow-[0_2px_10px_rgba(43,91,132,0.05)] border border-[#E9ECEF]">
+                  <h4 className="font-semibold mb-2">{t('welcome.webPanelSettingsTitle')}</h4>
+                  <p
+                    className="text-sm text-muted-foreground leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: t('welcome.webPanelSettingsDesc') }}
+                  />
+                </div>
+              </div>
+            </div>
+
               <Button
                 size="lg"
                 className="bg-gradient-to-r from-[#25D366] to-[#1da851] text-white rounded-full px-12 py-4 text-lg font-bold shadow-[0_4px_20px_rgba(37,211,102,0.3)] hover:-translate-y-0.5 transition"
