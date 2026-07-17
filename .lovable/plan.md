@@ -1,68 +1,43 @@
-# Revisão completa antes do teste
+# Aplicar o nome aprovado sem gastar alteração mensal
 
-Fiz uma varredura nos pontos críticos. Resumo do que está implementado e funcionando, e um passo-a-passo recomendado para você criar a conta de teste.
+Confirmado: o nome **"Dona Wilma by Aligator"** já foi aprovado pela Meta, mas ainda não foi **aplicado** ao número. A aplicação acontece em outra tela — não no botão "Editar" do campo "Nome de exibição". Fazer isso pela aba certa **não conta** como uma das 3 alterações mensais; ela já foi consumida quando você submeteu o nome para aprovação.
 
-## ✅ Status por fluxo
+Nenhuma mudança no código Lovable/Supabase é necessária. Todo o procedimento é no painel da Meta.
 
-### 1. Onboarding e contratação de plano
-- `Register` → `create-checkout` → Stripe Checkout → `PaymentSuccess` → `/boas-vindas`.
-- Webhook Stripe trata `checkout.session.completed`, `subscription.updated`, `subscription.deleted`, `invoice.payment_failed` (vira `past_due` com 3 dias de graça) e `invoice.payment_succeeded` (volta a `active`).
-- Idempotência via `stripe_subscription_id`. Admin role protegido contra sobrescrita.
-- Email enviado imediatamente no signup via SMTP Hostinger (`send-app-email`).
+## Passo a passo
 
-### 2. Cancelamento de plano
-- `customer-portal` ativo — usuário cancela pelo portal Stripe.
-- Webhook marca `cancelled` em `subscription.deleted` e `useSubscription` redireciona para `/subscription-inactive`.
+1. **Não clique em "Editar"** no campo "Nome de exibição" — cada clique+submissão consome 1 das 3 alterações mensais, mesmo cancelando depois.
 
-### 3. Boas-vindas
-- `Welcome.tsx` mostra cards explicando que Google Agenda, categorias/metas, relatórios e configurações são feitos no painel web.
-- Traduzido nos 5 locais.
+2. Abra a aba **"Verificação em duas etapas"** (topo da tela do número, ao lado de "Links da mensagem").
 
-### 4. WhatsApp — texto, áudio, imagem
-- **Texto**: NLP no `whatsapp-agent` com regex de prioridade + Gemini fallback.
-- **Áudio**: `whatsapp-webhook` baixa da Graph API, transcreve via ElevenLabs (com fallback Whisper) e injeta texto no agente. Fallback amigável se transcrição falhar (`__audio_transcription_failed__`).
-- **Imagem**: OCR via Gemini Vision (`analyzeReceipt`) — extrai valor, data e estabelecimento, prioriza `due_date` para boletos. Confirmação antes de salvar.
+3. Nessa aba você verá o aviso mencionando o novo nome aprovado, junto com o formulário de **PIN de 6 dígitos**. É onde o número é **re-registrado na Cloud API** — esse registro é o que efetivamente aplica o nome novo ao número em produção.
 
-### 5. Agendamento por áudio/texto + edição/cancelamento
-- Intents detectadas: `agendar/marcar/criar/cadastrar`, `editar/alterar/remarcar`, `cancelar/excluir/apagar` compromisso.
-- Conflito de horário, expediente e dia inativo verificados antes de salvar.
-- Sincronização bidirecional com Google Calendar (`google-calendar-event`: create/update/delete).
-- Cron `send-commitment-reminders-1h` rodando a cada 5 min (confirmado em `cron.job`, ativo). Idempotente via `commitments.reminder_sent_1h`.
-- UI web (`AgendaPage`) permite criar/editar/excluir, com confirmação e aviso de conflito.
+4. Preencha:
+   - **PIN**: o de 6 dígitos que você guardou.
+   - Se pedir confirmar PIN, repita o mesmo valor.
+   - Se aparecer opção "Ativar autenticação de dois fatores" e já estava ativada, mantenha ativada.
 
-### 6. Conexão Google Agenda
-- Só funciona pelo painel web (avisos visíveis na `AgendaPage` e em Welcome).
-- Token revalidação via `needs_reauth`. Renovação de watches via cron diário.
+5. Clique em **Registrar** / **Confirmar** / **Salvar** (o rótulo varia por idioma da conta).
 
-## ⚠️ Pré-requisitos para o teste
+6. Aguarde ~30 segundos e volte na aba **Perfil**. O campo "Nome de exibição" deve passar a mostrar **"Dona Wilma by Aligator"** com selo "Aprovado". O banner verde do topo pode ser dispensado no X depois disso.
 
-1. **Stripe em modo correto**: as chaves `STRIPE_SECRET_KEY` e os `price_id` em `subscription_plans` precisam estar ambos em **test mode** OU ambos em **live mode** (memória já registrada). Para teste, recomendo modo test e use cartão `4242 4242 4242 4242`.
-2. **Webhook Stripe**: `STRIPE_WEBHOOK_SECRET` deve corresponder exatamente ao endpoint configurado no Stripe.
-3. **Telefone WhatsApp único**: o sistema bloqueia telefones já cadastrados. Use um número que ainda não foi usado, OU delete a conta antiga via admin antes.
-4. **Email único**: idem — use email novo ou delete o anterior.
+## Se der erro
 
-## 🧪 Roteiro sugerido de teste
+- **"PIN incorreto"**: NÃO tente adivinhar. Cada erro conta e após 3 erros a Meta bloqueia re-registro por várias horas. Melhor: na própria aba "Verificação em duas etapas" existe "Redefinir PIN" — defina um novo, guarde, e use o novo no passo 4.
+- **"Número já registrado"**: significa que já está aplicado; volte na aba Perfil e recarregue a página (F5).
+- **"Nome não aprovado"**: raro, mas se aparecer, é sincronização da Meta — aguarde 5–10 min e tente de novo.
 
-```text
-1. /register → preencher (email + telefone novos) → Stripe Checkout
-2. Pagar com 4242 4242 4242 4242 → /boas-vindas
-3. Definir senha (se solicitado)
-4. Conectar Google Agenda no painel web (botão Conectar)
-5. Validar WhatsApp via OTP enviado pela Wilma
-6. WhatsApp: enviar texto "gastei 50 no almoço" → confirmar categoria
-7. WhatsApp: enviar áudio descrevendo uma transação
-8. WhatsApp: enviar foto de uma nota fiscal → confirmar OCR
-9. WhatsApp: "agendar dentista amanhã 14h" → confirmar
-10. Verificar evento no Google Agenda
-11. WhatsApp: "editar compromisso 1" → mudar horário
-12. WhatsApp: "cancelar compromisso 1"
-13. Painel web → criar/editar/excluir compromisso pela UI
-14. Aguardar 1h antes de um compromisso real para validar lembrete WhatsApp
-15. Stripe Customer Portal → cancelar assinatura → verificar redirecionamento para /subscription-inactive
-```
+## Validação final
 
-## 📋 Veredito
+Depois que o campo "Nome de exibição" mostrar "Dona Wilma by Aligator":
 
-Tudo o que você pediu está implementado e os pontos críticos (cron ativo, webhooks, idempotência, RLS, traduções) foram conferidos. **Pode criar a conta de teste.**
+- Peça para alguém (ou você de outro celular) enviar "oi" para o número — a resposta deve chegar normalmente (sem mudança no código, o token e o `PHONE_NUMBER_ID` continuam os mesmos).
+- Nos próximos envios de template/mensagens da Dona Wilma, o cabeçalho da conversa passará a mostrar o novo nome nos aparelhos dos usuários (pode levar até 24h para propagar em conversas antigas já abertas).
 
-Se quiser, posso preparar um botão "Reset de conta de teste" no admin para facilitar repetições — me avise.
+## O que **não** fazer
+
+- Não clicar em "Editar" no Nome de exibição (gastaria 1 das 2 alterações restantes).
+- Não trocar o token do WhatsApp no Supabase — o token e o `PHONE_NUMBER_ID` não mudam com a troca de nome de exibição.
+- Não mexer no webhook nem em nada do código deste projeto — nada aqui precisa ser tocado.
+
+Me avise depois de aplicar se o campo "Nome de exibição" atualizou para "Dona Wilma by Aligator" ou se apareceu algum erro, que eu te oriento no próximo passo.
