@@ -108,6 +108,11 @@ export function useRecurringTransactions() {
       setInstances((data as RecurringInstance[]) || []);
     } catch (error: any) {
       console.error("Error fetching instances:", error);
+      toast({
+        title: "Erro ao carregar contas fixas",
+        description: "Não foi possível carregar as parcelas. Verifique sua conexão.",
+        variant: "destructive",
+      });
     }
   };
 
