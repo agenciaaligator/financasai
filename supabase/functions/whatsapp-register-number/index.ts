@@ -6,8 +6,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { pin } = await req.json();
-    if (!pin || !/^\d{6}$/.test(String(pin))) {
+    const { pin } = await req.json().catch(() => ({}));
+    if (pin && !/^\d{6}$/.test(String(pin))) {
       return new Response(
         JSON.stringify({ error: 'PIN inválido: envie 6 dígitos numéricos' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -30,7 +30,10 @@ Deno.serve(async (req) => {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ messaging_product: 'whatsapp', pin: String(pin) }),
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        ...(pin ? { pin: String(pin) } : {}),
+      }),
     });
 
     const bodyText = await resp.text();
