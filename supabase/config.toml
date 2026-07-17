@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.send-commitment-reminders]
 verify_jwt = false
+
+[functions.whatsapp-register-number]
+verify_jwt = false
