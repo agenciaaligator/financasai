@@ -81,7 +81,25 @@ Deno.serve(async (req) => {
     let failed = 0;
 
     for (const c of commitments ?? []) {
-      // Buscar telefone do usuário
+      // 1) Assinatura ativa? Sem plano ativo NÃO gastamos msg WhatsApp paga.
+      //    Aceita active/trialing e past_due (grace period de 3 dias — memory).
+      const { data: sub } = await supabase
+        .from("user_subscriptions")
+        .select("status")
+        .eq("user_id", c.user_id)
+        .in("status", ["active", "trialing", "past_due"])
+        .maybeSingle();
+
+      if (!sub) {
+        skipped++;
+        await supabase
+          .from("commitments")
+          .update({ reminder_sent_1h: true })
+          .eq("id", c.id);
+        continue;
+      }
+
+      // 2) Buscar telefone do usuário
       const { data: profile } = await supabase
         .from("profiles")
         .select("phone_number, full_name")
