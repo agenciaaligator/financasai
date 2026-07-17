@@ -43,29 +43,43 @@ serve(async (req) => {
     let userEmail: string;
     let userId: string;
 
-    // Try auth header first, fallback to body params
+    // Try auth header first, fallback to body params (used during onboarding
+    // when the JS session is not yet persisted). In the fallback path we MUST
+    // validate the (userId, email) pair against auth.users so a malicious
+    // caller can't attach a payment to somebody else's account.
     const authHeader = req.headers.get("Authorization");
     const token = authHeader?.replace("Bearer ", "");
-    
+    let authenticatedViaToken = false;
+
     if (token && token !== Deno.env.get("SUPABASE_ANON_KEY")) {
       const { data: userData } = await supabaseClient.auth.getUser(token);
       if (userData?.user?.email) {
         userEmail = userData.user.email;
         userId = userData.user.id;
-        logStep("User authenticated via token", { userId, email: userEmail });
-      } else if (bodyUserId && bodyEmail) {
-        userEmail = bodyEmail.toLowerCase().trim();
-        userId = bodyUserId;
-        logStep("Using body params (token invalid)", { userId, email: userEmail });
-      } else {
-        throw new Error("User not authenticated or email not available");
+        authenticatedViaToken = true;
+        logStep("User authenticated via token", { userId });
       }
-    } else if (bodyUserId && bodyEmail) {
-      userEmail = bodyEmail.toLowerCase().trim();
-      userId = bodyUserId;
-      logStep("Using body params (no auth token)", { userId, email: userEmail });
-    } else {
-      throw new Error("Authentication required: provide auth token or userId/email in body");
+    }
+
+    if (!authenticatedViaToken) {
+      if (!bodyUserId || !bodyEmail) {
+        throw new Error("Authentication required: provide auth token or userId/email in body");
+      }
+      // Cross-check the pair against auth.users using the service role client.
+      const { data: userLookup, error: lookupErr } = await supabaseClient.auth.admin.getUserById(bodyUserId);
+      if (lookupErr || !userLookup?.user) {
+        logStep("SECURITY: userId in body does not exist", { bodyUserId });
+        throw new Error("Invalid user credentials");
+      }
+      const realEmail = (userLookup.user.email || "").toLowerCase().trim();
+      const claimedEmail = String(bodyEmail).toLowerCase().trim();
+      if (realEmail !== claimedEmail) {
+        logStep("SECURITY: userId/email mismatch", { bodyUserId });
+        throw new Error("Invalid user credentials");
+      }
+      userEmail = realEmail;
+      userId = userLookup.user.id;
+      logStep("User validated via body params + auth.users lookup", { userId });
     }
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
