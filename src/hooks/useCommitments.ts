@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 export interface Commitment {
   id: string;
@@ -17,19 +18,30 @@ export function useCommitments() {
 
   const fetch = useCallback(async () => {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLoading(false); return; }
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setLoading(false); return; }
 
-    const { data } = await supabase
-      .from("commitments")
-      .select("id, title, description, scheduled_at, duration_minutes, location, google_event_id")
-      .eq("user_id", user.id)
-      .gte("scheduled_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-      .order("scheduled_at", { ascending: true })
-      .limit(100);
+      const { data, error } = await supabase
+        .from("commitments")
+        .select("id, title, description, scheduled_at, duration_minutes, location, google_event_id")
+        .eq("user_id", user.id)
+        .gte("scheduled_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .order("scheduled_at", { ascending: true })
+        .limit(100);
 
-    setCommitments((data ?? []) as Commitment[]);
-    setLoading(false);
+      if (error) throw error;
+      setCommitments((data ?? []) as Commitment[]);
+    } catch (e) {
+      console.error("Error fetching commitments:", e);
+      toast({
+        title: "Não foi possível carregar seus compromissos",
+        description: "Verifique sua conexão e tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { fetch(); }, [fetch]);
