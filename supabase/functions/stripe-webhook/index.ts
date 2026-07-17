@@ -214,28 +214,37 @@ serve(async (req) => {
     const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
     
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
+    if (!webhookSecret) {
+      logStep("CRITICAL: STRIPE_WEBHOOK_SECRET not configured - refusing to process");
+      return new Response(JSON.stringify({ error: "Webhook secret not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     
     const body = await req.text();
     const signature = req.headers.get("stripe-signature");
     
-    let event: Stripe.Event;
+    if (!signature) {
+      logStep("SECURITY: Request rejected - missing stripe-signature header");
+      return new Response(JSON.stringify({ error: "Missing signature" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     
-    if (webhookSecret && signature) {
-      try {
-        event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
-        logStep("Webhook signature verified");
-      } catch (err) {
-        logStep("Webhook signature verification failed", { error: err.message });
-        return new Response(JSON.stringify({ error: "Invalid signature" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-    } else {
-      event = JSON.parse(body);
-      logStep("Webhook parsed without signature verification (dev mode)");
+    let event: Stripe.Event;
+    try {
+      event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
+      logStep("Webhook signature verified");
+    } catch (err) {
+      logStep("SECURITY: Webhook signature verification failed", { error: err.message });
+      return new Response(JSON.stringify({ error: "Invalid signature" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     logStep("Event type", { type: event.type });
