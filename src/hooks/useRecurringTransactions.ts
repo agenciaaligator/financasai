@@ -72,7 +72,7 @@ export function useRecurringTransactions() {
     } catch (error: any) {
       console.error("Error fetching recurring transactions:", error);
       toast({
-        title: "Erro ao carregar contas fixas",
+        title: t('recurring.toasts.loadError'),
         description: error.message,
         variant: "destructive",
       });
@@ -111,8 +111,8 @@ export function useRecurringTransactions() {
     } catch (error: any) {
       console.error("Error fetching instances:", error);
       toast({
-        title: "Erro ao carregar contas fixas",
-        description: "Não foi possível carregar as parcelas. Verifique sua conexão.",
+        title: t('recurring.toasts.loadError'),
+        description: t('recurring.toasts.loadErrorDesc'),
         variant: "destructive",
       });
     }
@@ -139,8 +139,8 @@ export function useRecurringTransactions() {
       if (error) throw error;
 
       toast({
-        title: "Conta fixa criada!",
-        description: "A conta fixa foi criada com sucesso.",
+        title: t('recurring.toasts.created'),
+        description: t('recurring.toasts.createdDesc'),
       });
 
       await fetchRecurringTransactions();
@@ -148,7 +148,7 @@ export function useRecurringTransactions() {
     } catch (error: any) {
       console.error("Error creating recurring transaction:", error);
       toast({
-        title: "Erro ao criar conta fixa",
+        title: t('recurring.toasts.createError'),
         description: error.message,
         variant: "destructive",
       });
@@ -166,15 +166,15 @@ export function useRecurringTransactions() {
       if (error) throw error;
 
       toast({
-        title: "Conta fixa atualizada!",
-        description: "As alterações foram salvas com sucesso.",
+        title: t('recurring.toasts.updated'),
+        description: t('recurring.toasts.updatedDesc'),
       });
 
       await fetchRecurringTransactions();
     } catch (error: any) {
       console.error("Error updating recurring transaction:", error);
       toast({
-        title: "Erro ao atualizar conta fixa",
+        title: t('recurring.toasts.updateError'),
         description: error.message,
         variant: "destructive",
       });
@@ -192,15 +192,15 @@ export function useRecurringTransactions() {
       if (error) throw error;
 
       toast({
-        title: "Conta fixa removida",
-        description: "A conta fixa foi removida com sucesso.",
+        title: t('recurring.toasts.removed'),
+        description: t('recurring.toasts.removedDesc'),
       });
 
       await fetchRecurringTransactions();
     } catch (error: any) {
       console.error("Error deleting recurring transaction:", error);
       toast({
-        title: "Erro ao remover conta fixa",
+        title: t('recurring.toasts.removeError'),
         description: error.message,
         variant: "destructive",
       });
@@ -222,15 +222,15 @@ export function useRecurringTransactions() {
       if (error) throw error;
 
       toast({
-        title: "Baixa registrada!",
-        description: "O pagamento foi registrado com sucesso.",
+        title: t('recurring.toasts.paid'),
+        description: t('recurring.toasts.paidDesc'),
       });
 
       await fetchInstances();
     } catch (error: any) {
       console.error("Error paying instance:", error);
       toast({
-        title: "Erro ao registrar pagamento",
+        title: t('recurring.toasts.payError'),
         description: error.message,
         variant: "destructive",
       });
@@ -252,15 +252,15 @@ export function useRecurringTransactions() {
       if (error) throw error;
 
       toast({
-        title: "Conta adiada",
-        description: "A data de vencimento foi atualizada.",
+        title: t('recurring.toasts.postponed'),
+        description: t('recurring.toasts.postponedDesc'),
       });
 
       await fetchInstances();
     } catch (error: any) {
       console.error("Error postponing instance:", error);
       toast({
-        title: "Erro ao adiar conta",
+        title: t('recurring.toasts.postponeError'),
         description: error.message,
         variant: "destructive",
       });
