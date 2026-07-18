@@ -415,6 +415,25 @@
       "thursday": "Jueves",
       "friday": "Viernes",
       "saturday": "Sábado"
+    },
+    "toasts": {
+      "loadError": "Error al cargar cuentas fijas",
+      "loadErrorDesc": "No fue posible cargar las cuotas. Verifica tu conexión.",
+      "created": "¡Cuenta fija creada!",
+      "createdDesc": "La cuenta fija se creó con éxito.",
+      "createError": "Error al crear cuenta fija",
+      "updated": "¡Cuenta fija actualizada!",
+      "updatedDesc": "Los cambios se guardaron con éxito.",
+      "updateError": "Error al actualizar cuenta fija",
+      "removed": "Cuenta fija eliminada",
+      "removedDesc": "La cuenta fija se eliminó con éxito.",
+      "removeError": "Error al eliminar cuenta fija",
+      "paid": "¡Pago registrado!",
+      "paidDesc": "El pago se registró con éxito.",
+      "payError": "Error al registrar pago",
+      "postponed": "Cuenta aplazada",
+      "postponedDesc": "La fecha de vencimiento se actualizó.",
+      "postponeError": "Error al aplazar cuenta"
     }
   },
   "profile": {
@@ -1070,7 +1089,10 @@
     "overBudget": "Excedido en {{value}}",
     "tooltip": "Ya gastaste {{spent}} de {{total}} en esta categoría",
     "deleteTitle": "Eliminar Meta",
-    "deleteDesc": "¿Estás seguro de que deseas eliminar esta meta?"
+    "deleteDesc": "¿Estás seguro de que deseas eliminar esta meta?",
+    "toasts": {
+      "loadError": "No se pudieron cargar tus metas. Verifica tu conexión."
+    }
   },
   "_sidebar_goals_merged_into_main_sidebar": true,
   "reports": {
@@ -1246,6 +1268,12 @@
       "messageMin": "Mensaje muy corto (mínimo 10 caracteres)",
       "messageMax": "Mensaje muy largo",
       "phoneInvalid": "Teléfono inválido (8-20 caracteres)"
+    }
+  },
+  "commitments": {
+    "toasts": {
+      "loadError": "No se pudieron cargar tus compromisos",
+      "loadErrorDesc": "Verifica tu conexión e inténtalo de nuevo."
     }
   }
 }

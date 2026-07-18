@@ -415,6 +415,25 @@
       "thursday": "Giovedì",
       "friday": "Venerdì",
       "saturday": "Sabato"
+    },
+    "toasts": {
+      "loadError": "Errore nel caricamento delle spese fisse",
+      "loadErrorDesc": "Impossibile caricare le rate. Verifica la connessione.",
+      "created": "Spesa fissa creata!",
+      "createdDesc": "La spesa fissa è stata creata con successo.",
+      "createError": "Errore nella creazione della spesa fissa",
+      "updated": "Spesa fissa aggiornata!",
+      "updatedDesc": "Le modifiche sono state salvate con successo.",
+      "updateError": "Errore nell'aggiornamento della spesa fissa",
+      "removed": "Spesa fissa rimossa",
+      "removedDesc": "La spesa fissa è stata rimossa con successo.",
+      "removeError": "Errore nella rimozione della spesa fissa",
+      "paid": "Pagamento registrato!",
+      "paidDesc": "Il pagamento è stato registrato con successo.",
+      "payError": "Errore nella registrazione del pagamento",
+      "postponed": "Spesa posticipata",
+      "postponedDesc": "La data di scadenza è stata aggiornata.",
+      "postponeError": "Errore nel posticipare la spesa"
     }
   },
   "profile": {
@@ -1070,7 +1089,10 @@
     "overBudget": "Superato di {{value}}",
     "tooltip": "Hai speso {{spent}} su {{total}} in questa categoria",
     "deleteTitle": "Elimina Obiettivo",
-    "deleteDesc": "Sei sicuro di voler eliminare questo obiettivo?"
+    "deleteDesc": "Sei sicuro di voler eliminare questo obiettivo?",
+    "toasts": {
+      "loadError": "Impossibile caricare i tuoi obiettivi. Verifica la connessione."
+    }
   },
   "_sidebar_goals_merged_into_main_sidebar": true,
   "reports": {
@@ -1246,6 +1268,12 @@
       "messageMin": "Messaggio troppo corto (minimo 10 caratteri)",
       "messageMax": "Messaggio troppo lungo",
       "phoneInvalid": "Telefono non valido (8-20 caratteri)"
+    }
+  },
+  "commitments": {
+    "toasts": {
+      "loadError": "Impossibile caricare i tuoi impegni",
+      "loadErrorDesc": "Verifica la connessione e riprova."
     }
   }
 }
