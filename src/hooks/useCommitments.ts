@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -13,6 +14,7 @@ export interface Commitment {
 }
 
 export function useCommitments() {
+  const { t } = useTranslation();
   const [commitments, setCommitments] = useState<Commitment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -35,8 +37,8 @@ export function useCommitments() {
     } catch (e) {
       console.error("Error fetching commitments:", e);
       toast({
-        title: "Não foi possível carregar seus compromissos",
-        description: "Verifique sua conexão e tente novamente.",
+        title: t('commitments.toasts.loadError'),
+        description: t('commitments.toasts.loadErrorDesc'),
         variant: "destructive",
       });
     } finally {

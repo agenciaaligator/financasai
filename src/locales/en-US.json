@@ -417,6 +417,25 @@
       "thursday": "Thursday",
       "friday": "Friday",
       "saturday": "Saturday"
+    },
+    "toasts": {
+      "loadError": "Failed to load fixed bills",
+      "loadErrorDesc": "Could not load installments. Check your connection.",
+      "created": "Fixed bill created!",
+      "createdDesc": "The fixed bill was created successfully.",
+      "createError": "Failed to create fixed bill",
+      "updated": "Fixed bill updated!",
+      "updatedDesc": "Changes were saved successfully.",
+      "updateError": "Failed to update fixed bill",
+      "removed": "Fixed bill removed",
+      "removedDesc": "The fixed bill was removed successfully.",
+      "removeError": "Failed to remove fixed bill",
+      "paid": "Payment recorded!",
+      "paidDesc": "The payment was recorded successfully.",
+      "payError": "Failed to record payment",
+      "postponed": "Bill postponed",
+      "postponedDesc": "The due date was updated.",
+      "postponeError": "Failed to postpone bill"
     }
   },
   "profile": {
@@ -1077,7 +1096,10 @@
     "overBudget": "Over by {{value}}",
     "tooltip": "You've spent {{spent}} out of {{total}} in this category",
     "deleteTitle": "Delete Goal",
-    "deleteDesc": "Are you sure you want to delete this goal?"
+    "deleteDesc": "Are you sure you want to delete this goal?",
+    "toasts": {
+      "loadError": "Could not load your goals. Check your connection."
+    }
   },
   "_sidebar_goals_merged_into_main_sidebar": true,
   "reports": {
@@ -1253,6 +1275,12 @@
       "messageMin": "Message too short (minimum 10 characters)",
       "messageMax": "Message too long",
       "phoneInvalid": "Invalid phone (8-20 characters)"
+    }
+  },
+  "commitments": {
+    "toasts": {
+      "loadError": "Could not load your commitments",
+      "loadErrorDesc": "Check your connection and try again."
     }
   }
 }
