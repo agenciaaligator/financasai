@@ -14,6 +14,7 @@ export interface Commitment {
 }
 
 export function useCommitments() {
+  const { t } = useTranslation();
   const [commitments, setCommitments] = useState<Commitment[]>([]);
   const [loading, setLoading] = useState(true);
 
