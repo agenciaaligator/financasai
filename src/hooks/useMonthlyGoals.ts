@@ -49,8 +49,8 @@ export function useMonthlyGoals(transactions: Transaction[], categories: any[]) 
     } catch (err: any) {
       console.error('Error fetching goals:', err);
       toast({
-        title: t('common.error', 'Erro'),
-        description: t('toasts.loadGoalsError', 'Não foi possível carregar suas metas. Verifique sua conexão.'),
+        title: t('common.error'),
+        description: t('goals.toasts.loadError'),
         variant: 'destructive',
       });
     } finally {
