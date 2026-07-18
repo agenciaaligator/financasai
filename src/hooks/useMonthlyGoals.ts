@@ -93,7 +93,7 @@ export function useMonthlyGoals(transactions: Transaction[], categories: any[]) 
       if (error) throw error;
       await fetchGoals();
     } catch (err: any) {
-      toast({ title: t('common.error', 'Erro'), description: err.message, variant: 'destructive' });
+      toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
     }
   }, [fetchGoals, toast, t]);
 
