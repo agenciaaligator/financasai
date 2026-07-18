@@ -43,6 +43,7 @@ export function useRecurringTransactions() {
   const [instances, setInstances] = useState<RecurringInstance[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { t } = useTranslation();
   const { organization_id } = useOrganizationPermissions();
 
   const fetchRecurringTransactions = async () => {
