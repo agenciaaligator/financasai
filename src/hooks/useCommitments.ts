@@ -37,8 +37,8 @@ export function useCommitments() {
     } catch (e) {
       console.error("Error fetching commitments:", e);
       toast({
-        title: "Não foi possível carregar seus compromissos",
-        description: "Verifique sua conexão e tente novamente.",
+        title: t('commitments.toasts.loadError'),
+        description: t('commitments.toasts.loadErrorDesc'),
         variant: "destructive",
       });
     } finally {
