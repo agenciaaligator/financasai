@@ -23,7 +23,7 @@ export default function ChoosePlan() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950">
+    <div className="min-h-screen bg-gradient-to-br from-[hsl(161,45%,10%)] via-[hsl(161,33%,17%)] to-[hsl(157,32%,25%)]">
       <header className="border-b border-white/10 bg-white/5 backdrop-blur-sm">
         <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="cursor-pointer" onClick={() => navigate('/')}>
