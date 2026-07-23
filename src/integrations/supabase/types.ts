@@ -907,6 +907,7 @@ export type Database = {
           has_whatsapp: boolean | null
           id: string
           is_active: boolean | null
+          limite_mensagens_mes: number | null
           max_categories: number | null
           max_transactions: number | null
           mercadopago_plan_id: string | null
@@ -933,6 +934,7 @@ export type Database = {
           has_whatsapp?: boolean | null
           id?: string
           is_active?: boolean | null
+          limite_mensagens_mes?: number | null
           max_categories?: number | null
           max_transactions?: number | null
           mercadopago_plan_id?: string | null
@@ -959,6 +961,7 @@ export type Database = {
           has_whatsapp?: boolean | null
           id?: string
           is_active?: boolean | null
+          limite_mensagens_mes?: number | null
           max_categories?: number | null
           max_transactions?: number | null
           mercadopago_plan_id?: string | null
@@ -1040,6 +1043,42 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      usage_mensagens: {
+        Row: {
+          atualizado_em: string
+          aviso_100_enviado: boolean
+          aviso_80_enviado: boolean
+          ciclo_fim: string
+          ciclo_inicio: string
+          created_at: string
+          id: string
+          qtd_mensagens_cobradas: number
+          user_id: string
+        }
+        Insert: {
+          atualizado_em?: string
+          aviso_100_enviado?: boolean
+          aviso_80_enviado?: boolean
+          ciclo_fim: string
+          ciclo_inicio: string
+          created_at?: string
+          id?: string
+          qtd_mensagens_cobradas?: number
+          user_id: string
+        }
+        Update: {
+          atualizado_em?: string
+          aviso_100_enviado?: boolean
+          aviso_80_enviado?: boolean
+          ciclo_fim?: string
+          ciclo_inicio?: string
+          created_at?: string
+          id?: string
+          qtd_mensagens_cobradas?: number
+          user_id?: string
+        }
+        Relationships: []
       }
       user_category_patterns: {
         Row: {
@@ -1207,6 +1246,30 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_cost_config: {
+        Row: {
+          atualizado_em: string
+          atualizado_por: string | null
+          created_at: string
+          custo_por_mensagem_brl: number
+          id: number
+        }
+        Insert: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          created_at?: string
+          custo_por_mensagem_brl?: number
+          id?: number
+        }
+        Update: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          created_at?: string
+          custo_por_mensagem_brl?: number
+          id?: number
+        }
+        Relationships: []
+      }
       whatsapp_sessions: {
         Row: {
           created_at: string | null
@@ -1368,6 +1431,13 @@ export type Database = {
           schedule: string
         }[]
       }
+      get_current_billing_cycle: {
+        Args: { p_user_id: string }
+        Returns: {
+          ciclo_fim: string
+          ciclo_inicio: string
+        }[]
+      }
       get_org_commitments_safe: {
         Args: { p_org_id: string }
         Returns: {
@@ -1418,6 +1488,7 @@ export type Database = {
           plan_name: string
         }[]
       }
+      get_usage_status: { Args: { p_user_id: string }; Returns: Json }
       get_user_active_plan: {
         Args: { _user_id: string }
         Returns: {
@@ -1458,6 +1529,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_usage_mensagens: {
+        Args: { p_qtd?: number; p_user_id: string }
+        Returns: Json
       }
       is_master_user: { Args: { _user_id: string }; Returns: boolean }
       is_org_manager: {

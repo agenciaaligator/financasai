@@ -51,5 +51,8 @@ verify_jwt = false
 [functions.send-commitment-reminders]
 verify_jwt = false
 
+[functions.whatsapp-usage-increment]
+verify_jwt = false
+
 
 

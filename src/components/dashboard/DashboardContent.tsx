@@ -42,6 +42,7 @@ import { AgendaPage } from "./AgendaPage";
 import { useTranslation } from "react-i18next";
 import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
 import { Calendar as CalendarIcon } from "lucide-react";
+import { MessageUsageCard } from "./MessageUsageCard";
 
 const TIMEZONE = 'America/Sao_Paulo';
 const ITEMS_PER_PAGE = 10;
@@ -330,6 +331,9 @@ export function DashboardContent({
             totalExpenses={monthlyTotalExpenses}
             sparklineData={sparklineData}
           />
+
+          {/* WhatsApp Message Usage */}
+          <MessageUsageCard />
 
           {/* Chart Card - spans 2 cols */}
           <Card className="md:col-span-2 border-0 shadow-sm">

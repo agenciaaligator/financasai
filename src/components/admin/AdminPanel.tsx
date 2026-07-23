@@ -6,7 +6,8 @@ import { UsersManagement } from "./UsersManagement";
 import { SubscriptionsManagement } from "./SubscriptionsManagement";
 import { AdminStats } from "./AdminStats";
 import { MessagesManagement } from "./MessagesManagement";
-import { Shield, Users, CreditCard, BarChart3, Mail } from "lucide-react";
+import { WhatsAppUsageManagement } from "./WhatsAppUsageManagement";
+import { Shield, Users, CreditCard, BarChart3, Mail, MessageCircle } from "lucide-react";
 import { LanguageFlagSelector } from "@/components/LanguageFlagSelector";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -85,7 +86,7 @@ export function AdminPanel() {
         onValueChange={(tab) => setSearchParams({ tab }, { replace: true })} 
         className="space-y-4"
       >
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 gap-2">
+        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 gap-2">
           <TabsTrigger value="stats" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             <span className="hidden sm:inline">{t('admin.stats')}</span>
@@ -97,6 +98,10 @@ export function AdminPanel() {
           <TabsTrigger value="subscriptions" className="flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
             <span className="hidden sm:inline">{t('admin.subscriptions')}</span>
+          </TabsTrigger>
+          <TabsTrigger value="whatsapp-usage" className="flex items-center gap-2">
+            <MessageCircle className="h-4 w-4" />
+            <span className="hidden sm:inline">WhatsApp</span>
           </TabsTrigger>
           <TabsTrigger value="messages" className="flex items-center gap-2 relative">
             <Mail className="h-4 w-4" />
@@ -119,6 +124,10 @@ export function AdminPanel() {
 
         <TabsContent value="subscriptions" className="space-y-4">
           <SubscriptionsManagement />
+        </TabsContent>
+
+        <TabsContent value="whatsapp-usage" className="space-y-4">
+          <WhatsAppUsageManagement />
         </TabsContent>
 
         <TabsContent value="messages" className="space-y-4">
