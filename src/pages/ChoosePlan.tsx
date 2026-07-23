@@ -8,6 +8,7 @@ import {
   getYearlyMonthlyEquivalent,
   formatPrice,
 } from "@/config/pricing";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export default function ChoosePlan() {
   const navigate = useNavigate();
@@ -27,7 +28,7 @@ export default function ChoosePlan() {
       <header className="border-b border-white/10 bg-white/5 backdrop-blur-sm">
         <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="cursor-pointer" onClick={() => navigate('/')}>
-            <img src="/images/logo.png" alt="Dona Wilma" className="h-8 brightness-0 invert" />
+            <BrandLogo className="h-8" invert />
           </div>
           <Button variant="ghost" onClick={() => navigate('/')} className="border border-white/20 text-white hover:bg-white/10 hover:text-white">
             {t('common.back')}

@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSubscriptionGuard } from "@/hooks/useSubscriptionGuard";
 import { useTranslation } from "react-i18next";
 import { LanguageFlagSelector } from "@/components/LanguageFlagSelector";
+import { BrandLogo } from "@/components/BrandLogo";
 
 type ConnectionStep = 'loading' | 'waiting' | 'connected' | 'expired';
 
@@ -168,7 +169,7 @@ export default function Welcome() {
     <div className="min-h-screen bg-gradient-to-br from-[#F8F9FA] to-[#F8F9FA]/50 flex items-center justify-center px-4 py-8">
       <header className="fixed top-0 left-0 right-0 z-10 border-b bg-background/80 backdrop-blur-sm">
         <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <img src="/images/logo.png" alt="Dona Wilma" className="h-8" />
+          <BrandLogo className="h-8" />
           <LanguageFlagSelector />
         </nav>
       </header>

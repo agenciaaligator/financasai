@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { LanguageFlagSelector } from "@/components/LanguageFlagSelector";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { LoginForm } from "@/components/auth/LoginForm";
+import { BrandLogo } from "@/components/BrandLogo";
 
 const sectionKeys = [
   "acceptance", "description", "account", "payment", "acceptableUse",
@@ -51,7 +52,7 @@ export default function Terms() {
       <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'glass-nav-scrolled' : 'glass-nav'}`}>
         <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
           <button onClick={() => navigate("/")} className="flex items-center">
-            <img src="/images/logo.png" alt="Dona Wilma" className="h-8" />
+            <BrandLogo className="h-8" />
           </button>
 
           <div className="hidden md:flex items-center gap-8">
@@ -105,7 +106,7 @@ export default function Terms() {
           <div className="relative animate-fadeInUp">
             <Button variant="ghost" size="icon" className="absolute -top-3 -right-3 z-10 bg-background rounded-full shadow-md" onClick={() => setShowLogin(false)}>✕</Button>
             <div className="flex justify-center mb-4">
-              <img src="/images/logo.png" alt="Dona Wilma" className="h-12" />
+              <BrandLogo className="h-12" />
             </div>
             <LoginForm />
           </div>
@@ -177,7 +178,7 @@ export default function Terms() {
           <div className="grid md:grid-cols-3 gap-10">
             <div>
               <div className="mb-5">
-                <img src="/images/logo.png" alt="Dona Wilma" className="h-8 brightness-0 invert" />
+                <BrandLogo className="h-8" invert />
               </div>
               <p className="text-sm text-white/60 leading-relaxed">
                 {t('landing.footer.tagline')}

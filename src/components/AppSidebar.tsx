@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTranslation } from "react-i18next";
+import { BrandLogo } from "@/components/BrandLogo";
+
 
 import {
   Sidebar,
@@ -68,7 +70,7 @@ export function AppSidebar({
     return (
       <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
         <div className="border-b border-white/10 p-4 flex items-center">
-          <img src="/images/logo.png" alt="Dona Wilma" className="h-8 brightness-0 invert" />
+          <BrandLogo className="h-8" invert />
         </div>
 
         <div className="flex-1 px-3 py-4">
@@ -116,7 +118,7 @@ export function AppSidebar({
       <SidebarHeader className="border-b border-white/10 p-3">
         {open ? (
           <div className="flex items-center">
-            <img src="/images/logo.png" alt="Dona Wilma" className="h-7 brightness-0 invert" />
+            <BrandLogo className="h-7" invert />
           </div>
         ) : (
           <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-primary font-heading font-bold mx-auto">W</div>
