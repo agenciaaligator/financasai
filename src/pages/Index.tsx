@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { Calendar, DollarSign, Shield, Smartphone, Zap, BarChart3, Brain, Menu, FolderOpen, Sparkles } from "lucide-react";
+import { Calendar, DollarSign, Shield, Smartphone, Zap, BarChart3, Brain, Menu, FolderOpen, Sparkles, MessageCircle } from "lucide-react";
 import { ContactForm } from "@/components/ContactForm";
 import { FinancialDashboard } from "@/components/FinancialDashboard";
 import { LanguageFlagSelector } from "@/components/LanguageFlagSelector";
