@@ -332,6 +332,9 @@ export function DashboardContent({
             sparklineData={sparklineData}
           />
 
+          {/* WhatsApp Message Usage */}
+          <MessageUsageCard />
+
           {/* Chart Card - spans 2 cols */}
           <Card className="md:col-span-2 border-0 shadow-sm">
             <CardHeader className="pb-2 pt-4 px-4">
