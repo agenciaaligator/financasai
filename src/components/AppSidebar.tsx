@@ -115,9 +115,8 @@ export function AppSidebar({
     <Sidebar className="border-r border-white/10 bg-sidebar" style={{ width: open ? '240px' : '64px' }}>
       <SidebarHeader className="border-b border-white/10 p-3">
         {open ? (
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-primary font-heading font-bold text-base flex-shrink-0">W</div>
-            <span className="font-heading text-lg text-white">Dona Wilma</span>
+          <div className="flex items-center">
+            <img src="/images/logo.png" alt="Dona Wilma" className="h-7 brightness-0 invert" />
           </div>
         ) : (
           <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-primary font-heading font-bold mx-auto">W</div>
