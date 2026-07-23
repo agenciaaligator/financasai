@@ -7729,12 +7729,22 @@ serve(async (req) => {
       }
     });
 
+    // 🚦 Enforcement de uso WhatsApp (hard cap em 120%)
+    let finalResponse = result.response;
+    const usageCheck = await checkUsageBeforeReply(supabase, session.user_id);
+    if (usageCheck.blocked) {
+      finalResponse = usageCheck.blockedMessage!;
+      // não incrementa quando já bloqueado
+    } else {
+      finalResponse = await trackUsageAfterReply(supabase, session.user_id, finalResponse);
+    }
+
     // Resposta formatada para Meta WhatsApp Business API
     const responseBody = {
       success: true,
-      response: result.response,
+      response: finalResponse,
       transactionId: result.transactionId,
-      buttons: result.buttons
+      buttons: usageCheck.blocked ? undefined : result.buttons
     };
     
     console.log('✅ Response:', { 
