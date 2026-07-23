@@ -47,6 +47,88 @@ async function sendWhatsAppMessage(to: string, message: string): Promise<void> {
   }
 }
 
+// ============================================================
+// Enforcement de uso WhatsApp (soft cap 80/100%, hard cap 120%)
+// ============================================================
+async function checkUsageBeforeReply(
+  supabaseClient: any,
+  userId: string | undefined | null,
+): Promise<{ blocked: boolean; blockedMessage?: string }> {
+  if (!userId) return { blocked: false };
+  try {
+    const { data, error } = await supabaseClient.rpc("get_usage_status", { p_user_id: userId });
+    if (error || !data) return { blocked: false };
+    if (data.bloqueado === true || data.estado === "blocked") {
+      return {
+        blocked: true,
+        blockedMessage:
+          `🚫 *Limite do plano atingido*\n\n` +
+          `Você já usou ${data.qtd_atual} de ${data.limite} mensagens deste ciclo.\n\n` +
+          `Para continuar conversando com a Dona Wilma agora, faça upgrade ou aguarde o próximo ciclo:\n` +
+          `https://donawilma.com.br`,
+      };
+    }
+    return { blocked: false };
+  } catch (e) {
+    console.error("[USAGE] checkUsageBeforeReply error:", e);
+    return { blocked: false };
+  }
+}
+
+async function trackUsageAfterReply(
+  supabaseClient: any,
+  userId: string | undefined | null,
+  response: string,
+): Promise<string> {
+  if (!userId || !response) return response;
+  try {
+    const { data, error } = await supabaseClient.rpc("increment_usage_mensagens", {
+      p_user_id: userId,
+      p_qtd: 1,
+    });
+    if (error || !data) return response;
+
+    const pct = Number(data.percentual ?? 0);
+    const estado = data.estado;
+    const limite = data.limite;
+    if (!limite) return response;
+
+    // Buscar flags para não repetir aviso no mesmo ciclo
+    const { data: usageRow } = await supabaseClient
+      .from("usage_mensagens")
+      .select("id, aviso_80_enviado, aviso_100_enviado")
+      .eq("user_id", userId)
+      .eq("ciclo_inicio", data.ciclo_inicio)
+      .maybeSingle();
+
+    if (!usageRow) return response;
+
+    let suffix = "";
+    if ((estado === "over" || pct >= 100) && !usageRow.aviso_100_enviado) {
+      suffix =
+        `\n\n⚠️ *Aviso*: você passou de ${limite} mensagens neste ciclo. ` +
+        `Continuamos respondendo por um tempinho, mas considere um upgrade em https://donawilma.com.br para não interromper o serviço.`;
+      await supabaseClient
+        .from("usage_mensagens")
+        .update({ aviso_100_enviado: true, aviso_80_enviado: true })
+        .eq("id", usageRow.id);
+    } else if (estado === "warning" && !usageRow.aviso_80_enviado) {
+      suffix =
+        `\n\n💡 Você já usou ${data.qtd_atual} de ${limite} mensagens (${pct.toFixed(0)}%) deste ciclo. ` +
+        `Depois de 120% do seu plano, as respostas ficam pausadas até o próximo ciclo.`;
+      await supabaseClient
+        .from("usage_mensagens")
+        .update({ aviso_80_enviado: true })
+        .eq("id", usageRow.id);
+    }
+
+    return suffix ? response + suffix : response;
+  } catch (e) {
+    console.error("[USAGE] trackUsageAfterReply error:", e);
+    return response;
+  }
+}
+
 
 // Rate limiting for authentication
 const authRateLimit = new Map<string, { count: number; windowStart: number }>();
@@ -7647,12 +7729,22 @@ serve(async (req) => {
       }
     });
 
+    // 🚦 Enforcement de uso WhatsApp (hard cap em 120%)
+    let finalResponse = result.response;
+    const usageCheck = await checkUsageBeforeReply(supabase, session.user_id);
+    if (usageCheck.blocked) {
+      finalResponse = usageCheck.blockedMessage!;
+      // não incrementa quando já bloqueado
+    } else {
+      finalResponse = await trackUsageAfterReply(supabase, session.user_id, finalResponse);
+    }
+
     // Resposta formatada para Meta WhatsApp Business API
     const responseBody = {
       success: true,
-      response: result.response,
+      response: finalResponse,
       transactionId: result.transactionId,
-      buttons: result.buttons
+      buttons: usageCheck.blocked ? undefined : result.buttons
     };
     
     console.log('✅ Response:', { 
