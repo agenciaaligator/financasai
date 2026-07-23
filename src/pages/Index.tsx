@@ -357,6 +357,29 @@ const LandingPage = () => {
         <StatsSection />
       </div>
 
+      {/* Homage - Sobre a Dona Wilma */}
+      <section id="sobre" className="py-20 md:py-24">
+        <div className="container mx-auto px-4">
+          <div className="max-w-3xl mx-auto text-center scroll-reveal">
+            <span className="eyebrow justify-center mb-5"><span className="dot" /> {t('landing.homage.eyebrow', 'quem foi a Dona Wilma')}</span>
+            <h2 className="font-heading text-3xl md:text-4xl lg:text-5xl font-bold text-primary leading-tight mb-6">
+              {t('landing.homage.title', 'Por trás do nome, uma história de verdade')}
+            </h2>
+            <div className="relative bg-[hsl(var(--creme))] border border-border rounded-3xl p-8 md:p-12 shadow-soft">
+              <div className="absolute -top-3 left-8 hand text-2xl md:text-3xl text-[hsl(var(--mel-deep))] rotate-[-3deg]">
+                {t('landing.homage.handwritten', 'com carinho ❤')}
+              </div>
+              <p className="text-lg md:text-xl leading-relaxed text-foreground/85 whitespace-pre-line">
+                {t('landing.homage.body', 'Dona Wilma foi a minha mãe — a mulher que cuidava das contas da casa com um caderninho, não deixava faltar nada e ainda dava um jeito de guardar um pouquinho todo mês.\n\nEste produto é uma homenagem a ela e à forma como ela cuidava de todo mundo. Cada mensagem que a Dona Wilma responde no seu WhatsApp carrega um pedacinho desse cuidado.')}
+              </p>
+              <p className="hand text-2xl md:text-3xl text-[hsl(var(--mel-deep))] mt-8">
+                {t('landing.homage.signature', '— Alexandre, filho da Dona Wilma')}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Planos */}
       <section id="planos" className="container mx-auto px-4 py-20">
         <div className="text-center mb-8 scroll-reveal">
