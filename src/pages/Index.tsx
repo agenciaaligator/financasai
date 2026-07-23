@@ -23,6 +23,7 @@ import { useSubscriptionGuard } from "@/hooks/useSubscriptionGuard";
 import { GracePeriodBanner } from "@/components/GracePeriodBanner";
 import SubscriptionInactive from "@/pages/SubscriptionInactive";
 import donaWilmaLandingHero from "@/assets/dona-wilma-landing-hero.jpg";
+import { BrandLogo } from "@/components/BrandLogo";
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -78,7 +79,7 @@ const LandingPage = () => {
       <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'glass-nav-scrolled' : 'glass-nav'}`}>
         <nav className="container mx-auto px-4 h-[72px] flex items-center justify-between">
           <a href="#home" className="flex items-center group">
-            <img src="/images/logo.png" alt="Dona Wilma" className="h-10 group-hover:scale-105 transition-transform" />
+            <BrandLogo className="h-10 group-hover:scale-105 transition-transform" />
           </a>
 
           <div className="hidden md:flex items-center gap-8">
@@ -140,7 +141,7 @@ const LandingPage = () => {
       <Dialog open={showLogin} onOpenChange={setShowLogin}>
         <DialogContent className="max-w-md p-0 bg-transparent border-0 shadow-none">
           <div className="flex justify-center mb-4">
-            <img src="/images/logo.png" alt="Dona Wilma" className="h-12" />
+            <BrandLogo className="h-12" />
           </div>
           <LoginForm onSuccess={() => setShowLogin(false)} />
         </DialogContent>
@@ -359,21 +360,42 @@ const LandingPage = () => {
       {/* Homage - Sobre a Dona Wilma */}
       <section id="sobre" className="py-20 md:py-24">
         <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto text-center scroll-reveal">
-            <span className="eyebrow justify-center mb-5"><span className="dot" /> {t('landing.homage.eyebrow', 'quem foi a Dona Wilma')}</span>
-            <h2 className="font-heading text-3xl md:text-4xl lg:text-5xl font-bold text-primary leading-tight mb-6">
-              {t('landing.homage.title', 'Por trás do nome, uma história de verdade')}
-            </h2>
-            <div className="relative bg-[hsl(var(--creme))] border border-border rounded-3xl p-8 md:p-12 shadow-soft">
-              <div className="absolute -top-3 left-8 hand text-2xl md:text-3xl text-[hsl(var(--mel-deep))] rotate-[-3deg]">
-                {t('landing.homage.handwritten', 'com carinho ❤')}
+          <div className="max-w-5xl mx-auto scroll-reveal">
+            <div className="text-center mb-10">
+              <span className="eyebrow justify-center mb-5"><span className="dot" /> {t('landing.homage.eyebrow', 'quem foi a Dona Wilma')}</span>
+              <h2 className="font-heading text-3xl md:text-4xl lg:text-5xl font-bold text-primary leading-tight">
+                {t('landing.homage.title', 'Por trás do nome, uma história de verdade')}
+              </h2>
+            </div>
+
+            <div className="grid md:grid-cols-[minmax(0,320px)_1fr] gap-8 md:gap-12 items-center">
+              {/* Retrato polaroid */}
+              <div className="flex justify-center md:justify-start">
+                <figure className="bg-[hsl(var(--creme))] border border-border rounded-2xl p-3 pb-6 shadow-soft rotate-[-2deg] max-w-[280px]">
+                  <img
+                    src={donaWilmaLandingHero}
+                    alt={t('landing.homage.portraitAlt', 'Dona Wilma, a inspiração por trás do produto')}
+                    className="w-full h-auto rounded-xl object-cover aspect-[4/5]"
+                    loading="lazy"
+                  />
+                  <figcaption className="hand text-xl text-[hsl(var(--mel-deep))] text-center mt-3">
+                    {t('landing.homage.portraitCaption', 'Dona Wilma')}
+                  </figcaption>
+                </figure>
               </div>
-              <p className="text-lg md:text-xl leading-relaxed text-foreground/85 whitespace-pre-line">
-                {t('landing.homage.body', 'Dona Wilma foi a minha mãe — a mulher que cuidava das contas da casa com um caderninho, não deixava faltar nada e ainda dava um jeito de guardar um pouquinho todo mês.\n\nEste produto é uma homenagem a ela e à forma como ela cuidava de todo mundo. Cada mensagem que a Dona Wilma responde no seu WhatsApp carrega um pedacinho desse cuidado.')}
-              </p>
-              <p className="hand text-2xl md:text-3xl text-[hsl(var(--mel-deep))] mt-8">
-                {t('landing.homage.signature', '— Alexandre, filho da Dona Wilma')}
-              </p>
+
+              {/* Card com o texto */}
+              <div className="relative bg-[hsl(var(--creme))] border border-border rounded-3xl p-8 md:p-10 shadow-soft">
+                <div className="absolute -top-3 left-8 hand text-2xl md:text-3xl text-[hsl(var(--mel-deep))] rotate-[-3deg]">
+                  {t('landing.homage.handwritten', 'com carinho ❤')}
+                </div>
+                <p className="text-lg md:text-xl leading-relaxed text-foreground/85 whitespace-pre-line">
+                  {t('landing.homage.body', 'Dona Wilma foi a minha mãe — a mulher que cuidava das contas da casa com um caderninho, não deixava faltar nada e ainda dava um jeito de guardar um pouquinho todo mês.\n\nEste produto é uma homenagem a ela e à forma como ela cuidava de todo mundo. Cada mensagem que a Dona Wilma responde no seu WhatsApp carrega um pedacinho desse cuidado.')}
+                </p>
+                <p className="hand text-2xl md:text-3xl text-[hsl(var(--mel-deep))] mt-8">
+                  {t('landing.homage.signature', '— Alexandre, filho da Dona Wilma')}
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -435,7 +457,7 @@ const LandingPage = () => {
           <div className="grid md:grid-cols-3 gap-10">
             <div>
               <a href="#home" className="inline-block mb-5">
-                <img src="/images/logo.png" alt="Dona Wilma" className="h-8 brightness-0 invert" />
+                <BrandLogo className="h-8" invert />
               </a>
               <p className="text-sm text-white/60 leading-relaxed">
                 {t('landing.footer.tagline')}
