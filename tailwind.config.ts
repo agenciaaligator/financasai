@@ -19,9 +19,12 @@ export default {
 		},
 		extend: {
 	fontFamily: {
-			heading: ['Plus Jakarta Sans', 'sans-serif'],
-			body: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
-			display: ['Plus Jakarta Sans', 'sans-serif'],
+			heading: ['Fraunces', 'Georgia', 'serif'],
+			body: ['Nunito Sans', 'system-ui', 'sans-serif'],
+			display: ['Fraunces', 'Georgia', 'serif'],
+			hand: ['Caveat', 'cursive'],
+			serif: ['Fraunces', 'Georgia', 'serif'],
+			sans: ['Nunito Sans', 'system-ui', 'sans-serif'],
 		},
 			colors: {
 				border: 'hsl(var(--border))',
@@ -92,8 +95,9 @@ export default {
 			'soft': 'var(--shadow-soft)',
 			'card': 'var(--shadow-card)',
 			'primary': 'var(--shadow-primary)',
-			'strong': '0 20px 60px rgba(43, 91, 132, 0.18)',
-			'hero': '0 30px 80px rgba(43, 91, 132, 0.22)',
+			'strong': 'var(--shadow-strong)',
+			'hero': '0 30px 80px -30px rgba(30, 59, 50, 0.35)',
+			'mel': 'var(--shadow-mel)',
 		},
 			keyframes: {
 				'accordion-down': {
