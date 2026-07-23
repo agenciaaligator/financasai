@@ -178,7 +178,7 @@ export default function Privacy() {
           <div className="grid md:grid-cols-3 gap-10">
             <div>
               <div className="mb-5">
-                <img src="/images/logo.png" alt="Dona Wilma" className="h-8 brightness-0 invert" />
+                <BrandLogo className="h-8" invert />
               </div>
               <p className="text-sm text-white/60 leading-relaxed">
                 {t('landing.footer.tagline')}
