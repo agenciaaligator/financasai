@@ -412,9 +412,10 @@ const LandingPage = () => {
         <div className="container mx-auto px-4 py-16 relative z-10">
           <div className="grid md:grid-cols-3 gap-10">
             <div>
-              <div className="mb-5">
-                <img src="/images/logo.png" alt="Dona Wilma" className="h-8 brightness-0 invert" />
-              </div>
+              <a href="#home" className="inline-flex items-center gap-2.5 mb-5 group">
+                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-primary font-heading font-bold text-lg group-hover:scale-105 transition-transform">W</div>
+                <span className="font-heading text-xl text-white">Dona Wilma</span>
+              </a>
               <p className="text-sm text-white/60 leading-relaxed">
                 {t('landing.footer.tagline')}
               </p>
