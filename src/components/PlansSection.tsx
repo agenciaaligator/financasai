@@ -71,7 +71,7 @@ export function PlansSection() {
     <div className="relative py-20 px-4 overflow-hidden">
       {/* Background with gradient overlay */}
       <div className="absolute inset-0 rounded-3xl overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[hsl(161,45%,10%)] via-[hsl(161,33%,17%)] to-[hsl(157,32%,25%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(232,184,109,0.08)_0%,transparent_50%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(39,174,96,0.06)_0%,transparent_50%)]" />
       </div>

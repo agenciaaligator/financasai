@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { Calendar, DollarSign, Shield, Smartphone, Zap, BarChart3, Brain, Menu, FolderOpen, Sparkles } from "lucide-react";
+import { Calendar, DollarSign, Shield, Smartphone, Zap, BarChart3, Brain, Menu, FolderOpen, Sparkles, MessageCircle } from "lucide-react";
 import { ContactForm } from "@/components/ContactForm";
 import { FinancialDashboard } from "@/components/FinancialDashboard";
 import { LanguageFlagSelector } from "@/components/LanguageFlagSelector";
@@ -70,35 +70,45 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden">
+    <div className="min-h-screen overflow-x-hidden bg-background">
       {/* Animated background */}
       <div className="animated-bg" />
 
       {/* Navigation */}
       <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'glass-nav-scrolled' : 'glass-nav'}`}>
-        <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <img src="/images/logo.png" alt="Dona Wilma" className="h-8" />
-          
+        <nav className="container mx-auto px-4 h-[72px] flex items-center justify-between">
+          <a href="#home" className="flex items-center gap-2.5 group">
+            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-secondary font-heading font-bold text-lg group-hover:scale-105 transition-transform">W</div>
+            <span className="font-heading text-xl text-primary">Dona Wilma</span>
+          </a>
+
           <div className="hidden md:flex items-center gap-8">
-            <a href="#home" className="text-sm font-medium text-foreground/80 hover:text-primary transition-all duration-200 hover:-translate-y-0.5">Home</a>
-            <a href="#como-funciona" className="text-sm font-medium text-foreground/80 hover:text-primary transition-all duration-200 hover:-translate-y-0.5">{t('landing.nav.howItWorks')}</a>
-            <a href="#planos" className="text-sm font-medium text-foreground/80 hover:text-primary transition-all duration-200 hover:-translate-y-0.5">{t('landing.nav.plans')}</a>
-            <a href="#contato" className="text-sm font-medium text-foreground/80 hover:text-primary transition-all duration-200 hover:-translate-y-0.5">{t('landing.nav.contact')}</a>
+            <a href="#como-funciona" className="text-sm font-semibold text-muted-foreground hover:text-primary transition-colors">{t('landing.nav.howItWorks')}</a>
+            <a href="#planos" className="text-sm font-semibold text-muted-foreground hover:text-primary transition-colors">{t('landing.nav.plans')}</a>
+            <a href="#faq" className="text-sm font-semibold text-muted-foreground hover:text-primary transition-colors">Dúvidas</a>
+            <a href="#contato" className="text-sm font-semibold text-muted-foreground hover:text-primary transition-colors">{t('landing.nav.contact')}</a>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="hidden md:block">
               <LanguageFlagSelector />
             </div>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
-              onClick={() => setShowLogin(true)} 
-              className="font-medium hover:-translate-y-0.5 transition-transform"
+              onClick={() => setShowLogin(true)}
+              className="hidden sm:inline-flex font-semibold rounded-full border-border hover:border-primary"
             >
               {t('auth.login')}
             </Button>
-            
+            <Button
+              size="sm"
+              onClick={() => scrollToSection('planos')}
+              className="hidden sm:inline-flex btn-mel font-bold rounded-full border-0 hover:text-primary"
+            >
+              {t('landing.hero.viewPlans')}
+            </Button>
+
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
               <SheetTrigger asChild className="md:hidden">
                 <Button variant="ghost" size="icon">
@@ -113,8 +123,11 @@ const LandingPage = () => {
                   <button onClick={() => { setSheetOpen(false); setTimeout(() => scrollToSection('contato'), 300); }} className="text-lg font-medium hover:text-primary transition-colors text-left">{t('landing.nav.contact')}</button>
                   <div className="flex flex-col gap-3 mt-6 pt-6 border-t border-border">
                     <LanguageFlagSelector inline onSelect={() => setSheetOpen(false)} />
-                    <Button variant="outline" onClick={() => { setShowLogin(true); setSheetOpen(false); }} className="w-full">
+                    <Button variant="outline" onClick={() => { setShowLogin(true); setSheetOpen(false); }} className="w-full rounded-full">
                       {t('auth.login')}
+                    </Button>
+                    <Button onClick={() => { setSheetOpen(false); setTimeout(() => scrollToSection('planos'), 300); }} className="btn-mel w-full rounded-full font-bold border-0 hover:text-primary">
+                      {t('landing.hero.viewPlans')}
                     </Button>
                   </div>
                 </nav>
@@ -134,92 +147,87 @@ const LandingPage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Hero Section */}
-      <section id="home" className="container mx-auto px-4 pt-16 pb-24 md:pt-24 md:pb-32">
-        <div className="grid md:grid-cols-2 gap-12 lg:gap-16 items-center">
-          <div className="space-y-8 text-left">
-            {/* Hero badge */}
-            <div className="hero-badge animate-fadeInUp">
-              <Sparkles className="h-4 w-4" />
-              <span>{t('landing.hero.badge')}</span>
-            </div>
-            
-            <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.1] tracking-tight animate-fadeInUp" style={{ animationDelay: '0.1s' }}>
-              {t('landing.hero.title')}{' '}
-              <span className="gradient-text">{t('landing.hero.highlight')}</span>{' '}
-              {t('landing.hero.titleEnd')}
+      {/* Hero */}
+      <section id="home" className="container mx-auto px-4 pt-16 pb-24 md:pt-20 md:pb-28">
+        <div className="grid md:grid-cols-[1.05fr_.95fr] gap-12 lg:gap-14 items-center">
+          <div className="space-y-6 text-left">
+            <div className="eyebrow animate-fadeInUp"><span className="dot" /> Suas finanças pelo WhatsApp</div>
+
+            <h1 className="font-heading text-[2.6rem] sm:text-5xl md:text-6xl lg:text-[4rem] leading-[1.05] tracking-tight text-primary animate-fadeInUp" style={{ animationDelay: '0.1s' }}>
+              Manda no zap<br />
+              que a <em className="italic text-[hsl(var(--mel-deep))] font-medium">Dona Wilma</em><br />
+              anota pra você.
             </h1>
-            
-            <p className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-lg animate-fadeInUp" style={{ animationDelay: '0.2s' }}>
+
+            <p className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-xl animate-fadeInUp" style={{ animationDelay: '0.2s' }}>
               {t('landing.hero.subtitle')}
             </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 animate-fadeInUp" style={{ animationDelay: '0.3s' }}>
-              <Button 
-                size="lg" 
-                className="text-base font-semibold hover:-translate-y-1 transition-all duration-300 shadow-primary"
+
+            <div className="flex flex-col sm:flex-row gap-3 animate-fadeInUp" style={{ animationDelay: '0.3s' }}>
+              <Button
+                size="lg"
+                className="btn-mel font-bold rounded-full border-0 hover:text-primary text-base px-7 h-12"
                 onClick={() => scrollToSection('planos')}
               >
-                {t('landing.hero.viewPlans')}
+                Falar com a Dona Wilma
               </Button>
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 variant="outline"
-                className="text-base font-semibold hover:-translate-y-1 transition-all duration-300"
+                className="rounded-full border-border font-semibold hover:border-primary text-base px-7 h-12"
                 onClick={() => scrollToSection('como-funciona')}
               >
-                {t('landing.hero.learnMore')}
+                Ver como funciona
               </Button>
             </div>
-            
-            {/* Social proof */}
-            <div className="flex items-center gap-4 pt-4 animate-fadeInUp" style={{ animationDelay: '0.4s' }}>
-              <div className="flex -space-x-2">
-                {['bg-primary', 'bg-secondary', 'bg-success'].map((bg, i) => (
-                  <div key={i} className={`w-9 h-9 rounded-full ${bg} border-2 border-background shadow-sm`} />
-                ))}
-              </div>
-              <p className="text-sm text-muted-foreground">
-                <span className="font-semibold text-foreground">{t('landing.hero.socialProofCount')}</span> {t('landing.hero.socialProofLabel')}
-              </p>
+
+            <div className="flex items-center gap-2 pt-2 text-sm text-muted-foreground animate-fadeInUp" style={{ animationDelay: '0.4s' }}>
+              <span className="text-success">✓</span>
+              <span>Teste grátis · funciona no seu WhatsApp de sempre</span>
             </div>
           </div>
-          
-          {/* Hero image */}
-          <div className="flex items-center justify-center">
-            <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-primary opacity-15 blur-[60px] rounded-full scale-110 group-hover:scale-125 group-hover:opacity-20 transition-all duration-700" />
-              <img 
-                src={donaWilmaLandingHero}
-                alt="Dona Wilma mostrando a solução financeira no celular"
-                className="relative w-full max-w-md rounded-3xl shadow-hero hover:scale-[1.02] transition-transform duration-500 object-cover"
-                loading="eager"
-              />
-              
-              {/* Floating card - WhatsApp message */}
-              <div className="hidden sm:block absolute -bottom-6 -left-8 glass-card rounded-2xl p-4 shadow-card animate-float">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-success/15 flex items-center justify-center">
-                    <span className="text-xl">💬</span>
-                  </div>
+
+          {/* WhatsApp phone mock */}
+          <div className="relative flex items-center justify-center">
+            <div className="blob-mel" style={{ top: '-40px', right: '-40px' }} aria-hidden="true" />
+            <div className="postit absolute z-30" style={{ top: '-14px', left: '-6px' }} aria-hidden="true">anotei aqui 😊</div>
+
+            <div className="phone-frame relative z-20 w-[300px] max-w-full animate-fadeInUp" style={{ animationDelay: '0.3s' }} role="img" aria-label="Conversa de WhatsApp com a Dona Wilma">
+              <div className="phone-screen">
+                <div className="wa-head">
+                  <div className="wa-avatar">W</div>
                   <div>
-                    <p className="text-xs font-semibold">{t('landing.hero.floatingWhatsapp')}</p>
-                    <p className="text-xs text-muted-foreground">{t('landing.hero.floatingMessage')}</p>
+                    <div className="font-bold text-sm leading-tight">Dona Wilma</div>
+                    <div className="text-[11px] opacity-75">online · cuidando das suas contas</div>
                   </div>
                 </div>
-              </div>
-              
-              {/* Floating card - Success */}
-              <div className="hidden sm:block absolute -top-4 -right-6 glass-card rounded-2xl px-4 py-3 shadow-card animate-float" style={{ animationDelay: '1.5s' }}>
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">✅</span>
-                  <p className="text-xs font-semibold text-success">{t('landing.hero.floatingSuccess')}</p>
+                <div className="wa-body">
+                  <div className="wa-bubble wa-bubble-me">Gastei 47 reais no mercado agora<span className="wa-time">14:02</span></div>
+                  <div className="wa-bubble wa-bubble-her">Anotei, viu? <b>R$ 47,00</b> em Mercado 🛒. Esse mês você já tá em R$ 320 nessa categoria.<span className="wa-time">14:02</span></div>
+                  <div className="wa-bubble wa-bubble-me">Nossa, tá alto<span className="wa-time">14:03</span></div>
+                  <div className="wa-bubble wa-bubble-her">Tá sim, meu bem. Quer que eu te avise quando passar de R$ 400? 💚<span className="wa-time">14:03</span></div>
+                  <div className="wa-bubble wa-bubble-me">Pode ser! E me lembra do aluguel dia 5<span className="wa-time">14:04</span></div>
+                  <div className="wa-bubble wa-bubble-her">Deixa comigo. Dia 5 eu te aviso do <b>aluguel</b> bem cedinho ⏰<span className="wa-time">14:04</span></div>
                 </div>
               </div>
             </div>
+
+            <div className="postit absolute z-30 hidden sm:block" style={{ bottom: '-10px', right: '-8px', transform: 'rotate(-3deg)' }} aria-hidden="true">✓ conta paga</div>
           </div>
         </div>
       </section>
+
+      {/* Trust strip */}
+      <div className="strip">
+        <div className="container mx-auto px-4 py-6 flex flex-wrap gap-x-10 gap-y-3 items-center justify-center text-center">
+          <div className="strip-item"><MessageCircle className="h-5 w-5" /> Tudo pelo WhatsApp</div>
+          <div className="strip-item"><Shield className="h-5 w-5" /> Seus dados protegidos</div>
+          <div className="strip-item"><span className="font-heading text-xl text-white">24h</span> ela nunca dorme no ponto</div>
+          <div className="strip-item"><Sparkles className="h-5 w-5" /> Sem baixar nada</div>
+        </div>
+      </div>
+
+
 
       {/* Como funciona */}
       <section id="como-funciona" className="container mx-auto px-4 py-20">

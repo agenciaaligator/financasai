@@ -34,25 +34,13 @@ interface AppSidebarProps {
   isAdmin?: boolean;
 }
 
-const iconMap = {
-  dashboard: LayoutDashboard,
-  transactions: ArrowLeftRight,
-  categories: FolderOpen,
-  goals: Target,
-  reports: BarChart3,
-  agenda: Calendar,
-  whatsapp: MessageCircle,
-  profile: User,
-  admin: Shield,
-};
-
-export function AppSidebar({ 
-  currentTab, 
-  onTabChange, 
-  showForm, 
+export function AppSidebar({
+  currentTab,
+  onTabChange,
+  showForm,
   onToggleForm,
   isOwner = false,
-  isAdmin: isAdminProp
+  isAdmin: isAdminProp,
 }: AppSidebarProps) {
   const { open } = useSidebar();
   const isMobile = useIsMobile();
@@ -60,7 +48,7 @@ export function AppSidebar({
   const { t } = useTranslation();
 
   const sidebarItems = [
-    { id: "dashboard", title: t('sidebar.dashboard', 'Dashboard'), icon: LayoutDashboard },
+    { id: "dashboard", title: t('sidebar.dashboard', 'Painel'), icon: LayoutDashboard },
     { id: "transactions", title: t('sidebar.transactions', 'Transações'), icon: ArrowLeftRight },
     { id: "categories", title: t('sidebar.categories', 'Categorias'), icon: FolderOpen },
     { id: "goals", title: t('sidebar.goals', 'Metas'), icon: Target },
@@ -78,23 +66,24 @@ export function AppSidebar({
 
   if (isMobile) {
     return (
-      <div className="flex flex-col h-full bg-gradient-to-b from-[hsl(207,65%,15%)] to-[hsl(207,65%,10%)] text-sidebar-foreground">
-        <div className="border-b border-sidebar-border p-4">
-          <img src="/images/logo.png" alt="Dona Wilma" className="h-7 object-contain brightness-0 invert" />
+      <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
+        <div className="border-b border-white/10 p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-primary font-heading font-bold text-lg flex-shrink-0">W</div>
+          <span className="font-heading text-xl">Dona Wilma</span>
         </div>
-        
+
         <div className="flex-1 px-3 py-4">
           <div className="mb-3">
             <button
               onClick={() => onToggleForm()}
-              className="w-full h-10 text-left bg-secondary hover:bg-secondary/90 text-secondary-foreground font-semibold transition-all duration-200 rounded-xl flex items-center justify-start px-3 shadow-lg text-sm"
+              className="w-full h-11 text-left bg-secondary hover:brightness-105 text-primary font-bold transition-all duration-200 rounded-xl flex items-center justify-start px-3 shadow-mel text-sm"
             >
               <Plus className="h-4 w-4 mr-2" />
               <span>{t('sidebar.newTransaction', 'Nova Transação')}</span>
             </button>
           </div>
 
-          <div className="space-y-0.5">
+          <div className="space-y-1">
             {allItems.map((item) => {
               const isActive = currentTab === item.id;
               const Icon = item.icon;
@@ -102,17 +91,21 @@ export function AppSidebar({
                 <button
                   key={item.id}
                   onClick={() => onTabChange(item.id)}
-                  className={`w-full h-10 transition-all duration-200 rounded-xl flex items-center px-3 gap-3 text-sm ${
-                    isActive 
-                      ? "bg-white/15 text-white font-semibold" 
-                      : "text-white/70 hover:bg-white/8 hover:text-white"
+                  className={`w-full h-11 transition-all duration-200 rounded-xl flex items-center px-3 gap-3 text-sm ${
+                    isActive
+                      ? "bg-[hsl(var(--creme))] text-primary font-semibold shadow-soft"
+                      : "text-white/75 hover:bg-white/8 hover:text-white font-medium"
                   }`}
                 >
-                  <Icon className="h-[18px] w-[18px] flex-shrink-0" />
+                  <Icon className="h-5 w-5 flex-shrink-0" />
                   <span>{item.title}</span>
                 </button>
               );
             })}
+          </div>
+
+          <div className="mt-6 rounded-2xl bg-white/5 border border-white/10 p-4">
+            <span className="hand block text-lg leading-tight" style={{ color: 'hsl(var(--mel-soft))' }}>tô de olho nas suas contas 💚</span>
           </div>
         </div>
       </div>
@@ -120,24 +113,25 @@ export function AppSidebar({
   }
 
   return (
-    <Sidebar className="border-r border-sidebar-border bg-gradient-to-b from-[hsl(207,65%,15%)] to-[hsl(207,65%,10%)]" style={{ width: open ? '220px' : '56px' }}>
-      <SidebarHeader className="border-b border-sidebar-border p-3">
+    <Sidebar className="border-r border-white/10 bg-sidebar" style={{ width: open ? '240px' : '64px' }}>
+      <SidebarHeader className="border-b border-white/10 p-3">
         {open ? (
-          <img src="/images/logo.png" alt="Dona Wilma" className="h-7 object-contain brightness-0 invert" />
-        ) : (
-          <div className="w-8 h-8 bg-secondary/20 backdrop-blur rounded-lg flex items-center justify-center mx-auto">
-            <span className="text-sm">💰</span>
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-primary font-heading font-bold text-base flex-shrink-0">W</div>
+            <span className="font-heading text-lg text-white">Dona Wilma</span>
           </div>
+        ) : (
+          <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-primary font-heading font-bold mx-auto">W</div>
         )}
       </SidebarHeader>
-      
+
       <SidebarContent className="px-2 py-3">
         <SidebarGroup>
           <SidebarGroupContent>
             <div className="mb-3">
               <SidebarMenuButton
                 onClick={onToggleForm}
-                className={`w-full h-10 text-left bg-secondary hover:bg-secondary/90 text-secondary-foreground font-semibold transition-all duration-200 shadow-lg rounded-xl text-sm ${
+                className={`w-full h-11 text-left bg-secondary hover:brightness-105 text-primary font-bold transition-all duration-200 shadow-mel rounded-xl text-sm ${
                   !open ? "justify-center px-1" : "justify-start px-3"
                 }`}
               >
@@ -154,19 +148,25 @@ export function AppSidebar({
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
                       onClick={() => onTabChange(item.id)}
-                      className={`w-full h-10 transition-all duration-200 rounded-xl text-sm ${
-                        isActive 
-                          ? "bg-white/15 text-white font-semibold" 
-                          : "text-white/70 hover:bg-white/8 hover:text-white"
+                      className={`w-full h-11 transition-all duration-200 rounded-xl text-sm ${
+                        isActive
+                          ? "bg-[hsl(var(--creme))] text-primary font-semibold shadow-soft"
+                          : "text-white/75 hover:bg-white/8 hover:text-white font-medium"
                       } ${!open ? "justify-center px-1" : "justify-start px-3"}`}
                     >
-                      <Icon className="h-[18px] w-[18px] flex-shrink-0" />
+                      <Icon className="h-5 w-5 flex-shrink-0" />
                       {open && <span className="ml-3">{item.title}</span>}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
               })}
             </SidebarMenu>
+
+            {open && (
+              <div className="mt-6 mx-1 rounded-2xl bg-white/5 border border-white/10 p-3">
+                <span className="hand block text-base leading-tight" style={{ color: 'hsl(var(--mel-soft))' }}>tô de olho nas suas contas 💚</span>
+              </div>
+            )}
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
