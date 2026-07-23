@@ -155,7 +155,7 @@ export default function ResetPassword() {
 
   if (isInitializing) {
     return (
-      <div className="auth-dark min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20 flex items-center justify-center p-4">
         <Card className="w-full max-w-md bg-gradient-card shadow-primary border-0">
           <CardContent className="flex flex-col items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
@@ -167,7 +167,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="auth-dark min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-secondary/20 flex items-center justify-center p-4">
       <Card className="w-full max-w-md bg-gradient-card shadow-primary border-0">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
