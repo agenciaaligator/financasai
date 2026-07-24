@@ -23,7 +23,7 @@ import { useSubscriptionGuard } from "@/hooks/useSubscriptionGuard";
 import { GracePeriodBanner } from "@/components/GracePeriodBanner";
 import SubscriptionInactive from "@/pages/SubscriptionInactive";
 import donaWilmaLandingHero from "@/assets/dona-wilma-landing-hero.jpg";
-import donaWilmaRetrato from "@/assets/dona-wilma-retrato.jpg.asset.json";
+import donaWilmaRetrato from "@/assets/dona-wilma-retrato.jpg";
 import { BrandLogo } from "@/components/BrandLogo";
 
 const LandingPage = () => {
@@ -374,7 +374,7 @@ const LandingPage = () => {
               <div className="flex justify-center md:justify-start">
                 <figure className="bg-[hsl(var(--creme))] border border-border rounded-2xl p-3 pb-6 shadow-soft rotate-[-2deg] max-w-[280px]">
                   <img
-                    src={donaWilmaRetrato.url}
+                    src={donaWilmaRetrato}
                     alt={t('landing.homage.portraitAlt', 'Dona Wilma com o filho Alexandre, 1997')}
                     className="w-full h-auto rounded-xl object-cover aspect-[4/5]"
                     loading="lazy"
