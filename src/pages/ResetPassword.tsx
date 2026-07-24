@@ -137,13 +137,21 @@ export default function ResetPassword() {
         sessionStorage.removeItem('supabase_recovery');
         sessionStorage.removeItem('supabase_recovery_hash');
         sessionStorage.removeItem('supabase_recovery_path');
-        
-        // Mark password as set in profile and user_metadata
+
+        // Mark password as set in profile and user_metadata (best-effort:
+        // nunca deve bloquear o redirect se falhar, senão o usuário fica
+        // preso na mesma tela sem feedback nenhum).
         if (user) {
-          await supabase.from('profiles').update({ password_set: true } as any).eq('user_id', user.id);
-          await supabase.auth.updateUser({ data: { password_set: true } });
+          supabase.from('profiles').update({ password_set: true } as any).eq('user_id', user.id)
+            .then(({ error: profileErr }) => {
+              if (profileErr) console.warn('[RESET-PASSWORD] Profile update (non-blocking):', profileErr);
+            });
+          supabase.auth.updateUser({ data: { password_set: true } })
+            .then(({ error: metaErr }) => {
+              if (metaErr) console.warn('[RESET-PASSWORD] User metadata update (non-blocking):', metaErr);
+            });
         }
-        
+
         setTimeout(() => {
           navigate('/boas-vindas');
         }, 2000);
