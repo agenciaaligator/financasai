@@ -23,6 +23,7 @@ import { useSubscriptionGuard } from "@/hooks/useSubscriptionGuard";
 import { GracePeriodBanner } from "@/components/GracePeriodBanner";
 import SubscriptionInactive from "@/pages/SubscriptionInactive";
 import donaWilmaLandingHero from "@/assets/dona-wilma-landing-hero.jpg";
+import donaWilmaRetrato from "@/assets/dona-wilma-retrato.jpg.asset.json";
 import { BrandLogo } from "@/components/BrandLogo";
 
 const LandingPage = () => {
