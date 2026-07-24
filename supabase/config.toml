@@ -54,5 +54,7 @@ verify_jwt = false
 [functions.whatsapp-usage-increment]
 verify_jwt = false
 
+[functions.google-calendar-sync-internal]
+verify_jwt = false
 
 

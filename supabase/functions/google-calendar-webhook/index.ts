@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+        "x-webhook-secret": Deno.env.get("GOOGLE_CALENDAR_SYNC_SECRET") ?? "",
       },
       body: JSON.stringify({ user_id: conn.user_id }),
     }).catch((e) => console.error("trigger sync failed:", e));
