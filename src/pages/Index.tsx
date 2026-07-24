@@ -222,104 +222,84 @@ const LandingPage = () => {
         </div>
       </div>
 
+      {/* Vídeo */}
+      <VideoSection />
 
-
-      {/* Como funciona */}
-      <section id="como-funciona" className="container mx-auto px-4 py-20">
-        <div className="text-center mb-20 scroll-reveal">
+      {/* Como funciona — 3 passos */}
+      <section id="como-funciona" className="container mx-auto px-4 py-16 md:py-20">
+        <div className="text-center mb-14 scroll-reveal">
           <div className="section-line mx-auto mb-6" />
-          <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold mb-4">{t('landing.nav.howItWorks')}</h2>
+          <h2 className="font-heading text-3xl md:text-4xl font-bold text-primary mb-3">
+            Como funciona
+          </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            {t('landing.howItWorks.subtitle')}
+            Em 3 passos, sua vida financeira volta a caber na palma da mão.
           </p>
         </div>
 
-        <div className="max-w-7xl mx-auto space-y-8">
-          <div className="scroll-reveal">
-            <FeatureBlock
-              title={t('landing.features.financial.tag')}
-              subtitle={t('landing.features.financial.title')}
-              description={t('landing.features.financial.description')}
-              highlights={[
-                t('landing.features.financial.h1'),
-                t('landing.features.financial.h2'),
-                t('landing.features.financial.h3')
-              ]}
-              imageSrc="/images/landing/whatsapp-financeiro.png"
-              imageAlt="WhatsApp processando transação financeira"
-              imagePosition="left"
-              icon={<DollarSign className="h-6 w-6 text-primary" />}
-            />
+        <div className="grid md:grid-cols-3 gap-10 md:gap-8 max-w-6xl mx-auto">
+          {[
+            {
+              step: "01",
+              icon: <Send className="h-6 w-6" strokeWidth={2} />,
+              title: "Manda no zap",
+              desc: "Escreve ou manda áudio: “gastei 47 no mercado”, “paga o aluguel dia 5”. Sem app novo, sem planilha.",
+              mockup: <ProductMockup variant="chat" tilt="l" postit="anotei ✍️" />,
+            },
+            {
+              step: "02",
+              icon: <Sparkles className="h-6 w-6" strokeWidth={2} />,
+              title: "Ela organiza",
+              desc: "A Dona Wilma entende, categoriza e guarda tudo com carinho — pra você não precisar pensar duas vezes.",
+              mockup: <ProductMockup variant="categorias" tilt="r" postit="tudo no lugar 💚" />,
+            },
+            {
+              step: "03",
+              icon: <BarChart3 className="h-6 w-6" strokeWidth={2} />,
+              title: "Você acompanha",
+              desc: "Abre o painel quando quiser e vê saldo, gastos por categoria e alertas — do jeito que faz sentido.",
+              mockup: <ProductMockup variant="dashboard" tilt="l" postit="tá tudo ok!" />,
+            },
+          ].map((s, i) => (
+            <div key={s.step} className={`scroll-reveal delay-${i + 1} space-y-6`}>
+              <div className="flex items-center gap-3">
+                <span className="font-heading text-3xl font-bold text-[hsl(var(--mel-deep))]">{s.step}</span>
+                <span className="icon-chip">{s.icon}</span>
+              </div>
+              <h3 className="font-heading text-2xl font-semibold text-primary">{s.title}</h3>
+              <p className="text-base text-muted-foreground leading-relaxed">{s.desc}</p>
+              <div className="pt-4">{s.mockup}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* O que ela cuida por você */}
+      <section id="cuida" className="py-16 md:py-20 bg-[hsl(var(--creme))]">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12 scroll-reveal">
+            <div className="section-line mx-auto mb-6" />
+            <h2 className="font-heading text-3xl md:text-4xl font-bold text-primary mb-3">
+              O que ela cuida por você
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Um assistente inteiro, disfarçado de conversa no WhatsApp.
+            </p>
           </div>
 
-          <div className="scroll-reveal delay-1">
-            <FeatureBlock
-              title={t('landing.features.records.tag')}
-              subtitle={t('landing.features.records.title')}
-              description={t('landing.features.records.description')}
-              highlights={[
-                t('landing.features.records.h1'),
-                t('landing.features.records.h2'),
-                t('landing.features.records.h3')
-              ]}
-              imageSrc="/images/landing/whatsapp-registros.png"
-              imageAlt="Interface do WhatsApp"
-              imagePosition="right"
-              icon={<Smartphone className="h-6 w-6 text-primary" />}
-            />
-          </div>
-
-          <div className="scroll-reveal delay-2">
-            <FeatureBlock
-              title={t('landing.features.dashboard.tag')}
-              subtitle={t('landing.features.dashboard.title')}
-              description={t('landing.features.dashboard.description')}
-              highlights={[
-                t('landing.features.dashboard.h1'),
-                t('landing.features.dashboard.h2'),
-                t('landing.features.dashboard.h3'),
-                t('landing.features.dashboard.h4')
-              ]}
-              imageSrc="/images/landing/dashboard-painel.png"
-              imageAlt="Dashboard financeiro"
-              imagePosition="left"
-              icon={<BarChart3 className="h-6 w-6 text-primary" />}
-            />
-          </div>
-
-          <div className="scroll-reveal delay-3">
-            <FeatureBlock
-              title={t('landing.features.categories.tag')}
-              subtitle={t('landing.features.categories.title')}
-              description={t('landing.features.categories.description')}
-              highlights={[
-                t('landing.features.categories.h1'),
-                t('landing.features.categories.h2'),
-                t('landing.features.categories.h3')
-              ]}
-              imageSrc="/images/landing/categorias.png"
-              imageAlt="Categorias personalizadas"
-              imagePosition="right"
-              icon={<FolderOpen className="h-6 w-6 text-primary" />}
-            />
-          </div>
-
-          <div className="scroll-reveal delay-3">
-            <FeatureBlock
-              title={t('landing.features.calendar.tag')}
-              subtitle={t('landing.features.calendar.title')}
-              description={t('landing.features.calendar.description')}
-              highlights={[
-                t('landing.features.calendar.h1'),
-                t('landing.features.calendar.h2'),
-                t('landing.features.calendar.h3'),
-                t('landing.features.calendar.h4')
-              ]}
-              imageSrc="/images/landing/dashboard-painel.png"
-              imageAlt="Compromissos integrados ao Google Agenda"
-              imagePosition="left"
-              icon={<Calendar className="h-6 w-6 text-primary" />}
-            />
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl mx-auto">
+            {[
+              { icon: <Wallet className="h-6 w-6" strokeWidth={2} />, title: "Painel profissional", desc: "Saldo, receitas, despesas e gráficos claros — quando você quiser conferir.", chip: "" },
+              { icon: <FolderOpen className="h-6 w-6" strokeWidth={2} />, title: "Categorias personalizadas", desc: "Ela aprende do seu jeito e organiza cada gasto sem você precisar dizer.", chip: "mel" },
+              { icon: <Calendar className="h-6 w-6" strokeWidth={2} />, title: "Google Agenda", desc: "Compromissos e lembretes sincronizados — 1 dia e 1 hora antes.", chip: "" },
+              { icon: <Bell className="h-6 w-6" strokeWidth={2} />, title: "Alertas na medida", desc: "Ela avisa quando você tá se aproximando do limite. Sem susto.", chip: "mel" },
+            ].map((c, i) => (
+              <div key={c.title} className={`scroll-reveal delay-${(i % 3) + 1} bg-[hsl(var(--creme-2))] border border-[hsl(var(--border))] rounded-3xl p-6 lift-sm`}>
+                <span className={`icon-chip ${c.chip} mb-4`}>{c.icon}</span>
+                <h3 className="font-heading text-lg font-semibold text-primary mb-2">{c.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{c.desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -329,28 +309,7 @@ const LandingPage = () => {
         <InteractionExamplesSection />
       </div>
 
-      {/* Como funciona na prática */}
-      <section id="depoimentos" className="py-20 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12 scroll-reveal">
-            <div className="section-line mx-auto mb-6" />
-            <h2 className="font-display text-3xl md:text-4xl font-bold mb-3">
-              {t('landing.howItWorksPractice.title')}
-            </h2>
-            <p className="text-muted-foreground max-w-xl mx-auto">
-              {t('landing.howItWorksPractice.subtitle')}
-            </p>
-          </div>
-          <div className="scroll-reveal delay-1">
-            <TestimonialsSection />
-          </div>
-        </div>
-      </section>
 
-      {/* Stats Section */}
-      <div className="scroll-reveal">
-        <StatsSection />
-      </div>
 
       {/* Homage - Sobre a Dona Wilma */}
       <section id="sobre" className="py-20 md:py-24">
