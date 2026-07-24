@@ -202,14 +202,8 @@ const LandingPage = () => {
                     <div className="text-[11px] opacity-75">online · cuidando das suas contas</div>
                   </div>
                 </div>
-                <div className="wa-body">
-                  <div className="wa-bubble wa-bubble-me">Gastei 47 reais no mercado agora<span className="wa-time">14:02</span></div>
-                  <div className="wa-bubble wa-bubble-her">Anotei, viu? <b>R$ 47,00</b> em Mercado 🛒. Esse mês você já tá em R$ 320 nessa categoria.<span className="wa-time">14:02</span></div>
-                  <div className="wa-bubble wa-bubble-me">Nossa, tá alto<span className="wa-time">14:03</span></div>
-                  <div className="wa-bubble wa-bubble-her">Tá sim, meu bem. Quer que eu te avise quando passar de R$ 400? 💚<span className="wa-time">14:03</span></div>
-                  <div className="wa-bubble wa-bubble-me">Pode ser! E me lembra do aluguel dia 5<span className="wa-time">14:04</span></div>
-                  <div className="wa-bubble wa-bubble-her">Deixa comigo. Dia 5 eu te aviso do <b>aluguel</b> bem cedinho ⏰<span className="wa-time">14:04</span></div>
-                </div>
+                <HeroChatAnimation />
+
               </div>
             </div>
 
