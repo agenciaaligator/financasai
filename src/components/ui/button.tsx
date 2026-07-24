@@ -9,24 +9,25 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-gradient-to-br from-primary to-primary-dark text-primary-foreground rounded-[16px] shadow-[0_4px_20px_hsl(var(--primary)/0.3)] hover:-translate-y-0.5",
+        default: "bg-gradient-to-br from-primary to-primary-dark text-primary-foreground rounded-full shadow-[0_4px_20px_hsl(var(--primary)/0.3)] hover:-translate-y-0.5",
         destructive:
-          "bg-destructive text-destructive-foreground rounded-[16px] hover:bg-destructive/90",
+          "bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/90",
         outline:
-          "border-2 border-primary bg-transparent text-primary rounded-[16px] hover:bg-primary hover:text-primary-foreground",
+          "border-2 border-primary bg-transparent text-primary rounded-full hover:bg-primary hover:text-primary-foreground",
         secondary:
-          "bg-secondary text-secondary-foreground rounded-[16px] hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground rounded-[16px]",
+          "bg-secondary text-secondary-foreground rounded-full hover:bg-secondary/80",
+        ghost: "hover:bg-accent hover:text-accent-foreground rounded-full",
         link: "text-primary underline-offset-4 hover:underline",
         whatsapp: "bg-gradient-to-br from-[#25D366] to-[#1da851] text-white rounded-full shadow-[0_4px_20px_rgba(37,211,102,0.3)] hover:-translate-y-0.5",
       },
       size: {
         default: "h-12 px-6 py-3",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-14 rounded-md px-8",
-        icon: "h-12 w-12",
+        sm: "h-9 rounded-full px-4",
+        lg: "h-14 rounded-full px-8",
+        icon: "h-12 w-12 rounded-full",
       },
     },
+
     defaultVariants: {
       variant: "default",
       size: "default",

@@ -76,9 +76,10 @@ export function useAuth() {
     }
 
     toast({
-      title: "✅ Login realizado!",
-      description: "Bem-vindo de volta!",
+      title: "Que bom te ver! 💚",
+      description: "Tava te esperando, viu?",
     });
+
 
     return { error: null };
   };

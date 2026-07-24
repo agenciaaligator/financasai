@@ -1,104 +1,83 @@
-## Objetivo
 
-Preparar o Dona Wilma para o novo modelo de cobrança da Meta (01/10/2026): contar mensagens cobráveis por ciclo de assinatura, amarrar franquia ao plano, avisar em 80%, tolerar até 120% e travar a partir daí, com visibilidade pro usuário e pro admin. **Não mexo no fluxo de conversa** — só adiciono contagem, checagem de limite e telemetria.
+## Escopo
+Refatorar apenas a landing (`src/pages/Index.tsx`) + componentes auxiliares. **Não tocar** em: seção "Por trás do nome", ContactForm, rotas, hooks, autenticação, textos de preços/features dos planos.
 
-### Decisões confirmadas
-- Franquia Premium Mensal e Anual: **1.000 msgs/ciclo**
-- Sem plano de entrada agora
-- Comportamento: **híbrido** — soft cap até 120%, hard cap a partir daí
-- Custo por mensagem: **campo editável no admin, default R$ 0,05**
-- Ajuste extra que já vou fazer: alinhar `price_monthly` do Premium para **R$ 24,90** (hoje está R$ 29,90 no banco) e `price_yearly` para **R$ 239,00**
+## 1. Remover fotos de banco de imagens
+Todas as `imageSrc` em `/images/landing/*.png` (whatsapp-financeiro, whatsapp-registros, dashboard-painel, categorias) serão substituídas por **mockups estilizados em JSX**, renderizados com Tailwind na paleta da marca (`--creme-2`, `--pinho`, `--mel`, `--sage`).
 
----
+Novo componente `src/components/ProductMockup.tsx` com 3 variantes:
+- `chat` — bolhas de WhatsApp reais da Wilma (reaproveita estilo `.wa-bubble` já existente)
+- `dashboard` — card com saldo + mini gráfico de barras (SVG inline) + linha de categorias
+- `categorias` — lista de chips coloridos com valores
 
-## Etapa 1 — Schema (aprovar antes de qualquer código)
+Cada mockup renderizado em card `bg-[hsl(var(--creme-2))]` com sombra suave, `rotate-[2deg]` (alternando ±) e um post-it manuscrito (Caveat) no canto. Único retrato real preservado: `dona-wilma-retrato.jpg` na seção "Por trás do nome".
 
-Vou criar/ajustar via migration única, na ordem GRANT → RLS → policy pra cada tabela nova.
+## 2. Consolidar seções
+Estrutura atual (7 seções entre hero e planos):
+- Como funciona (5 FeatureBlocks)
+- InteractionExamples
+- Depoimentos/TestimonialsSection
+- StatsSection
+- Homenagem
+- Planos
+- FAQ / Contato
 
-**Nova tabela `usage_mensagens`** (contador por ciclo, uma linha por usuário/ciclo):
-- `user_id`, `ciclo_inicio` (date, primeiro dia do ciclo do assinante), `ciclo_fim` (date), `qtd_mensagens_cobradas` (int, default 0), `atualizado_em`
-- Unique em `(user_id, ciclo_inicio)` pra idempotência
-- RLS: usuário lê o próprio; service_role escreve; admin lê tudo via `has_role(uid,'admin')`
+Nova estrutura:
+1. **Hero** (mantido, com ajustes de animação)
+2. **Vídeo "Veja a Dona Wilma em ação"** (novo — item 4)
+3. **"Como funciona"** — 3 passos horizontais com 1 mockup por passo:
+   - Passo 1: manda no zap (mockup chat)
+   - Passo 2: ela organiza (mockup categorias)
+   - Passo 3: você acompanha (mockup dashboard)
+4. **"O que ela cuida por você"** — grid 4 cards compactos: Painel, Categorias, Google Agenda, Alertas inteligentes (ícones Lucide em chip).
+5. **InteractionExamples** (mantido, mais compacto)
+6. **Homenagem** (INTOCADA)
+7. **Planos**
+8. **FAQ**
+9. **Contato**
 
-**Nova tabela `whatsapp_cost_config`** (singleton editável pelo admin):
-- `id` fixo, `custo_por_mensagem_brl` (numeric, default 0.05), `atualizado_em`, `atualizado_por`
-- RLS: qualquer autenticado lê (pra mostrar no painel); só admin atualiza
+Removidos: `TestimonialsSection`, `StatsSection`, os 5 `FeatureBlock` grandes. Componentes ficam no repo mas deixam de ser importados na landing.
 
-**Ajustes em `subscription_plans`**:
-- Adicionar coluna `limite_mensagens_mes` (int, nullable — null = ilimitado)
-- Popular: `premium` = 1.000; demais ficam null (não estão ativos)
-- Atualizar `premium` para `price_monthly=24.90`, `price_yearly=239.00`
+Redução esperada: ~50% na altura da página.
 
-**Função SQL `increment_usage_mensagens(p_user_id uuid, p_qtd int)`** (security definer):
-- Descobre o ciclo atual pelo `user_subscriptions.current_period_start/end` do usuário
-- `INSERT ... ON CONFLICT (user_id, ciclo_inicio) DO UPDATE SET qtd_mensagens_cobradas = qtd_mensagens_cobradas + p_qtd`
-- Retorna `{ qtd_atual, limite, percentual, bloqueado }`
+## 3. Ícones uniformes
+Todos os ícones das seções passam a ser `lucide-react` (traço 2px, 24px) renderizados dentro de `<span className="icon-chip">` (novo utilitário em `index.css`): `inline-flex, w-11 h-11, rounded-2xl, bg-[hsl(var(--sage))]` ou `bg-[hsl(var(--mel-soft))]`, ícone com `text-[hsl(var(--pinho))]`. Remover qualquer emoji usado como ícone estrutural (mantém apenas emojis dentro das bolhas de chat e post-its, que são parte da voz da marca).
 
-**Função SQL `get_usage_status(p_user_id uuid)`** (security definer, stable):
-- Retorna qtd atual, limite do plano, % de uso, estado (`ok` | `warning` a partir de 80% | `over` de 100-120% | `blocked` acima de 120%)
+## 4. Seção de vídeo
+Nova seção logo após o hero:
+```tsx
+<section id="video">
+  {/* TROCAR: URL do vídeo */}
+  const VIDEO_URL = ""; // placeholder
+</section>
+```
+- Se `VIDEO_URL` vazio: capa `bg-[hsl(var(--pinho))]` 16:9, botão play em `--mel` centralizado, manuscrito "vem ver como eu cuido de você 😊" em Caveat.
+- Se preenchido: `<iframe>` YouTube embed 16:9, `rounded-[18px]`, `shadow-card`, borda `border border-[hsl(var(--linha))]`.
 
----
+## 5. Animações reais
+- **Hero — bolhas sequenciais**: novo componente `HeroChatAnimation` com estado `visibleBubbles`, `useEffect` com `setTimeout` encadeado. Entre bolhas mostra indicador "digitando..." (3 dots animados). Ao final, pausa 4s e reinicia (`setInterval`).
+- **Scroll reveal**: já existe `IntersectionObserver` — reforçar CSS `.scroll-reveal` com `opacity:0; transform:translateY(16px); transition: all 500ms ease-out` e `.revealed { opacity:1; transform:none }`. Adicionar `{ threshold: 0.15 }` e `observer.unobserve` após revelar (uma única vez).
+- **Cards/botões hover**: utilitário `.hover-lift` em `index.css` — `transition:transform .2s, box-shadow .2s; hover:translate-y-[-2px] hover:shadow-lg`.
+- **Post-its**: classe `.postit` já existe — garantir `rotate-[2deg] a 4deg` e sombra de papel (`box-shadow: 2px 3px 0 rgba(0,0,0,.06), 0 4px 12px rgba(0,0,0,.05)`).
+- **prefers-reduced-motion**: em `index.css`, `@media (prefers-reduced-motion: reduce)` zerando todas as transições/animações/keyframes; hero animation checa `window.matchMedia('(prefers-reduced-motion: reduce)').matches` e mostra todas as bolhas de uma vez.
 
-## Etapa 2 — Edge function `whatsapp-usage-increment`
+## 6. Planos — tema claro
+Refatorar `src/components/PlansSection.tsx`:
+- Wrapper externo: fundo `bg-[hsl(var(--creme))]` (removendo o gradiente escuro atual).
+- Cards: `bg-[hsl(var(--creme-2))]`, texto `text-foreground`, features `text-foreground/75`.
+- Card anual: `border-2 border-[hsl(var(--mel))]` + `shadow-lg`.
+- Tag "melhor valor": `bg-[hsl(var(--mel))] text-[hsl(var(--pinho))]` no topo.
+- Botões: mantém `btn-mel` (anual) e outline pinho (mensal).
+- **Textos e valores intocados** (todas as chaves i18n preservadas).
 
-Endpoint HTTP que n8n/Make/backend chamam a cada mensagem cobrável enviada pela Wilma:
+## Arquivos afetados
+- `src/pages/Index.tsx` — reestrutura da landing (única mudança grande)
+- `src/components/ProductMockup.tsx` — NOVO
+- `src/components/HeroChatAnimation.tsx` — NOVO (extrai bolhas do hero)
+- `src/components/VideoSection.tsx` — NOVO
+- `src/components/PlansSection.tsx` — reestilização (sem tocar em i18n/lógica)
+- `src/index.css` — utilitários `.icon-chip`, `.hover-lift`, refino `.scroll-reveal`, `@media (prefers-reduced-motion)`
 
-- `POST /functions/v1/whatsapp-usage-increment`
-- Body: `{ user_id, qtd? = 1, mensagem_id? }` (o `mensagem_id` serve pra deduplicar se você reprocessar; se vier repetido, no-op)
-- Auth: header `x-webhook-secret` com secret novo `WHATSAPP_USAGE_SECRET` (não JWT — chamada de servidor)
-- Chama a função `increment_usage_mensagens` e responde com o status atualizado (útil pro n8n decidir se envia ou não a próxima)
-- `verify_jwt = false` no `config.toml`
-
----
-
-## Etapa 3 — Enforcement (soft/hard cap) no agente
-
-Ponto único de checagem antes de responder: função helper `checkUsageBeforeReply(user_id)` que:
-
-1. Chama `get_usage_status`
-2. Se `blocked` (>120%): retorna instrução pro agente enviar **uma única mensagem-padrão** ("Você atingiu o limite do seu plano este mês. Renove ou faça upgrade em donawilma.com.br…") e **não** incrementa mais o contador daquela linha
-3. Se `warning` (>=80% pela primeira vez no ciclo) ou `over` (>=100%): envia carinhosamente um aviso junto da resposta normal (flag `aviso_enviado_80`/`aviso_enviado_100` nova em `usage_mensagens` pra não repetir)
-4. Caso contrário: resposta normal
-
-Só mexo no ponto de saída do agente (não na lógica de NLP/roteamento).
-
----
-
-## Etapa 4 — Painel do usuário
-
-Novo bloco **"Seu uso este mês"** no Dashboard (bento grid, ao lado dos cards de saldo):
-- "X de Y mensagens" + barra de progresso
-- Verde <80%, âmbar 80-100%, vermelho >100%
-- Hook `useMessageUsage()` que consulta `get_usage_status` e assina realtime na `usage_mensagens` pra atualizar sem refresh
-- i18n em todos os 5 locales
-
----
-
-## Etapa 5 — Admin
-
-Nova aba **"Uso WhatsApp"** em `AdminPanel`:
-- Tabela: email · plano · mensagens no ciclo · % da franquia · custo estimado (`qtd × custo_por_mensagem_brl`)
-- Filtros: só quem passou de 80%, só ativos, busca por email
-- Card no topo com **custo total estimado do mês** (soma de todos)
-- Campo editável **"Custo por mensagem (R$)"** que persiste em `whatsapp_cost_config`
-
----
-
-## Detalhes técnicos
-
-- Ciclo = período da assinatura Stripe (`user_subscriptions.current_period_start`/`end`), não mês-calendário. Isso evita virar contador no dia 1 pra quem assinou dia 15.
-- Idempotência: `mensagem_id` opcional no payload de incremento; se você já mandar isso do n8n, guardo num set curto (tabela `usage_message_log` com TTL de 7 dias) pra rejeitar duplicados. **Confirmar se você quer isso** ou se n8n garante entrega única — economiza uma tabela se garantir.
-- Realtime: habilitar `usage_mensagens` na publication pra o painel atualizar em tempo real quando o n8n incrementar.
-- Não altero: fluxo de conversa, categorização, transações, agendamentos, Stripe webhook, Google Calendar.
-
----
-
-## Ordem de execução
-
-1. Migration (schema + função SQL + seed do Premium com franquia + preço corrigido)
-2. Edge function `whatsapp-usage-increment` + secret
-3. Painel do usuário (bloco de uso)
-4. Admin (aba de uso + config de custo)
-5. Enforcement no agente (por último, depois que o contador estiver rodando e você tiver validado dados reais)
-
-Aprovando, mando primeiro só a migration pra você revisar o schema antes de popular Premium com R$ 24,90 e franquia 1.000.
+## Fora de escopo
+- Sem alterações em rotas, hooks, i18n de conteúdo, autenticação, admin, edge functions, banco.
+- `FeatureBlock`, `TestimonialsSection`, `StatsSection` deixam de ser usados na landing mas não são deletados (podem ser reutilizados em outras páginas).

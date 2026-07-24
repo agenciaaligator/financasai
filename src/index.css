@@ -59,6 +59,15 @@
     --pinho-2: 157 32% 25%;
     --creme: 40 47% 94%;
     --creme-2: 43 60% 97%;
+    --terra: 30 13% 15%;
+    --terra-soft: 30 8% 44%;
+
+    /* Financeiro — receita/despesa com fundos suaves (nunca vermelho puro) */
+    --receita: 147 33% 37%;         /* #3F7D5F */
+    --receita-bg: 135 25% 92%;      /* #E6F0E9 */
+    --despesa: 14 51% 50%;          /* #C05C3E */
+    --despesa-bg: 18 55% 91%;       /* #F6E3DC */
+
 
     /* Gradientes */
     --gradient-primary: linear-gradient(135deg, hsl(var(--pinho)), hsl(var(--pinho-2)));
@@ -177,7 +186,31 @@
   .animate-float { animation: float 3s ease-in-out infinite; }
   .delay-100 { animation-delay: 100ms; }
   .delay-200 { animation-delay: 200ms; }
+
+  /* Números financeiros — sempre tabular */
+  .num, .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+  .val-receita {
+    color: hsl(var(--receita));
+    background: hsl(var(--receita-bg));
+  }
+  .val-despesa {
+    color: hsl(var(--despesa));
+    background: hsl(var(--despesa-bg));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fadeInUp,
+    .animate-float,
+    .animate-bounceCustom,
+    .animate-pulseGlow {
+      animation: none !important;
+    }
+  }
 }
+
 
 /* =====================================================
    COMPONENTES ESPECÍFICOS
@@ -501,19 +534,76 @@
   animation: orbFloat2 28s ease-in-out infinite;
 }
 
-/* Scroll reveal */
+/* Scroll reveal (uma única vez, 500ms) */
 .scroll-reveal {
   opacity: 0;
-  transform: translateY(35px);
-  transition: opacity 0.9s cubic-bezier(0.4, 0, 0.2, 1), transform 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateY(16px);
+  transition: opacity 500ms ease-out, transform 500ms ease-out;
+  will-change: opacity, transform;
 }
 .scroll-reveal.revealed {
   opacity: 1;
   transform: translateY(0);
 }
-.scroll-reveal.delay-1 { transition-delay: 0.1s; }
-.scroll-reveal.delay-2 { transition-delay: 0.2s; }
-.scroll-reveal.delay-3 { transition-delay: 0.3s; }
+.scroll-reveal.delay-1 { transition-delay: 80ms; }
+.scroll-reveal.delay-2 { transition-delay: 160ms; }
+.scroll-reveal.delay-3 { transition-delay: 240ms; }
+
+/* Icon chip — padrão para ícones de seção */
+.icon-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: hsl(var(--sage));
+  color: hsl(var(--pinho));
+  flex-shrink: 0;
+}
+.icon-chip.mel { background: hsl(var(--mel-soft)); }
+
+/* Hover lift sutil */
+.lift-sm { transition: transform .2s ease, box-shadow .2s ease; }
+.lift-sm:hover { transform: translateY(-2px); box-shadow: 0 14px 30px -18px rgba(30, 59, 50, 0.35); }
+
+/* Card de mockup */
+.mockup-card {
+  background: hsl(var(--creme-2));
+  border: 1px solid hsl(var(--border));
+  border-radius: 22px;
+  box-shadow: 0 20px 50px -28px rgba(30, 59, 50, 0.30), 0 6px 14px -8px rgba(30, 59, 50, 0.10);
+  padding: 1.25rem;
+}
+.mockup-tilt-l { transform: rotate(-2deg); }
+.mockup-tilt-r { transform: rotate(2deg); }
+
+/* Post-it com sombra de papel */
+.postit-paper {
+  box-shadow: 2px 3px 0 rgba(0,0,0,.06), 0 6px 14px rgba(30, 59, 50, 0.08);
+}
+
+/* Indicador "digitando..." */
+.typing-dots {
+  display: inline-flex;
+  gap: 4px;
+  padding: 8px 12px;
+  background: #fff;
+  border-radius: 14px;
+  align-self: flex-start;
+  box-shadow: 0 1px 2px rgba(0,0,0,.06);
+}
+.typing-dots span {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: hsl(var(--pinho) / 0.45);
+  animation: typingDot 1.2s infinite ease-in-out;
+}
+.typing-dots span:nth-child(2) { animation-delay: .15s; }
+.typing-dots span:nth-child(3) { animation-delay: .3s; }
+@keyframes typingDot {
+  0%, 60%, 100% { opacity: .3; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
+}
 
 /* FAQ */
 .faq-trigger {
