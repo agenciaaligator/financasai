@@ -35,6 +35,10 @@ export function HeroChatAnimation() {
     const timeouts: number[] = [];
 
     const run = async () => {
+      // Começa mostrando a conversa completa para nunca aparecer vazio
+      setVisible(SCRIPT.length);
+      setTyping(null);
+      await wait(PAUSE_END_MS, timeouts);
       while (!cancelled) {
         setVisible(0);
         setTyping(null);
