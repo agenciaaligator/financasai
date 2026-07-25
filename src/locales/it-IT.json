@@ -68,7 +68,8 @@
     "newTransaction": "Nuova Transazione",
     "subtitle": "La tua assistente personale",
     "goals": "Obiettivi",
-    "goalsDesc": "Obiettivi mensili"
+    "goalsDesc": "Obiettivi mensili",
+    "tagline": "sto tenendo d'occhio i tuoi conti 💚"
   },
   "chart": {
     "incomeVsExpenses": "Entrate vs Spese",
@@ -143,7 +144,9 @@
     "email": "Email",
     "password": "Password",
     "forgotPassword": "Password dimenticata",
-    "resetPassword": "Reimposta password"
+    "resetPassword": "Reimposta password",
+    "welcomeBack": "bentornato, caro",
+    "tagline": "La tua assistente personale di finanze e impegni"
   },
   "common": {
     "save": "Salva",
@@ -634,7 +637,9 @@
     "nav": {
       "howItWorks": "Come funziona",
       "plans": "Piani",
-      "contact": "Contatto"
+      "contact": "Contatto",
+      "home": "Home",
+      "faq": "FAQ"
     },
     "hero": {
       "title": "Hai un'assistente personale che lavora",
@@ -884,6 +889,105 @@
         "duplicate": "Questo messaggio è già stato inviato di recente.",
         "validation": "Controlla i campi e riprova."
       }
+    },
+    "heroV2": {
+      "eyebrow": "Le tue finanze su WhatsApp",
+      "title1": "Scrivi su WhatsApp",
+      "title2": "e Dona Wilma",
+      "title3": "lo segna per te.",
+      "subtitle": "Nessuna nuova app. Nessun foglio di calcolo. Tu parli e lei ci pensa — come tua madre che tiene d'occhio i conti.",
+      "primaryCta": "Parla con Dona Wilma",
+      "secondaryCta": "Scopri come funziona",
+      "trust": "Prova gratuita · funziona sul tuo WhatsApp di sempre",
+      "chatHeaderName": "Dona Wilma",
+      "chatHeaderStatus": "online · si occupa dei tuoi conti",
+      "postitTop": "segnato qui 😊",
+      "postitBottom": "✓ conto pagato"
+    },
+    "strip": {
+      "whatsapp": "Tutto su WhatsApp",
+      "protected": "I tuoi dati protetti",
+      "always": "non dorme mai",
+      "noDownload": "Niente da scaricare",
+      "always24h": "24h"
+    },
+    "howItWorksV2": {
+      "title": "Come funziona",
+      "subtitle": "In 3 passi, la tua vita finanziaria torna a stare nel palmo della mano.",
+      "steps": [
+        {
+          "title": "Scrivi su WhatsApp",
+          "desc": "Scrivi o manda un audio: \"speso 47 al mercato\", \"paga l'affitto il 5\". Nessuna app nuova, nessun foglio.",
+          "postit": "segnato ✍️"
+        },
+        {
+          "title": "Lei organizza",
+          "desc": "Dona Wilma capisce, categorizza e conserva tutto con cura — così non ci pensi due volte.",
+          "postit": "tutto a posto 💚"
+        },
+        {
+          "title": "Tu controlli",
+          "desc": "Apri il pannello quando vuoi e vedi saldo, spese per categoria e avvisi — nel modo che ha senso per te.",
+          "postit": "tutto ok!"
+        }
+      ]
+    },
+    "cares": {
+      "title": "Di cosa si occupa per te",
+      "subtitle": "Un'assistente completa travestita da chat WhatsApp.",
+      "items": [
+        {
+          "title": "Pannello professionale",
+          "desc": "Saldo, entrate, uscite e grafici chiari — quando vuoi controllare."
+        },
+        {
+          "title": "Categorie personalizzate",
+          "desc": "Impara a modo tuo e organizza ogni spesa senza doverlo dire."
+        },
+        {
+          "title": "Google Calendar",
+          "desc": "Impegni e promemoria sincronizzati — 1 giorno e 1 ora prima."
+        },
+        {
+          "title": "Avvisi giusti",
+          "desc": "Ti avvisa quando ti stai avvicinando al limite. Senza sorprese."
+        }
+      ]
+    },
+    "mockups": {
+      "chat": {
+        "me1": "Speso 47 al mercato adesso",
+        "her1": "Segnato! <b>€ 47,00</b> al Mercato 🛒",
+        "me2": "Ricordami l'affitto il 5",
+        "her2": "Ci penso io ⏰"
+      },
+      "dashboard": {
+        "balance": "Saldo del mese"
+      },
+      "categories": {
+        "title": "Categorie di questo mese",
+        "market": "Mercato",
+        "home": "Casa",
+        "food": "Alimentazione",
+        "transport": "Trasporti"
+      },
+      "weekdays": [
+        "Lun",
+        "Mar",
+        "Mer",
+        "Gio",
+        "Ven",
+        "Sab",
+        "Dom"
+      ]
+    },
+    "heroChat": {
+      "b0": "Speso 47 al mercato adesso",
+      "b1": "Segnato! <b>€ 47,00</b> al Mercato 🛒. Questo mese sei già a € 320 in quella categoria.",
+      "b2": "Uh, è tanto",
+      "b3": "Sì, caro. Vuoi che ti avvisi quando supera € 400? 💚",
+      "b4": "Va bene! E ricordami l'affitto il 5",
+      "b5": "Ci penso io. Il 5 ti avviso dell'<b>affitto</b> presto presto ⏰"
     }
   },
   "legal": {

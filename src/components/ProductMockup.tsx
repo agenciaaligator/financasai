@@ -1,4 +1,5 @@
 import { ArrowUpRight, ShoppingCart, Home, Utensils, Car, Sparkles } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 type Variant = "chat" | "dashboard" | "categorias";
 
@@ -31,14 +32,15 @@ export function ProductMockup({ variant, tilt = "r", postit, className = "" }: P
 }
 
 function ChatMockup() {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col gap-2 py-1">
-      <Bubble side="me">Gastei 47 no mercado agora</Bubble>
+      <Bubble side="me">{t("landing.mockups.chat.me1")}</Bubble>
       <Bubble side="her">
-        Anotei, viu? <b>R$ 47,00</b> em Mercado 🛒
+        <span dangerouslySetInnerHTML={{ __html: t("landing.mockups.chat.her1") }} />
       </Bubble>
-      <Bubble side="me">Me lembra do aluguel dia 5</Bubble>
-      <Bubble side="her">Deixa comigo, meu bem ⏰</Bubble>
+      <Bubble side="me">{t("landing.mockups.chat.me2")}</Bubble>
+      <Bubble side="her">{t("landing.mockups.chat.her2")}</Bubble>
     </div>
   );
 }
@@ -58,13 +60,15 @@ function Bubble({ side, children }: { side: "me" | "her"; children: React.ReactN
 }
 
 function DashboardMockup() {
+  const { t } = useTranslation();
   const bars = [40, 65, 32, 78, 55, 90, 48];
+  const weekdays = t("landing.mockups.weekdays", { returnObjects: true }) as string[];
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
-            Saldo do mês
+            {t("landing.mockups.dashboard.balance")}
           </p>
           <p className="font-heading text-2xl font-bold text-[hsl(var(--pinho))]">R$ 2.847,00</p>
         </div>
@@ -88,24 +92,25 @@ function DashboardMockup() {
       </div>
 
       <div className="flex justify-between text-[10px] text-muted-foreground font-medium">
-        <span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span><span>Dom</span>
+        {weekdays.map((d, i) => <span key={i}>{d}</span>)}
       </div>
     </div>
   );
 }
 
 function CategoriasMockup() {
+  const { t } = useTranslation();
   const cats = [
-    { icon: ShoppingCart, label: "Mercado", value: "R$ 320", pct: 68, color: "hsl(var(--mel))" },
-    { icon: Home, label: "Casa", value: "R$ 1.200", pct: 92, color: "hsl(var(--pinho))" },
-    { icon: Utensils, label: "Alimentação", value: "R$ 180", pct: 40, color: "hsl(var(--receita))" },
-    { icon: Car, label: "Transporte", value: "R$ 95", pct: 22, color: "hsl(var(--mel-deep))" },
+    { icon: ShoppingCart, label: t("landing.mockups.categories.market"), value: "R$ 320", pct: 68, color: "hsl(var(--mel))" },
+    { icon: Home, label: t("landing.mockups.categories.home"), value: "R$ 1.200", pct: 92, color: "hsl(var(--pinho))" },
+    { icon: Utensils, label: t("landing.mockups.categories.food"), value: "R$ 180", pct: 40, color: "hsl(var(--receita))" },
+    { icon: Car, label: t("landing.mockups.categories.transport"), value: "R$ 95", pct: 22, color: "hsl(var(--mel-deep))" },
   ];
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 text-xs font-semibold text-[hsl(var(--pinho))] uppercase tracking-wider">
         <Sparkles className="h-3.5 w-3.5" strokeWidth={2} />
-        Categorias deste mês
+        {t("landing.mockups.categories.title")}
       </div>
       {cats.map(({ icon: Icon, label, value, pct, color }) => (
         <div key={label} className="space-y-1">

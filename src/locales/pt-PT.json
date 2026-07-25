@@ -68,7 +68,8 @@
     "newTransaction": "Nova Transação",
     "subtitle": "A sua assessora pessoal",
     "goals": "Metas",
-    "goalsDesc": "Metas mensais"
+    "goalsDesc": "Metas mensais",
+    "tagline": "estou de olho nas suas contas 💚"
   },
   "chart": {
     "incomeVsExpenses": "Receitas vs Despesas",
@@ -143,7 +144,9 @@
     "email": "E-mail",
     "password": "Palavra-passe",
     "forgotPassword": "Esqueci a palavra-passe",
-    "resetPassword": "Redefinir palavra-passe"
+    "resetPassword": "Redefinir palavra-passe",
+    "welcomeBack": "bem-vindo de volta",
+    "tagline": "A sua assessora pessoal de finanças e compromissos"
   },
   "common": {
     "save": "Guardar",
@@ -634,7 +637,9 @@
     "nav": {
       "howItWorks": "Como funciona",
       "plans": "Planos",
-      "contact": "Contacto"
+      "contact": "Contacto",
+      "home": "Início",
+      "faq": "Dúvidas"
     },
     "hero": {
       "title": "Tenha uma assessora pessoal a trabalhar",
@@ -884,6 +889,105 @@
         "duplicate": "Esta mensagem já foi enviada recentemente.",
         "validation": "Verifique os campos preenchidos e tente novamente."
       }
+    },
+    "heroV2": {
+      "eyebrow": "As suas finanças pelo WhatsApp",
+      "title1": "Manda no WhatsApp",
+      "title2": "que a Dona Wilma",
+      "title3": "anota por si.",
+      "subtitle": "Sem aplicação nova. Sem folha de cálculo. Fala e ela trata — como se fosse a sua mãe a cuidar das suas contas.",
+      "primaryCta": "Falar com a Dona Wilma",
+      "secondaryCta": "Ver como funciona",
+      "trust": "Teste grátis · funciona no seu WhatsApp de sempre",
+      "chatHeaderName": "Dona Wilma",
+      "chatHeaderStatus": "online · a cuidar das suas contas",
+      "postitTop": "anotei aqui 😊",
+      "postitBottom": "✓ conta paga"
+    },
+    "strip": {
+      "whatsapp": "Tudo pelo WhatsApp",
+      "protected": "Os seus dados protegidos",
+      "always": "ela nunca dorme",
+      "noDownload": "Sem descarregar nada",
+      "always24h": "24h"
+    },
+    "howItWorksV2": {
+      "title": "Como funciona",
+      "subtitle": "Em 3 passos, a sua vida financeira volta a caber na palma da mão.",
+      "steps": [
+        {
+          "title": "Manda no WhatsApp",
+          "desc": "Escreve ou envia áudio: \"gastei 47 no supermercado\", \"paga a renda dia 5\". Sem app novo, sem folha.",
+          "postit": "anotei ✍️"
+        },
+        {
+          "title": "Ela organiza",
+          "desc": "A Dona Wilma percebe, categoriza e guarda tudo com carinho — para não pensar duas vezes.",
+          "postit": "tudo no lugar 💚"
+        },
+        {
+          "title": "Acompanha",
+          "desc": "Abre o painel quando quiser e vê saldo, gastos por categoria e alertas — como faz sentido para si.",
+          "postit": "está tudo bem!"
+        }
+      ]
+    },
+    "cares": {
+      "title": "O que ela trata por si",
+      "subtitle": "Um assistente completo, disfarçado de conversa no WhatsApp.",
+      "items": [
+        {
+          "title": "Painel profissional",
+          "desc": "Saldo, receitas, despesas e gráficos claros — quando quiser conferir."
+        },
+        {
+          "title": "Categorias personalizadas",
+          "desc": "Ela aprende à sua maneira e organiza cada gasto sem precisar de dizer."
+        },
+        {
+          "title": "Google Calendar",
+          "desc": "Compromissos e lembretes sincronizados — 1 dia e 1 hora antes."
+        },
+        {
+          "title": "Alertas na medida",
+          "desc": "Ela avisa quando está a aproximar-se do limite. Sem sustos."
+        }
+      ]
+    },
+    "mockups": {
+      "chat": {
+        "me1": "Gastei 47 no supermercado agora",
+        "her1": "Anotei! <b>€ 47,00</b> em Supermercado 🛒",
+        "me2": "Lembra-me da renda dia 5",
+        "her2": "Deixa comigo ⏰"
+      },
+      "dashboard": {
+        "balance": "Saldo do mês"
+      },
+      "categories": {
+        "title": "Categorias deste mês",
+        "market": "Supermercado",
+        "home": "Casa",
+        "food": "Alimentação",
+        "transport": "Transportes"
+      },
+      "weekdays": [
+        "Seg",
+        "Ter",
+        "Qua",
+        "Qui",
+        "Sex",
+        "Sáb",
+        "Dom"
+      ]
+    },
+    "heroChat": {
+      "b0": "Gastei 47 euros no supermercado agora",
+      "b1": "Anotei! <b>€ 47,00</b> em Supermercado 🛒. Este mês já está em € 320 nessa categoria.",
+      "b2": "Uau, está alto",
+      "b3": "Está sim. Quer que a avise quando passar de € 400? 💚",
+      "b4": "Pode ser! E lembra-me da renda dia 5",
+      "b5": "Deixa comigo. Dia 5 aviso da <b>renda</b> bem cedinho ⏰"
     }
   },
   "legal": {
