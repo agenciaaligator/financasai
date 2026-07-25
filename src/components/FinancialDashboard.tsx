@@ -308,7 +308,7 @@ export function FinancialDashboard() {
               isNegative={isNegative}
               showTransactionForm={showForm}
               onToggleTransactionForm={() => setShowForm(!showForm)}
-              onTabChange={setCurrentTab}
+              onTabChange={handleTabChange}
             />
           </div>
         </main>
