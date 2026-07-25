@@ -151,6 +151,9 @@ export function FinancialDashboard() {
 
   const handleTabChange = (tab: string) => {
     setCurrentTab(tab);
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", tab);
+    setSearchParams(next, { replace: true });
     if (isMobile) {
       setMobileMenuOpen(false);
     }
