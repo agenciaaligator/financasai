@@ -1211,6 +1211,7 @@ IMPORTANTE:
 - "padaria", "lanche", "restaurante" devem ir para "Alimentação"
 - "uber", "ônibus", "gasolina" devem ir para "Transporte"
 - "conta de luz", "água", "aluguel" devem ir para "Moradia"
+- "drogaria", "farmácia", "drogasil", "droga raia", "pague menos", "remédio", "medicamento", "injeção", "vacina", "consulta", "médico", "dentista", "exame", "hospital", "clínica" devem ir para "Saúde"
 - Se o usuário tem padrões pessoais, PRIORIZE esses padrões
 - Se nenhuma categoria se adequar bem, retorne "Outros" se existir, ou null
 
