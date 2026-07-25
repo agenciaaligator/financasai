@@ -28,7 +28,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 
 const LandingPage = () => {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
   const [scrolled, setScrolled] = useState(false);
