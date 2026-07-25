@@ -988,6 +988,21 @@
       "b3": "Está sim. Quer que a avise quando passar de € 400? 💚",
       "b4": "Pode ser! E lembra-me da renda dia 5",
       "b5": "Deixa comigo. Dia 5 aviso da <b>renda</b> bem cedinho ⏰"
+    },
+    "homage": {
+      "eyebrow": "quem foi a Dona Wilma",
+      "title": "Por trás do nome, uma história verdadeira",
+      "handwritten": "com carinho ❤",
+      "portraitAlt": "Dona Wilma com o filho Alexandre, 1997",
+      "portraitCaption": "Dona Wilma · 1997",
+      "body": "A Dona Wilma foi a minha mãe — a mulher que cuidava das contas de casa com um caderninho, não deixava faltar nada e ainda arranjava maneira de poupar um bocadinho todos os meses.\n\nEste produto é uma homenagem a ela e à forma como cuidava de toda a gente. Cada mensagem que a Dona Wilma responde no teu WhatsApp carrega um pedacinho desse cuidado.",
+      "signature": "— Alexandre, filho da Dona Wilma"
+    },
+    "video": {
+      "title": "Vê a Dona Wilma em acção",
+      "subtitle": "Uma passagem rápida por tudo o que ela faz por ti todos os dias.",
+      "comingSoon": "vem ver como cuido de ti 😊",
+      "ariaComingSoon": "Vídeo em breve"
     }
   },
   "legal": {

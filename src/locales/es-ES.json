@@ -988,6 +988,21 @@
       "b3": "Sí, cariño. ¿Quieres que te avise cuando pase de € 400? 💚",
       "b4": "¡Vale! Y recuérdame el alquiler el día 5",
       "b5": "Déjalo conmigo. El día 5 te aviso del <b>alquiler</b> bien tempranito ⏰"
+    },
+    "homage": {
+      "eyebrow": "quién fue Doña Wilma",
+      "title": "Detrás del nombre, una historia real",
+      "handwritten": "con cariño ❤",
+      "portraitAlt": "Doña Wilma con su hijo Alexandre, 1997",
+      "portraitCaption": "Doña Wilma · 1997",
+      "body": "Doña Wilma fue mi madre — la mujer que llevaba las cuentas de la casa en una libretita, nunca dejaba faltar nada y aún así conseguía ahorrar un poquito cada mes.\n\nEste producto es un homenaje a ella y a la forma en que cuidaba de todos. Cada mensaje que Doña Wilma responde en tu WhatsApp lleva un pedacito de ese cariño.",
+      "signature": "— Alexandre, hijo de Doña Wilma"
+    },
+    "video": {
+      "title": "Mira a Doña Wilma en acción",
+      "subtitle": "Un recorrido rápido por lo que hace por ti todos los días.",
+      "comingSoon": "ven a ver cómo cuido de ti 😊",
+      "ariaComingSoon": "Vídeo próximamente"
     }
   },
   "legal": {
