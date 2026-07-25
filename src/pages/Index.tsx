@@ -86,7 +86,7 @@ const LandingPage = () => {
           <div className="hidden md:flex items-center gap-8">
             <a href="#como-funciona" className="text-sm font-semibold text-muted-foreground hover:text-primary transition-colors">{t('landing.nav.howItWorks')}</a>
             <a href="#planos" className="text-sm font-semibold text-muted-foreground hover:text-primary transition-colors">{t('landing.nav.plans')}</a>
-            <a href="#faq" className="text-sm font-semibold text-muted-foreground hover:text-primary transition-colors">Dúvidas</a>
+            <a href="#faq" className="text-sm font-semibold text-muted-foreground hover:text-primary transition-colors">{t('landing.nav.faq', 'Dúvidas')}</a>
             <a href="#contato" className="text-sm font-semibold text-muted-foreground hover:text-primary transition-colors">{t('landing.nav.contact')}</a>
           </div>
 
@@ -118,7 +118,7 @@ const LandingPage = () => {
               </SheetTrigger>
               <SheetContent side="right" className="glass-card">
                 <nav className="flex flex-col gap-4 mt-8">
-                  <button onClick={() => { setSheetOpen(false); setTimeout(() => scrollToSection('home'), 300); }} className="text-lg font-medium hover:text-primary transition-colors text-left">Home</button>
+                  <button onClick={() => { setSheetOpen(false); setTimeout(() => scrollToSection('home'), 300); }} className="text-lg font-medium hover:text-primary transition-colors text-left">{t('landing.nav.home', 'Home')}</button>
                   <button onClick={() => { setSheetOpen(false); setTimeout(() => scrollToSection('como-funciona'), 300); }} className="text-lg font-medium hover:text-primary transition-colors text-left">{t('landing.nav.howItWorks')}</button>
                   <button onClick={() => { setSheetOpen(false); setTimeout(() => scrollToSection('planos'), 300); }} className="text-lg font-medium hover:text-primary transition-colors text-left">{t('landing.nav.plans')}</button>
                   <button onClick={() => { setSheetOpen(false); setTimeout(() => scrollToSection('contato'), 300); }} className="text-lg font-medium hover:text-primary transition-colors text-left">{t('landing.nav.contact')}</button>
@@ -152,16 +152,16 @@ const LandingPage = () => {
       <section id="home" className="container mx-auto px-4 pt-16 pb-24 md:pt-20 md:pb-28">
         <div className="grid md:grid-cols-[1.05fr_.95fr] gap-12 lg:gap-14 items-center">
           <div className="space-y-6 text-left">
-            <div className="eyebrow animate-fadeInUp"><span className="dot" /> Suas finanças pelo WhatsApp</div>
+            <div className="eyebrow animate-fadeInUp"><span className="dot" /> {t('landing.heroV2.eyebrow', 'Suas finanças pelo WhatsApp')}</div>
 
             <h1 className="font-heading text-[2.6rem] sm:text-5xl md:text-6xl lg:text-[4rem] leading-[1.05] tracking-tight text-primary animate-fadeInUp" style={{ animationDelay: '0.1s' }}>
-              Manda no zap<br />
-              que a <em className="italic text-[hsl(var(--mel-deep))] font-medium">Dona Wilma</em><br />
-              anota pra você.
+              {t('landing.heroV2.title1', 'Manda no zap')}<br />
+              <span dangerouslySetInnerHTML={{ __html: t('landing.heroV2.title2', 'que a <em>Dona Wilma</em>').replace('Dona Wilma', '<em class="italic text-[hsl(var(--mel-deep))] font-medium">Dona Wilma</em>') }} /><br />
+              {t('landing.heroV2.title3', 'anota pra você.')}
             </h1>
 
             <p className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-xl animate-fadeInUp" style={{ animationDelay: '0.2s' }}>
-              {t('landing.hero.subtitle')}
+              {t('landing.heroV2.subtitle', t('landing.hero.subtitle'))}
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 animate-fadeInUp" style={{ animationDelay: '0.3s' }}>
@@ -170,7 +170,7 @@ const LandingPage = () => {
                 className="btn-mel font-bold rounded-full border-0 hover:text-primary text-base px-7 h-12"
                 onClick={() => scrollToSection('planos')}
               >
-                Falar com a Dona Wilma
+                {t('landing.heroV2.primaryCta', 'Falar com a Dona Wilma')}
               </Button>
               <Button
                 size="lg"
@@ -178,28 +178,28 @@ const LandingPage = () => {
                 className="rounded-full border-border font-semibold hover:border-primary text-base px-7 h-12"
                 onClick={() => scrollToSection('como-funciona')}
               >
-                Ver como funciona
+                {t('landing.heroV2.secondaryCta', 'Ver como funciona')}
               </Button>
             </div>
 
             <div className="flex items-center gap-2 pt-2 text-sm text-muted-foreground animate-fadeInUp" style={{ animationDelay: '0.4s' }}>
               <span className="text-success">✓</span>
-              <span>Teste grátis · funciona no seu WhatsApp de sempre</span>
+              <span>{t('landing.heroV2.trust', 'Teste grátis · funciona no seu WhatsApp de sempre')}</span>
             </div>
           </div>
 
           {/* WhatsApp phone mock */}
           <div className="relative flex items-center justify-center">
             <div className="blob-mel" style={{ top: '-40px', right: '-40px' }} aria-hidden="true" />
-            <div className="postit absolute z-30" style={{ top: '-14px', left: '-6px' }} aria-hidden="true">anotei aqui 😊</div>
+            <div className="postit absolute z-30" style={{ top: '-14px', left: '-6px' }} aria-hidden="true">{t('landing.heroV2.postitTop', 'anotei aqui 😊')}</div>
 
-            <div className="phone-frame relative z-20 w-[300px] max-w-full animate-fadeInUp" style={{ animationDelay: '0.3s' }} role="img" aria-label="Conversa de WhatsApp com a Dona Wilma">
+            <div className="phone-frame relative z-20 w-[300px] max-w-full animate-fadeInUp" style={{ animationDelay: '0.3s' }} role="img" aria-label={t('landing.heroV2.chatHeaderName', 'Dona Wilma')}>
               <div className="phone-screen">
                 <div className="wa-head">
                   <div className="wa-avatar">W</div>
                   <div>
-                    <div className="font-bold text-sm leading-tight">Dona Wilma</div>
-                    <div className="text-[11px] opacity-75">online · cuidando das suas contas</div>
+                    <div className="font-bold text-sm leading-tight">{t('landing.heroV2.chatHeaderName', 'Dona Wilma')}</div>
+                    <div className="text-[11px] opacity-75">{t('landing.heroV2.chatHeaderStatus', 'online · cuidando das suas contas')}</div>
                   </div>
                 </div>
                 <HeroChatAnimation />
@@ -207,7 +207,7 @@ const LandingPage = () => {
               </div>
             </div>
 
-            <div className="postit absolute z-30 hidden sm:block" style={{ bottom: '-10px', right: '-8px', transform: 'rotate(-3deg)' }} aria-hidden="true">✓ conta paga</div>
+            <div className="postit absolute z-30 hidden sm:block" style={{ bottom: '-10px', right: '-8px', transform: 'rotate(-3deg)' }} aria-hidden="true">{t('landing.heroV2.postitBottom', '✓ conta paga')}</div>
           </div>
         </div>
       </section>
@@ -215,10 +215,10 @@ const LandingPage = () => {
       {/* Trust strip */}
       <div className="strip">
         <div className="container mx-auto px-4 py-6 flex flex-wrap gap-x-10 gap-y-3 items-center justify-center text-center">
-          <div className="strip-item"><MessageCircle className="h-5 w-5" /> Tudo pelo WhatsApp</div>
-          <div className="strip-item"><Shield className="h-5 w-5" /> Seus dados protegidos</div>
-          <div className="strip-item"><span className="font-heading text-xl text-white">24h</span> ela nunca dorme no ponto</div>
-          <div className="strip-item"><Sparkles className="h-5 w-5" /> Sem baixar nada</div>
+          <div className="strip-item"><MessageCircle className="h-5 w-5" /> {t('landing.strip.whatsapp', 'Tudo pelo WhatsApp')}</div>
+          <div className="strip-item"><Shield className="h-5 w-5" /> {t('landing.strip.protected', 'Seus dados protegidos')}</div>
+          <div className="strip-item"><span className="font-heading text-xl text-white">{t('landing.strip.always24h', '24h')}</span> {t('landing.strip.always', 'ela nunca dorme no ponto')}</div>
+          <div className="strip-item"><Sparkles className="h-5 w-5" /> {t('landing.strip.noDownload', 'Sem baixar nada')}</div>
         </div>
       </div>
 
@@ -230,47 +230,33 @@ const LandingPage = () => {
         <div className="text-center mb-14 scroll-reveal">
           <div className="section-line mx-auto mb-6" />
           <h2 className="font-heading text-3xl md:text-4xl font-bold text-primary mb-3">
-            Como funciona
+            {t('landing.howItWorksV2.title', 'Como funciona')}
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Em 3 passos, sua vida financeira volta a caber na palma da mão.
+            {t('landing.howItWorksV2.subtitle', 'Em 3 passos, sua vida financeira volta a caber na palma da mão.')}
           </p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-10 md:gap-8 max-w-6xl mx-auto">
-          {[
-            {
-              step: "01",
-              icon: <Send className="h-6 w-6" strokeWidth={2} />,
-              title: "Manda no zap",
-              desc: "Escreve ou manda áudio: “gastei 47 no mercado”, “paga o aluguel dia 5”. Sem app novo, sem planilha.",
-              mockup: <ProductMockup variant="chat" tilt="l" postit="anotei ✍️" />,
-            },
-            {
-              step: "02",
-              icon: <Sparkles className="h-6 w-6" strokeWidth={2} />,
-              title: "Ela organiza",
-              desc: "A Dona Wilma entende, categoriza e guarda tudo com carinho — pra você não precisar pensar duas vezes.",
-              mockup: <ProductMockup variant="categorias" tilt="r" postit="tudo no lugar 💚" />,
-            },
-            {
-              step: "03",
-              icon: <BarChart3 className="h-6 w-6" strokeWidth={2} />,
-              title: "Você acompanha",
-              desc: "Abre o painel quando quiser e vê saldo, gastos por categoria e alertas — do jeito que faz sentido.",
-              mockup: <ProductMockup variant="dashboard" tilt="l" postit="tá tudo ok!" />,
-            },
-          ].map((s, i) => (
-            <div key={s.step} className={`scroll-reveal delay-${i + 1} space-y-6`}>
-              <div className="flex items-center gap-3">
-                <span className="font-heading text-3xl font-bold text-[hsl(var(--mel-deep))]">{s.step}</span>
-                <span className="icon-chip">{s.icon}</span>
+          {(() => {
+            const steps = t('landing.howItWorksV2.steps', { returnObjects: true }) as Array<{ title: string; desc: string; postit: string }>;
+            const meta = [
+              { step: "01", icon: <Send className="h-6 w-6" strokeWidth={2} />, variant: "chat" as const, tilt: "l" as const },
+              { step: "02", icon: <Sparkles className="h-6 w-6" strokeWidth={2} />, variant: "categorias" as const, tilt: "r" as const },
+              { step: "03", icon: <BarChart3 className="h-6 w-6" strokeWidth={2} />, variant: "dashboard" as const, tilt: "l" as const },
+            ];
+            return meta.map((s, i) => (
+              <div key={s.step} className={`scroll-reveal delay-${i + 1} space-y-6`}>
+                <div className="flex items-center gap-3">
+                  <span className="font-heading text-3xl font-bold text-[hsl(var(--mel-deep))]">{s.step}</span>
+                  <span className="icon-chip">{s.icon}</span>
+                </div>
+                <h3 className="font-heading text-2xl font-semibold text-primary">{steps[i]?.title}</h3>
+                <p className="text-base text-muted-foreground leading-relaxed">{steps[i]?.desc}</p>
+                <div className="pt-4"><ProductMockup variant={s.variant} tilt={s.tilt} postit={steps[i]?.postit} /></div>
               </div>
-              <h3 className="font-heading text-2xl font-semibold text-primary">{s.title}</h3>
-              <p className="text-base text-muted-foreground leading-relaxed">{s.desc}</p>
-              <div className="pt-4">{s.mockup}</div>
-            </div>
-          ))}
+            ));
+          })()}
         </div>
       </section>
 
