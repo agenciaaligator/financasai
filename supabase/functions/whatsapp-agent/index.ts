@@ -7238,6 +7238,22 @@ serve(async (req) => {
   try {
     const body = await req.json();
     const { phone_number, message, action } = body;
+
+    // Require shared secret for webhook-triggered actions (process_message, auth, delete, update).
+    // Frontend-callable OTP flows (send-validation-code, validate-code) are exempt because they
+    // don't expose other users' data.
+    const OPEN_ACTIONS = new Set(['send-validation-code', 'validate-code']);
+    if (!OPEN_ACTIONS.has(action)) {
+      const expected = Deno.env.get('WHATSAPP_AGENT_SECRET');
+      const provided = req.headers.get('x-webhook-secret');
+      if (!expected || provided !== expected) {
+        console.log('[WHATSAPP-AGENT] unauthorized call for action:', action);
+        return new Response(JSON.stringify({ error: 'unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
     
     // Idempotency check: skip if this message_id was already processed
     const msgId = message?.id;
