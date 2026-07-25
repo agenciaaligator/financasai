@@ -104,7 +104,7 @@ export function AdminPanel() {
         className="space-y-4"
       >
         {/* Tabs com scroll horizontal no mobile, grid no desktop */}
-        <div className="-mx-4 sm:mx-0 overflow-x-auto scrollbar-hide">
+        <div className="-mx-4 sm:mx-0 overflow-x-auto">
           <TabsList className="inline-flex lg:grid lg:w-full lg:grid-cols-5 gap-1 md:gap-2 px-4 sm:px-0 min-w-full lg:min-w-0">
             <TabsTrigger value="stats" className="flex items-center gap-2 whitespace-nowrap">
               <BarChart3 className="h-4 w-4 shrink-0" />
