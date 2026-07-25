@@ -1181,6 +1181,7 @@ const handler = async (req: Request): Promise<Response> => {
           headers: {
             'Authorization': `Bearer ${supabaseServiceKey}`,
             'Content-Type': 'application/json',
+            'x-webhook-secret': Deno.env.get('WHATSAPP_AGENT_SECRET') ?? '',
           },
           body: JSON.stringify({
             phone_number: from,
