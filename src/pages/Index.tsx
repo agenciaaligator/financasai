@@ -291,7 +291,7 @@ const LandingPage = () => {
               ];
               return meta.map((c, i) => ({ ...c, title: items[i]?.title, desc: items[i]?.desc }));
             })().map((c, i) => (
-              <div key={c.title} className={`scroll-reveal delay-${(i % 3) + 1} bg-[hsl(var(--creme-2))] border border-[hsl(var(--border))] rounded-3xl p-6 lift-sm`}>
+              <div key={i} className={`scroll-reveal delay-${(i % 3) + 1} bg-[hsl(var(--creme-2))] border border-[hsl(var(--border))] rounded-3xl p-6 lift-sm`}>
                 <span className={`icon-chip ${c.chip} mb-4`}>{c.icon}</span>
                 <h3 className="font-heading text-lg font-semibold text-primary mb-2">{c.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{c.desc}</p>
