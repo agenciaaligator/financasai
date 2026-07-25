@@ -513,7 +513,20 @@ const Index = () => {
       setCheckingFirstLogin(false);
       return;
     }
-    
+
+    // Retorno do OAuth do Google Agenda: nunca redirecionar para /boas-vindas.
+    // O usuário precisa ver o feedback (toast + aba Agenda) no dashboard.
+    const urlParams = new URLSearchParams(window.location.search);
+    if (
+      urlParams.get('connected') ||
+      urlParams.get('error') ||
+      urlParams.get('tab') === 'agenda'
+    ) {
+      hasCheckedRef.current = true;
+      setCheckingFirstLogin(false);
+      return;
+    }
+
     const onboardingCompleted = sessionStorage.getItem('onboarding_completed') === 'true';
     
     if (onboardingCompleted) {
