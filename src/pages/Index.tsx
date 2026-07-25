@@ -266,20 +266,24 @@ const LandingPage = () => {
           <div className="text-center mb-12 scroll-reveal">
             <div className="section-line mx-auto mb-6" />
             <h2 className="font-heading text-3xl md:text-4xl font-bold text-primary mb-3">
-              O que ela cuida por você
+              {t('landing.cares.title', 'O que ela cuida por você')}
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Um assistente inteiro, disfarçado de conversa no WhatsApp.
+              {t('landing.cares.subtitle', 'Um assistente inteiro, disfarçado de conversa no WhatsApp.')}
             </p>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl mx-auto">
-            {[
-              { icon: <Wallet className="h-6 w-6" strokeWidth={2} />, title: "Painel profissional", desc: "Saldo, receitas, despesas e gráficos claros — quando você quiser conferir.", chip: "" },
-              { icon: <FolderOpen className="h-6 w-6" strokeWidth={2} />, title: "Categorias personalizadas", desc: "Ela aprende do seu jeito e organiza cada gasto sem você precisar dizer.", chip: "mel" },
-              { icon: <Calendar className="h-6 w-6" strokeWidth={2} />, title: "Google Agenda", desc: "Compromissos e lembretes sincronizados — 1 dia e 1 hora antes.", chip: "" },
-              { icon: <Bell className="h-6 w-6" strokeWidth={2} />, title: "Alertas na medida", desc: "Ela avisa quando você tá se aproximando do limite. Sem susto.", chip: "mel" },
-            ].map((c, i) => (
+            {(() => {
+              const items = t('landing.cares.items', { returnObjects: true }) as Array<{ title: string; desc: string }>;
+              const meta = [
+                { icon: <Wallet className="h-6 w-6" strokeWidth={2} />, chip: "" },
+                { icon: <FolderOpen className="h-6 w-6" strokeWidth={2} />, chip: "mel" },
+                { icon: <Calendar className="h-6 w-6" strokeWidth={2} />, chip: "" },
+                { icon: <Bell className="h-6 w-6" strokeWidth={2} />, chip: "mel" },
+              ];
+              return meta.map((c, i) => ({ ...c, title: items[i]?.title, desc: items[i]?.desc }));
+            })().map((c, i) => (
               <div key={c.title} className={`scroll-reveal delay-${(i % 3) + 1} bg-[hsl(var(--creme-2))] border border-[hsl(var(--border))] rounded-3xl p-6 lift-sm`}>
                 <span className={`icon-chip ${c.chip} mb-4`}>{c.icon}</span>
                 <h3 className="font-heading text-lg font-semibold text-primary mb-2">{c.title}</h3>
@@ -406,7 +410,7 @@ const LandingPage = () => {
             <div>
               <h3 className="font-display font-semibold text-secondary mb-5">{t('landing.footer.links')}</h3>
               <ul className="space-y-3 text-sm text-white/60">
-                <li><a href="#home" className="hover:text-white hover:translate-x-1 inline-block transition-all">Home</a></li>
+                <li><a href="#home" className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.nav.home', 'Home')}</a></li>
                 <li><a href="#como-funciona" className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.nav.howItWorks')}</a></li>
                 <li><a href="#planos" className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.nav.plans')}</a></li>
                 <li><button onClick={() => navigate("/termos")} className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.footer.terms')}</button></li>
