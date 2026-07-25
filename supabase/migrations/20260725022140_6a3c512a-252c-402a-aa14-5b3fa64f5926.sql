@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS commitments_user_google_event_uniq ON public.commitments (user_id, google_event_id) WHERE google_event_id IS NOT NULL;
