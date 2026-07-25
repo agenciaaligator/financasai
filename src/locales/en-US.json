@@ -70,7 +70,8 @@
     "goals": "Goals",
     "goalsDesc": "Monthly goals",
     "whatsapp": "WhatsApp",
-    "whatsappDesc": "Manage via WhatsApp"
+    "whatsappDesc": "Manage via WhatsApp",
+    "tagline": "I'm watching your accounts 💚"
   },
   "chart": {
     "incomeVsExpenses": "Income vs Expenses",
@@ -145,7 +146,9 @@
     "email": "Email",
     "password": "Password",
     "forgotPassword": "Forgot Password",
-    "resetPassword": "Reset Password"
+    "resetPassword": "Reset Password",
+    "welcomeBack": "welcome back, dear",
+    "tagline": "Your personal finance & schedule assistant"
   },
   "common": {
     "save": "Save",
@@ -641,7 +644,9 @@
     "nav": {
       "howItWorks": "How it works",
       "plans": "Plans",
-      "contact": "Contact"
+      "contact": "Contact",
+      "home": "Home",
+      "faq": "FAQ"
     },
     "hero": {
       "title": "Have a personal assistant working",
@@ -891,6 +896,105 @@
         "duplicate": "This message was already sent recently.",
         "validation": "Please check the form and try again."
       }
+    },
+    "heroV2": {
+      "eyebrow": "Your finances over WhatsApp",
+      "title1": "Text it,",
+      "title2": "and Dona Wilma",
+      "title3": "writes it down for you.",
+      "subtitle": "No new app. No spreadsheet. You talk and she takes care of it — like your mom watching over your bills.",
+      "primaryCta": "Talk to Dona Wilma",
+      "secondaryCta": "See how it works",
+      "trust": "Free trial · works on your everyday WhatsApp",
+      "chatHeaderName": "Dona Wilma",
+      "chatHeaderStatus": "online · minding your accounts",
+      "postitTop": "noted here 😊",
+      "postitBottom": "✓ bill paid"
+    },
+    "strip": {
+      "whatsapp": "All on WhatsApp",
+      "protected": "Your data protected",
+      "always": "she never sleeps on the job",
+      "noDownload": "Nothing to download",
+      "always24h": "24h"
+    },
+    "howItWorksV2": {
+      "title": "How it works",
+      "subtitle": "In 3 steps, your financial life fits in the palm of your hand again.",
+      "steps": [
+        {
+          "title": "Text her",
+          "desc": "Type or record audio: \"spent 47 at the store\", \"pay rent on the 5th\". No new app, no spreadsheet.",
+          "postit": "noted ✍️"
+        },
+        {
+          "title": "She organizes",
+          "desc": "Dona Wilma understands, categorizes and saves everything carefully — so you never think twice.",
+          "postit": "all sorted 💚"
+        },
+        {
+          "title": "You keep track",
+          "desc": "Open the dashboard whenever you want and see balance, spending by category and alerts — the way it makes sense.",
+          "postit": "all good!"
+        }
+      ]
+    },
+    "cares": {
+      "title": "What she handles for you",
+      "subtitle": "A full assistant disguised as a WhatsApp chat.",
+      "items": [
+        {
+          "title": "Professional dashboard",
+          "desc": "Balance, income, expenses and clear charts — whenever you want to check."
+        },
+        {
+          "title": "Custom categories",
+          "desc": "She learns your way and organizes every expense without you having to say it."
+        },
+        {
+          "title": "Google Calendar",
+          "desc": "Appointments and reminders in sync — 1 day and 1 hour before."
+        },
+        {
+          "title": "Right-size alerts",
+          "desc": "She warns you when you're getting close to the limit. No surprises."
+        }
+      ]
+    },
+    "mockups": {
+      "chat": {
+        "me1": "Spent 47 at the store just now",
+        "her1": "Got it! <b>$47.00</b> at Market 🛒",
+        "me2": "Remind me of rent on the 5th",
+        "her2": "I've got you, dear ⏰"
+      },
+      "dashboard": {
+        "balance": "Monthly balance"
+      },
+      "categories": {
+        "title": "Categories this month",
+        "market": "Market",
+        "home": "Home",
+        "food": "Food",
+        "transport": "Transport"
+      },
+      "weekdays": [
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri",
+        "Sat",
+        "Sun"
+      ]
+    },
+    "heroChat": {
+      "b0": "Just spent 47 at the store",
+      "b1": "Got it! <b>$47.00</b> at Market 🛒. This month you're already at $320 in that category.",
+      "b2": "Wow, that's a lot",
+      "b3": "It is, dear. Want me to warn you when it passes $400? 💚",
+      "b4": "Sure! And remind me of rent on the 5th",
+      "b5": "I've got you. On the 5th I'll remind you about <b>rent</b> nice and early ⏰"
     }
   },
   "legal": {
