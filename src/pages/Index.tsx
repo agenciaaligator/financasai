@@ -28,7 +28,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 
 const LandingPage = () => {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -63,9 +63,16 @@ const LandingPage = () => {
     );
 
     const elements = document.querySelectorAll('.scroll-reveal');
-    elements.forEach((el) => observer.observe(el));
+    elements.forEach((el) => {
+      const rect = el.getBoundingClientRect();
+      if (rect.top < window.innerHeight && rect.bottom > 0) {
+        el.classList.add('revealed');
+      } else {
+        observer.observe(el);
+      }
+    });
     return () => observer.disconnect();
-  }, []);
+  }, [i18n.language]);
 
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -284,7 +291,7 @@ const LandingPage = () => {
               ];
               return meta.map((c, i) => ({ ...c, title: items[i]?.title, desc: items[i]?.desc }));
             })().map((c, i) => (
-              <div key={c.title} className={`scroll-reveal delay-${(i % 3) + 1} bg-[hsl(var(--creme-2))] border border-[hsl(var(--border))] rounded-3xl p-6 lift-sm`}>
+              <div key={i} className={`scroll-reveal delay-${(i % 3) + 1} bg-[hsl(var(--creme-2))] border border-[hsl(var(--border))] rounded-3xl p-6 lift-sm`}>
                 <span className={`icon-chip ${c.chip} mb-4`}>{c.icon}</span>
                 <h3 className="font-heading text-lg font-semibold text-primary mb-2">{c.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{c.desc}</p>
