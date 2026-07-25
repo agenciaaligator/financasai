@@ -20,7 +20,9 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const cutoff = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    // Renova qualquer watch que expira nas próximas 72h.
+    // Watches duram 7 dias → sobram 4 tentativas antes de expirar de fato.
+    const cutoff = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
 
     // Conexões sem webhook OU com webhook prestes a expirar
     const { data: conns } = await supabase
