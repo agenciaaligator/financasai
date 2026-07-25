@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UsersManagement } from "./UsersManagement";
@@ -12,25 +13,42 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { buildSiteUrl } from "@/lib/siteUrl";
 
-// Estado local em vez de ?tab= para nao conflitar com o ?tab= do FinancialDashboard
-// (que sincroniza a URL com o tab da sidebar e nos jogava de volta para o dashboard).
+// Sub-aba do admin persistida via ?sub= (parametro proprio, para NAO conflitar
+// com o ?tab= do FinancialDashboard/sidebar). Fallback para sessionStorage.
 const STORAGE_KEY = "admin_active_tab";
+const SUB_PARAM = "sub";
 const VALID_TABS = ["stats", "users", "subscriptions", "whatsapp-usage", "messages"] as const;
 type AdminTab = typeof VALID_TABS[number];
 
+const isValidTab = (v: string | null | undefined): v is AdminTab =>
+  !!v && (VALID_TABS as readonly string[]).includes(v);
+
 export function AdminPanel() {
   const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<AdminTab>(() => {
+    const fromUrl = searchParams.get(SUB_PARAM);
+    if (isValidTab(fromUrl)) return fromUrl;
     const saved = sessionStorage.getItem(STORAGE_KEY);
-    return (VALID_TABS as readonly string[]).includes(saved || "") ? (saved as AdminTab) : "stats";
+    return isValidTab(saved) ? saved : "stats";
   });
   const [newMessagesCount, setNewMessagesCount] = useState(0);
 
-  const handleTabChange = (tab: string) => {
-    if ((VALID_TABS as readonly string[]).includes(tab)) {
-      setActiveTab(tab as AdminTab);
-      sessionStorage.setItem(STORAGE_KEY, tab);
+  // Sincroniza estado <- URL (permite F5 e navegacao direta com ?sub=xxx).
+  useEffect(() => {
+    const fromUrl = searchParams.get(SUB_PARAM);
+    if (isValidTab(fromUrl) && fromUrl !== activeTab) {
+      setActiveTab(fromUrl);
     }
+  }, [searchParams, activeTab]);
+
+  const handleTabChange = (tab: string) => {
+    if (!isValidTab(tab)) return;
+    setActiveTab(tab);
+    sessionStorage.setItem(STORAGE_KEY, tab);
+    const next = new URLSearchParams(searchParams);
+    next.set(SUB_PARAM, tab);
+    setSearchParams(next, { replace: true });
   };
 
   useEffect(() => {
