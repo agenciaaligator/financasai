@@ -151,6 +151,9 @@ export function FinancialDashboard() {
 
   const handleTabChange = (tab: string) => {
     setCurrentTab(tab);
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", tab);
+    setSearchParams(next, { replace: true });
     if (isMobile) {
       setMobileMenuOpen(false);
     }
@@ -248,10 +251,10 @@ export function FinancialDashboard() {
       <div className="min-h-screen flex w-full bg-gradient-to-br from-background via-muted/30 to-secondary/20">
         <AppSidebar 
           currentTab={currentTab}
-          onTabChange={setCurrentTab}
+          onTabChange={handleTabChange}
           showForm={showForm}
           onToggleForm={() => {
-            if (!showForm) setCurrentTab('dashboard');
+            if (!showForm) handleTabChange('dashboard');
             setShowForm(!showForm);
           }}
           isOwner={isOwner}
@@ -305,7 +308,7 @@ export function FinancialDashboard() {
               isNegative={isNegative}
               showTransactionForm={showForm}
               onToggleTransactionForm={() => setShowForm(!showForm)}
-              onTabChange={setCurrentTab}
+              onTabChange={handleTabChange}
             />
           </div>
         </main>

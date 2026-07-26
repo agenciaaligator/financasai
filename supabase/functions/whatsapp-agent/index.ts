@@ -1211,6 +1211,7 @@ IMPORTANTE:
 - "padaria", "lanche", "restaurante" devem ir para "Alimentação"
 - "uber", "ônibus", "gasolina" devem ir para "Transporte"
 - "conta de luz", "água", "aluguel" devem ir para "Moradia"
+- "drogaria", "farmácia", "drogasil", "droga raia", "pague menos", "remédio", "medicamento", "injeção", "vacina", "consulta", "médico", "dentista", "exame", "hospital", "clínica" devem ir para "Saúde"
 - Se o usuário tem padrões pessoais, PRIORIZE esses padrões
 - Se nenhuma categoria se adequar bem, retorne "Outros" se existir, ou null
 
@@ -1368,7 +1369,12 @@ class ReceiptOCR {
 IMPORTANTE:
 - Para "amount", retorne APENAS o número decimal (use ponto como separador)
 - Para "merchant", retorne o nome do estabelecimento ou concessionária
-- Para "category", escolha UMA categoria da lista acima
+- Para "category", escolha UMA categoria da lista acima. REGRAS OBRIGATÓRIAS:
+  * Se o estabelecimento for drogaria, farmácia, drogasil, droga raia, pague menos, pacheco, ultrafarma, ou vender remédios/medicamentos/injeção/vacina → SEMPRE "Saúde" (mesmo que também venda outros itens)
+  * Se for hospital, clínica, laboratório, consultório médico/dentista/exame → "Saúde"
+  * Supermercado, mercado, padaria, restaurante, lanchonete, açougue, hortifruti → "Alimentação"
+  * Posto de gasolina, uber, 99, estacionamento, pedágio → "Transporte"
+  * Conta de luz/água/gás/internet, aluguel, condomínio → "Moradia"
 - Para "date", use formato DD/MM/AAAA (data da compra ou emissão)
 - Para "document_type", use "receipt" para cupons/comprovantes ou "bill" para contas/boletos/faturas
 - Para "due_date", APENAS se for uma conta (bill): extraia a data de VENCIMENTO no formato DD/MM/AAAA. Procure por campos como "Vencimento", "Data de vencimento", "Vence em". Se não encontrar, deixe vazio.
@@ -7232,6 +7238,22 @@ serve(async (req) => {
   try {
     const body = await req.json();
     const { phone_number, message, action } = body;
+
+    // Require shared secret for webhook-triggered actions (process_message, auth, delete, update).
+    // Frontend-callable OTP flows (send-validation-code, validate-code) are exempt because they
+    // don't expose other users' data.
+    const OPEN_ACTIONS = new Set(['send-validation-code', 'validate-code']);
+    if (!OPEN_ACTIONS.has(action)) {
+      const expected = Deno.env.get('WHATSAPP_AGENT_SECRET');
+      const provided = req.headers.get('x-webhook-secret');
+      if (!expected || provided !== expected) {
+        console.log('[WHATSAPP-AGENT] unauthorized call for action:', action);
+        return new Response(JSON.stringify({ error: 'unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
     
     // Idempotency check: skip if this message_id was already processed
     const msgId = message?.id;

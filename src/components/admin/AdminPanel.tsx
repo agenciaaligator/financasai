@@ -13,11 +13,43 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { buildSiteUrl } from "@/lib/siteUrl";
 
+// Sub-aba do admin persistida via ?sub= (parametro proprio, para NAO conflitar
+// com o ?tab= do FinancialDashboard/sidebar). Fallback para sessionStorage.
+const STORAGE_KEY = "admin_active_tab";
+const SUB_PARAM = "sub";
+const VALID_TABS = ["stats", "users", "subscriptions", "whatsapp-usage", "messages"] as const;
+type AdminTab = typeof VALID_TABS[number];
+
+const isValidTab = (v: string | null | undefined): v is AdminTab =>
+  !!v && (VALID_TABS as readonly string[]).includes(v);
+
 export function AdminPanel() {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'stats';
+  const [activeTab, setActiveTab] = useState<AdminTab>(() => {
+    const fromUrl = searchParams.get(SUB_PARAM);
+    if (isValidTab(fromUrl)) return fromUrl;
+    const saved = sessionStorage.getItem(STORAGE_KEY);
+    return isValidTab(saved) ? saved : "stats";
+  });
   const [newMessagesCount, setNewMessagesCount] = useState(0);
+
+  // Sincroniza estado <- URL (permite F5 e navegacao direta com ?sub=xxx).
+  useEffect(() => {
+    const fromUrl = searchParams.get(SUB_PARAM);
+    if (isValidTab(fromUrl) && fromUrl !== activeTab) {
+      setActiveTab(fromUrl);
+    }
+  }, [searchParams, activeTab]);
+
+  const handleTabChange = (tab: string) => {
+    if (!isValidTab(tab)) return;
+    setActiveTab(tab);
+    sessionStorage.setItem(STORAGE_KEY, tab);
+    const next = new URLSearchParams(searchParams);
+    next.set(SUB_PARAM, tab);
+    setSearchParams(next, { replace: true });
+  };
 
   useEffect(() => {
     document.title = `${t('admin.title')} | Dona Wilma`;
@@ -67,67 +99,87 @@ export function AdminPanel() {
   }, [activeTab]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-gradient-primary rounded-xl">
-            <Shield className="h-6 w-6 text-white" />
+    <div className="space-y-4 md:space-y-6">
+      {/* Header responsivo */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 md:mb-6">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="p-2 md:p-3 bg-gradient-primary rounded-xl shrink-0">
+            <Shield className="h-5 w-5 md:h-6 md:w-6 text-white" />
           </div>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">{t('admin.title')}</h1>
-            <p className="text-muted-foreground">{t('admin.subtitle')}</p>
+          <div className="min-w-0">
+            <h1 className="text-xl md:text-3xl font-bold text-foreground truncate">{t('admin.title')}</h1>
+            <p className="text-xs md:text-sm text-muted-foreground truncate">{t('admin.subtitle')}</p>
           </div>
         </div>
-        <LanguageFlagSelector />
+        <div className="self-start sm:self-auto">
+          <LanguageFlagSelector />
+        </div>
       </div>
 
-      <Tabs 
-        value={activeTab} 
-        onValueChange={(tab) => setSearchParams({ tab }, { replace: true })} 
+      <Tabs
+        value={activeTab}
+        onValueChange={handleTabChange}
         className="space-y-4"
       >
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 gap-2">
-          <TabsTrigger value="stats" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            <span className="hidden sm:inline">{t('admin.stats')}</span>
-          </TabsTrigger>
-          <TabsTrigger value="users" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            <span className="hidden sm:inline">{t('admin.users')}</span>
-          </TabsTrigger>
-          <TabsTrigger value="subscriptions" className="flex items-center gap-2">
-            <CreditCard className="h-4 w-4" />
-            <span className="hidden sm:inline">{t('admin.subscriptions')}</span>
-          </TabsTrigger>
-          <TabsTrigger value="whatsapp-usage" className="flex items-center gap-2">
-            <MessageCircle className="h-4 w-4" />
-            <span className="hidden sm:inline">WhatsApp</span>
-          </TabsTrigger>
-          <TabsTrigger value="messages" className="flex items-center gap-2 relative">
-            <Mail className="h-4 w-4" />
-            <span className="hidden sm:inline">{t('admin.messages.tab')}</span>
-            {newMessagesCount > 0 && (
-              <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
-                {newMessagesCount > 99 ? "99+" : newMessagesCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
+        {/* Tabs com scroll horizontal no mobile, grid no desktop */}
+        <div className="-mx-4 sm:mx-0 overflow-x-auto">
+          <TabsList className="inline-flex lg:grid lg:w-full lg:grid-cols-5 gap-1 md:gap-2 px-4 sm:px-0 min-w-full lg:min-w-0">
+            <TabsTrigger value="stats" className="flex items-center gap-2 whitespace-nowrap">
+              <BarChart3 className="h-4 w-4 shrink-0" />
+              <span className="text-xs sm:text-sm">{t('admin.stats')}</span>
+            </TabsTrigger>
+            <TabsTrigger value="users" className="flex items-center gap-2 whitespace-nowrap">
+              <Users className="h-4 w-4 shrink-0" />
+              <span className="text-xs sm:text-sm">{t('admin.users')}</span>
+            </TabsTrigger>
+            <TabsTrigger value="subscriptions" className="flex items-center gap-2 whitespace-nowrap">
+              <CreditCard className="h-4 w-4 shrink-0" />
+              <span className="text-xs sm:text-sm">{t('admin.subscriptions')}</span>
+            </TabsTrigger>
+            <TabsTrigger value="whatsapp-usage" className="flex items-center gap-2 whitespace-nowrap">
+              <MessageCircle className="h-4 w-4 shrink-0" />
+              <span className="text-xs sm:text-sm">WhatsApp</span>
+            </TabsTrigger>
+            <TabsTrigger value="messages" className="flex items-center gap-2 whitespace-nowrap relative">
+              <Mail className="h-4 w-4 shrink-0" />
+              <span className="text-xs sm:text-sm">{t('admin.messages.tab')}</span>
+              {newMessagesCount > 0 && (
+                <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1.5 text-[10px]">
+                  {newMessagesCount > 99 ? "99+" : newMessagesCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="stats" className="space-y-4">
-          <AdminStats />
+          <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+            <AdminStats />
+          </div>
         </TabsContent>
 
         <TabsContent value="users" className="space-y-4">
-          <UsersManagement />
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <div className="min-w-[720px] px-4 sm:px-0 sm:min-w-0">
+              <UsersManagement />
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="subscriptions" className="space-y-4">
-          <SubscriptionsManagement />
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <div className="min-w-[720px] px-4 sm:px-0 sm:min-w-0">
+              <SubscriptionsManagement />
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="whatsapp-usage" className="space-y-4">
-          <WhatsAppUsageManagement />
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <div className="min-w-[720px] px-4 sm:px-0 sm:min-w-0">
+              <WhatsAppUsageManagement />
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="messages" className="space-y-4">

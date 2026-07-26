@@ -1,21 +1,25 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
-type Bubble = { side: "me" | "her"; text: React.ReactNode };
-
-const SCRIPT: Bubble[] = [
-  { side: "me", text: <>Gastei 47 reais no mercado agora</> },
-  { side: "her", text: <>Anotei, viu? <b>R$ 47,00</b> em Mercado 🛒. Esse mês você já tá em R$ 320 nessa categoria.</> },
-  { side: "me", text: <>Nossa, tá alto</> },
-  { side: "her", text: <>Tá sim, meu bem. Quer que eu te avise quando passar de R$ 400? 💚</> },
-  { side: "me", text: <>Pode ser! E me lembra do aluguel dia 5</> },
-  { side: "her", text: <>Deixa comigo. Dia 5 eu te aviso do <b>aluguel</b> bem cedinho ⏰</> },
-];
+type Bubble = { side: "me" | "her"; html: string };
 
 const TYPING_MS = 900;
 const READ_MS = 700;
 const PAUSE_END_MS = 4000;
 
 export function HeroChatAnimation() {
+  const { t, i18n } = useTranslation();
+
+  const SCRIPT: Bubble[] = useMemo(() => [
+    { side: "me",  html: t("landing.heroChat.b0") },
+    { side: "her", html: t("landing.heroChat.b1") },
+    { side: "me",  html: t("landing.heroChat.b2") },
+    { side: "her", html: t("landing.heroChat.b3") },
+    { side: "me",  html: t("landing.heroChat.b4") },
+    { side: "her", html: t("landing.heroChat.b5") },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [i18n.language, t]);
+
   const [visible, setVisible] = useState<number>(SCRIPT.length);
   const [typing, setTyping] = useState<"me" | "her" | null>(null);
 
@@ -28,9 +32,13 @@ export function HeroChatAnimation() {
     }
 
     let cancelled = false;
-    let timeouts: number[] = [];
+    const timeouts: number[] = [];
 
     const run = async () => {
+      // Começa mostrando a conversa completa para nunca aparecer vazio
+      setVisible(SCRIPT.length);
+      setTyping(null);
+      await wait(PAUSE_END_MS, timeouts);
       while (!cancelled) {
         setVisible(0);
         setTyping(null);
@@ -51,9 +59,9 @@ export function HeroChatAnimation() {
     run();
     return () => {
       cancelled = true;
-      timeouts.forEach((t) => window.clearTimeout(t));
+      timeouts.forEach((tid) => window.clearTimeout(tid));
     };
-  }, []);
+  }, [SCRIPT]);
 
   return (
     <div className="wa-body">
@@ -62,10 +70,8 @@ export function HeroChatAnimation() {
           key={i}
           className={`wa-bubble ${b.side === "me" ? "wa-bubble-me" : "wa-bubble-her"}`}
           style={{ animation: "fadeInUp 300ms ease-out both" }}
-        >
-          {b.text}
-          <span className="wa-time">14:0{i}</span>
-        </div>
+          dangerouslySetInnerHTML={{ __html: `${b.html}<span class="wa-time">14:0${i}</span>` }}
+        />
       ))}
       {typing && (
         <div
@@ -74,7 +80,7 @@ export function HeroChatAnimation() {
             alignSelf: typing === "me" ? "flex-end" : "flex-start",
             background: typing === "me" ? "hsl(var(--mel-soft))" : "#fff",
           }}
-          aria-label="digitando"
+          aria-label="typing"
         >
           <span /><span /><span />
         </div>

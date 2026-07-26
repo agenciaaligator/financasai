@@ -106,7 +106,7 @@ export function AppSidebar({
           </div>
 
           <div className="mt-6 rounded-2xl bg-white/5 border border-white/10 p-4">
-            <span className="hand block text-lg leading-tight" style={{ color: 'hsl(var(--mel-soft))' }}>tô de olho nas suas contas 💚</span>
+            <span className="hand block text-lg leading-tight" style={{ color: 'hsl(var(--mel-soft))' }}>{t('sidebar.tagline', 'tô de olho nas suas contas 💚')}</span>
           </div>
         </div>
       </div>
@@ -164,7 +164,7 @@ export function AppSidebar({
 
             {open && (
               <div className="mt-6 mx-1 rounded-2xl bg-white/5 border border-white/10 p-3">
-                <span className="hand block text-base leading-tight" style={{ color: 'hsl(var(--mel-soft))' }}>tô de olho nas suas contas 💚</span>
+                <span className="hand block text-base leading-tight" style={{ color: 'hsl(var(--mel-soft))' }}>{t('sidebar.tagline', 'tô de olho nas suas contas 💚')}</span>
               </div>
             )}
           </SidebarGroupContent>

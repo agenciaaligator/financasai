@@ -68,7 +68,8 @@
     "newTransaction": "Nueva Transacción",
     "subtitle": "Tu asesora personal",
     "goals": "Metas",
-    "goalsDesc": "Metas mensuales"
+    "goalsDesc": "Metas mensuales",
+    "tagline": "estoy pendiente de tus cuentas 💚"
   },
   "chart": {
     "incomeVsExpenses": "Ingresos vs Gastos",
@@ -143,7 +144,9 @@
     "email": "Correo",
     "password": "Contraseña",
     "forgotPassword": "Olvidé mi contraseña",
-    "resetPassword": "Restablecer contraseña"
+    "resetPassword": "Restablecer contraseña",
+    "welcomeBack": "bienvenido de nuevo, querido",
+    "tagline": "Tu asistente personal de finanzas y compromisos"
   },
   "common": {
     "save": "Guardar",
@@ -634,7 +637,9 @@
     "nav": {
       "howItWorks": "Cómo funciona",
       "plans": "Planes",
-      "contact": "Contacto"
+      "contact": "Contacto",
+      "home": "Inicio",
+      "faq": "FAQ"
     },
     "hero": {
       "title": "Ten una asesora personal trabajando",
@@ -884,6 +889,120 @@
         "duplicate": "Este mensaje ya fue enviado recientemente.",
         "validation": "Revisa los campos e inténtalo de nuevo."
       }
+    },
+    "heroV2": {
+      "eyebrow": "Tus finanzas por WhatsApp",
+      "title1": "Mándalo por WhatsApp",
+      "title2": "que Dona Wilma",
+      "title3": "lo apunta por ti.",
+      "subtitle": "Sin app nueva. Sin hojas de cálculo. Tú hablas y ella se encarga — como tu madre cuidando de tus cuentas.",
+      "primaryCta": "Hablar con Dona Wilma",
+      "secondaryCta": "Ver cómo funciona",
+      "trust": "Prueba gratis · funciona en tu WhatsApp de siempre",
+      "chatHeaderName": "Dona Wilma",
+      "chatHeaderStatus": "en línea · cuidando de tus cuentas",
+      "postitTop": "apuntado aquí 😊",
+      "postitBottom": "✓ cuenta pagada"
+    },
+    "strip": {
+      "whatsapp": "Todo por WhatsApp",
+      "protected": "Tus datos protegidos",
+      "always": "nunca se duerme",
+      "noDownload": "Sin descargar nada",
+      "always24h": "24h"
+    },
+    "howItWorksV2": {
+      "title": "Cómo funciona",
+      "subtitle": "En 3 pasos, tu vida financiera vuelve a caber en la palma de la mano.",
+      "steps": [
+        {
+          "title": "Mándalo por WhatsApp",
+          "desc": "Escribe o envía audio: \"gasté 47 en el mercado\", \"paga el alquiler el día 5\". Sin app nueva, sin hoja.",
+          "postit": "apuntado ✍️"
+        },
+        {
+          "title": "Ella lo organiza",
+          "desc": "Dona Wilma entiende, categoriza y guarda todo con cariño — para que no lo pienses dos veces.",
+          "postit": "todo en orden 💚"
+        },
+        {
+          "title": "Tú lo sigues",
+          "desc": "Abre el panel cuando quieras y ve saldo, gastos por categoría y alertas — como te resulta útil.",
+          "postit": "¡todo bien!"
+        }
+      ]
+    },
+    "cares": {
+      "title": "De qué se ocupa por ti",
+      "subtitle": "Un asistente completo disfrazado de conversación de WhatsApp.",
+      "items": [
+        {
+          "title": "Panel profesional",
+          "desc": "Saldo, ingresos, gastos y gráficos claros — cuando quieras revisarlo."
+        },
+        {
+          "title": "Categorías personalizadas",
+          "desc": "Aprende a tu manera y organiza cada gasto sin que tengas que decirlo."
+        },
+        {
+          "title": "Google Calendar",
+          "desc": "Citas y recordatorios sincronizados — 1 día y 1 hora antes."
+        },
+        {
+          "title": "Alertas justas",
+          "desc": "Te avisa cuando te acercas al límite. Sin sustos."
+        }
+      ]
+    },
+    "mockups": {
+      "chat": {
+        "me1": "Gasté 47 en el mercado ahora",
+        "her1": "¡Apuntado! <b>€ 47,00</b> en Mercado 🛒",
+        "me2": "Recuérdame el alquiler el día 5",
+        "her2": "Déjalo conmigo ⏰"
+      },
+      "dashboard": {
+        "balance": "Saldo del mes"
+      },
+      "categories": {
+        "title": "Categorías de este mes",
+        "market": "Mercado",
+        "home": "Hogar",
+        "food": "Alimentación",
+        "transport": "Transporte"
+      },
+      "weekdays": [
+        "Lun",
+        "Mar",
+        "Mié",
+        "Jue",
+        "Vie",
+        "Sáb",
+        "Dom"
+      ]
+    },
+    "heroChat": {
+      "b0": "Gasté 47 en el mercado ahora",
+      "b1": "¡Apuntado! <b>€ 47,00</b> en Mercado 🛒. Este mes ya llevas € 320 en esa categoría.",
+      "b2": "Uy, está alto",
+      "b3": "Sí, cariño. ¿Quieres que te avise cuando pase de € 400? 💚",
+      "b4": "¡Vale! Y recuérdame el alquiler el día 5",
+      "b5": "Déjalo conmigo. El día 5 te aviso del <b>alquiler</b> bien tempranito ⏰"
+    },
+    "homage": {
+      "eyebrow": "quién fue Doña Wilma",
+      "title": "Detrás del nombre, una historia real",
+      "handwritten": "con cariño ❤",
+      "portraitAlt": "Doña Wilma con su hijo Alexandre, 1997",
+      "portraitCaption": "Doña Wilma · 1997",
+      "body": "Doña Wilma fue mi madre — la mujer que llevaba las cuentas de la casa en una libretita, nunca dejaba faltar nada y aún así conseguía ahorrar un poquito cada mes.\n\nEste producto es un homenaje a ella y a la forma en que cuidaba de todos. Cada mensaje que Doña Wilma responde en tu WhatsApp lleva un pedacito de ese cariño.",
+      "signature": "— Alexandre, hijo de Doña Wilma"
+    },
+    "video": {
+      "title": "Mira a Doña Wilma en acción",
+      "subtitle": "Un recorrido rápido por lo que hace por ti todos los días.",
+      "comingSoon": "ven a ver cómo cuido de ti 😊",
+      "ariaComingSoon": "Vídeo próximamente"
     }
   },
   "legal": {

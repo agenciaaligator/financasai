@@ -53,6 +53,14 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Require shared secret — only server-side callers (submit-contact-message, etc.) may invoke this.
+    const expectedSecret = Deno.env.get("APP_EMAIL_SECRET");
+    const providedSecret = req.headers.get("x-webhook-secret");
+    if (!expectedSecret || providedSecret !== expectedSecret) {
+      console.log("[send-app-email] unauthorized call");
+      return jsonResponse({ error: "unauthorized" }, 401);
+    }
+
     const raw = await req.json().catch(() => null);
     const parsed = BodySchema.safeParse(raw);
     if (!parsed.success) {

@@ -15,12 +15,23 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
+    const expected = Deno.env.get("RENEW_WATCHES_SECRET");
+    const provided = req.headers.get("x-webhook-secret");
+    if (!expected || provided !== expected) {
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const cutoff = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    // Renova qualquer watch que expira nas próximas 72h.
+    // Watches duram 7 dias → sobram 4 tentativas antes de expirar de fato.
+    const cutoff = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
 
     // Conexões sem webhook OU com webhook prestes a expirar
     const { data: conns } = await supabase

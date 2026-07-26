@@ -130,7 +130,7 @@ export function AgendaPage() {
                 </div>
               </div>
               <div className="flex gap-2 flex-wrap">
-                <Button onClick={sync} disabled={syncing} variant="outline" size="sm">
+                <Button onClick={async () => { await sync(); await refresh(); }} disabled={syncing} variant="outline" size="sm">
                   <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
                   Sincronizar agora
                 </Button>

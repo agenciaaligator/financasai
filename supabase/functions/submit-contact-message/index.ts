@@ -161,8 +161,10 @@ Deno.serve(async (req) => {
       const userHtml = buildUserConfirmationEmail({ name, subject });
 
       // Envia em paralelo: notificação interna + confirmação ao usuário
+      const emailSecret = Deno.env.get("APP_EMAIL_SECRET") ?? "";
       const sendPromises = [
         supabase.functions.invoke("send-app-email", {
+          headers: { "x-webhook-secret": emailSecret },
           body: {
             to: CONTACT_INBOX,
             subject: `[Contato] ${subject}`,
@@ -171,6 +173,7 @@ Deno.serve(async (req) => {
           },
         }),
         supabase.functions.invoke("send-app-email", {
+          headers: { "x-webhook-secret": emailSecret },
           body: {
             to: email,
             subject: "Recebemos sua mensagem — Dona Wilma",
