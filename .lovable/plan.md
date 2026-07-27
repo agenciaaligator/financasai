@@ -1,36 +1,42 @@
-## Diagnóstico
+## Objetivo
 
-O erro na tela é do próprio Supabase: **"Configuring leaked password protection via HaveIBeenPwned.org is available on Pro Plans and up."**
+Fechar os 3 avisos (warn) restantes do scanner do Supabase, sem quebrar nada em produção.
 
-Ou seja, o toggle **"Prevent use of leaked passwords"** só pode ser ativado se o seu projeto Supabase estiver no **plano Pro** (ou superior). No plano Free ele fica bloqueado — não tem como habilitar por código, migração, ou qualquer ajuste no nosso app. É uma trava comercial do Supabase.
+Os avisos são:
+1. `SUPA_function_search_path_mutable` — função(ões) sem `search_path` fixo.
+2. `SUPA_anon_security_definer_function_executable` — função `SECURITY DEFINER` executável por `anon`.
+3. `SUPA_authenticated_security_definer_function_executable` — função `SECURITY DEFINER` executável por `authenticated`.
 
-Isso não é um bug do sistema Dona Wilma, e não afeta nenhuma funcionalidade do app. É apenas o último finding de segurança daquela rodada que não conseguimos fechar sem upgrade do Supabase.
+## Como eu vou fazer (você só aprova)
 
-## Opções
+Você não precisa mexer em nada no dashboard do Supabase desta vez. Todo o ajuste é via migração SQL, que eu preparo e você aprova no botão padrão.
 
-Você tem duas saídas — escolha qual prefere:
+### Passo 1 — Descobrir exatamente quais funções o scanner está apontando
+Rodar o `security--get_scan_results` pra ler os 3 findings e ver o nome da função em cada um (o scanner entrega o nome no payload).
 
-### Opção A — Fazer upgrade do projeto Supabase para Pro
-- Custo: ~US$ 25/mês direto com o Supabase (cobrado por eles, fora do Lovable).
-- Depois do upgrade, o toggle destrava e você consegue ativar em 1 clique.
-- Além do leaked password protection, o Pro libera backups diários, mais recursos de compute, etc.
-- Recomendado se você planeja escalar o app com muitos usuários pagantes.
+### Passo 2 — Para cada função apontada, decidir caso a caso
+Regra de bolso:
+- **Se a função é helper interno** (só chamada por outras funções `SECURITY DEFINER` ou por triggers, nunca pelo cliente): `REVOKE EXECUTE ... FROM anon, authenticated` + garantir `SET search_path = 'public'`.
+- **Se a função é chamada legitimamente pelo frontend** (ex: RPC `get_usage_status`, `accept_organization_invite`, `check_email_available`, `check_phone_available`): mantém a permissão pro role certo (`authenticated` ou `anon` conforme o uso real), só garante o `search_path` fixo e proteção `auth.uid()` interna quando fizer sentido. Nesses casos o finding específico de "executable por authenticated" será marcado como `ignore` com justificativa (é uso legítimo).
+- **Se a função é claramente pública** (ex: `check_email_available` chamada na tela de cadastro antes do login): mantém `anon`, só fixa `search_path`, e o finding vira `ignore` justificado.
 
-### Opção B — Ignorar o finding com justificativa
-- Zero custo.
-- Marcamos o finding `SUPA_auth_leaked_password_protection` como **ignored** com a explicação "Requires Supabase Pro plan; project is on Free tier. Will revisit after upgrade."
-- O scanner para de alertar sobre isso.
-- Mitigação prática: seu fluxo de cadastro já exige senha via Supabase Auth (com regras de comprimento mínimo), e o cadastro é sempre precedido de pagamento Stripe — o que já filtra bots.
-- Podemos revisitar assim que o projeto crescer e o upgrade Pro fizer sentido.
+### Passo 3 — Rodar 1 migração consolidada
+Uma única migração faz:
+- `ALTER FUNCTION public.<fn>() SET search_path = 'public'` para toda função que ainda estiver mutável.
+- `REVOKE EXECUTE ON FUNCTION public.<fn>(...) FROM anon, authenticated` nas funções internas identificadas.
+- Regrant explícito só onde o frontend realmente chama.
 
-## O que eu recomendo
+### Passo 4 — Rerodar o scanner e fechar
+- `security--run_security_scan` pra confirmar que os warnings sumiram.
+- `manage_security_finding` com `mark_as_fixed` nos que foram corrigidos e `ignore` (com justificativa clara) nos que forem uso legítimo público.
+- Atualizar a `security-memory` pra futuras varreduras não reabrirem os casos legítimos.
 
-Dada sua diretriz de **controle rígido de custos e priorizar soluções nativas gratuitas**, minha recomendação é a **Opção B (ignorar com justificativa)**. Não vale pagar US$25/mês só por esse item enquanto o app ainda está estabilizando. Podemos reabrir quando você estiver com receita recorrente saudável.
+## O que muda no app do ponto de vista do usuário final
 
-## Plano de execução (se você escolher Opção B)
+Nada. É hardening puro de banco. Nenhuma tela, texto, cobrança, fluxo de WhatsApp, agenda, Stripe ou onboarding é tocado. Se por acaso alguma RPC pública for revogada por engano, o efeito seria "botão X deixa de funcionar" — por isso o Passo 2 é caso a caso antes de revogar qualquer coisa.
 
-1. Chamar `security--manage_security_finding` com operação `ignore` no finding `SUPA_auth_leaked_password_protection`, com a explicação sobre o plano Free.
-2. Atualizar a memória de segurança (`security--update_memory`) registrando que esse finding fica dispensado até um eventual upgrade Pro, para que futuras varreduras não reabram o alerta.
-3. Nenhuma mudança em código, banco ou edge functions.
+## Custo
 
-Me confirme qual opção você quer seguir (A ou B) que eu executo.
+Zero. Tudo nativo Supabase, sem terceiros.
+
+Me aprova o plano que eu já sigo pro Passo 1 (leitura dos findings) e volto com a migração pronta pra você aprovar.
