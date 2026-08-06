@@ -1,3 +1,4 @@
+import { CALENDAR_ENABLED } from "@/lib/featureFlags";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -286,10 +287,12 @@ const LandingPage = () => {
               const meta = [
                 { icon: <Wallet className="h-6 w-6" strokeWidth={2} />, chip: "" },
                 { icon: <FolderOpen className="h-6 w-6" strokeWidth={2} />, chip: "mel" },
-                { icon: <Calendar className="h-6 w-6" strokeWidth={2} />, chip: "" },
+                // Google Agenda (índice 2) só aparece quando a integração estiver liberada
+                ...(CALENDAR_ENABLED ? [{ icon: <Calendar className="h-6 w-6" strokeWidth={2} />, chip: "" }] : []),
                 { icon: <Bell className="h-6 w-6" strokeWidth={2} />, chip: "mel" },
               ];
-              return meta.map((c, i) => ({ ...c, title: items[i]?.title, desc: items[i]?.desc }));
+              const texts = CALENDAR_ENABLED ? items : [items[0], items[1], items[3]];
+              return meta.map((c, i) => ({ ...c, title: texts[i]?.title, desc: texts[i]?.desc }));
             })().map((c, i) => (
               <div key={i} className={`scroll-reveal delay-${(i % 3) + 1} bg-[hsl(var(--creme-2))] border border-[hsl(var(--border))] rounded-3xl p-6 lift-sm`}>
                 <span className={`icon-chip ${c.chip} mb-4`}>{c.icon}</span>

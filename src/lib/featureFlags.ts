@@ -1,5 +1,13 @@
 import { supabase } from '@/integrations/supabase/client';
 
+/**
+ * 🚧 Agenda / Google Calendar temporariamente desativada.
+ * Motivo: verificação do app no Google Cloud ainda em análise.
+ * Ao aprovar: mudar para `true` (e definir CALENDAR_ENABLED=true nos secrets do Supabase).
+ * Nada foi removido — toda a funcionalidade volta com esta única flag.
+ */
+export const CALENDAR_ENABLED = false;
+
 export interface PlanLimits {
   maxTransactions: number | null;
   maxCategories: number | null;

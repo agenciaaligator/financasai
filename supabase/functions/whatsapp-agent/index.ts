@@ -244,6 +244,18 @@ interface Category {
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+// 🚧 Agenda / Google Calendar temporariamente desativada (verificação do app no Google em análise).
+// Para reativar: definir o secret CALENDAR_ENABLED=true (e CALENDAR_ENABLED = true no frontend).
+const CALENDAR_ENABLED = (Deno.env.get('CALENDAR_ENABLED') ?? 'false').toLowerCase() === 'true';
+const CALENDAR_SOON_MESSAGE =
+  '📅 *A agenda ainda está chegando!*\n\n' +
+  'A integração com o Google Agenda está em aprovação final e será liberada em breve. ' +
+  'Assim que estiver pronta, eu te aviso por aqui. 💙\n\n' +
+  'Enquanto isso, pode contar comigo pra suas finanças:\n' +
+  '• "gastei 50 no mercado"\n' +
+  '• "recebi 2000 de salário"\n' +
+  '• "quanto gastei esse mês?"';
+
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
   auth: {
     autoRefreshToken: false,
@@ -1940,7 +1952,38 @@ class WhatsAppAgent {
       state: sessionData.conversation_state || 'idle',
       hasPendingTransaction: !!sessionData.pending_transaction
     });
-    
+
+    // 🚧 PRIORIDADE 0.75: AGENDA DESATIVADA TEMPORARIAMENTE
+    // Intercepta qualquer intenção de agenda/compromisso antes de qualquer fluxo de calendário.
+    if (!CALENDAR_ENABLED) {
+      const commitmentStates = [
+        'awaiting_commitment_time',
+        'awaiting_commitment_details',
+        'awaiting_commitment_confirmation',
+        'awaiting_commitment_resolution',
+        'awaiting_commitment_edit_field',
+        'awaiting_commitment_edit_value',
+        'awaiting_commitment_cancel_selection',
+        'awaiting_work_hour_override',
+      ];
+      const inCommitmentFlow = commitmentStates.includes(sessionData.conversation_state || '');
+      const agendaIntent = /(\bagend\w*|\bcompromiss\w*|\bmarcar\b|\bmarque\b|\breuni[ãa]\w*|\bconsulta\b|\bevento\w*|\bcalend[áa]rio\b)/.test(normalizedText);
+      // Não engolir lançamentos financeiros que citem "consulta"/"marcar" (ex.: "paguei 200 na consulta")
+      const looksFinancial = /\b(gastei|paguei|pago|comprei|recebi|ganhei|salario|salário|receita|despesa)\b/.test(normalizedText);
+
+      if (inCommitmentFlow || (agendaIntent && !looksFinancial)) {
+        console.log('[CALENDAR-DISABLED] Intercepted agenda intent:', { state: sessionData.conversation_state, inCommitmentFlow, agendaIntent });
+        return {
+          response: CALENDAR_SOON_MESSAGE,
+          sessionData: {
+            ...sessionData,
+            conversation_state: 'idle',
+            pending_commitment: undefined,
+          }
+        };
+      }
+    }
+
     // PRIORIDADE 0.8: Confirmação de OCR
     if (sessionData.conversation_state === 'confirming_ocr' && sessionData.pending_ocr_data) {
       return await this.handleOCRConfirmation(session, messageText);
