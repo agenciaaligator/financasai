@@ -380,13 +380,15 @@ export default function Welcome() {
                 {t('welcome.webPanelSubtitle')}
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white rounded-[16px] p-5 shadow-[0_2px_10px_rgba(43,91,132,0.05)] border-2 border-primary/40">
-                  <h4 className="font-semibold mb-2">{t('welcome.webPanelCalendarTitle')}</h4>
-                  <p
-                    className="text-sm text-muted-foreground leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: t('welcome.webPanelCalendarDesc') }}
-                  />
-                </div>
+                {CALENDAR_ENABLED && (
+                  <div className="bg-white rounded-[16px] p-5 shadow-[0_2px_10px_rgba(43,91,132,0.05)] border-2 border-primary/40">
+                    <h4 className="font-semibold mb-2">{t('welcome.webPanelCalendarTitle')}</h4>
+                    <p
+                      className="text-sm text-muted-foreground leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: t('welcome.webPanelCalendarDesc') }}
+                    />
+                  </div>
+                )}
                 <div className="bg-white rounded-[16px] p-5 shadow-[0_2px_10px_rgba(43,91,132,0.05)] border border-[#E9ECEF]">
                   <h4 className="font-semibold mb-2">{t('welcome.webPanelCategoriesTitle')}</h4>
                   <p

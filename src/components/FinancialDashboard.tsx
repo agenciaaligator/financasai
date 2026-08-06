@@ -39,6 +39,10 @@ export function FinancialDashboard() {
   // Sincroniza tab da URL (?tab=agenda) ao montar e quando muda
   useEffect(() => {
     const tabParam = searchParams.get("tab");
+    if (tabParam === "agenda" && !CALENDAR_ENABLED) {
+      setCurrentTab("dashboard");
+      return;
+    }
     if (tabParam && tabParam !== currentTab) {
       setCurrentTab(tabParam);
     }
@@ -47,6 +51,7 @@ export function FinancialDashboard() {
   // Processa retorno do OAuth do Google Agenda em qualquer aba.
   // Garante que o usuário veja o feedback mesmo caindo na aba Início.
   useEffect(() => {
+    if (!CALENDAR_ENABLED) return;
     const connected = searchParams.get("connected");
     const error = searchParams.get("error");
     const errorDetail = searchParams.get("error_detail");

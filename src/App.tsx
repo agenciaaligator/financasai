@@ -97,8 +97,8 @@ const App = () => {
               <Route path="/payment-cancelled" element={<PaymentCancelled />} />
               <Route path="/subscription-inactive" element={<SubscriptionInactive />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
-              <Route path="/conectar-agenda" element={<ConnectCalendar />} />
-              <Route path="/agenda" element={<Navigate to="/?tab=agenda" replace />} />
+              <Route path="/conectar-agenda" element={CALENDAR_ENABLED ? <ConnectCalendar /> : <Navigate to="/" replace />} />
+              <Route path="/agenda" element={<Navigate to={CALENDAR_ENABLED ? "/?tab=agenda" : "/"} replace />} />
               <Route path="/termos" element={<Terms />} />
               <Route path="/privacidade" element={<Privacy />} />
               <Route path="*" element={<NotFound />} />
