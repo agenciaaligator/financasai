@@ -84,7 +84,8 @@ const App = () => {
         <BrowserRouter>
           <AuthEventHandler>
             <Routes>
-              <Route path="/" element={<Index />} />
+              <Route path="/" element={<LandingPageIndex />} />
+              <Route path="/instruction" element={<InstructionIndex />} />
               <Route path="/login" element={<Login />} />
               <Route path="/choose-plan" element={<ChoosePlan />} />
               <Route path="/escolher-plano" element={<Navigate to="/choose-plan" replace />} />
