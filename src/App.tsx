@@ -5,7 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect, type ReactNode } from "react";
-import Index from "./pages/Index";
+import LandingPageIndex from "./pages/Index";
+import { Index as InstructionIndex } from "./routes/index";
 import Login from "./pages/Login";
 import ChoosePlan from "./pages/ChoosePlan";
 import Register from "./pages/Register";
@@ -83,7 +84,8 @@ const App = () => {
         <BrowserRouter>
           <AuthEventHandler>
             <Routes>
-              <Route path="/" element={<Index />} />
+              <Route path="/" element={<LandingPageIndex />} />
+              <Route path="/instruction" element={<InstructionIndex />} />
               <Route path="/login" element={<Login />} />
               <Route path="/choose-plan" element={<ChoosePlan />} />
               <Route path="/escolher-plano" element={<Navigate to="/choose-plan" replace />} />
