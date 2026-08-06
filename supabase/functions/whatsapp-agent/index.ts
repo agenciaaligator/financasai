@@ -244,6 +244,18 @@ interface Category {
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+// 🚧 Agenda / Google Calendar temporariamente desativada (verificação do app no Google em análise).
+// Para reativar: definir o secret CALENDAR_ENABLED=true (e CALENDAR_ENABLED = true no frontend).
+const CALENDAR_ENABLED = (Deno.env.get('CALENDAR_ENABLED') ?? 'false').toLowerCase() === 'true';
+const CALENDAR_SOON_MESSAGE =
+  '📅 *A agenda ainda está chegando!*\n\n' +
+  'A integração com o Google Agenda está em aprovação final e será liberada em breve. ' +
+  'Assim que estiver pronta, eu te aviso por aqui. 💙\n\n' +
+  'Enquanto isso, pode contar comigo pra suas finanças:\n' +
+  '• "gastei 50 no mercado"\n' +
+  '• "recebi 2000 de salário"\n' +
+  '• "quanto gastei esse mês?"';
+
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
   auth: {
     autoRefreshToken: false,
