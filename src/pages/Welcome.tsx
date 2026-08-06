@@ -1,3 +1,4 @@
+import { CALENDAR_ENABLED } from "@/lib/featureFlags";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";

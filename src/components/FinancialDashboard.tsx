@@ -1,3 +1,4 @@
+import { CALENDAR_ENABLED } from "@/lib/featureFlags";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
