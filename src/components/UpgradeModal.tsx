@@ -1,3 +1,4 @@
+import { CALENDAR_ENABLED } from "@/lib/featureFlags";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
