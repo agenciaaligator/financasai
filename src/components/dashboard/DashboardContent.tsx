@@ -42,6 +42,7 @@ import { AgendaPage } from "./AgendaPage";
 import { useTranslation } from "react-i18next";
 import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
 import { Calendar as CalendarIcon } from "lucide-react";
+import { CALENDAR_ENABLED } from "@/lib/featureFlags";
 import { MessageUsageCard } from "./MessageUsageCard";
 
 const TIMEZONE = 'America/Sao_Paulo';
@@ -287,19 +288,21 @@ export function DashboardContent({
                     <span className="w-1.5 h-1.5 bg-success rounded-full animate-pulse" />
                     WhatsApp
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => onTabChange("agenda")}
-                    className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium transition-colors ${
-                      calendarConnected
-                        ? "bg-success/10 text-success hover:bg-success/20"
-                        : "bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20"
-                    }`}
-                    aria-label="Ir para a aba Agenda"
-                  >
-                    <CalendarIcon className="w-3 h-3" />
-                    {calendarConnected ? "Agenda conectada" : "Conectar Agenda"}
-                  </button>
+                  {CALENDAR_ENABLED && (
+                    <button
+                      type="button"
+                      onClick={() => onTabChange("agenda")}
+                      className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium transition-colors ${
+                        calendarConnected
+                          ? "bg-success/10 text-success hover:bg-success/20"
+                          : "bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20"
+                      }`}
+                      aria-label="Ir para a aba Agenda"
+                    >
+                      <CalendarIcon className="w-3 h-3" />
+                      {calendarConnected ? "Agenda conectada" : "Conectar Agenda"}
+                    </button>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -557,7 +560,7 @@ export function DashboardContent({
     return <ProfileSettings />;
   }
 
-  if (currentTab === "agenda") {
+  if (currentTab === "agenda" && CALENDAR_ENABLED) {
     return <AgendaPage />;
   }
 

@@ -13,6 +13,7 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTranslation } from "react-i18next";
 import { BrandLogo } from "@/components/BrandLogo";
+import { CALENDAR_ENABLED } from "@/lib/featureFlags";
 
 
 import {
