@@ -1952,7 +1952,38 @@ class WhatsAppAgent {
       state: sessionData.conversation_state || 'idle',
       hasPendingTransaction: !!sessionData.pending_transaction
     });
-    
+
+    // 🚧 PRIORIDADE 0.75: AGENDA DESATIVADA TEMPORARIAMENTE
+    // Intercepta qualquer intenção de agenda/compromisso antes de qualquer fluxo de calendário.
+    if (!CALENDAR_ENABLED) {
+      const commitmentStates = [
+        'awaiting_commitment_time',
+        'awaiting_commitment_details',
+        'awaiting_commitment_confirmation',
+        'awaiting_commitment_resolution',
+        'awaiting_commitment_edit_field',
+        'awaiting_commitment_edit_value',
+        'awaiting_commitment_cancel_selection',
+        'awaiting_work_hour_override',
+      ];
+      const inCommitmentFlow = commitmentStates.includes(sessionData.conversation_state || '');
+      const agendaIntent = /(\bagend\w*|\bcompromiss\w*|\bmarcar\b|\bmarque\b|\breuni[ãa]\w*|\bconsulta\b|\bevento\w*|\bcalend[áa]rio\b)/.test(normalizedText);
+      // Não engolir lançamentos financeiros que citem "consulta"/"marcar" (ex.: "paguei 200 na consulta")
+      const looksFinancial = /\b(gastei|paguei|pago|comprei|recebi|ganhei|salario|salário|receita|despesa)\b/.test(normalizedText);
+
+      if (inCommitmentFlow || (agendaIntent && !looksFinancial)) {
+        console.log('[CALENDAR-DISABLED] Intercepted agenda intent:', { state: sessionData.conversation_state, inCommitmentFlow, agendaIntent });
+        return {
+          response: CALENDAR_SOON_MESSAGE,
+          sessionData: {
+            ...sessionData,
+            conversation_state: 'idle',
+            pending_commitment: undefined,
+          }
+        };
+      }
+    }
+
     // PRIORIDADE 0.8: Confirmação de OCR
     if (sessionData.conversation_state === 'confirming_ocr' && sessionData.pending_ocr_data) {
       return await this.handleOCRConfirmation(session, messageText);
