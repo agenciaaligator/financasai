@@ -55,7 +55,8 @@ export function AppSidebar({
     { id: "categories", title: t('sidebar.categories', 'Categorias'), icon: FolderOpen },
     { id: "goals", title: t('sidebar.goals', 'Metas'), icon: Target },
     { id: "reports", title: t('sidebar.reports', 'Relatórios'), icon: BarChart3 },
-    { id: "agenda", title: t('sidebar.agenda', 'Agenda'), icon: Calendar },
+    // Agenda oculta enquanto CALENDAR_ENABLED === false
+    ...(CALENDAR_ENABLED ? [{ id: "agenda", title: t('sidebar.agenda', 'Agenda'), icon: Calendar }] : []),
     { id: "whatsapp", title: t('sidebar.whatsapp', 'WhatsApp'), icon: MessageCircle },
     { id: "profile", title: t('sidebar.profile', 'Perfil'), icon: User },
   ];
