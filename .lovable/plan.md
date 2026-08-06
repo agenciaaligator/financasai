@@ -1,42 +1,41 @@
-## Objetivo
+# Lançar sem a Agenda (modo "Em breve")
 
-Fechar os 3 avisos (warn) restantes do scanner do Supabase, sem quebrar nada em produção.
+Objetivo: desativar temporariamente a funcionalidade de agenda/Google Calendar sem apagar nada, para lançar o sistema com segurança enquanto o Google não aprova a verificação. Tudo volta ligando um único interruptor.
 
-Os avisos são:
-1. `SUPA_function_search_path_mutable` — função(ões) sem `search_path` fixo.
-2. `SUPA_anon_security_definer_function_executable` — função `SECURITY DEFINER` executável por `anon`.
-3. `SUPA_authenticated_security_definer_function_executable` — função `SECURITY DEFINER` executável por `authenticated`.
+## Como funciona o interruptor
 
-## Como eu vou fazer (você só aprova)
+Uma flag central (`CALENDAR_ENABLED = false`) em `src/lib/featureFlags.ts`. Quando o Google aprovar, muda para `true` e a agenda reaparece inteira, sem refazer código.
 
-Você não precisa mexer em nada no dashboard do Supabase desta vez. Todo o ajuste é via migração SQL, que eu preparo e você aprova no botão padrão.
+## O que muda para o usuário
 
-### Passo 1 — Descobrir exatamente quais funções o scanner está apontando
-Rodar o `security--get_scan_results` pra ler os 3 findings e ver o nome da função em cada um (o scanner entrega o nome no payload).
+**Painel (admin/dashboard)**
+- Aba "Agenda" sai da sidebar e das abas do dashboard.
+- Badge "Conectar Agenda / Agenda conectada" no topo do dashboard fica oculto.
+- Rotas `/conectar-agenda` e `/agenda` passam a redirecionar para o dashboard.
+- Bloco de conexão do Google na tela de Perfil fica oculto.
 
-### Passo 2 — Para cada função apontada, decidir caso a caso
-Regra de bolso:
-- **Se a função é helper interno** (só chamada por outras funções `SECURITY DEFINER` ou por triggers, nunca pelo cliente): `REVOKE EXECUTE ... FROM anon, authenticated` + garantir `SET search_path = 'public'`.
-- **Se a função é chamada legitimamente pelo frontend** (ex: RPC `get_usage_status`, `accept_organization_invite`, `check_email_available`, `check_phone_available`): mantém a permissão pro role certo (`authenticated` ou `anon` conforme o uso real), só garante o `search_path` fixo e proteção `auth.uid()` interna quando fizer sentido. Nesses casos o finding específico de "executable por authenticated" será marcado como `ignore` com justificativa (é uso legítimo).
-- **Se a função é claramente pública** (ex: `check_email_available` chamada na tela de cadastro antes do login): mantém `anon`, só fixa `search_path`, e o finding vira `ignore` justificado.
+**Boas-vindas / onboarding**
+- Passo "Conectar Google Agenda" removido da mensagem de boas-vindas, mantendo o fluxo linear (Pagamento → E-mail → Boas-vindas → WhatsApp) intacto.
 
-### Passo 3 — Rodar 1 migração consolidada
-Uma única migração faz:
-- `ALTER FUNCTION public.<fn>() SET search_path = 'public'` para toda função que ainda estiver mutável.
-- `REVOKE EXECUTE ON FUNCTION public.<fn>(...) FROM anon, authenticated` nas funções internas identificadas.
-- Regrant explícito só onde o frontend realmente chama.
+**WhatsApp**
+- Se o usuário pedir para agendar algo ("agendar dentista amanhã às 11h", áudio, etc.), a Dona Wilma responde com aviso amigável de que a agenda está em fase final de aprovação e chega em breve, e segue oferecendo ajuda com finanças.
+- Nenhum compromisso é criado e nenhuma chamada ao Google é feita nesse período (zero risco de erro 403 na frente do cliente).
+- Todo o resto do agente (despesas, receitas, OCR, áudio, recorrentes, metas, franquia de mensagens) continua igual.
 
-### Passo 4 — Rerodar o scanner e fechar
-- `security--run_security_scan` pra confirmar que os warnings sumiram.
-- `manage_security_finding` com `mark_as_fixed` nos que foram corrigidos e `ignore` (com justificativa clara) nos que forem uso legítimo público.
-- Atualizar a `security-memory` pra futuras varreduras não reabrirem os casos legítimos.
+**Landing page e planos**
+- Seção da Google Agenda, itens de plano e FAQ relacionados ganham selo **"Em breve"**, sem prometer que já funciona.
+- Textos ajustados nos 5 idiomas para não afirmar que a sincronização já está ativa.
 
-## O que muda no app do ponto de vista do usuário final
+## Custos e backend
 
-Nada. É hardening puro de banco. Nenhuma tela, texto, cobrança, fluxo de WhatsApp, agenda, Stripe ou onboarding é tocado. Se por acaso alguma RPC pública for revogada por engano, o efeito seria "botão X deixa de funcionar" — por isso o Passo 2 é caso a caso antes de revogar qualquer coisa.
+- O cron diário `renew-google-watches` (03:00 UTC) e o cron de lembretes de compromisso passam a sair imediatamente sem consultar nada enquanto a flag estiver desligada — nenhum consumo extra de Supabase nem de mensagens pagas do WhatsApp.
+- Nada é removido do banco: tabelas `commitments` e `calendar_connections`, edge functions e migrações permanecem como estão.
 
-## Custo
+## Detalhes técnicos
 
-Zero. Tudo nativo Supabase, sem terceiros.
-
-Me aprova o plano que eu já sigo pro Passo 1 (leitura dos findings) e volto com a migração pronta pra você aprovar.
+1. `src/lib/featureFlags.ts`: exportar `CALENDAR_ENABLED = false`.
+2. Guardas de UI: `AppSidebar.tsx` (item agenda), `FinancialDashboard.tsx` (tab agenda + handler do retorno OAuth), `DashboardContent.tsx` (badge + `currentTab === "agenda"`), `ProfileSettings.tsx` (bloco Google), `App.tsx` (rotas), `Welcome.tsx` (passo da agenda).
+3. `whatsapp-agent`: nova checagem por env `CALENDAR_ENABLED` (default off) no roteador de intenção de compromisso → retorna a mensagem "em breve" antes de qualquer criação/sync. Estados de conversa de compromisso ficam inalcançáveis.
+4. `send-commitment-reminders`, `renew-google-watches`, `google-calendar-sync`: early return `{ disabled: true }` quando a flag estiver off.
+5. Landing: selo "Em breve" em `Index.tsx` (bloco calendar), `PlansSection.tsx`, `FAQSection.tsx` + chaves novas/ajustadas em `src/locales/*.json`.
+6. Reativação futura: flag para `true` + variável de ambiente no Supabase, sem outras mudanças.
