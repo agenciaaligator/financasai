@@ -32,7 +32,7 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
     'upgrade.features.unlimitedCategories',
     'upgrade.features.whatsapp',
     'upgrade.features.aiReports',
-    'upgrade.features.googleCalendar',
+    ...(CALENDAR_ENABLED ? ['upgrade.features.googleCalendar'] : []),
     'upgrade.features.prioritySupport',
   ];
 
@@ -66,7 +66,7 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
               <li>✓ {t('upgrade.reasons.financial')}</li>
               <li>✓ {t('upgrade.reasons.whatsapp')}</li>
               <li>✓ {t('upgrade.reasons.aiReports')}</li>
-              <li>✓ {t('upgrade.reasons.calendar')}</li>
+              {CALENDAR_ENABLED && <li>✓ {t('upgrade.reasons.calendar')}</li>}
             </ul>
           </div>
 
