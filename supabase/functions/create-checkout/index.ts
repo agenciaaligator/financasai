@@ -29,8 +29,8 @@ serve(async (req) => {
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
 
-    const { priceId, locale, userId: bodyUserId, email: bodyEmail } = await req.json();
-    logStep("Received request", { priceId, locale, bodyUserId, bodyEmail });
+    const { priceId, locale, userId: bodyUserId, email: bodyEmail, referral_code: referralCode } = await req.json();
+    logStep("Received request", { priceId, locale, bodyUserId, bodyEmail, referralCode });
 
     const getStripeLocale = (loc?: string): string | undefined => {
       if (!loc) return undefined;
@@ -115,6 +115,9 @@ serve(async (req) => {
       allow_promotion_codes: true,
       billing_address_collection: 'required',
       locale: getStripeLocale(locale) as any,
+      // Guarda o código de afiliado também no Stripe (redundante ao profiles.referral_code)
+      // para o webhook nunca perder a comissão por causa de uma escrita não-bloqueante no signup.
+      ...(referralCode ? { subscription_data: { metadata: { referral_code: String(referralCode) } } } : {}),
     };
 
     const session = await stripe.checkout.sessions.create(checkoutConfig);

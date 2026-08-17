@@ -238,6 +238,7 @@ export default function Register() {
             locale,
             userId: signUpData.user.id,
             email: normalizedEmail,
+            referral_code: referralCode || undefined,
           },
         }),
         15000,

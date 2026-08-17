@@ -201,11 +201,16 @@ async function handleCheckoutCompleted(
       .eq('user_id', userId)
       .maybeSingle();
 
-    if (profile?.referral_code) {
+    // Fallback: se a escrita não-bloqueante em profiles.referral_code (feita no
+    // signup) não completou a tempo, usa o metadata gravado direto no Stripe
+    // via create-checkout como segunda fonte da verdade.
+    const referralCode = profile?.referral_code || (subscription.metadata?.referral_code as string | undefined);
+
+    if (referralCode) {
       const { data: affiliate } = await supabaseAdmin
         .from('affiliates')
         .select('*')
-        .eq('referral_code', profile.referral_code)
+        .eq('referral_code', referralCode)
         .eq('active', true)
         .maybeSingle();
 
