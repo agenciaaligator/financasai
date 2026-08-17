@@ -7,7 +7,8 @@ import { SubscriptionsManagement } from "./SubscriptionsManagement";
 import { AdminStats } from "./AdminStats";
 import { MessagesManagement } from "./MessagesManagement";
 import { WhatsAppUsageManagement } from "./WhatsAppUsageManagement";
-import { Shield, Users, CreditCard, BarChart3, Mail, MessageCircle } from "lucide-react";
+import { AffiliatesManagement } from "./AffiliatesManagement";
+import { Shield, Users, CreditCard, BarChart3, Mail, MessageCircle, Share2 } from "lucide-react";
 import { LanguageFlagSelector } from "@/components/LanguageFlagSelector";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,7 +18,7 @@ import { buildSiteUrl } from "@/lib/siteUrl";
 // com o ?tab= do FinancialDashboard/sidebar). Fallback para sessionStorage.
 const STORAGE_KEY = "admin_active_tab";
 const SUB_PARAM = "sub";
-const VALID_TABS = ["stats", "users", "subscriptions", "whatsapp-usage", "messages"] as const;
+const VALID_TABS = ["stats", "users", "subscriptions", "whatsapp-usage", "affiliates", "messages"] as const;
 type AdminTab = typeof VALID_TABS[number];
 
 const isValidTab = (v: string | null | undefined): v is AdminTab =>
@@ -123,7 +124,7 @@ export function AdminPanel() {
       >
         {/* Tabs com scroll horizontal no mobile, grid no desktop */}
         <div className="-mx-4 sm:mx-0 overflow-x-auto">
-          <TabsList className="inline-flex lg:grid lg:w-full lg:grid-cols-5 gap-1 md:gap-2 px-4 sm:px-0 min-w-full lg:min-w-0">
+          <TabsList className="inline-flex lg:grid lg:w-full lg:grid-cols-6 gap-1 md:gap-2 px-4 sm:px-0 min-w-full lg:min-w-0">
             <TabsTrigger value="stats" className="flex items-center gap-2 whitespace-nowrap">
               <BarChart3 className="h-4 w-4 shrink-0" />
               <span className="text-xs sm:text-sm">{t('admin.stats')}</span>
@@ -139,6 +140,10 @@ export function AdminPanel() {
             <TabsTrigger value="whatsapp-usage" className="flex items-center gap-2 whitespace-nowrap">
               <MessageCircle className="h-4 w-4 shrink-0" />
               <span className="text-xs sm:text-sm">WhatsApp</span>
+            </TabsTrigger>
+            <TabsTrigger value="affiliates" className="flex items-center gap-2 whitespace-nowrap">
+              <Share2 className="h-4 w-4 shrink-0" />
+              <span className="text-xs sm:text-sm">Afiliados</span>
             </TabsTrigger>
             <TabsTrigger value="messages" className="flex items-center gap-2 whitespace-nowrap relative">
               <Mail className="h-4 w-4 shrink-0" />
@@ -178,6 +183,14 @@ export function AdminPanel() {
           <div className="overflow-x-auto -mx-4 sm:mx-0">
             <div className="min-w-[720px] px-4 sm:px-0 sm:min-w-0">
               <WhatsAppUsageManagement />
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="affiliates" className="space-y-4">
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <div className="min-w-[720px] px-4 sm:px-0 sm:min-w-0">
+              <AffiliatesManagement />
             </div>
           </div>
         </TabsContent>

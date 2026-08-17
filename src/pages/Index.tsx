@@ -25,6 +25,7 @@ import SubscriptionInactive from "@/pages/SubscriptionInactive";
 import donaWilmaLandingHero from "@/assets/dona-wilma-landing-hero.jpg";
 import donaWilmaRetrato from "@/assets/dona-wilma-retrato.jpg";
 import { BrandLogo } from "@/components/BrandLogo";
+import { captureReferralCode } from "@/lib/referral";
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -41,6 +42,11 @@ const LandingPage = () => {
       setSheetOpen(false);
     }
   }, [user]);
+
+  // Captura ?ref=CODIGO de um link de afiliado, se presente
+  useEffect(() => {
+    captureReferralCode(new URLSearchParams(window.location.search));
+  }, []);
 
   // Scroll detection for nav
   useEffect(() => {

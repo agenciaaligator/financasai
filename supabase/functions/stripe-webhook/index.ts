@@ -193,6 +193,53 @@ async function handleCheckoutCompleted(
     logStep("User role updated to premium");
   }
 
+  // ========== COMISSAO DE AFILIADO (1o pagamento apenas) ==========
+  try {
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('referral_code, email')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (profile?.referral_code) {
+      const { data: affiliate } = await supabaseAdmin
+        .from('affiliates')
+        .select('*')
+        .eq('referral_code', profile.referral_code)
+        .eq('active', true)
+        .maybeSingle();
+
+      if (affiliate) {
+        const unitAmountCents = subscription.items?.data?.[0]?.price?.unit_amount ?? 0;
+        const amountPaid = unitAmountCents / 100;
+        const commissionAmount = affiliate.commission_type === 'percent'
+          ? Math.round(amountPaid * (Number(affiliate.commission_value) / 100) * 100) / 100
+          : Number(affiliate.commission_value);
+
+        const { error: refError } = await supabaseAdmin
+          .from('affiliate_referrals')
+          .insert({
+            affiliate_id: affiliate.id,
+            referred_user_id: userId,
+            referred_email: profile.email,
+            plan_name: plan?.name ?? null,
+            amount_paid: amountPaid,
+            commission_amount: commissionAmount,
+          });
+
+        if (refError) {
+          // Violação de unicidade (referred_user_id) = já processado antes, ignora.
+          logStep("Affiliate referral insert skipped/failed", { error: refError.message });
+        } else {
+          logStep("Affiliate commission recorded", { affiliateId: affiliate.id, commissionAmount });
+        }
+      }
+    }
+  } catch (e) {
+    // Nunca deve derrubar o fluxo principal de pagamento por causa da comissao.
+    logStep("Affiliate commission error (non-blocking)", { error: e instanceof Error ? e.message : String(e) });
+  }
+
   return { success: true, userId, alreadyActive: false };
 }
 

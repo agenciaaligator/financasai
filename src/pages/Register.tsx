@@ -13,6 +13,7 @@ import "react-phone-number-input/style.css";
 import "@/components/ui/phone-input.css";
 import { getPriceId, getDisplayPrice, getCurrencyFromLocale, formatPrice } from "@/config/pricing";
 import { buildSiteUrl } from "@/lib/siteUrl";
+import { getStoredReferralCode, clearReferralCode } from "@/lib/referral";
 
 type FlowState = "idle" | "creating" | "verifying" | "preparing" | "redirecting";
 
@@ -101,6 +102,8 @@ export default function Register() {
     setFlow("creating");
     console.log("[REGISTER] Starting signup for:", normalizedEmail, "plan:", plan);
 
+    const referralCode = getStoredReferralCode();
+
     try {
       // 0. PRE-CHECK: e-mail and phone availability before signUp
       const [emailCheck, phoneCheck] = await Promise.all([
@@ -142,6 +145,7 @@ export default function Register() {
             full_name: name.trim(),
             phone_number: phone || undefined,
             password_set: true,
+            referral_code: referralCode || undefined,
           },
         },
       });
@@ -212,14 +216,15 @@ export default function Register() {
         return;
       }
 
-      // Best-effort: ensure password_set flag is true
+      // Best-effort: ensure password_set flag is true (e grava o código de afiliado, se houver)
       supabase
         .from("profiles")
-        .update({ password_set: true })
+        .update({ password_set: true, ...(referralCode ? { referral_code: referralCode } : {}) })
         .eq("user_id", signUpData.user.id)
         .then(({ error: profileErr }) => {
           if (profileErr) console.warn("[REGISTER] Profile update (non-blocking):", profileErr);
         });
+      if (referralCode) clearReferralCode();
 
       // 3. Create checkout (with timeout)
       setFlow("preparing");
