@@ -13,9 +13,26 @@ import {
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Users, Plus, Check } from "lucide-react";
+import { Users, Plus, Check, Pencil, Trash2 } from "lucide-react";
 
 interface Affiliate {
   id: string;
@@ -51,6 +68,11 @@ export function AffiliatesManagement() {
   const [commissionType, setCommissionType] = useState<"fixed" | "percent">("fixed");
   const [commissionMonthly, setCommissionMonthly] = useState("5");
   const [commissionYearly, setCommissionYearly] = useState("20");
+
+  const [editTarget, setEditTarget] = useState<Affiliate | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Affiliate | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -109,6 +131,61 @@ export function AffiliatesManagement() {
       toast({ title: "Erro ao atualizar", description: error.message, variant: "destructive" });
       return;
     }
+    load();
+  };
+
+  const saveEdit = async () => {
+    if (!editTarget) return;
+    if (!editTarget.name.trim() || !editTarget.referral_code.trim()) {
+      toast({ title: "Preencha nome e código", variant: "destructive" });
+      return;
+    }
+    setEditSaving(true);
+    const { error } = await supabase
+      .from("affiliates")
+      .update({
+        name: editTarget.name.trim(),
+        referral_code: editTarget.referral_code.trim().toUpperCase(),
+        pix_key: editTarget.pix_key?.trim() || null,
+        commission_type: editTarget.commission_type,
+        commission_value_monthly: Number(editTarget.commission_value_monthly),
+        commission_value_yearly: Number(editTarget.commission_value_yearly),
+      })
+      .eq("id", editTarget.id);
+    setEditSaving(false);
+    if (error) {
+      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Afiliado atualizado" });
+    setEditTarget(null);
+    load();
+  };
+
+  const requestDelete = (a: Affiliate) => {
+    const hasReferrals = referrals.some((r) => r.affiliate_id === a.id);
+    if (hasReferrals) {
+      toast({
+        title: "Não é possível excluir",
+        description: "Esse afiliado já tem comissões registradas. Desative-o em vez de excluir, para manter o histórico.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setDeleteTarget(a);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const { error } = await supabase.from("affiliates").delete().eq("id", deleteTarget.id);
+    setDeleting(false);
+    if (error) {
+      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Afiliado excluído" });
+    setDeleteTarget(null);
     load();
   };
 
@@ -207,6 +284,7 @@ export function AffiliatesManagement() {
                   <TableHead>Comissão anual</TableHead>
                   <TableHead>Pix</TableHead>
                   <TableHead className="text-right">Ativo</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -227,6 +305,16 @@ export function AffiliatesManagement() {
                     <TableCell className="text-xs text-muted-foreground">{a.pix_key ?? "—"}</TableCell>
                     <TableCell className="text-right">
                       <Switch checked={a.active} onCheckedChange={() => toggleActive(a)} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button size="icon" variant="ghost" onClick={() => setEditTarget({ ...a })}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={() => requestDelete(a)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -290,6 +378,110 @@ export function AffiliatesManagement() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar afiliado</DialogTitle>
+          </DialogHeader>
+          {editTarget && (
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs text-muted-foreground">Nome</Label>
+                <Input
+                  value={editTarget.name}
+                  onChange={(e) => setEditTarget({ ...editTarget, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">
+                  Código (link/QR) — cuidado: mudar quebra links já divulgados
+                </Label>
+                <Input
+                  value={editTarget.referral_code}
+                  onChange={(e) => setEditTarget({ ...editTarget, referral_code: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Chave Pix</Label>
+                <Input
+                  value={editTarget.pix_key ?? ""}
+                  onChange={(e) => setEditTarget({ ...editTarget, pix_key: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Tipo</Label>
+                <Select
+                  value={editTarget.commission_type}
+                  onValueChange={(v) => setEditTarget({ ...editTarget, commission_type: v as "fixed" | "percent" })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fixed">R$ fixo</SelectItem>
+                    <SelectItem value="percent">% do plano</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Comissão — Mensal</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={editTarget.commission_value_monthly}
+                    onChange={(e) =>
+                      setEditTarget({ ...editTarget, commission_value_monthly: Number(e.target.value) })
+                    }
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Comissão — Anual</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={editTarget.commission_value_yearly}
+                    onChange={(e) =>
+                      setEditTarget({ ...editTarget, commission_value_yearly: Number(e.target.value) })
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditTarget(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={saveEdit} disabled={editSaving}>
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir afiliado?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Isso vai remover permanentemente <strong>{deleteTarget?.name}</strong>. Essa ação não pode ser
+              desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
