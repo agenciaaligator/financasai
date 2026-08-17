@@ -23,7 +23,8 @@ interface Affiliate {
   referral_code: string;
   pix_key: string | null;
   commission_type: "fixed" | "percent";
-  commission_value: number;
+  commission_value_monthly: number;
+  commission_value_yearly: number;
   active: boolean;
 }
 
@@ -48,7 +49,8 @@ export function AffiliatesManagement() {
   const [code, setCode] = useState("");
   const [pixKey, setPixKey] = useState("");
   const [commissionType, setCommissionType] = useState<"fixed" | "percent">("fixed");
-  const [commissionValue, setCommissionValue] = useState("10");
+  const [commissionMonthly, setCommissionMonthly] = useState("5");
+  const [commissionYearly, setCommissionYearly] = useState("20");
 
   const load = async () => {
     setLoading(true);
@@ -72,8 +74,9 @@ export function AffiliatesManagement() {
       toast({ title: "Preencha nome e código", variant: "destructive" });
       return;
     }
-    const parsedValue = Number(commissionValue.replace(",", "."));
-    if (Number.isNaN(parsedValue) || parsedValue < 0) {
+    const parsedMonthly = Number(commissionMonthly.replace(",", "."));
+    const parsedYearly = Number(commissionYearly.replace(",", "."));
+    if (Number.isNaN(parsedMonthly) || parsedMonthly < 0 || Number.isNaN(parsedYearly) || parsedYearly < 0) {
       toast({ title: "Valor de comissão inválido", variant: "destructive" });
       return;
     }
@@ -83,7 +86,8 @@ export function AffiliatesManagement() {
       referral_code: code.trim().toUpperCase(),
       pix_key: pixKey.trim() || null,
       commission_type: commissionType,
-      commission_value: parsedValue,
+      commission_value_monthly: parsedMonthly,
+      commission_value_yearly: parsedYearly,
     });
     setCreating(false);
     if (error) {
@@ -94,7 +98,8 @@ export function AffiliatesManagement() {
     setName("");
     setCode("");
     setPixKey("");
-    setCommissionValue("10");
+    setCommissionMonthly("5");
+    setCommissionYearly("20");
     load();
   };
 
@@ -133,7 +138,7 @@ export function AffiliatesManagement() {
             Novo afiliado
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
           <div>
             <Label className="text-xs text-muted-foreground">Nome</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Padaria do João" />
@@ -147,24 +152,34 @@ export function AffiliatesManagement() {
             <Input value={pixKey} onChange={(e) => setPixKey(e.target.value)} placeholder="opcional" />
           </div>
           <div>
-            <Label className="text-xs text-muted-foreground">Comissão</Label>
-            <div className="flex gap-2">
-              <Select value={commissionType} onValueChange={(v) => setCommissionType(v as "fixed" | "percent")}>
-                <SelectTrigger className="w-24">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fixed">R$</SelectItem>
-                  <SelectItem value="percent">%</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input
-                type="number"
-                min="0"
-                value={commissionValue}
-                onChange={(e) => setCommissionValue(e.target.value)}
-              />
-            </div>
+            <Label className="text-xs text-muted-foreground">Tipo</Label>
+            <Select value={commissionType} onValueChange={(v) => setCommissionType(v as "fixed" | "percent")}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="fixed">R$ fixo</SelectItem>
+                <SelectItem value="percent">% do plano</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Comissão — Mensal</Label>
+            <Input
+              type="number"
+              min="0"
+              value={commissionMonthly}
+              onChange={(e) => setCommissionMonthly(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Comissão — Anual</Label>
+            <Input
+              type="number"
+              min="0"
+              value={commissionYearly}
+              onChange={(e) => setCommissionYearly(e.target.value)}
+            />
           </div>
           <Button onClick={createAffiliate} disabled={creating}>
             <Plus className="h-4 w-4 mr-2" />
@@ -188,7 +203,8 @@ export function AffiliatesManagement() {
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>Link</TableHead>
-                  <TableHead>Comissão</TableHead>
+                  <TableHead>Comissão mensal</TableHead>
+                  <TableHead>Comissão anual</TableHead>
                   <TableHead>Pix</TableHead>
                   <TableHead className="text-right">Ativo</TableHead>
                 </TableRow>
@@ -200,8 +216,13 @@ export function AffiliatesManagement() {
                     <TableCell className="font-mono text-xs">donawilma.com.br/?ref={a.referral_code}</TableCell>
                     <TableCell>
                       {a.commission_type === "percent"
-                        ? `${a.commission_value}%`
-                        : `R$ ${Number(a.commission_value).toFixed(2)}`}
+                        ? `${a.commission_value_monthly}%`
+                        : `R$ ${Number(a.commission_value_monthly).toFixed(2)}`}
+                    </TableCell>
+                    <TableCell>
+                      {a.commission_type === "percent"
+                        ? `${a.commission_value_yearly}%`
+                        : `R$ ${Number(a.commission_value_yearly).toFixed(2)}`}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{a.pix_key ?? "—"}</TableCell>
                     <TableCell className="text-right">

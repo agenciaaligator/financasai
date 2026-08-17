@@ -217,9 +217,12 @@ async function handleCheckoutCompleted(
       if (affiliate) {
         const unitAmountCents = subscription.items?.data?.[0]?.price?.unit_amount ?? 0;
         const amountPaid = unitAmountCents / 100;
+        const commissionValue = billingCycle === 'yearly'
+          ? affiliate.commission_value_yearly
+          : affiliate.commission_value_monthly;
         const commissionAmount = affiliate.commission_type === 'percent'
-          ? Math.round(amountPaid * (Number(affiliate.commission_value) / 100) * 100) / 100
-          : Number(affiliate.commission_value);
+          ? Math.round(amountPaid * (Number(commissionValue) / 100) * 100) / 100
+          : Number(commissionValue);
 
         const { error: refError } = await supabaseAdmin
           .from('affiliate_referrals')
