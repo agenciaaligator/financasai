@@ -148,7 +148,7 @@
     "forgotPassword": "Forgot Password",
     "resetPassword": "Reset Password",
     "welcomeBack": "welcome back, dear",
-    "tagline": "Your personal finance & schedule assistant"
+    "tagline": "Your personal finance assistant"
   },
   "common": {
     "save": "Save",
@@ -750,7 +750,7 @@
         "5": "Priority support"
       },
       "choosePlanTitle": "Choose your plan",
-      "choosePlanDesc": "Manage your finances and appointments with artificial intelligence",
+      "choosePlanDesc": "Manage your finances with artificial intelligence",
       "securePayment": "Secure payment via Stripe. Cancel anytime.",
       "termsAgreement": "By continuing, you agree to our terms of service"
     },
@@ -811,7 +811,7 @@
       "items": {
         "0": {
           "title": "Directly on WhatsApp",
-          "description": "Record finances and appointments without opening any app"
+          "description": "Track your finances without opening any app"
         },
         "1": {
           "title": "AI that understands you",
@@ -835,11 +835,11 @@
         },
         "1": {
           "title": "AI organizes everything",
-          "description": "Dona Wilma understands, categorizes and automatically records your finances and appointments"
+          "description": "Dona Wilma understands, categorizes and records your finances automatically"
         },
         "2": {
           "title": "Track on the dashboard",
-          "description": "See charts, reports and your full schedule on the web dashboard or receive summaries on WhatsApp"
+          "description": "See full charts and reports on the web dashboard or get summaries on WhatsApp"
         }
       }
     },

@@ -1,10 +1,12 @@
+import { CALENDAR_ENABLED } from "@/lib/featureFlags";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect, type ReactNode } from "react";
-import Index from "./pages/Index";
+import LandingPageIndex from "./pages/Index";
+import { Index as InstructionIndex } from "./routes/index";
 import Login from "./pages/Login";
 import ChoosePlan from "./pages/ChoosePlan";
 import Register from "./pages/Register";
@@ -82,7 +84,8 @@ const App = () => {
         <BrowserRouter>
           <AuthEventHandler>
             <Routes>
-              <Route path="/" element={<Index />} />
+              <Route path="/" element={<LandingPageIndex />} />
+              <Route path="/instruction" element={<InstructionIndex />} />
               <Route path="/login" element={<Login />} />
               <Route path="/choose-plan" element={<ChoosePlan />} />
               <Route path="/escolher-plano" element={<Navigate to="/choose-plan" replace />} />
@@ -97,8 +100,8 @@ const App = () => {
               <Route path="/payment-cancelled" element={<PaymentCancelled />} />
               <Route path="/subscription-inactive" element={<SubscriptionInactive />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
-              <Route path="/conectar-agenda" element={<ConnectCalendar />} />
-              <Route path="/agenda" element={<Navigate to="/?tab=agenda" replace />} />
+              <Route path="/conectar-agenda" element={CALENDAR_ENABLED ? <ConnectCalendar /> : <Navigate to="/" replace />} />
+              <Route path="/agenda" element={<Navigate to={CALENDAR_ENABLED ? "/?tab=agenda" : "/"} replace />} />
               <Route path="/termos" element={<Terms />} />
               <Route path="/privacidade" element={<Privacy />} />
               <Route path="*" element={<NotFound />} />

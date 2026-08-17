@@ -51,8 +51,19 @@ function formatTime(iso: string): string {
   });
 }
 
+const CALENDAR_ENABLED = (Deno.env.get("CALENDAR_ENABLED") ?? "false").toLowerCase() === "true";
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  // 🚧 Agenda desativada temporariamente: no-op sem consultas ao banco e sem envio de WhatsApp.
+  if (!CALENDAR_ENABLED) {
+    return new Response(JSON.stringify({ success: true, skipped: "calendar_disabled" }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,

@@ -146,7 +146,7 @@
     "forgotPassword": "Olvidé mi contraseña",
     "resetPassword": "Restablecer contraseña",
     "welcomeBack": "bienvenido de nuevo, querido",
-    "tagline": "Tu asistente personal de finanzas y compromisos"
+    "tagline": "Tu asesora personal de finanzas"
   },
   "common": {
     "save": "Guardar",
@@ -743,7 +743,7 @@
         "5": "Soporte prioritario"
       },
       "choosePlanTitle": "Elige tu plan",
-      "choosePlanDesc": "Gestiona tus finanzas y compromisos con inteligencia artificial",
+      "choosePlanDesc": "Gestiona tus finanzas con inteligencia artificial",
       "securePayment": "Pago seguro vía Stripe. Cancela cuando quieras.",
       "termsAgreement": "Al continuar, aceptas nuestros términos de servicio"
     },
@@ -804,7 +804,7 @@
       "items": {
         "0": {
           "title": "Directo en WhatsApp",
-          "description": "Registra finanzas y compromisos sin abrir ninguna app"
+          "description": "Registra tus finanzas sin abrir ninguna app"
         },
         "1": {
           "title": "IA que te entiende",
@@ -828,11 +828,11 @@
         },
         "1": {
           "title": "La IA organiza todo",
-          "description": "Dona Wilma entiende, categoriza y registra automáticamente"
+          "description": "Dona Wilma entiende, categoriza y registra automáticamente tus finanzas"
         },
         "2": {
           "title": "Sigue en el panel",
-          "description": "Ve gráficos, informes y tu agenda completa en el panel web"
+          "description": "Consulta gráficos e informes completos en el panel web o recibe resúmenes por WhatsApp"
         }
       }
     },
