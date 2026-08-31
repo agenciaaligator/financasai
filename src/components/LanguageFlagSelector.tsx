@@ -2,6 +2,8 @@ import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 const languages = [
   { code: 'pt-BR', flag: '🇧🇷', short: 'BR', label: 'Português (BR)' },
@@ -18,6 +20,7 @@ interface LanguageFlagSelectorProps {
 
 export function LanguageFlagSelector({ inline, onSelect }: LanguageFlagSelectorProps = {}) {
   const { i18n } = useTranslation();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
 
   const current = languages.find((l) => l.code === i18n.language) || languages[0];
@@ -25,6 +28,16 @@ export function LanguageFlagSelector({ inline, onSelect }: LanguageFlagSelectorP
   const handleSelect = (code: string) => {
     i18n.changeLanguage(code);
     localStorage.setItem('i18nextLng', code);
+    // Best-effort: guarda no perfil pra mensagens automáticas (WhatsApp) saírem no idioma certo.
+    if (user) {
+      supabase
+        .from('profiles')
+        .update({ preferred_language: code })
+        .eq('user_id', user.id)
+        .then(({ error }) => {
+          if (error) console.warn('[LANG] Profile sync (non-blocking):', error);
+        });
+    }
     setOpen(false);
     onSelect?.();
   };

@@ -216,10 +216,14 @@ export default function Register() {
         return;
       }
 
-      // Best-effort: ensure password_set flag is true (e grava o código de afiliado, se houver)
+      // Best-effort: ensure password_set flag is true (e grava código de afiliado / idioma, se houver)
       supabase
         .from("profiles")
-        .update({ password_set: true, ...(referralCode ? { referral_code: referralCode } : {}) })
+        .update({
+          password_set: true,
+          preferred_language: locale,
+          ...(referralCode ? { referral_code: referralCode } : {}),
+        })
         .eq("user_id", signUpData.user.id)
         .then(({ error: profileErr }) => {
           if (profileErr) console.warn("[REGISTER] Profile update (non-blocking):", profileErr);
