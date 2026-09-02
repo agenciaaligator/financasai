@@ -34,6 +34,7 @@ export function AdminPanel() {
     return isValidTab(saved) ? saved : "stats";
   });
   const [newMessagesCount, setNewMessagesCount] = useState(0);
+  const [pendingCommissionsCount, setPendingCommissionsCount] = useState(0);
 
   // Sincroniza estado <- URL (permite F5 e navegacao direta com ?sub=xxx).
   useEffect(() => {
@@ -99,6 +100,29 @@ export function AdminPanel() {
     };
   }, [activeTab]);
 
+  // Fetch pending affiliate commissions count + realtime
+  useEffect(() => {
+    const fetchPendingCommissions = async () => {
+      const { count } = await supabase
+        .from("affiliate_referrals")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "pending");
+      setPendingCommissionsCount(count ?? 0);
+    };
+    fetchPendingCommissions();
+
+    const channel = supabase
+      .channel("affiliate_referrals_admin")
+      .on("postgres_changes", { event: "*", schema: "public", table: "affiliate_referrals" }, () => {
+        fetchPendingCommissions();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeTab]);
+
   return (
     <div className="space-y-4 md:space-y-6">
       {/* Header responsivo */}
@@ -141,9 +165,14 @@ export function AdminPanel() {
               <MessageCircle className="h-4 w-4 shrink-0" />
               <span className="text-xs sm:text-sm">WhatsApp</span>
             </TabsTrigger>
-            <TabsTrigger value="affiliates" className="flex items-center gap-2 whitespace-nowrap">
+            <TabsTrigger value="affiliates" className="flex items-center gap-2 whitespace-nowrap relative">
               <Share2 className="h-4 w-4 shrink-0" />
               <span className="text-xs sm:text-sm">Afiliados</span>
+              {pendingCommissionsCount > 0 && (
+                <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1.5 text-[10px]">
+                  {pendingCommissionsCount > 99 ? "99+" : pendingCommissionsCount}
+                </Badge>
+              )}
             </TabsTrigger>
             <TabsTrigger value="messages" className="flex items-center gap-2 whitespace-nowrap relative">
               <Mail className="h-4 w-4 shrink-0" />

@@ -57,4 +57,13 @@ verify_jwt = false
 [functions.google-calendar-sync-internal]
 verify_jwt = false
 
+[functions.create-pix-checkout]
+verify_jwt = false
+
+[functions.mercadopago-webhook]
+verify_jwt = false
+
+[functions.send-renewal-reminders]
+verify_jwt = false
+
 

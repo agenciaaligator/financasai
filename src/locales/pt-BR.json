@@ -743,6 +743,8 @@
       "goToPayment": "Ir para pagamento",
       "redirecting": "Redirecionando...",
       "couponHint": "💡 Tem um cupom? Digite na tela de pagamento do Stripe.",
+      "payWithPix": "Pagar com Pix",
+      "pixRedirectDesc": "Redirecionando para pagamento via Pix...",
       "redirectingToast": "🔄 Redirecionando para checkout...",
       "redirectingToastDesc": "Aguarde enquanto preparamos seu pagamento",
       "errorTitle": "❌ Erro",
@@ -1378,6 +1380,8 @@
     "save40": "Economize 40%",
     "currentPlan": "Plano Atual",
     "subscribeNow": "Assinar Agora",
+    "payWithPix": "Pagar com Pix",
+    "redirecting": "Redirecionando...",
     "couponNote": "Cupons e descontos são aplicados diretamente no checkout do Stripe",
     "priceError": "Plano não configurado. Contate o suporte.",
     "features": {

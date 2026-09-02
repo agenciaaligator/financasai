@@ -3,13 +3,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, Crown } from "lucide-react";
+import { Check, X, Crown, QrCode } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useCheckout } from "@/hooks/useCheckout";
 import { useState } from "react";
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { getCurrencyFromLocale, formatPrice as formatCurrencyPrice, getPriceId, getDisplayPrice, getYearlyMonthlyEquivalent } from "@/config/pricing";
+import { supabase } from "@/integrations/supabase/client";
 
 interface UpgradeModalProps {
   open: boolean;
@@ -23,6 +24,8 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
   const { isPremium } = useSubscription();
   const { createCheckoutSession, loading } = useCheckout();
   const [selectedCycle, setSelectedCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const [pixLoading, setPixLoading] = useState(false);
+  const showPix = getCurrencyFromLocale(i18n.language) === 'BRL';
 
   const monthlyPrice = getDisplayPrice('monthly', i18n.language);
   const yearlyPrice = getDisplayPrice('yearly', i18n.language);
@@ -48,6 +51,26 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
       return;
     }
     createCheckoutSession(priceId);
+  };
+
+  const handlePixSubscribe = async () => {
+    setPixLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-pix-checkout', {
+        body: { cycle: selectedCycle },
+      });
+      if (error) throw error;
+      if (!data?.url) throw new Error('URL de checkout Pix não retornada');
+      window.location.href = data.url;
+    } catch (error) {
+      toast({
+        title: "❌ " + t('common.error'),
+        description: error instanceof Error ? error.message : t('upgrade.priceError'),
+        variant: "destructive",
+      });
+    } finally {
+      setPixLoading(false);
+    }
   };
 
   return (
@@ -143,6 +166,21 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
               >
                 {isPremium ? t('upgrade.currentPlan') : t('upgrade.subscribeNow')}
               </Button>
+
+              {showPix && !isPremium && (
+                <Button
+                  onClick={handlePixSubscribe}
+                  disabled={pixLoading || loading}
+                  variant="outline"
+                  className="w-full"
+                >
+                  {pixLoading ? (
+                    <><span className="animate-spin mr-2">⏳</span>{t('upgrade.redirecting', 'Redirecionando...')}</>
+                  ) : (
+                    <><QrCode className="h-4 w-4 mr-2" />{t('upgrade.payWithPix', 'Pagar com Pix')}</>
+                  )}
+                </Button>
+              )}
             </div>
           </Card>
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, Loader2, CreditCard, Sparkles } from "lucide-react";
+import { Check, Loader2, CreditCard, Sparkles, QrCode } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
@@ -17,9 +17,11 @@ export function PlansSection() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [loadingCycle, setLoadingCycle] = useState<'monthly' | 'yearly' | null>(null);
+  const [loadingPix, setLoadingPix] = useState<'monthly' | 'yearly' | null>(null);
 
   const locale = i18n.language;
   const currency = getCurrencyFromLocale(locale);
+  const showPix = getCurrencyFromLocale(locale) === 'BRL';
 
   const featureKeys = [0, 1, 2, 3, 4, 5];
 
@@ -50,6 +52,36 @@ export function PlansSection() {
         variant: "destructive",
       });
       setLoadingCycle(null);
+    }
+  };
+
+  const handlePixCheckout = async (cycle: 'monthly' | 'yearly') => {
+    setLoadingPix(cycle);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        navigate(`/register?plan=${cycle}&pix=1`);
+        return;
+      }
+      toast({
+        title: t('landing.plans.redirectingToast'),
+        description: t('landing.plans.pixRedirectDesc', 'Redirecionando para pagamento via Pix...'),
+      });
+      const { data, error } = await supabase.functions.invoke('create-pix-checkout', {
+        body: { cycle },
+      });
+      if (error) throw error;
+      if (!data?.url) throw new Error('URL de checkout Pix não retornada');
+      window.location.href = data.url;
+    } catch (error) {
+      console.error('[PIX-CHECKOUT] Error:', error);
+      toast({
+        title: t('landing.plans.errorTitle'),
+        description: t('landing.plans.errorDesc'),
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingPix(null);
     }
   };
 
@@ -93,6 +125,20 @@ export function PlansSection() {
               <><CreditCard className="h-5 w-5" strokeWidth={2} />{t('landing.plans.startNow')}</>
             )}
           </button>
+
+          {showPix && (
+            <button
+              onClick={() => handlePixCheckout('monthly')}
+              disabled={loadingCycle !== null || loadingPix !== null}
+              className="w-full mt-3 py-2.5 px-6 rounded-full bg-transparent text-primary font-medium border border-[hsl(var(--pinho))]/40 hover:bg-[hsl(var(--sage))]/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
+            >
+              {loadingPix === 'monthly' ? (
+                <><Loader2 className="h-4 w-4 animate-spin" strokeWidth={2} />{t('landing.plans.redirecting')}</>
+              ) : (
+                <><QrCode className="h-4 w-4" strokeWidth={2} />{t('landing.plans.payWithPix', 'Pagar com Pix')}</>
+              )}
+            </button>
+          )}
 
           <div className="mt-5 text-center space-y-1">
             <p className="text-sm text-muted-foreground">{t('landing.plans.cancelAnytime')}</p>
@@ -151,6 +197,21 @@ export function PlansSection() {
               <><CreditCard className="h-5 w-5" strokeWidth={2} />{t('landing.plans.startNow')}</>
             )}
           </button>
+
+          {showPix && (
+            <button
+              onClick={() => handlePixCheckout('yearly')}
+              disabled={loadingCycle !== null || loadingPix !== null}
+              className="w-full mt-3 py-2.5 px-6 rounded-full bg-transparent font-medium border border-[hsl(var(--mel))]/60 hover:bg-[hsl(var(--mel))]/10 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
+              style={{ color: "hsl(var(--pinho))" }}
+            >
+              {loadingPix === 'yearly' ? (
+                <><Loader2 className="h-4 w-4 animate-spin" strokeWidth={2} />{t('landing.plans.redirecting')}</>
+              ) : (
+                <><QrCode className="h-4 w-4" strokeWidth={2} />{t('landing.plans.payWithPix', 'Pagar com Pix')}</>
+              )}
+            </button>
+          )}
 
           <p className="mt-5 text-center text-sm text-muted-foreground">
             {t('landing.plans.couponHint')}

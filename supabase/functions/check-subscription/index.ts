@@ -93,12 +93,32 @@ serve(async (req) => {
     }
     logStep("User authenticated", { userId: user.id, email: user.email });
 
+    // Check database first — covers Mercado Pago (Pix) subscriptions that
+    // don't exist in Stripe. If the DB says active, trust it and skip Stripe.
+    const { data: dbSub } = await supabaseClient
+      .from('user_subscriptions')
+      .select('status, current_period_end, plan_id, payment_gateway, stripe_subscription_id, stripe_customer_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (dbSub?.status === 'active' && dbSub.payment_gateway === 'mercadopago') {
+      logStep("Active Mercado Pago subscription found in DB, skipping Stripe check");
+      return new Response(JSON.stringify({
+        subscribed: true,
+        subscription_end: dbSub.current_period_end,
+        payment_gateway: 'mercadopago',
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    
+
     if (customers.data.length === 0) {
       logStep("No customer found in Stripe - no subscription");
-      
+
       return new Response(JSON.stringify({ subscribed: false }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,

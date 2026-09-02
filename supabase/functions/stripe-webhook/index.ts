@@ -12,6 +12,39 @@ const logStep = (step: string, details?: any) => {
   console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
 };
 
+async function sendWhatsAppMessage(to: string, message: string): Promise<boolean> {
+  const token = Deno.env.get("WHATSAPP_ACCESS_TOKEN");
+  const phoneId = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID");
+  if (!token || !phoneId) {
+    console.error("[STRIPE-WEBHOOK] WhatsApp credentials missing, skipping affiliate notification");
+    return false;
+  }
+  const cleanTo = to.startsWith("+") ? to.substring(1) : to;
+  try {
+    const res = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: cleanTo,
+        type: "text",
+        text: { body: message },
+      }),
+    });
+    if (!res.ok) {
+      console.error("[STRIPE-WEBHOOK] WhatsApp API error:", res.status, await res.text());
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error("[STRIPE-WEBHOOK] WhatsApp send error:", e);
+    return false;
+  }
+}
+
 async function handleCheckoutCompleted(
   supabaseAdmin: any,
   stripe: any,
@@ -240,6 +273,15 @@ async function handleCheckoutCompleted(
           logStep("Affiliate referral insert skipped/failed", { error: refError.message });
         } else {
           logStep("Affiliate commission recorded", { affiliateId: affiliate.id, commissionAmount });
+
+          if (affiliate.phone_number) {
+            const planLabel = billingCycle === 'yearly' ? 'anual' : 'mensal';
+            await sendWhatsAppMessage(
+              affiliate.phone_number,
+              `🎉 Boa, ${affiliate.name}! Seu link de indicação (${affiliate.referral_code}) gerou uma nova venda ` +
+              `(plano ${planLabel}). Sua comissão de R$ ${commissionAmount.toFixed(2)} já está registrada e será paga em breve. Continue divulgando! 💙`
+            );
+          }
         }
       }
     }

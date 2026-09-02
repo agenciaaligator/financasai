@@ -39,6 +39,7 @@ interface Affiliate {
   name: string;
   referral_code: string;
   pix_key: string | null;
+  phone_number: string | null;
   commission_type: "fixed" | "percent";
   commission_value_monthly: number;
   commission_value_yearly: number;
@@ -65,6 +66,7 @@ export function AffiliatesManagement() {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [pixKey, setPixKey] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [commissionType, setCommissionType] = useState<"fixed" | "percent">("fixed");
   const [commissionMonthly, setCommissionMonthly] = useState("5");
   const [commissionYearly, setCommissionYearly] = useState("20");
@@ -107,6 +109,7 @@ export function AffiliatesManagement() {
       name: name.trim(),
       referral_code: code.trim().toUpperCase(),
       pix_key: pixKey.trim() || null,
+      phone_number: phoneNumber.trim() || null,
       commission_type: commissionType,
       commission_value_monthly: parsedMonthly,
       commission_value_yearly: parsedYearly,
@@ -120,6 +123,7 @@ export function AffiliatesManagement() {
     setName("");
     setCode("");
     setPixKey("");
+    setPhoneNumber("");
     setCommissionMonthly("5");
     setCommissionYearly("20");
     load();
@@ -147,6 +151,7 @@ export function AffiliatesManagement() {
         name: editTarget.name.trim(),
         referral_code: editTarget.referral_code.trim().toUpperCase(),
         pix_key: editTarget.pix_key?.trim() || null,
+        phone_number: editTarget.phone_number?.trim() || null,
         commission_type: editTarget.commission_type,
         commission_value_monthly: Number(editTarget.commission_value_monthly),
         commission_value_yearly: Number(editTarget.commission_value_yearly),
@@ -229,6 +234,10 @@ export function AffiliatesManagement() {
             <Input value={pixKey} onChange={(e) => setPixKey(e.target.value)} placeholder="opcional" />
           </div>
           <div>
+            <Label className="text-xs text-muted-foreground">WhatsApp (avisa da venda)</Label>
+            <Input value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="5511999999999" />
+          </div>
+          <div>
             <Label className="text-xs text-muted-foreground">Tipo</Label>
             <Select value={commissionType} onValueChange={(v) => setCommissionType(v as "fixed" | "percent")}>
               <SelectTrigger>
@@ -283,6 +292,7 @@ export function AffiliatesManagement() {
                   <TableHead>Comissão mensal</TableHead>
                   <TableHead>Comissão anual</TableHead>
                   <TableHead>Pix</TableHead>
+                  <TableHead>WhatsApp</TableHead>
                   <TableHead className="text-right">Ativo</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -303,6 +313,7 @@ export function AffiliatesManagement() {
                         : `R$ ${Number(a.commission_value_yearly).toFixed(2)}`}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{a.pix_key ?? "—"}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{a.phone_number ?? "—"}</TableCell>
                     <TableCell className="text-right">
                       <Switch checked={a.active} onCheckedChange={() => toggleActive(a)} />
                     </TableCell>
@@ -407,6 +418,14 @@ export function AffiliatesManagement() {
                 <Input
                   value={editTarget.pix_key ?? ""}
                   onChange={(e) => setEditTarget({ ...editTarget, pix_key: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">WhatsApp (avisa da venda)</Label>
+                <Input
+                  value={editTarget.phone_number ?? ""}
+                  onChange={(e) => setEditTarget({ ...editTarget, phone_number: e.target.value })}
+                  placeholder="5511999999999"
                 />
               </div>
               <div>

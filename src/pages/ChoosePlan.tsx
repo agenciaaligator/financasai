@@ -1,8 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Calendar, Check, CreditCard, Star } from "lucide-react";
+import { Calendar, Check, CreditCard, Star, QrCode } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { 
+import {
   getCurrencyFromLocale,
   getDisplayPrice,
   getYearlyMonthlyEquivalent,
@@ -18,9 +18,12 @@ export default function ChoosePlan() {
   const currency = getCurrencyFromLocale(locale);
 
   const featureKeys = [0, 1, 2, 3, 4, 5];
+  const showPix = getCurrencyFromLocale(locale) === 'BRL';
 
-  const handleSelectPlan = (cycle: 'monthly' | 'yearly') => {
-    navigate(`/register?plan=${cycle === 'yearly' ? 'yearly' : 'monthly'}`);
+  const handleSelectPlan = (cycle: 'monthly' | 'yearly', pix = false) => {
+    const params = new URLSearchParams({ plan: cycle });
+    if (pix) params.set('pix', '1');
+    navigate(`/register?${params.toString()}`);
   };
 
   return (
@@ -82,6 +85,16 @@ export default function ChoosePlan() {
               {t('landing.plans.startNow')}
             </button>
 
+            {showPix && (
+              <button
+                onClick={() => handleSelectPlan('monthly', true)}
+                className="w-full mt-3 py-2.5 px-6 rounded-xl bg-transparent text-white/80 font-medium border border-white/20 hover:bg-white/10 transition-all duration-300 flex items-center justify-center gap-2 text-sm"
+              >
+                <QrCode className="h-4 w-4" />
+                {t('landing.plans.payWithPix', 'Pagar com Pix')}
+              </button>
+            )}
+
             <div className="mt-4 text-center space-y-1">
               <p className="text-sm text-white/50">{t('landing.plans.cancelAnytime')}</p>
               <p className="text-sm text-white/50">{t('landing.plans.noCommitment')}</p>
@@ -135,6 +148,16 @@ export default function ChoosePlan() {
               <CreditCard className="h-5 w-5" />
               {t('landing.plans.startNow')}
             </button>
+
+            {showPix && (
+              <button
+                onClick={() => handleSelectPlan('yearly', true)}
+                className="w-full mt-3 py-2.5 px-6 rounded-xl bg-transparent text-white/80 font-medium border border-white/20 hover:bg-white/10 transition-all duration-300 flex items-center justify-center gap-2 text-sm"
+              >
+                <QrCode className="h-4 w-4" />
+                {t('landing.plans.payWithPix', 'Pagar com Pix')}
+              </button>
+            )}
 
             <p className="mt-4 text-center text-sm text-white/50">
               {t('landing.plans.couponHint')}
