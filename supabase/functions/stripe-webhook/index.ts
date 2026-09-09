@@ -491,6 +491,87 @@ serve(async (req) => {
       });
     }
 
+    // ========== charge.refunded ==========
+    // Stripe never cancels a subscription because of a refund, so a refunded
+    // customer would otherwise keep access and keep being billed.
+    if (event.type === "charge.refunded") {
+      const charge = event.data.object as Stripe.Charge;
+
+      if (charge.amount_refunded < charge.amount) {
+        logStep("Partial refund - keeping subscription", { chargeId: charge.id });
+        return new Response(JSON.stringify({ success: true, partial: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const invoiceId = charge.invoice as string | null;
+      if (!invoiceId) {
+        logStep("Refunded charge has no invoice - not a subscription payment");
+        return new Response(JSON.stringify({ success: true, skipped: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const invoice = await stripe.invoices.retrieve(invoiceId) as any;
+      const subscriptionId = invoice.subscription as string | null;
+
+      if (!subscriptionId) {
+        logStep("Refunded invoice has no subscription", { invoiceId });
+        return new Response(JSON.stringify({ success: true, skipped: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Stop future billing. Already-cancelled subscriptions throw; that's fine.
+      try {
+        await stripe.subscriptions.cancel(subscriptionId);
+        logStep("Stripe subscription cancelled after refund", { subscriptionId });
+      } catch (e) {
+        logStep("Could not cancel subscription (may already be cancelled)", {
+          subscriptionId,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+
+      // Ending the period as well: 'cancelled' on its own still grants access
+      // until current_period_end, which is wrong once the money went back.
+      const revokedAt = new Date().toISOString();
+      const { data: revoked } = await supabaseAdmin
+        .from('user_subscriptions')
+        .update({ status: 'cancelled', cancelled_at: revokedAt, current_period_end: revokedAt })
+        .eq('stripe_subscription_id', subscriptionId)
+        .select('user_id')
+        .maybeSingle();
+
+      if (revoked?.user_id) {
+        const { data: isMaster } = await supabaseAdmin
+          .from('master_users')
+          .select('user_id')
+          .eq('user_id', revoked.user_id)
+          .maybeSingle();
+
+        const { data: currentRole } = await supabaseAdmin
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', revoked.user_id)
+          .maybeSingle();
+
+        if (!isMaster && currentRole?.role !== 'admin') {
+          await supabaseAdmin.from('user_roles').delete().eq('user_id', revoked.user_id);
+          await supabaseAdmin.from('user_roles').insert({ user_id: revoked.user_id, role: 'free', expires_at: null });
+        }
+        logStep("Access revoked after refund", { userId: revoked.user_id });
+      }
+
+      return new Response(JSON.stringify({ success: true, revoked: !!revoked }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Unhandled event
     logStep("Unhandled event type", { type: event.type });
     return new Response(JSON.stringify({ received: true }), {
