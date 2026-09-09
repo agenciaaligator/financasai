@@ -13,6 +13,7 @@ import Register from "./pages/Register";
 import Welcome from "./pages/Welcome";
 import ResetPassword from "./pages/ResetPassword";
 import PaymentSuccess from "./pages/PaymentSuccess";
+import PixPayment from "./pages/PixPayment";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import NotFound from "./pages/NotFound";
 import Terms from "./pages/Terms";
@@ -96,6 +97,7 @@ const App = () => {
               <Route path="/admin" element={<AdminRoute />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/set-password" element={<ResetPassword />} />
+              <Route path="/pagamento-pix" element={<PixPayment />} />
               <Route path="/payment-success" element={<PaymentSuccess />} />
               <Route path="/payment-cancelled" element={<PaymentCancelled />} />
               <Route path="/subscription-inactive" element={<SubscriptionInactive />} />

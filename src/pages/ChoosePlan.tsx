@@ -39,12 +39,7 @@ export default function ChoosePlan() {
     setLoading(pix ? `pix-${cycle}` : cycle);
     try {
       if (pix) {
-        const { data, error } = await supabase.functions.invoke('create-pix-checkout', {
-          body: { cycle },
-        });
-        if (error) throw error;
-        if (!data?.url) throw new Error('URL não retornada');
-        window.location.href = data.url;
+        navigate(`/pagamento-pix?cycle=${cycle}`);
       } else {
         const priceId = getPriceId(cycle, locale);
         const { data, error } = await supabase.functions.invoke('create-checkout', {

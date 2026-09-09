@@ -63,16 +63,7 @@ export function PlansSection() {
         navigate(`/register?plan=${cycle}&pix=1`);
         return;
       }
-      toast({
-        title: t('landing.plans.redirectingToast'),
-        description: t('landing.plans.pixRedirectDesc', 'Redirecionando para pagamento via Pix...'),
-      });
-      const { data, error } = await supabase.functions.invoke('create-pix-checkout', {
-        body: { cycle },
-      });
-      if (error) throw error;
-      if (!data?.url) throw new Error('URL de checkout Pix não retornada');
-      window.location.href = data.url;
+      navigate(`/pagamento-pix?cycle=${cycle}`);
     } catch (error) {
       console.error('[PIX-CHECKOUT] Error:', error);
       toast({

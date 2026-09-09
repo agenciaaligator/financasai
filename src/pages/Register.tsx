@@ -235,59 +235,45 @@ export default function Register() {
       setFlow("preparing");
       const locale = i18n.language;
 
-      let checkoutUrl: string;
-
       if (usePix) {
-        const { data: pixData, error: pixError } = await withTimeout(
-          supabase.functions.invoke("create-pix-checkout", {
-            body: {
-              cycle: plan,
-              userId: signUpData.user.id,
-              email: normalizedEmail,
-              referral_code: referralCode || undefined,
-            },
-          }),
-          15000,
-          "create-pix-checkout"
-        );
-        if (pixError || !pixData?.url) {
-          console.error("[REGISTER] Pix checkout error:", pixError);
-          toast({
-            title: t("landing.plans.errorTitle", "Não foi possível abrir o pagamento"),
-            description: t("landing.plans.errorDesc", "Sua conta já foi criada. Tente novamente em instantes."),
-            variant: "destructive",
-          });
-          setFlow("idle");
-          return;
-        }
-        checkoutUrl = pixData.url;
-      } else {
-        const priceId = getPriceId(plan, locale);
-        const { data: checkoutData, error: checkoutError } = await withTimeout(
-          supabase.functions.invoke("create-checkout", {
-            body: {
-              priceId,
-              locale,
-              userId: signUpData.user.id,
-              email: normalizedEmail,
-              referral_code: referralCode || undefined,
-            },
-          }),
-          15000,
-          "create-checkout"
-        );
-        if (checkoutError || !checkoutData?.url) {
-          console.error("[REGISTER] Checkout error:", checkoutError);
-          toast({
-            title: t("landing.plans.errorTitle", "Não foi possível abrir o pagamento"),
-            description: t("landing.plans.errorDesc", "Sua conta já foi criada. Tente novamente em instantes."),
-            variant: "destructive",
-          });
-          setFlow("idle");
-          return;
-        }
-        checkoutUrl = checkoutData.url;
+        setFlow("redirecting");
+        // Signup may not yield a session yet (email confirmation); the Pix page
+        // falls back to these credentials, which the Edge Functions re-validate.
+        navigate(`/pagamento-pix?cycle=${plan}`, {
+          state: {
+            userId: signUpData.user.id,
+            email: normalizedEmail,
+            referralCode: referralCode || null,
+          },
+        });
+        return;
       }
+
+      const priceId = getPriceId(plan, locale);
+      const { data: checkoutData, error: checkoutError } = await withTimeout(
+        supabase.functions.invoke("create-checkout", {
+          body: {
+            priceId,
+            locale,
+            userId: signUpData.user.id,
+            email: normalizedEmail,
+            referral_code: referralCode || undefined,
+          },
+        }),
+        15000,
+        "create-checkout"
+      );
+      if (checkoutError || !checkoutData?.url) {
+        console.error("[REGISTER] Checkout error:", checkoutError);
+        toast({
+          title: t("landing.plans.errorTitle", "Não foi possível abrir o pagamento"),
+          description: t("landing.plans.errorDesc", "Sua conta já foi criada. Tente novamente em instantes."),
+          variant: "destructive",
+        });
+        setFlow("idle");
+        return;
+      }
+      const checkoutUrl = checkoutData.url;
 
       setFlow("redirecting");
       toast({

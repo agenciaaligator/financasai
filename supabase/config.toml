@@ -63,6 +63,12 @@ verify_jwt = false
 [functions.mercadopago-webhook]
 verify_jwt = false
 
+[functions.create-pix-payment]
+verify_jwt = false
+
+[functions.check-pix-payment]
+verify_jwt = false
+
 [functions.send-renewal-reminders]
 verify_jwt = false
 
