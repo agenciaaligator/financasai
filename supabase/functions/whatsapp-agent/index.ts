@@ -62,10 +62,9 @@ async function checkUsageBeforeReply(
       return {
         blocked: true,
         blockedMessage:
-          `🚫 *Limite do plano atingido*\n\n` +
+          `🚫 *Limite de mensagens atingido*\n\n` +
           `Você já usou ${data.qtd_atual} de ${data.limite} mensagens deste ciclo.\n\n` +
-          `Para continuar conversando com a Dona Wilma agora, faça upgrade ou aguarde o próximo ciclo:\n` +
-          `https://donawilma.com.br`,
+          `Sua franquia será renovada no próximo ciclo de cobrança. Aguarde a renovação para continuar conversando com a Dona Wilma. 💙`,
       };
     }
     return { blocked: false };
@@ -1837,14 +1836,25 @@ class WhatsAppAgent {
           supabase.rpc('get_user_role', { _user_id: session.user_id }),
           supabase
             .from('user_subscriptions')
-            .select('status')
+            .select('status, current_period_end, updated_at')
             .eq('user_id', session.user_id)
             .maybeSingle(),
         ]);
 
         const isPrivileged = !!isMaster || userRole === 'admin';
         const subStatus = sub?.status as string | undefined;
-        const isActive = subStatus === 'active' || subStatus === 'trialing';
+        const nowMs = Date.now();
+
+        // Mirrors useSubscriptionGuard on the web: a customer keeps the
+        // assistant for the period they already paid for.
+        let isActive = subStatus === 'active' || subStatus === 'trialing';
+        if (subStatus === 'cancelled') {
+          const periodEnd = sub?.current_period_end ? new Date(sub.current_period_end).getTime() : null;
+          isActive = periodEnd !== null && nowMs < periodEnd;
+        } else if (subStatus === 'past_due') {
+          const graceEndsAt = new Date(sub!.updated_at).getTime() + 3 * 24 * 60 * 60 * 1000;
+          isActive = nowMs < graceEndsAt;
+        }
 
         if (!isPrivileged && !isActive) {
           console.log('🚫 [SUBSCRIPTION-GUARD] Blocking agent interaction — no active subscription', {

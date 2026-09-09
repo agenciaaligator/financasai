@@ -483,6 +483,19 @@ const ProtectedDashboard = () => {
     );
   }
 
+  // Verification itself failed — don't imply the user has no subscription.
+  if (guard.error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4 p-6 text-center">
+        <h1 className="text-xl font-semibold">Não foi possível verificar sua assinatura</h1>
+        <p className="text-muted-foreground max-w-sm">
+          Isso costuma ser instabilidade de conexão. Tente novamente em instantes.
+        </p>
+        <Button onClick={() => window.location.reload()}>Tentar novamente</Button>
+      </div>
+    );
+  }
+
   // Subscription inactive and not in grace period
   if (!guard.canAccessDashboard && !guard.isMasterOrAdmin) {
     return <SubscriptionInactive />;

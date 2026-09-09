@@ -137,18 +137,30 @@ export function useSubscriptionGuard(): SubscriptionGuardState {
         });
       } catch (error) {
         console.error('[useSubscriptionGuard] Error:', error);
-        // On network error, retry once after 2s, then show error state
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: true,
-          // Don't block access on transient errors — allow dashboard if we can't verify
-          canAccessDashboard: true,
-        }));
+        throw error;
       }
     };
 
-    check();
+    // A paywall that fails open is a paywall that does not exist: retry the
+    // check, and if it still fails, deny access and let the UI offer a retry.
+    const checkWithRetry = async () => {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          await check();
+          return;
+        } catch {
+          if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+        }
+      }
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: true,
+        canAccessDashboard: false,
+      }));
+    };
+
+    checkWithRetry();
   }, [user, authLoading]);
 
   return state;

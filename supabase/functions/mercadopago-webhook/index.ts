@@ -89,6 +89,43 @@ Deno.serve(async (req) => {
     const payment = await paymentRes.json();
     logStep("Payment fetched", { id: payment.id, status: payment.status, external_reference: payment.external_reference });
 
+    // Money went back to the payer — revoke the access it had granted.
+    if (["refunded", "cancelled", "charged_back"].includes(payment.status)) {
+      // Ending the period too: 'cancelled' alone still grants access until
+      // current_period_end, which is wrong once the money has been returned.
+      const revokedAt = new Date().toISOString();
+      const { data: revoked } = await supabase
+        .from("user_subscriptions")
+        .update({ status: "cancelled", cancelled_at: revokedAt, current_period_end: revokedAt })
+        .eq("mercadopago_subscription_id", String(paymentId))
+        .select("user_id")
+        .maybeSingle();
+
+      if (revoked?.user_id) {
+        const { data: isMasterUser } = await supabase
+          .from("master_users")
+          .select("user_id")
+          .eq("user_id", revoked.user_id)
+          .maybeSingle();
+
+        const { data: currentRole } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", revoked.user_id)
+          .maybeSingle();
+
+        if (!isMasterUser && currentRole?.role !== "admin") {
+          await supabase.from("user_roles").delete().eq("user_id", revoked.user_id);
+          await supabase.from("user_roles").insert({ user_id: revoked.user_id, role: "free", expires_at: null });
+        }
+        logStep("Subscription revoked", { status: payment.status, userId: revoked.user_id });
+      }
+
+      return new Response(JSON.stringify({ ok: true, status: payment.status, revoked: !!revoked }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (payment.status !== "approved") {
       logStep("Payment not approved, skipping", { status: payment.status });
       return new Response(JSON.stringify({ ok: true, status: payment.status }), {
