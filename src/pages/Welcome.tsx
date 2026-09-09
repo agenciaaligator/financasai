@@ -30,6 +30,7 @@ export default function Welcome() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
   const pollingRef = useRef<number | null>(null);
+  const recheckedRef = useRef(false);
 
   // Buscar perfil + verificar sessão existente
   useEffect(() => {
@@ -39,8 +40,16 @@ export default function Welcome() {
       return;
     }
 
-    // Bloquear acesso se não tem assinatura ativa (e não é master/admin)
+    // Bloquear acesso se não tem assinatura ativa (e não é master/admin).
+    // Chega-se aqui logo após pagar, quando a escrita do webhook pode ainda não
+    // ter propagado — por isso reconsulta uma vez antes de mandar o cliente
+    // recém-pagante de volta para a tela de planos.
     if (!guard.isMasterOrAdmin && guard.subscriptionStatus !== 'active' && !guard.isInGracePeriod) {
+      if (!recheckedRef.current) {
+        recheckedRef.current = true;
+        const timer = setTimeout(() => guard.reload(), 2500);
+        return () => clearTimeout(timer);
+      }
       console.log('[Welcome] No active subscription, redirecting to /escolher-plano');
       navigate('/escolher-plano', { replace: true });
       return;
@@ -69,7 +78,7 @@ export default function Welcome() {
 
       await generateClaimCode();
     })();
-  }, [user, loading, guard.loading, guard.subscriptionStatus, guard.isMasterOrAdmin, guard.isInGracePeriod]);
+  }, [user, loading, guard.loading, guard.subscriptionStatus, guard.isMasterOrAdmin, guard.isInGracePeriod, guard.reload]);
 
   const generateClaimCode = async () => {
     if (!user) return;
@@ -251,7 +260,7 @@ export default function Welcome() {
                   {/* Claim code box */}
                   <div className="relative">
                     <div className="bg-gradient-to-br from-[#F0F9F4] to-[#E8F5ED] border-2 border-dashed border-[#25D366] rounded-[20px] p-6">
-                      <div className="text-[2.75rem] font-mono font-bold tracking-[0.15em] text-[#1a4d2e] select-all">
+                      <div className="text-[2.75rem] font-mono font-bold tracking-[0.04em] text-[#1a4d2e] select-all">
                         {claimCode}
                       </div>
                     </div>

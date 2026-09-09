@@ -689,9 +689,12 @@ const handler = async (req: Request): Promise<Response> => {
         // 🔑 CLAIM CODE HANDLER (validação reversa de WhatsApp)
         // Detecta DW-XXXX no texto cru (antes de normalizar)
         // ============================================================
-        const claimMatch = rawText.trim().toUpperCase().match(/\bDW-[A-Z0-9]{4}\b/);
+        // Tolerates spaces around the hyphen — the code is shown letter-spaced
+        // on the site, so people retype it as "DW - FV85". The hyphen stays
+        // required so ordinary messages can't be mistaken for a claim code.
+        const claimMatch = rawText.trim().toUpperCase().match(/\bDW\s*-\s*([A-Z0-9]{4})\b/);
         if (claimMatch) {
-          const claimCode = claimMatch[0];
+          const claimCode = `DW-${claimMatch[1]}`;
           console.log(`[WEBHOOK][CLAIM] 🔑 Detected claim code: ${claimCode} from ${message.from}`);
           
           try {

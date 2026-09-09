@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -12,13 +12,18 @@ interface SubscriptionGuardState {
   subscriptionEndDate: Date | null;
   isMasterOrAdmin: boolean;
   error: boolean;
+  reload: () => void;
 }
 
 const GRACE_PERIOD_DAYS = 3;
 
+type GuardData = Omit<SubscriptionGuardState, 'reload'>;
+
 export function useSubscriptionGuard(): SubscriptionGuardState {
   const { user, loading: authLoading } = useAuth();
-  const [state, setState] = useState<SubscriptionGuardState>({
+  const [reloadToken, setReloadToken] = useState(0);
+  const reload = useCallback(() => setReloadToken(t => t + 1), []);
+  const [state, setState] = useState<GuardData>({
     loading: true,
     needsPassword: false,
     subscriptionStatus: 'unknown',
@@ -36,6 +41,8 @@ export function useSubscriptionGuard(): SubscriptionGuardState {
       setState(prev => ({ ...prev, loading: false, canAccessDashboard: false }));
       return;
     }
+
+    setState(prev => (prev.loading ? prev : { ...prev, loading: true }));
 
     const check = async () => {
       try {
@@ -161,7 +168,7 @@ export function useSubscriptionGuard(): SubscriptionGuardState {
     };
 
     checkWithRetry();
-  }, [user, authLoading]);
+  }, [user, authLoading, reloadToken]);
 
-  return state;
+  return { ...state, reload };
 }
