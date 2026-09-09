@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Loader2, ArrowRight, LogIn, ShieldCheck, CreditCard, MessageCircle, CheckCircle2 } from "lucide-react";
+import { Loader2, ArrowRight, LogIn, ShieldCheck, CreditCard, MessageCircle, CheckCircle2, QrCode } from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
@@ -68,6 +69,13 @@ export default function Register() {
   }
 
   const loading = flow !== "idle";
+
+  const switchPaymentMethod = () => {
+    const params = new URLSearchParams({ plan });
+    if (!usePix) params.set("pix", "1");
+    navigate(`/register?${params.toString()}`, { replace: true });
+  };
+
   const currency = getCurrencyFromLocale(i18n.language);
   const planPrice = formatPrice(getDisplayPrice(plan, i18n.language), currency);
   const cycleLabel = plan === "monthly" ? t("welcome.monthly", "Mensal") : t("welcome.yearly", "Anual");
@@ -313,7 +321,7 @@ export default function Register() {
     return (
       <div className="auth-dark min-h-screen bg-gradient-to-br from-[hsl(161,45%,10%)] via-[hsl(161,33%,17%)] to-[hsl(157,32%,25%)] flex items-center justify-center p-4">
         <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+          <Loader2 className="h-8 w-8 animate-spin text-[hsl(var(--mel))] mx-auto" />
           <p className="text-white text-lg">{flowLabel()}</p>
           <p className="text-white/60 text-sm">
             {t("landing.plans.redirectingToastDesc", "Aguarde enquanto preparamos seu checkout")}
@@ -327,9 +335,8 @@ export default function Register() {
     <div className="auth-dark min-h-screen bg-gradient-to-br from-[hsl(161,45%,10%)] via-[hsl(161,33%,17%)] to-[hsl(157,32%,25%)]">
       <header className="border-b border-white/10 bg-white/5 backdrop-blur-sm">
         <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")}>
-            <Calendar className="h-6 w-6 text-primary" />
-            <span className="font-bold text-xl text-white">Dona Wilma</span>
+          <div className="cursor-pointer" onClick={() => navigate("/")}>
+            <BrandLogo className="h-8" invert />
           </div>
           <Button
             variant="outline"
@@ -342,10 +349,10 @@ export default function Register() {
         </nav>
       </header>
 
-      <div className="container mx-auto px-4 py-10 max-w-md space-y-5">
+      <div className="container mx-auto px-4 py-6 max-w-md space-y-4">
         {/* Plan summary card */}
-        <Card className="bg-gradient-to-br from-primary/20 to-primary/5 backdrop-blur-lg border border-primary/30">
-          <CardContent className="p-5">
+        <Card className="bg-white/10 backdrop-blur-lg border border-white/20">
+          <CardContent className="p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-wider text-white/60">
@@ -354,12 +361,28 @@ export default function Register() {
                 <p className="text-lg font-semibold text-white mt-1">
                   Premium {cycleLabel}
                 </p>
-                <p className="text-2xl font-bold text-white mt-2">
+                <p className="text-2xl font-bold text-[hsl(var(--mel))] mt-2">
                   {planPrice}
                   <span className="text-sm font-normal text-white/70">/{periodLabel}</span>
                 </p>
               </div>
-              <CheckCircle2 className="h-6 w-6 text-success flex-shrink-0" />
+              <CheckCircle2 className="h-6 w-6 text-[hsl(var(--mel))] flex-shrink-0" />
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-white/15 flex items-center justify-between gap-3">
+              <span className="flex items-center gap-2 text-sm text-white/90">
+                {usePix ? <QrCode className="h-4 w-4" /> : <CreditCard className="h-4 w-4" />}
+                {usePix
+                  ? t("register.payingWithPix", "Pagamento via Pix")
+                  : t("register.payingWithCard", "Pagamento com cartão de crédito")}
+              </span>
+              <button
+                type="button"
+                onClick={switchPaymentMethod}
+                className="text-xs text-[hsl(var(--mel))] underline underline-offset-2 hover:text-[hsl(var(--mel-soft))] flex-shrink-0"
+              >
+                {t("register.changePaymentMethod", "Trocar")}
+              </button>
             </div>
           </CardContent>
         </Card>
@@ -367,7 +390,7 @@ export default function Register() {
         {/* Stepper */}
         <div className="flex items-center justify-between text-xs text-white/70 px-1">
           <div className="flex items-center gap-1.5">
-            <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold">1</div>
+            <div className="w-6 h-6 rounded-full bg-[hsl(var(--mel))] text-[hsl(var(--pinho))] flex items-center justify-center text-[10px] font-bold">1</div>
             <span className="text-white">{t("register.stepAccount", "Criar conta")}</span>
           </div>
           <div className="flex-1 h-px bg-white/20 mx-2" />
@@ -384,8 +407,8 @@ export default function Register() {
 
         {/* Form card */}
         <Card className="bg-white/10 backdrop-blur-lg border border-white/20">
-          <CardHeader className="text-center pb-4">
-            <CardTitle className="text-2xl text-white">{t("register.title")}</CardTitle>
+          <CardHeader className="text-center pb-3 pt-5">
+            <CardTitle className="text-xl text-white">{t("register.title")}</CardTitle>
             <CardDescription className="text-white/60">
               {t("register.subtitleNew", "Você criará sua conta agora. O pagamento abre na próxima etapa.")}
             </CardDescription>
@@ -463,7 +486,9 @@ export default function Register() {
                   </>
                 ) : (
                   <>
-                    {t("register.continueToPayment", "Continuar para o pagamento")}
+                    {usePix
+                      ? t("register.continueToPix", "Continuar para o Pix")
+                      : t("register.continueToCard", "Continuar para o cartão")}
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </>
                 )}
@@ -476,8 +501,8 @@ export default function Register() {
                   <span>{t("register.trustSecure", "Pagamento seguro")}</span>
                 </div>
                 <div className="flex flex-col items-center gap-1">
-                  <CreditCard className="h-4 w-4" />
-                  <span>Stripe</span>
+                  {usePix ? <QrCode className="h-4 w-4" /> : <CreditCard className="h-4 w-4" />}
+                  <span>{usePix ? "Pix" : "Stripe"}</span>
                 </div>
                 <div className="flex flex-col items-center gap-1">
                   <MessageCircle className="h-4 w-4" />
