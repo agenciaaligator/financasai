@@ -2413,10 +2413,27 @@ class WhatsAppAgent {
     const isListQuestion = listIntentRegex.test(normalizedText)
       || /^(meus?\s+compromissos?|próximos?\s+compromissos?|proximos?\s+compromissos?|compromissos?\s+(?:de\s+)?(?:hoje|amanh[aã]|da\s+semana))\b/.test(normalizedText.trim());
 
-    const hasAgendaTerm = /(\b(agendar?|agende|agenda|marc)\w*\b|\bcompromiss\w*\b|\breunia\w*\b|\bconsult\w*\b|\bevento\w*\b)/.test(normalizedText);
+    // "consult" solto casava com "consultoria"; "marc" casava com nomes como
+    // Marcos e com "marca". Termos precisos evitam confundir lançamento
+    // financeiro com agenda.
+    const hasAgendaTerm = /(\bagend\w*\b|\bmarcar\b|\bmarque\b|\bmarcad[oa]\b|\bcompromiss\w*\b|\breuni[ao]\w*\b|\bconsultas?\b|\bevento\w*\b|\bcalendario\b)/.test(normalizedText);
 
-    if (hasAgendaTerm || hasCreateVerb) {
+    // Uma frase que declara movimentação de dinheiro nunca é agenda.
+    const looksFinancial = /\b(gastei|paguei|pago|comprei|recebi|ganhei|salario|receita|despesa|gasto|entrada|saida)\b/.test(normalizedText);
+
+    if ((hasAgendaTerm || hasCreateVerb) && !looksFinancial) {
       console.log('[Agenda Debug] routing:', { messageText, hasCreateVerb, hasTimeSignal, isListQuestion });
+
+      // Segundo portão: o intercepto de PRIORIDADE 0.75 usa um regex mais
+      // estrito que este roteador, então mensagens escapavam dele e chegavam ao
+      // calendário real mesmo com o módulo suspenso.
+      if (!CALENDAR_ENABLED) {
+        console.log('[CALENDAR-DISABLED] Agenda intent barrada no roteador');
+        return {
+          response: CALENDAR_SOON_MESSAGE,
+          sessionData: { ...sessionData, conversation_state: 'idle', pending_commitment: undefined },
+        };
+      }
 
       // 1) Verbo de criação SEMPRE cria — mesmo com "hoje/amanhã" na frase
       if (hasCreateVerb) {
