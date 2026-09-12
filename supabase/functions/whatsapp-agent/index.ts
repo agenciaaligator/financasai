@@ -1713,9 +1713,131 @@ class CategoryMatcher {
     return null;
   }
 
+  // Dicionário de termos do dia a dia. Sem ele, "uber" e "padaria" não casam com
+  // nenhum nome de categoria e dependem da IA, que custa por mensagem e cai em
+  // "Outros" sempre que a confiança fica baixa ou a chave da IA falha.
+  static readonly KEYWORD_MAP: Record<'expense' | 'income', Array<[string, string]>> = {
+    expense: [
+      ['mercado', 'Alimentação'], ['supermercado', 'Alimentação'], ['padaria', 'Alimentação'],
+      ['feira', 'Alimentação'], ['acougue', 'Alimentação'], ['hortifruti', 'Alimentação'],
+      ['sacolao', 'Alimentação'], ['quitanda', 'Alimentação'], ['ifood', 'Alimentação'],
+      ['rappi', 'Alimentação'], ['delivery', 'Alimentação'], ['restaurante', 'Alimentação'],
+      ['lanche', 'Alimentação'], ['lanchonete', 'Alimentação'], ['pizza', 'Alimentação'],
+      ['pizzaria', 'Alimentação'], ['hamburguer', 'Alimentação'], ['burger', 'Alimentação'],
+      ['almoco', 'Alimentação'], ['jantar', 'Alimentação'], ['cafe', 'Alimentação'],
+      ['cafeteria', 'Alimentação'], ['bar', 'Alimentação'], ['boteco', 'Alimentação'],
+      ['doceria', 'Alimentação'], ['sorvete', 'Alimentação'], ['sorveteria', 'Alimentação'],
+      ['acai', 'Alimentação'], ['sushi', 'Alimentação'], ['churrasco', 'Alimentação'],
+      ['marmita', 'Alimentação'], ['pastel', 'Alimentação'], ['salgado', 'Alimentação'],
+      ['comida', 'Alimentação'], ['mcdonalds', 'Alimentação'], ['subway', 'Alimentação'],
+      ['starbucks', 'Alimentação'],
+
+      ['uber', 'Transporte'], ['99', 'Transporte'], ['taxi', 'Transporte'],
+      ['cabify', 'Transporte'], ['indriver', 'Transporte'],
+      // "A|B": usa a primeira que existir nas categorias do usuário. Quem tem
+      // Combustível separado ganha o detalhe; quem não tem cai em Transporte.
+      ['combustivel', 'Combustível|Transporte'], ['gasolina', 'Combustível|Transporte'],
+      ['etanol', 'Combustível|Transporte'], ['alcool', 'Combustível|Transporte'],
+      ['diesel', 'Combustível|Transporte'], ['posto', 'Combustível|Transporte'],
+      ['estacionamento', 'Transporte'],
+      ['pedagio', 'Transporte'], ['onibus', 'Transporte'], ['metro', 'Transporte'],
+      ['trem', 'Transporte'], ['brt', 'Transporte'], ['passagem', 'Transporte'],
+      ['bilhete unico', 'Transporte'], ['mecanico', 'Transporte'], ['oficina', 'Transporte'],
+      ['pneu', 'Transporte'], ['ipva', 'Transporte'], ['licenciamento', 'Transporte'],
+      ['lava rapido', 'Transporte'], ['patinete', 'Transporte'],
+
+      ['aluguel', 'Moradia'], ['condominio', 'Moradia'], ['luz', 'Moradia'],
+      ['energia', 'Moradia'], ['enel', 'Moradia'], ['cemig', 'Moradia'], ['copel', 'Moradia'],
+      ['sabesp', 'Moradia'], ['gas', 'Moradia'], ['internet', 'Moradia'], ['wifi', 'Moradia'],
+      ['vivo', 'Moradia'], ['claro', 'Moradia'], ['tim', 'Moradia'], ['telefone', 'Moradia'],
+      ['iptu', 'Moradia'], ['faxina', 'Moradia'], ['diarista', 'Moradia'],
+      ['reforma', 'Moradia'], ['material de construcao', 'Moradia'], ['moveis', 'Moradia'],
+      ['eletrodomestico', 'Moradia'],
+
+      ['farmacia', 'Saúde'], ['drogaria', 'Saúde'], ['remedio', 'Saúde'],
+      ['medicamento', 'Saúde'], ['medico', 'Saúde'], ['consulta', 'Saúde'],
+      ['dentista', 'Saúde'], ['exame', 'Saúde'], ['laboratorio', 'Saúde'],
+      ['hospital', 'Saúde'], ['clinica', 'Saúde'], ['plano de saude', 'Saúde'],
+      ['unimed', 'Saúde'], ['amil', 'Saúde'], ['psicologo', 'Saúde'], ['terapia', 'Saúde'],
+      ['fisioterapia', 'Saúde'], ['vacina', 'Saúde'], ['oculos', 'Saúde'], ['lente', 'Saúde'],
+      ['academia', 'Saúde'], ['nutricionista', 'Saúde'],
+
+      ['cinema', 'Entretenimento'], ['netflix', 'Entretenimento'], ['spotify', 'Entretenimento'],
+      ['disney', 'Entretenimento'], ['hbo', 'Entretenimento'], ['prime video', 'Entretenimento'],
+      ['deezer', 'Entretenimento'], ['jogo', 'Entretenimento'], ['game', 'Entretenimento'],
+      ['steam', 'Entretenimento'], ['playstation', 'Entretenimento'], ['xbox', 'Entretenimento'],
+      ['show', 'Entretenimento'], ['teatro', 'Entretenimento'], ['festa', 'Entretenimento'],
+      ['balada', 'Entretenimento'], ['viagem', 'Entretenimento'], ['hotel', 'Entretenimento'],
+      ['airbnb', 'Entretenimento'], ['passeio', 'Entretenimento'], ['parque', 'Entretenimento'],
+      ['streaming', 'Entretenimento'],
+
+      ['curso', 'Educação'], ['faculdade', 'Educação'], ['universidade', 'Educação'],
+      ['escola', 'Educação'], ['colegio', 'Educação'], ['mensalidade', 'Educação'],
+      ['livro', 'Educação'], ['apostila', 'Educação'], ['material escolar', 'Educação'],
+      ['udemy', 'Educação'], ['alura', 'Educação'], ['ingles', 'Educação'],
+      ['idioma', 'Educação'], ['matricula', 'Educação'],
+
+      ['roupa', 'Vestuário'], ['camisa', 'Vestuário'], ['camiseta', 'Vestuário'],
+      ['calca', 'Vestuário'], ['sapato', 'Vestuário'], ['tenis', 'Vestuário'],
+      ['sandalia', 'Vestuário'], ['vestido', 'Vestuário'], ['blusa', 'Vestuário'],
+      ['jaqueta', 'Vestuário'], ['casaco', 'Vestuário'], ['bolsa', 'Vestuário'],
+      ['mochila', 'Vestuário'], ['renner', 'Vestuário'], ['riachuelo', 'Vestuário'],
+      ['zara', 'Vestuário'], ['shein', 'Vestuário'],
+    ],
+    income: [
+      ['salario', 'Salário'], ['holerite', 'Salário'], ['decimo terceiro', 'Salário'],
+      ['ferias', 'Salário'], ['adiantamento', 'Salário'], ['vale', 'Salário'],
+
+      ['freela', 'Freelance'], ['freelance', 'Freelance'], ['freelancer', 'Freelance'],
+      ['consultoria', 'Freelance'], ['projeto', 'Freelance'], ['bico', 'Freelance'],
+      ['comissao', 'Freelance'], ['servico prestado', 'Freelance'], ['venda', 'Freelance'],
+      ['cliente', 'Freelance'],
+
+      ['dividendo', 'Investimentos'], ['rendimento', 'Investimentos'], ['juros', 'Investimentos'],
+      ['cdb', 'Investimentos'], ['tesouro', 'Investimentos'], ['acoes', 'Investimentos'],
+      ['fii', 'Investimentos'], ['cripto', 'Investimentos'], ['bitcoin', 'Investimentos'],
+      ['resgate', 'Investimentos'], ['aplicacao', 'Investimentos'],
+    ],
+  };
+
+  static normalizeForMatch(value: string): string {
+    return value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  /**
+   * Casa o título contra o dicionário de termos comuns. Prefere o termo mais
+   * longo para que "plano de saude" ganhe de "saude".
+   */
+  static findKeywordCategory(
+    title: string,
+    type: 'income' | 'expense',
+    categories: Array<{ id: string; name: string; type: string }>
+  ): { category_id: string; category_name: string; suggested: boolean } | null {
+    const haystack = this.normalizeForMatch(title);
+    if (!haystack) return null;
+
+    const entries = [...this.KEYWORD_MAP[type]].sort((a, b) => b[0].length - a[0].length);
+
+    for (const [keyword, categoryNames] of entries) {
+      const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      // "s?" cobre o plural regular: dividendo/dividendos, livro/livros.
+      if (!new RegExp(`\\b${escaped}s?\\b`).test(haystack)) continue;
+
+      for (const candidate of categoryNames.split('|')) {
+        const target = this.normalizeForMatch(candidate);
+        const cat = categories.find(c => this.normalizeForMatch(c.name) === target);
+        if (cat) {
+          console.log(`📖 Keyword match: "${keyword}" → ${cat.name}`);
+          return { category_id: cat.id, category_name: cat.name, suggested: false };
+        }
+      }
+    }
+    return null;
+  }
+
   /**
    * Busca a melhor categoria para uma transação baseada no título
-   * Prioridade: 1) Match exato, 2) Similaridade, 3) User patterns, 4) AI, 5) "Outros"
+   * Prioridade: 1) Match exato, 2) Similaridade, 3) User patterns, 4) Dicionário, 5) AI, 6) "Outros"
    */
   static async findBestCategory(
     userId: string, 
@@ -1781,8 +1903,14 @@ class CategoryMatcher {
         return patternMatch;
       }
 
-      // 5. 🤖 Usar IA para sugestão inteligente
-      console.log('🤖 No exact/similar/pattern match, trying AI categorization...');
+      // 5. 📖 Dicionário de termos do dia a dia (instantâneo, sem custo)
+      const keywordMatch = this.findKeywordCategory(title, type, categories);
+      if (keywordMatch) {
+        return keywordMatch;
+      }
+
+      // 6. 🤖 Usar IA para sugestão inteligente
+      console.log('🤖 No exact/similar/pattern/keyword match, trying AI categorization...');
       const aiResult = await AICategorizer.suggestCategoryWithAI(userId, title, type);
       
       if (aiResult.category_id && aiResult.confidence > 0.7) {
