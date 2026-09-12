@@ -903,7 +903,9 @@ class TransactionParser {
     // Patterns ATUALIZADOS para máxima tolerância com números brasileiros
     const patterns = [
       // Pattern 1: "gasto/despesa/receita X Y" - super flexível
-      /^(gasto|gastei|receita|recebi|despesa|entrada|saida|paguei)\s+(\d+(?:[.,]\d{3})*(?:[.,]\d{2})?)\s*(?:na|no|em|de|com|para|a|o)?\s*(.+)?$/i,
+      // Verbos ausentes aqui caem na IA: alguns segundos e um custo por mensagem
+      // que o regex resolve em milissegundos.
+      /^(gasto|gastei|receita|recebi|ganhei|ganho|faturei|vendi|despesa|entrada|saida|paguei|comprei)\s+(\d+(?:[.,]\d{3})*(?:[.,]\d{2})?)\s*(?:na|no|em|de|com|para|a|o)?\s*(.+)?$/i,
       // Pattern 2: "+100 freelance" ou "-30 combustível" 
       /^([+-])\s*(\d+(?:[.,]\d{3})*(?:[.,]\d{2})?)\s+(.+)$/i,
       // Pattern 3: "50 mercado" (assume despesa)
@@ -926,7 +928,7 @@ class TransactionParser {
 
         if (pattern === patterns[0]) {
           // Pattern 1: com suporte a preposições e números brasileiros
-          type = ['receita', 'recebi', 'entrada'].includes(match[1].toLowerCase()) ? 'income' : 'expense';
+          type = ['receita', 'recebi', 'entrada', 'ganhei', 'ganho', 'faturei', 'vendi'].includes(match[1].toLowerCase()) ? 'income' : 'expense';
           amount = parseBrazilianNumber(match[2]);
           const rawTitle = match[3] || '';
           title = this.cleanTitle(rawTitle);
