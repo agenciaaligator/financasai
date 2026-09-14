@@ -25,6 +25,17 @@ const CATEGORY_EMOJIS: Record<string, string> = {
   'Educação': '📚', 'Education': '📚', 'Educación': '📚', 'Istruzione': '📚',
   'Salário': '💼', 'Salary': '💼', 'Salario': '💼', 'Stipendio': '💼',
   'Freelance': '💻', 'Investimentos': '📈', 'Investments': '📈', 'Inversiones': '📈', 'Investimenti': '📈',
+  'Mercado': '🛒', 'Groceries': '🛒', 'Supermercado': '🛒', 'Spesa': '🛒',
+  'Restaurantes e delivery': '🍽️', 'Restaurants & delivery': '🍽️', 'Restaurantes y delivery': '🍽️', 'Ristoranti e delivery': '🍽️', 'Restaurantes e entregas': '🍽️',
+  'Contas da casa': '💡', 'Utilities': '💡', 'Servicios del hogar': '💡', 'Bollette': '💡',
+  'Combustível': '⛽', 'Fuel': '⛽', 'Combustible': '⛽', 'Carburante': '⛽',
+  'Leisure': '🎮', 'Ocio': '🎮', 'Tempo libero': '🎮',
+  'Assinaturas': '📺', 'Subscriptions': '📺', 'Suscripciones': '📺', 'Abbonamenti': '📺', 'Subscrições': '📺',
+  'Compras': '🛍️', 'Shopping': '🛍️', 'Acquisti': '🛍️',
+  'Cuidados pessoais': '💇', 'Personal care': '💇', 'Cuidado personal': '💇', 'Cura personale': '💇',
+  'Pets': '🐾', 'Mascotas': '🐾', 'Animali domestici': '🐾', 'Animais de estimação': '🐾',
+  'Serviços e freelance': '🧾', 'Services & freelance': '🧾', 'Servicios y freelance': '🧾', 'Servizi e freelance': '🧾',
+  'Vendas': '🏷️', 'Sales': '🏷️', 'Ventas': '🏷️', 'Vendite': '🏷️',
 };
 
 function getDateLocale(lang: string) {

@@ -243,6 +243,11 @@ interface Category {
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+// Valor em reais no padrão brasileiro: 540,00 e 1.234,56 (sem o "R$").
+function brl(value: number | null | undefined): string {
+  return Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 // 🚧 Agenda / Google Calendar temporariamente desativada (verificação do app no Google em análise).
 // Para reativar: definir o secret CALENDAR_ENABLED=true (e CALENDAR_ENABLED = true no frontend).
 const CALENDAR_ENABLED = (Deno.env.get('CALENDAR_ENABLED') ?? 'false').toLowerCase() === 'true';
@@ -1037,6 +1042,7 @@ class NaturalLanguageProcessor {
       title?: string;
       type?: 'income' | 'expense';
       category?: string;
+      term?: string;
       date?: string;
       period?: 'day' | 'week' | 'month' | 'year';
     };
@@ -1074,13 +1080,16 @@ ENTIDADES PARA EXTRAIR:
 - amount: valor numérico (ex: 150, 50.5)
 - title: descrição da transação (ex: "mercado", "uber", "salário")
 - type: "income" (receita) ou "expense" (despesa)
-- category: categoria mencionada (ex: "alimentação", "transporte")
+- category: categoria mencionada (ex: "mercado", "transporte", "assinaturas")
+- term: estabelecimento, serviço ou item específico consultado (ex: "uber", "padaria", "ifood", "netflix")
 - date: data mencionada em formato YYYY-MM-DD
 - period: "day", "week", "month" ou "year"
 
 EXEMPLOS:
 "gastei 150 no mercado ontem" → intent: add_transaction, amount: 150, title: mercado, type: expense, date: ontem
-"quanto gastei esse mês com comida?" → intent: query_expenses, category: alimentação, period: month
+"quanto gastei esse mês no mercado?" → intent: query_expenses, category: mercado, term: mercado, period: month
+"quanto gastei de uber essa semana?" → intent: query_expenses, term: uber, period: week
+"quanto recebi de consultoria esse ano?" → intent: query_expenses, term: consultoria, type: income, period: year
 "qual meu saldo?" → intent: query_balance
 "recebi 5000 de salário" → intent: add_transaction, amount: 5000, title: salário, type: income
 
@@ -1220,10 +1229,15 @@ Seu trabalho é analisar a mensagem do usuário e escolher a categoria MAIS ADEQ
 
 IMPORTANTE:
 - Analise o CONTEXTO e SIGNIFICADO das palavras, não apenas correspondência exata
-- Palavras como "mercado", "supermercado", "feira" devem ir para "Alimentação"
-- "padaria", "lanche", "restaurante" devem ir para "Alimentação"
-- "uber", "ônibus", "gasolina" devem ir para "Transporte"
-- "conta de luz", "água", "aluguel" devem ir para "Moradia"
+- "mercado", "supermercado", "feira", "padaria", "açougue" → "Mercado" (ou "Alimentação" se "Mercado" não existir)
+- "restaurante", "lanche", "ifood", "delivery", "café" → "Restaurantes e delivery" (ou "Alimentação")
+- "uber", "ônibus", "estacionamento", "pedágio" → "Transporte"
+- "gasolina", "etanol", "posto", "combustível" → "Combustível" (ou "Transporte")
+- "conta de luz", "conta de água", "gás", "internet", "celular" → "Contas da casa" (ou "Moradia")
+- "aluguel", "condomínio", "IPTU" → "Moradia"
+- "netflix", "spotify", "streaming" → "Assinaturas"; "cinema", "viagem", "show" → "Lazer"
+- "salão", "barbearia", "academia" → "Cuidados pessoais"; "ração", "veterinário", "pet shop" → "Pets"
+- roupas, eletrônicos, presentes, compras online → "Compras"
 - "drogaria", "farmácia", "drogasil", "droga raia", "pague menos", "remédio", "medicamento", "injeção", "vacina", "consulta", "médico", "dentista", "exame", "hospital", "clínica" devem ir para "Saúde"
 - Se o usuário tem padrões pessoais, PRIORIZE esses padrões
 - Se nenhuma categoria se adequar bem, retorne "Outros" se existir, ou null
@@ -1374,7 +1388,7 @@ class ReceiptOCR {
 
 1. Valor total (apenas número, ex: 87.50)
 2. Nome do estabelecimento ou empresa
-3. Categoria provável (escolha UMA das opções: Alimentação, Transporte, Moradia, Saúde, Entretenimento, Educação, Vestuário, Outros)
+3. Categoria provável (escolha UMA das opções: Mercado, Restaurantes e delivery, Transporte, Combustível, Moradia, Contas da casa, Saúde, Educação, Lazer, Assinaturas, Compras, Cuidados pessoais, Pets, Outros)
 4. Data do documento (formato DD/MM/AAAA)
 5. Tipo de documento: "receipt" (cupom fiscal, comprovante de compra) ou "bill" (conta de luz/água/gás/telefone, boleto, fatura)
 6. Se for uma CONTA (bill): extraia a DATA DE VENCIMENTO (formato DD/MM/AAAA)
@@ -1385,15 +1399,18 @@ IMPORTANTE:
 - Para "category", escolha UMA categoria da lista acima. REGRAS OBRIGATÓRIAS:
   * Se o estabelecimento for drogaria, farmácia, drogasil, droga raia, pague menos, pacheco, ultrafarma, ou vender remédios/medicamentos/injeção/vacina → SEMPRE "Saúde" (mesmo que também venda outros itens)
   * Se for hospital, clínica, laboratório, consultório médico/dentista/exame → "Saúde"
-  * Supermercado, mercado, padaria, restaurante, lanchonete, açougue, hortifruti → "Alimentação"
-  * Posto de gasolina, uber, 99, estacionamento, pedágio → "Transporte"
-  * Conta de luz/água/gás/internet, aluguel, condomínio → "Moradia"
+  * Supermercado, mercado, padaria, açougue, hortifruti → "Mercado"
+  * Restaurante, lanchonete, cafeteria, delivery → "Restaurantes e delivery"
+  * Posto de gasolina, combustível → "Combustível"
+  * Uber, 99, estacionamento, pedágio → "Transporte"
+  * Conta de luz/água/gás/internet/celular → "Contas da casa"
+  * Aluguel, condomínio → "Moradia"
 - Para "date", use formato DD/MM/AAAA (data da compra ou emissão)
 - Para "document_type", use "receipt" para cupons/comprovantes ou "bill" para contas/boletos/faturas
 - Para "due_date", APENAS se for uma conta (bill): extraia a data de VENCIMENTO no formato DD/MM/AAAA. Procure por campos como "Vencimento", "Data de vencimento", "Vence em". Se não encontrar, deixe vazio.
 
 Retorne APENAS um JSON válido no formato:
-{"amount": 87.50, "merchant": "Nome do Local", "category": "Alimentação", "date": "07/10/2025", "document_type": "receipt", "due_date": ""}`
+{"amount": 87.50, "merchant": "Nome do Local", "category": "Mercado", "date": "07/10/2025", "document_type": "receipt", "due_date": ""}`
             },
             {
               type: 'image_url',
@@ -1450,6 +1467,17 @@ class PersonalizedResponses {
     'Salário': '💼',
     'Freelance': '💻',
     'Investimentos': '📈',
+    'Mercado': '🛒',
+    'Restaurantes e delivery': '🍽️',
+    'Contas da casa': '💡',
+    'Combustível': '⛽',
+    'Lazer': '🎉',
+    'Assinaturas': '📺',
+    'Compras': '🛍️',
+    'Cuidados pessoais': '💇',
+    'Pets': '🐾',
+    'Serviços e freelance': '🧾',
+    'Vendas': '🏷️',
     'Outros': '📌'
   };
 
@@ -1472,11 +1500,11 @@ class PersonalizedResponses {
     const typeText = transaction.type === 'income' ? 'Receita' : 'Despesa';
 
     const templates = [
-      `✅ Anotei! ${typeText} de R$ ${transaction.amount.toFixed(2)} em ${transaction.category_name || transaction.title} ${emoji}\n\n💰 Saldo atual: R$ ${balance.total.toFixed(2)}`,
+      `✅ Anotei! ${typeText} de R$ ${brl(transaction.amount)} em ${transaction.category_name || transaction.title} ${emoji}\n\n💰 Saldo atual: R$ ${brl(balance.total)}`,
       
-      `Pronto, ${greeting}! ${typeEmoji} ${typeText} de R$ ${transaction.amount.toFixed(2)} → ${transaction.category_name || transaction.title} ${emoji}\n\n📊 Resumo do mês:\n💚 Receitas: R$ ${balance.income.toFixed(2)}\n💸 Despesas: R$ ${balance.expense.toFixed(2)}\n💰 Saldo: R$ ${balance.total.toFixed(2)}`,
+      `Pronto, ${greeting}! ${typeEmoji} ${typeText} de R$ ${brl(transaction.amount)} → ${transaction.category_name || transaction.title} ${emoji}\n\n📊 Resumo do mês:\n💚 Receitas: R$ ${brl(balance.income)}\n💸 Despesas: R$ ${brl(balance.expense)}\n💰 Saldo: R$ ${brl(balance.total)}`,
       
-      `${typeEmoji} Feito! R$ ${transaction.amount.toFixed(2)} em ${transaction.title.toLowerCase()} ${emoji}\n\nSaldo atual: R$ ${balance.total.toFixed(2)}`
+      `${typeEmoji} Feito! R$ ${brl(transaction.amount)} em ${transaction.title.toLowerCase()} ${emoji}\n\nSaldo atual: R$ ${brl(balance.total)}`
     ];
 
     const randomIndex = Math.floor(Math.random() * templates.length);
@@ -1716,60 +1744,67 @@ class CategoryMatcher {
   // Dicionário de termos do dia a dia. Sem ele, "uber" e "padaria" não casam com
   // nenhum nome de categoria e dependem da IA, que custa por mensagem e cai em
   // "Outros" sempre que a confiança fica baixa ou a chave da IA falha.
+  // "A|B": usa a primeira categoria que existir para o usuário, o que mantém
+  // funcionando contas que ainda usem os nomes antigos (Alimentação, Freelance...).
   static readonly KEYWORD_MAP: Record<'expense' | 'income', Array<[string, string]>> = {
     expense: [
-      ['mercado', 'Alimentação'], ['supermercado', 'Alimentação'], ['padaria', 'Alimentação'],
-      ['feira', 'Alimentação'], ['acougue', 'Alimentação'], ['hortifruti', 'Alimentação'],
-      ['sacolao', 'Alimentação'], ['quitanda', 'Alimentação'], ['ifood', 'Alimentação'],
-      ['rappi', 'Alimentação'], ['delivery', 'Alimentação'], ['restaurante', 'Alimentação'],
-      ['lanche', 'Alimentação'], ['lanchonete', 'Alimentação'], ['pizza', 'Alimentação'],
-      ['pizzaria', 'Alimentação'], ['hamburguer', 'Alimentação'], ['burger', 'Alimentação'],
-      ['almoco', 'Alimentação'], ['jantar', 'Alimentação'], ['cafe', 'Alimentação'],
-      ['cafeteria', 'Alimentação'], ['bar', 'Alimentação'], ['boteco', 'Alimentação'],
-      ['doceria', 'Alimentação'], ['sorvete', 'Alimentação'], ['sorveteria', 'Alimentação'],
-      ['acai', 'Alimentação'], ['sushi', 'Alimentação'], ['churrasco', 'Alimentação'],
-      ['marmita', 'Alimentação'], ['pastel', 'Alimentação'], ['salgado', 'Alimentação'],
-      ['comida', 'Alimentação'], ['mcdonalds', 'Alimentação'], ['subway', 'Alimentação'],
-      ['starbucks', 'Alimentação'],
+      ['mercado', 'Mercado|Alimentação'], ['supermercado', 'Mercado|Alimentação'],
+      ['padaria', 'Mercado|Alimentação'], ['feira', 'Mercado|Alimentação'],
+      ['acougue', 'Mercado|Alimentação'], ['hortifruti', 'Mercado|Alimentação'],
+      ['sacolao', 'Mercado|Alimentação'], ['quitanda', 'Mercado|Alimentação'],
+      ['atacadao', 'Mercado|Alimentação'], ['assai', 'Mercado|Alimentação'],
+      ['carrefour', 'Mercado|Alimentação'], ['pao de acucar', 'Mercado|Alimentação'],
+
+      ['ifood', 'Restaurantes e delivery|Alimentação'], ['rappi', 'Restaurantes e delivery|Alimentação'],
+      ['delivery', 'Restaurantes e delivery|Alimentação'], ['restaurante', 'Restaurantes e delivery|Alimentação'],
+      ['lanche', 'Restaurantes e delivery|Alimentação'], ['lanchonete', 'Restaurantes e delivery|Alimentação'],
+      ['pizza', 'Restaurantes e delivery|Alimentação'], ['pizzaria', 'Restaurantes e delivery|Alimentação'],
+      ['hamburguer', 'Restaurantes e delivery|Alimentação'], ['burger', 'Restaurantes e delivery|Alimentação'],
+      ['almoco', 'Restaurantes e delivery|Alimentação'], ['jantar', 'Restaurantes e delivery|Alimentação'],
+      ['cafe', 'Restaurantes e delivery|Alimentação'], ['cafeteria', 'Restaurantes e delivery|Alimentação'],
+      ['bar', 'Restaurantes e delivery|Alimentação'], ['boteco', 'Restaurantes e delivery|Alimentação'],
+      ['doceria', 'Restaurantes e delivery|Alimentação'], ['sorvete', 'Restaurantes e delivery|Alimentação'],
+      ['sorveteria', 'Restaurantes e delivery|Alimentação'], ['acai', 'Restaurantes e delivery|Alimentação'],
+      ['sushi', 'Restaurantes e delivery|Alimentação'], ['churrasco', 'Restaurantes e delivery|Alimentação'],
+      ['marmita', 'Restaurantes e delivery|Alimentação'], ['pastel', 'Restaurantes e delivery|Alimentação'],
+      ['salgado', 'Restaurantes e delivery|Alimentação'], ['esfiha', 'Restaurantes e delivery|Alimentação'],
+      ['comida', 'Restaurantes e delivery|Alimentação'], ['mcdonalds', 'Restaurantes e delivery|Alimentação'],
+      ['subway', 'Restaurantes e delivery|Alimentação'], ['starbucks', 'Restaurantes e delivery|Alimentação'],
 
       ['uber', 'Transporte'], ['99', 'Transporte'], ['taxi', 'Transporte'],
-      ['cabify', 'Transporte'], ['indriver', 'Transporte'],
-      // "A|B": usa a primeira que existir nas categorias do usuário. Quem tem
-      // Combustível separado ganha o detalhe; quem não tem cai em Transporte.
-      ['combustivel', 'Combustível|Transporte'], ['gasolina', 'Combustível|Transporte'],
-      ['etanol', 'Combustível|Transporte'], ['alcool', 'Combustível|Transporte'],
-      ['diesel', 'Combustível|Transporte'], ['posto', 'Combustível|Transporte'],
-      ['estacionamento', 'Transporte'],
+      ['cabify', 'Transporte'], ['indriver', 'Transporte'], ['estacionamento', 'Transporte'],
       ['pedagio', 'Transporte'], ['onibus', 'Transporte'], ['metro', 'Transporte'],
       ['trem', 'Transporte'], ['brt', 'Transporte'], ['passagem', 'Transporte'],
       ['bilhete unico', 'Transporte'], ['mecanico', 'Transporte'], ['oficina', 'Transporte'],
       ['pneu', 'Transporte'], ['ipva', 'Transporte'], ['licenciamento', 'Transporte'],
       ['lava rapido', 'Transporte'], ['patinete', 'Transporte'],
 
-      ['aluguel', 'Moradia'], ['condominio', 'Moradia'], ['luz', 'Moradia'],
-      ['energia', 'Moradia'], ['enel', 'Moradia'], ['cemig', 'Moradia'], ['copel', 'Moradia'],
-      ['sabesp', 'Moradia'], ['gas', 'Moradia'], ['internet', 'Moradia'], ['wifi', 'Moradia'],
-      ['vivo', 'Moradia'], ['claro', 'Moradia'], ['tim', 'Moradia'], ['telefone', 'Moradia'],
-      ['iptu', 'Moradia'], ['faxina', 'Moradia'], ['diarista', 'Moradia'],
-      ['reforma', 'Moradia'], ['material de construcao', 'Moradia'], ['moveis', 'Moradia'],
-      ['eletrodomestico', 'Moradia'],
+      ['combustivel', 'Combustível|Transporte'], ['gasolina', 'Combustível|Transporte'],
+      ['etanol', 'Combustível|Transporte'], ['alcool', 'Combustível|Transporte'],
+      ['diesel', 'Combustível|Transporte'], ['posto', 'Combustível|Transporte'],
+      ['abastecimento', 'Combustível|Transporte'],
 
-      ['farmacia', 'Saúde'], ['drogaria', 'Saúde'], ['remedio', 'Saúde'],
-      ['medicamento', 'Saúde'], ['medico', 'Saúde'], ['consulta', 'Saúde'],
-      ['dentista', 'Saúde'], ['exame', 'Saúde'], ['laboratorio', 'Saúde'],
-      ['hospital', 'Saúde'], ['clinica', 'Saúde'], ['plano de saude', 'Saúde'],
-      ['unimed', 'Saúde'], ['amil', 'Saúde'], ['psicologo', 'Saúde'], ['terapia', 'Saúde'],
-      ['fisioterapia', 'Saúde'], ['vacina', 'Saúde'], ['oculos', 'Saúde'], ['lente', 'Saúde'],
-      ['academia', 'Saúde'], ['nutricionista', 'Saúde'],
+      ['aluguel', 'Moradia'], ['condominio', 'Moradia'], ['iptu', 'Moradia'],
+      ['faxina', 'Moradia'], ['diarista', 'Moradia'], ['reforma', 'Moradia'],
+      ['material de construcao', 'Moradia'], ['manutencao', 'Moradia'],
 
-      ['cinema', 'Entretenimento'], ['netflix', 'Entretenimento'], ['spotify', 'Entretenimento'],
-      ['disney', 'Entretenimento'], ['hbo', 'Entretenimento'], ['prime video', 'Entretenimento'],
-      ['deezer', 'Entretenimento'], ['jogo', 'Entretenimento'], ['game', 'Entretenimento'],
-      ['steam', 'Entretenimento'], ['playstation', 'Entretenimento'], ['xbox', 'Entretenimento'],
-      ['show', 'Entretenimento'], ['teatro', 'Entretenimento'], ['festa', 'Entretenimento'],
-      ['balada', 'Entretenimento'], ['viagem', 'Entretenimento'], ['hotel', 'Entretenimento'],
-      ['airbnb', 'Entretenimento'], ['passeio', 'Entretenimento'], ['parque', 'Entretenimento'],
-      ['streaming', 'Entretenimento'],
+      ['luz', 'Contas da casa|Moradia'], ['energia', 'Contas da casa|Moradia'],
+      ['enel', 'Contas da casa|Moradia'], ['cemig', 'Contas da casa|Moradia'],
+      ['copel', 'Contas da casa|Moradia'], ['sabesp', 'Contas da casa|Moradia'],
+      ['conta de agua', 'Contas da casa|Moradia'], ['gas', 'Contas da casa|Moradia'],
+      ['internet', 'Contas da casa|Moradia'], ['wifi', 'Contas da casa|Moradia'],
+      ['vivo', 'Contas da casa|Moradia'], ['claro', 'Contas da casa|Moradia'],
+      ['tim', 'Contas da casa|Moradia'], ['telefone', 'Contas da casa|Moradia'],
+      ['conta de celular', 'Contas da casa|Moradia'], ['plano de celular', 'Contas da casa|Moradia'],
+
+      ['farmacia', 'Saúde'], ['drogaria', 'Saúde'], ['drogasil', 'Saúde'],
+      ['droga raia', 'Saúde'], ['remedio', 'Saúde'], ['medicamento', 'Saúde'],
+      ['medico', 'Saúde'], ['consulta', 'Saúde'], ['dentista', 'Saúde'],
+      ['exame', 'Saúde'], ['laboratorio', 'Saúde'], ['hospital', 'Saúde'],
+      ['clinica', 'Saúde'], ['plano de saude', 'Saúde'], ['unimed', 'Saúde'],
+      ['amil', 'Saúde'], ['psicologo', 'Saúde'], ['terapia', 'Saúde'],
+      ['fisioterapia', 'Saúde'], ['vacina', 'Saúde'], ['oculos', 'Saúde'],
+      ['lente', 'Saúde'], ['nutricionista', 'Saúde'],
 
       ['curso', 'Educação'], ['faculdade', 'Educação'], ['universidade', 'Educação'],
       ['escola', 'Educação'], ['colegio', 'Educação'], ['mensalidade', 'Educação'],
@@ -1777,26 +1812,64 @@ class CategoryMatcher {
       ['udemy', 'Educação'], ['alura', 'Educação'], ['ingles', 'Educação'],
       ['idioma', 'Educação'], ['matricula', 'Educação'],
 
-      ['roupa', 'Vestuário'], ['camisa', 'Vestuário'], ['camiseta', 'Vestuário'],
-      ['calca', 'Vestuário'], ['sapato', 'Vestuário'], ['tenis', 'Vestuário'],
-      ['sandalia', 'Vestuário'], ['vestido', 'Vestuário'], ['blusa', 'Vestuário'],
-      ['jaqueta', 'Vestuário'], ['casaco', 'Vestuário'], ['bolsa', 'Vestuário'],
-      ['mochila', 'Vestuário'], ['renner', 'Vestuário'], ['riachuelo', 'Vestuário'],
-      ['zara', 'Vestuário'], ['shein', 'Vestuário'],
+      ['cinema', 'Lazer|Entretenimento'], ['show', 'Lazer|Entretenimento'],
+      ['teatro', 'Lazer|Entretenimento'], ['festa', 'Lazer|Entretenimento'],
+      ['balada', 'Lazer|Entretenimento'], ['viagem', 'Lazer|Entretenimento'],
+      ['hotel', 'Lazer|Entretenimento'], ['airbnb', 'Lazer|Entretenimento'],
+      ['passeio', 'Lazer|Entretenimento'], ['parque', 'Lazer|Entretenimento'],
+      ['jogo', 'Lazer|Entretenimento'], ['game', 'Lazer|Entretenimento'],
+      ['steam', 'Lazer|Entretenimento'], ['playstation', 'Lazer|Entretenimento'],
+      ['xbox', 'Lazer|Entretenimento'], ['ingresso', 'Lazer|Entretenimento'],
+      ['museu', 'Lazer|Entretenimento'],
+
+      ['netflix', 'Assinaturas|Lazer|Entretenimento'], ['spotify', 'Assinaturas|Lazer|Entretenimento'],
+      ['disney', 'Assinaturas|Lazer|Entretenimento'], ['hbo', 'Assinaturas|Lazer|Entretenimento'],
+      ['prime video', 'Assinaturas|Lazer|Entretenimento'], ['deezer', 'Assinaturas|Lazer|Entretenimento'],
+      ['globoplay', 'Assinaturas|Lazer|Entretenimento'], ['youtube premium', 'Assinaturas|Lazer|Entretenimento'],
+      ['streaming', 'Assinaturas|Lazer|Entretenimento'], ['assinatura', 'Assinaturas|Lazer|Entretenimento'],
+      ['icloud', 'Assinaturas'], ['google one', 'Assinaturas'], ['chatgpt', 'Assinaturas'],
+
+      ['roupa', 'Compras|Vestuário'], ['camisa', 'Compras|Vestuário'], ['camiseta', 'Compras|Vestuário'],
+      ['calca', 'Compras|Vestuário'], ['sapato', 'Compras|Vestuário'], ['tenis', 'Compras|Vestuário'],
+      ['sandalia', 'Compras|Vestuário'], ['vestido', 'Compras|Vestuário'], ['blusa', 'Compras|Vestuário'],
+      ['jaqueta', 'Compras|Vestuário'], ['casaco', 'Compras|Vestuário'], ['bolsa', 'Compras|Vestuário'],
+      ['mochila', 'Compras|Vestuário'], ['renner', 'Compras|Vestuário'], ['riachuelo', 'Compras|Vestuário'],
+      ['zara', 'Compras|Vestuário'], ['shein', 'Compras|Vestuário'],
+      ['mercado livre', 'Compras'], ['amazon', 'Compras'], ['shopee', 'Compras'],
+      ['magalu', 'Compras'], ['americanas', 'Compras'], ['casas bahia', 'Compras'],
+      ['eletronico', 'Compras'], ['eletrodomestico', 'Compras'], ['moveis', 'Compras'],
+      ['presente', 'Compras'],
+
+      ['salao', 'Cuidados pessoais|Saúde'], ['cabeleireiro', 'Cuidados pessoais|Saúde'],
+      ['barbearia', 'Cuidados pessoais|Saúde'], ['barbeiro', 'Cuidados pessoais|Saúde'],
+      ['manicure', 'Cuidados pessoais|Saúde'], ['pedicure', 'Cuidados pessoais|Saúde'],
+      ['estetica', 'Cuidados pessoais|Saúde'], ['cosmetico', 'Cuidados pessoais|Saúde'],
+      ['maquiagem', 'Cuidados pessoais|Saúde'], ['perfume', 'Cuidados pessoais|Saúde'],
+      ['depilacao', 'Cuidados pessoais|Saúde'], ['academia', 'Cuidados pessoais|Saúde'],
+      ['smartfit', 'Cuidados pessoais|Saúde'],
+
+      ['racao', 'Pets'], ['pet shop', 'Pets'], ['petshop', 'Pets'],
+      ['veterinario', 'Pets'], ['banho e tosa', 'Pets'], ['petz', 'Pets'],
+      ['cobasi', 'Pets'],
     ],
     income: [
       ['salario', 'Salário'], ['holerite', 'Salário'], ['decimo terceiro', 'Salário'],
-      ['ferias', 'Salário'], ['adiantamento', 'Salário'], ['vale', 'Salário'],
+      ['ferias', 'Salário'], ['adiantamento', 'Salário'], ['pro labore', 'Salário'],
 
-      ['freela', 'Freelance'], ['freelance', 'Freelance'], ['freelancer', 'Freelance'],
-      ['consultoria', 'Freelance'], ['projeto', 'Freelance'], ['bico', 'Freelance'],
-      ['comissao', 'Freelance'], ['servico prestado', 'Freelance'], ['venda', 'Freelance'],
-      ['cliente', 'Freelance'],
+      ['freela', 'Serviços e freelance|Freelance'], ['freelance', 'Serviços e freelance|Freelance'],
+      ['freelancer', 'Serviços e freelance|Freelance'], ['consultoria', 'Serviços e freelance|Freelance'],
+      ['projeto', 'Serviços e freelance|Freelance'], ['bico', 'Serviços e freelance|Freelance'],
+      ['comissao', 'Serviços e freelance|Freelance'], ['servico', 'Serviços e freelance|Freelance'],
+      ['cliente', 'Serviços e freelance|Freelance'], ['honorario', 'Serviços e freelance|Freelance'],
+      ['job', 'Serviços e freelance|Freelance'],
+
+      ['venda', 'Vendas|Serviços e freelance|Freelance'], ['revenda', 'Vendas|Serviços e freelance|Freelance'],
+      ['produto', 'Vendas|Serviços e freelance|Freelance'],
 
       ['dividendo', 'Investimentos'], ['rendimento', 'Investimentos'], ['juros', 'Investimentos'],
       ['cdb', 'Investimentos'], ['tesouro', 'Investimentos'], ['acoes', 'Investimentos'],
       ['fii', 'Investimentos'], ['cripto', 'Investimentos'], ['bitcoin', 'Investimentos'],
-      ['resgate', 'Investimentos'], ['aplicacao', 'Investimentos'],
+      ['resgate', 'Investimentos'], ['aplicacao', 'Investimentos'], ['poupanca', 'Investimentos'],
     ],
   };
 
@@ -1831,6 +1904,9 @@ class CategoryMatcher {
           return { category_id: cat.id, category_name: cat.name, suggested: false };
         }
       }
+      // O termo mais específico já definiu a intenção. Seguir para um termo mais
+      // curto trocaria o sentido: "mercado livre" viraria "mercado".
+      return null;
     }
     return null;
   }
@@ -1884,10 +1960,12 @@ class CategoryMatcher {
       // 3. Heurística específica para "água"
       if (normalizedTitle.includes('agua') || normalizedTitle.includes('água')) {
         if (normalizedTitle.includes('conta') || normalizedTitle.includes('servico') || normalizedTitle.includes('serviço')) {
-          const moradiaMatch = categories.find(cat => cat.name.toLowerCase() === 'moradia');
-          if (moradiaMatch) {
-            console.log(`💧 "conta de água" -> Moradia`);
-            return { category_id: moradiaMatch.id, category_name: moradiaMatch.name, suggested: false };
+          const billMatch =
+            categories.find(cat => cat.name.toLowerCase() === 'contas da casa') ||
+            categories.find(cat => cat.name.toLowerCase() === 'moradia');
+          if (billMatch) {
+            console.log(`💧 "conta de água" -> ${billMatch.name}`);
+            return { category_id: billMatch.id, category_name: billMatch.name, suggested: false };
           }
         }
         const outrosMatch = categories.find(cat => cat.name.toLowerCase() === 'outros');
@@ -2422,7 +2500,7 @@ class WhatsAppAgent {
         }
         
         return {
-          response: `✅ *Conta fixa cadastrada!*\n\n📝 *${rec.title}* — R$ ${rec.amount.toFixed(2)}\n🔄 Todo dia ${dayOfMonth} de cada mês\n\nVocê pode gerenciar suas contas fixas no painel web.`,
+          response: `✅ *Conta fixa cadastrada!*\n\n📝 *${rec.title}* — R$ ${brl(rec.amount)}\n🔄 Todo dia ${dayOfMonth} de cada mês\n\nVocê pode gerenciar suas contas fixas no painel web.`,
           sessionData: { ...sessionData, conversation_state: 'idle', pending_recurring_suggestion: undefined }
         };
       } else {
@@ -2797,7 +2875,7 @@ class WhatsAppAgent {
         return {
           response: `✅ *SIM! Sua transação foi cadastrada com sucesso!*\n\n` +
                    `*Última transação registrada:*\n` +
-                   `${emoji} ${typeText}: R$ ${Number(lastTransaction.amount).toFixed(2)}\n` +
+                   `${emoji} ${typeText}: R$ ${brl(Number(lastTransaction.amount))}\n` +
                    `📝 ${lastTransaction.title}\n` +
                    `📅 ${dateStr}\n` +
                    `📁 ${categoryName}\n\n` +
@@ -2918,13 +2996,23 @@ class WhatsAppAgent {
             };
           }
           
-        case 'query_expenses':
+        case 'query_expenses': {
           console.log('🤖 Querying expenses/income via NLP');
           const period = nlpResult.entities.period || 'month';
+          const { category, term, type } = nlpResult.entities;
+          // Pergunta sobre algo específico ("quanto gastei de uber") precisa somar
+          // só aquilo; o relatório geral não responde a pergunta feita.
+          if (category || term) {
+            return {
+              response: await this.generateSpendingQuery(session.user_id!, period, category, term, type),
+              sessionData
+            };
+          }
           return {
             response: await this.generateAIReport(session.user_id!, period),
             sessionData
           };
+        }
           
         case 'list_transactions':
           console.log('🤖 Listing transactions via NLP');
@@ -3014,7 +3102,7 @@ class WhatsAppAgent {
         };
         
         return {
-          response: `💡 Detectei um valor de R$ ${amount.toFixed(2)}\n\n` +
+          response: `💡 Detectei um valor de R$ ${brl(amount)}\n\n` +
                    `Para qual categoria essa ${type === 'income' ? 'receita' : 'despesa'}?\n\n` +
                    `Exemplos de categorias de ${type === 'income' ? 'receita' : 'despesa'}:\n` +
                    categoryExamples,
@@ -3036,7 +3124,7 @@ class WhatsAppAgent {
         console.log('High-value transaction detected, requesting confirmation');
         return {
           response: `⚠️ *Confirmação Necessária*\n\n` +
-                   `Transação de alto valor: R$ ${transaction.amount?.toFixed(2)}\n` +
+                   `Transação de alto valor: R$ ${brl(transaction.amount)}\n` +
                    `📝 ${transaction.title}\n` +
                    `${transaction.type === 'income' ? '💰 Receita' : '💸 Despesa'}\n\n` +
                    `Digite *"sim"* para confirmar ou *"não"* para cancelar.`,
@@ -3342,7 +3430,7 @@ class WhatsAppAgent {
       const dateValue = isBill && ocrData.due_date ? ocrData.due_date : ocrData.date;
       
       const response = `${headerText}\n\n` +
-                      `💰 Valor: R$ ${ocrData.amount.toFixed(2)}\n` +
+                      `💰 Valor: R$ ${brl(ocrData.amount)}\n` +
                       `${locationLabel}: ${ocrData.merchant}\n` +
                       `📂 Categoria: ${ocrData.category}\n` +
                       `${dateValue ? `${dateLabel}: ${dateValue}\n` : ''}\n` +
@@ -3514,7 +3602,7 @@ class WhatsAppAgent {
 
     const response = `✏️ *Editar Transação*\n\n` +
                     `${emoji} *${typeText}*\n` +
-                    `💰 Valor: R$ ${lastTransaction.amount}\n` +
+                    `💰 Valor: R$ ${brl(Number(lastTransaction.amount))}\n` +
                     `📝 Título: ${lastTransaction.title}\n` +
                     `📂 Categoria: ${categoryName}\n` +
                     `📅 Data: ${new Date(lastTransaction.date + 'T00:00:00').toLocaleDateString('pt-BR')}\n\n` +
@@ -4070,7 +4158,7 @@ class WhatsAppAgent {
     });
 
     const response = `🗑️ *Confirmar Exclusão*\n\n` +
-                    `${emoji} ${typeText}: R$ ${lastTransaction.amount}\n` +
+                    `${emoji} ${typeText}: R$ ${brl(Number(lastTransaction.amount))}\n` +
                     `📝 ${lastTransaction.title}\n\n` +
                     `Tem certeza que deseja excluir? *(sim/não)*`;
 
@@ -4113,7 +4201,7 @@ class WhatsAppAgent {
       });
 
       return {
-        response: `✅ Transação excluída com sucesso!\n\n🗑️ ${pendingDelete.transaction_title} - R$ ${pendingDelete.transaction_amount}\n\n📊 Para visualizar mais detalhes e relatórios, acesse a plataforma:\n🔗 https://donawilma.com.br`,
+        response: `✅ Transação excluída com sucesso!\n\n🗑️ ${pendingDelete.transaction_title} - R$ ${brl(Number(pendingDelete.transaction_amount))}\n\n📊 Para visualizar mais detalhes e relatórios, acesse a plataforma:\n🔗 https://donawilma.com.br`,
         sessionData: { ...sessionData, conversation_state: 'idle', pending_delete: undefined }
       };
 
@@ -4345,11 +4433,11 @@ class WhatsAppAgent {
       
       const structuredResponse = `✅ *Transação registrada com sucesso!*\n\n` +
         `📝 *Título:* ${transaction.title}\n` +
-        `${emoji} *Valor:* R$ ${transaction.amount!.toFixed(2)}\n` +
+        `${emoji} *Valor:* R$ ${brl(transaction.amount!)}\n` +
         `🏷️ *Tipo:* ${typeText}\n` +
         `${categoryEmoji} *Categoria:* ${categoryInfo.category_name}\n` +
         `📅 *Data:* ${new Date(transaction.date!).toLocaleDateString('pt-BR')}\n\n` +
-        `💰 *Saldo atual:* R$ ${currentBalance.toFixed(2)}\n\n` +
+        `💰 *Saldo atual:* R$ ${brl(currentBalance)}\n\n` +
         `📊 Para visualizar mais detalhes e relatórios, acesse a plataforma:\n` +
         `🔗 https://donawilma.com.br`;
 
@@ -4466,9 +4554,9 @@ class WhatsAppAgent {
       const balanceEmoji = balance >= 0 ? '💚' : '🔴';
 
       const response = `💰 *Saldo Atual (${formatPeriod('month')})*\n\n` +
-             `📈 Receitas: R$ ${income.toFixed(2)}\n` +
-             `📉 Despesas: R$ ${expenses.toFixed(2)}\n` +
-             `${balanceEmoji} Saldo: R$ ${balance.toFixed(2)}\n\n` +
+             `📈 Receitas: R$ ${brl(income)}\n` +
+             `📉 Despesas: R$ ${brl(expenses)}\n` +
+             `${balanceEmoji} Saldo: R$ ${brl(balance)}\n\n` +
              `📊 Total de ${transactions.length} transações este mês`;
 
       console.log('✅ getBalance() SUCCESS:', { 
@@ -4529,6 +4617,95 @@ class WhatsAppAgent {
       
       // Fallback: gerar relatório simples sem IA
       return await this.generateSimpleReport(userId, period);
+    }
+  }
+
+  /**
+   * Soma lançamentos de um termo ou categoria no período. Casa pelo título e pelo
+   * nome da categoria, porque "uber" vive em Transporte junto com ônibus e pedágio.
+   */
+  static async generateSpendingQuery(
+    userId: string,
+    period: 'day' | 'week' | 'month' | 'year',
+    category?: string,
+    term?: string,
+    type?: 'income' | 'expense'
+  ): Promise<string> {
+    const norm = (v: string) => v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    const txType = type === 'income' ? 'income' : 'expense';
+    const label = (term || category || '').trim();
+
+    const local = getBrazilTime();
+    const y = local.getUTCFullYear();
+    const m = local.getUTCMonth();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const months = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+      'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+    let startDate: string;
+    let periodLabel: string;
+    if (period === 'day') {
+      startDate = `${y}-${pad(m + 1)}-${pad(local.getUTCDate())}`;
+      periodLabel = 'hoje';
+    } else if (period === 'week') {
+      const w = new Date(local.getTime() - 7 * 24 * 60 * 60 * 1000);
+      startDate = `${w.getUTCFullYear()}-${pad(w.getUTCMonth() + 1)}-${pad(w.getUTCDate())}`;
+      periodLabel = 'nos últimos 7 dias';
+    } else if (period === 'year') {
+      startDate = `${y}-01-01`;
+      periodLabel = `em ${y}`;
+    } else {
+      startDate = `${y}-${pad(m + 1)}-01`;
+      periodLabel = `em ${months[m]}`;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('amount, title, date, type, categories(name)')
+        .eq('user_id', userId)
+        .eq('type', txType)
+        .gte('date', startDate)
+        .order('date', { ascending: false });
+
+      if (error) throw error;
+
+      const termN = term ? norm(term) : '';
+      const categoryN = category ? norm(category) : '';
+      const matches = (data || []).filter((t: any) => {
+        const title = norm(t.title || '');
+        const catName = norm(t.categories?.name || '');
+        return (
+          (termN && title.includes(termN)) ||
+          (categoryN && catName && (catName === categoryN || catName.includes(categoryN)))
+        );
+      });
+
+      const verb = txType === 'income' ? 'recebimentos' : 'gastos';
+      if (matches.length === 0) {
+        return `🔎 Não encontrei ${verb} com *${label}* ${periodLabel}.\n\n` +
+          `Se registrou com outro nome, tente pelo nome que usou ou peça "relatório do mês".`;
+      }
+
+      const total = matches.reduce((sum: number, t: any) => sum + Number(t.amount), 0);
+      const header = txType === 'income' ? '💰' : '💸';
+      let response = `📊 *${txType === 'income' ? 'Recebido' : 'Gasto'} com ${label} ${periodLabel}*\n\n` +
+        `${header} *Total:* R$ ${brl(total)}\n` +
+        `🧾 ${matches.length} ${matches.length === 1 ? 'lançamento' : 'lançamentos'}\n`;
+
+      const recent = matches.slice(0, 5);
+      response += `\n*Últimos:*\n`;
+      for (const t of recent) {
+        const [, mm, dd] = String(t.date).split('-');
+        response += `• ${dd}/${mm} · ${t.title} · R$ ${brl(Number(t.amount))}\n`;
+      }
+      if (matches.length > recent.length) {
+        response += `…e mais ${matches.length - recent.length}.\n`;
+      }
+      return response.trimEnd();
+    } catch (err) {
+      console.error('Error in generateSpendingQuery:', err);
+      return `❌ Não consegui consultar agora. Tente de novo em instantes.`;
     }
   }
 
@@ -4635,18 +4812,21 @@ class WhatsAppAgent {
         'Alimentação': '🍕', 'Transporte': '🚗', 'Lazer': '🎮', 'Moradia': '🏠',
         'Vestuário': '👕', 'Saúde': '💊', 'Educação': '📚', 'Entretenimento': '🎮',
         'Outros': '📦', 'Salário': '💼', 'Freelance': '💻', 'Investimentos': '📈',
+        'Mercado': '🛒', 'Restaurantes e delivery': '🍽️', 'Contas da casa': '💡',
+        'Combustível': '⛽', 'Assinaturas': '📺', 'Compras': '🛍️',
+        'Cuidados pessoais': '💇', 'Pets': '🐾', 'Serviços e freelance': '🧾', 'Vendas': '🏷️',
       };
 
       // Usar a função formatPeriod() para formatar o período
       const formattedPeriod = formatPeriod(period);
       
       let report = `📊 *RELATÓRIO ${formattedPeriod.toUpperCase()}*\n\n`;
-      report += `💰 Receitas: R$ ${income.toFixed(2)}\n`;
-      report += `💸 Despesas: R$ ${expenses.toFixed(2)}\n`;
-      report += `${balance >= 0 ? '💚' : '🔴'} Saldo: R$ ${balance.toFixed(2)}\n`;
+      report += `💰 Receitas: R$ ${brl(income)}\n`;
+      report += `💸 Despesas: R$ ${brl(expenses)}\n`;
+      report += `${balance >= 0 ? '💚' : '🔴'} Saldo: R$ ${brl(balance)}\n`;
 
       if (period === 'month' && (prevIncome > 0 || prevExpenses > 0)) {
-        report += `\n📈 vs mês anterior: ${diff >= 0 ? '+' : ''}R$ ${diff.toFixed(2)} (${diff >= 0 ? '+' : ''}${diffPercent}%)\n`;
+        report += `\n📈 vs mês anterior: ${diff >= 0 ? '+' : ''}R$ ${brl(diff)} (${diff >= 0 ? '+' : ''}${diffPercent}%)\n`;
       }
 
       if (topCategories.length > 0) {
@@ -4654,7 +4834,7 @@ class WhatsAppAgent {
         topCategories.forEach(([name, amount], i) => {
           const emoji = categoryEmojis[name] || '📦';
           const pct = totalExpTop > 0 ? ((amount / totalExpTop) * 100).toFixed(0) : '0';
-          report += `${i + 1}. ${emoji} ${name}: R$ ${amount.toFixed(2)} (${pct}%)\n`;
+          report += `${i + 1}. ${emoji} ${name}: R$ ${brl(amount)} (${pct}%)\n`;
         });
       }
 
@@ -7128,7 +7308,7 @@ Se não especificar hora, retorne scheduled_at: null.`
       return {
         response: `✅ *Conta fixa cadastrada com sucesso!*\n\n` +
                  `📌 ${data.title}\n` +
-                 `💵 R$ ${data.amount.toFixed(2)}\n` +
+                 `💵 R$ ${brl(data.amount)}\n` +
                  `📅 Todo dia ${dayOfMonth}\n` +
                  `⏰ Próximo vencimento: ${formattedDate}\n\n` +
                  `💡 Você será lembrado antes do vencimento!\n\n` +
@@ -7198,11 +7378,11 @@ Se não especificar hora, retorne scheduled_at: null.`
         const emoji = r.type === 'income' ? '💰' : '💸';
         const dayText = r.day_of_month ? `dia ${r.day_of_month}` : 'mensal';
         totalMonthly += Number(r.amount);
-        response += `${index + 1}. ${emoji} *${r.title}*\n   R$ ${Number(r.amount).toFixed(2)} (${dayText})\n\n`;
+        response += `${index + 1}. ${emoji} *${r.title}*\n   R$ ${brl(Number(r.amount))} (${dayText})\n\n`;
       });
       
       response += `━━━━━━━━━━━━━━━━━━\n`;
-      response += `💵 *Total mensal:* R$ ${totalMonthly.toFixed(2)}\n\n`;
+      response += `💵 *Total mensal:* R$ ${brl(totalMonthly)}\n\n`;
 
       // Próximos vencimentos
       if (pendingInstances && pendingInstances.length > 0) {
@@ -7216,7 +7396,7 @@ Se não especificar hora, retorne scheduled_at: null.`
           });
           const title = inst.recurring_transactions?.title || 'Conta';
           const status = inst.status === 'postponed' ? ' _(adiado)_' : '';
-          response += `• ${formatted}: ${title} - R$ ${Number(inst.amount).toFixed(2)}${status}\n`;
+          response += `• ${formatted}: ${title} - R$ ${brl(Number(inst.amount))}${status}\n`;
         });
       }
       
@@ -7325,7 +7505,7 @@ Se não especificar hora, retorne scheduled_at: null.`
 
       return {
         response: `✅ *${recurring.title} - Baixa realizada!*\n\n` +
-                 `${emoji} ${typeText} registrada: R$ ${Number(instance.amount).toFixed(2)}\n` +
+                 `${emoji} ${typeText} registrada: R$ ${brl(Number(instance.amount))}\n` +
                  `📅 Data: Hoje\n\n` +
                  `🔄 Próximo vencimento: ${nextDueDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}`,
         sessionData: { conversation_state: 'idle' }

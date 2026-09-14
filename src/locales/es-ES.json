@@ -1365,7 +1365,18 @@
     "salary": "Salario",
     "freelance": "Freelance",
     "investments": "Inversiones",
-    "projects": "Proyectos"
+    "projects": "Proyectos",
+    "groceries": "Supermercado",
+    "restaurants": "Restaurantes y delivery",
+    "utilities": "Servicios del hogar",
+    "fuel": "Combustible",
+    "leisure": "Ocio",
+    "subscriptions": "Suscripciones",
+    "shopping": "Compras",
+    "personalCare": "Cuidado personal",
+    "pets": "Mascotas",
+    "services": "Servicios y freelance",
+    "sales": "Ventas"
   },
   "upgrade": {
     "title": "Suscríbete al Premium",

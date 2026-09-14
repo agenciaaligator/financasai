@@ -1372,7 +1372,18 @@
     "salary": "Salary",
     "freelance": "Freelance",
     "investments": "Investments",
-    "projects": "Projects"
+    "projects": "Projects",
+    "groceries": "Groceries",
+    "restaurants": "Restaurants & delivery",
+    "utilities": "Utilities",
+    "fuel": "Fuel",
+    "leisure": "Leisure",
+    "subscriptions": "Subscriptions",
+    "shopping": "Shopping",
+    "personalCare": "Personal care",
+    "pets": "Pets",
+    "services": "Services & freelance",
+    "sales": "Sales"
   },
   "upgrade": {
     "title": "Subscribe to Premium",

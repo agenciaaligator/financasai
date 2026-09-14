@@ -14,6 +14,17 @@ const CATEGORY_KEY_MAP: Record<string, string> = {
   'freelance': 'defaultCategories.freelance',
   'investimentos': 'defaultCategories.investments',
   'projetos': 'defaultCategories.projects',
+  'mercado': 'defaultCategories.groceries',
+  'restaurantes e delivery': 'defaultCategories.restaurants',
+  'contas da casa': 'defaultCategories.utilities',
+  'combustível': 'defaultCategories.fuel',
+  'lazer': 'defaultCategories.leisure',
+  'assinaturas': 'defaultCategories.subscriptions',
+  'compras': 'defaultCategories.shopping',
+  'cuidados pessoais': 'defaultCategories.personalCare',
+  'pets': 'defaultCategories.pets',
+  'serviços e freelance': 'defaultCategories.services',
+  'vendas': 'defaultCategories.sales',
 };
 
 /**

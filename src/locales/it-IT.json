@@ -1365,7 +1365,18 @@
     "salary": "Stipendio",
     "freelance": "Freelance",
     "investments": "Investimenti",
-    "projects": "Progetti"
+    "projects": "Progetti",
+    "groceries": "Spesa",
+    "restaurants": "Ristoranti e delivery",
+    "utilities": "Bollette",
+    "fuel": "Carburante",
+    "leisure": "Tempo libero",
+    "subscriptions": "Abbonamenti",
+    "shopping": "Acquisti",
+    "personalCare": "Cura personale",
+    "pets": "Animali domestici",
+    "services": "Servizi e freelance",
+    "sales": "Vendite"
   },
   "upgrade": {
     "title": "Abbonati a Premium",
