@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { Calendar, Shield, Menu, FolderOpen, Sparkles, MessageCircle, BarChart3, Bell, MessageSquare, Send, Wallet } from "lucide-react";
+import { Calendar, Shield, Menu, PiggyBank, Sparkles, MessageCircle, BarChart3, Users, MessageSquare, Send, Wallet } from "lucide-react";
 import { ContactForm } from "@/components/ContactForm";
 import { FinancialDashboard } from "@/components/FinancialDashboard";
 import { LanguageFlagSelector } from "@/components/LanguageFlagSelector";
@@ -287,15 +287,15 @@ const LandingPage = () => {
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl mx-auto">
+          <div className={`grid sm:grid-cols-2 ${CALENDAR_ENABLED ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-5 max-w-6xl mx-auto`}>
             {(() => {
               const items = t('landing.cares.items', { returnObjects: true }) as Array<{ title: string; desc: string }>;
               const meta = [
                 { icon: <Wallet className="h-6 w-6" strokeWidth={2} />, chip: "" },
-                { icon: <FolderOpen className="h-6 w-6" strokeWidth={2} />, chip: "mel" },
-                // Google Agenda (índice 2) só aparece quando a integração estiver liberada
+                { icon: <PiggyBank className="h-6 w-6" strokeWidth={2} />, chip: "mel" },
+                // Agenda + orçamento (índice 2) só aparece quando a integração estiver liberada
                 ...(CALENDAR_ENABLED ? [{ icon: <Calendar className="h-6 w-6" strokeWidth={2} />, chip: "" }] : []),
-                { icon: <Bell className="h-6 w-6" strokeWidth={2} />, chip: "mel" },
+                { icon: <Users className="h-6 w-6" strokeWidth={2} />, chip: "mel" },
               ];
               const texts = CALENDAR_ENABLED ? items : [items[0], items[1], items[3]];
               return meta.map((c, i) => ({ ...c, title: texts[i]?.title, desc: texts[i]?.desc }));
