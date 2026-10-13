@@ -707,10 +707,10 @@
       "subtitle": "In 3 semplici passaggi, organizzi la tua vita finanziaria"
     },
     "plans": {
-      "title": "Scegli il tuo piano",
-      "subtitle": "Tutto ciò di cui hai bisogno in un unico piano",
-      "sectionTitle": "La tua vita finanziaria sotto controllo.",
-      "sectionSubtitle": "Senza fogli di calcolo. Senza complicazioni.",
+      "title": "Scegli il piano giusto per casa tua",
+      "subtitle": "Ti abboni tu, tutta la famiglia lo usa.",
+      "sectionTitle": "La tua famiglia organizzata, senza complicazioni.",
+      "sectionSubtitle": "Niente foglio di calcolo. Niente caos.",
       "monthlyTitle": "Premium Mensile",
       "annualTitle": "Premium Annuale",
       "bestValue": "Miglior valore",
@@ -736,11 +736,11 @@
       "errorDesc": "Non è stato possibile completare l'azione. Riprova.",
       "features": {
         "0": "Transazioni illimitate",
-        "1": "Categorie illimitate",
-        "2": "WhatsApp integrato",
-        "3": "Classificazione automatica con IA",
-        "4": "Consulenze finanziarie via WhatsApp",
-        "5": "Supporto prioritario"
+        "1": "Paghetta digitale per i figli",
+        "2": "Tutta la famiglia nello stesso account",
+        "3": "Budget di casa automatizzato",
+        "4": "Obiettivi della famiglia con monitoraggio",
+        "5": "Agenda + bollette nello stesso posto"
       },
       "choosePlanTitle": "Scegli il tuo piano",
       "choosePlanDesc": "Gestisci le tue finanze con l'intelligenza artificiale",
@@ -749,95 +749,95 @@
     },
     "faq": {
       "title": "Domande frequenti",
-      "subtitle": "Risposte alle tue domande su Dona Wilma",
+      "subtitle": "Quello che le famiglie chiedono più spesso prima di abbonarsi.",
       "items": {
         "0": {
-          "question": "Come funziona la sicurezza dei miei dati?",
-          "answer": "Utilizziamo crittografia end-to-end e archiviazione sicura su Supabase, con certificazione ISO 27001."
+          "question": "I dati della mia famiglia sono al sicuro?",
+          "answer": "Sì. Usiamo crittografia end-to-end e archiviazione su Supabase (ISO 27001). Anche con più persone della famiglia sullo stesso account, ognuna vede solo ciò che le ha senso — sei tu a scegliere a cosa possono accedere coniuge e figli."
         },
         "1": {
-          "question": "Posso cancellare il mio abbonamento in qualsiasi momento?",
-          "answer": "Sì! Puoi cancellare in qualsiasi momento senza penali."
+          "question": "Posso cancellare l'abbonamento in qualsiasi momento?",
+          "answer": "Sì, senza penali né burocrazia. Finché è attivo, tutta la famiglia continua a usarlo normalmente. Dopo la cancellazione, mantieni l'accesso ai tuoi dati."
         },
         "2": {
-          "question": "Come funziona il WhatsApp integrato?",
-          "answer": "Puoi registrare transazioni finanziarie e fare consulte parlando naturalmente con Dona Wilma su WhatsApp."
+          "question": "Come entra Wilma nel WhatsApp della famiglia?",
+          "answer": "Ogni persona della tua famiglia (tu, coniuge, figli adolescenti) collega il proprio numero WhatsApp. Tutti chattano con Wilma individualmente, e lei consolida tutto per chi gestisce le bollette di casa."
         },
         "3": {
-          "question": "Come posso provare Dona Wilma?",
-          "answer": "Sottoscrivendo il piano, avrai accesso immediato a tutte le funzionalità di Dona Wilma."
+          "question": "Devo installare qualche app?",
+          "answer": "No. Tutto avviene sul WhatsApp che la famiglia usa già. Niente download, nessun account nuovo da creare — ti abboni, inviti la famiglia e ognuno inizia a chattare con Wilma dal proprio WhatsApp."
         },
         "4": {
-          "question": "Come funziona l'integrazione con Google Calendar?",
-          "answer": "Colleghi il tuo account Google una volta dalla dashboard. Da quel momento, ogni impegno creato tramite WhatsApp o dalla dashboard di Dona Wilma viene inviato automaticamente al tuo Google Calendar con promemoria configurati."
+          "question": "Come funziona la paghetta dei figli?",
+          "answer": "Imposti l'importo mensile di ogni figlio. Lui lo riceve sul proprio WhatsApp e Wilma registra dove lo spende. Lo segui da lontano, senza dover chiedere. Educa finanziariamente senza essere assillante."
         },
         "5": {
-          "question": "Posso ricevere promemoria su WhatsApp e Google contemporaneamente?",
-          "answer": "Sì. Per impostazione predefinita ricevi due promemoria su ciascun canale: 1 giorno prima e 1 ora prima dell'impegno. Il promemoria WhatsApp arriva come messaggio di Dona Wilma e quello Google come notifica push ed e-mail."
+          "question": "Posso aggiungere mio marito/moglie e i miei figli?",
+          "answer": "Sì, senza costo aggiuntivo per persona. Un solo abbonamento — ogni membro della famiglia riceve accesso al proprio WhatsApp con Wilma. Tu resti al comando come chi organizza."
         }
       }
     },
     "interaction": {
-      "title": "Interagisci con Dona Wilma 24 ore su 24",
-      "subtitle": "Chiedi quello che vuoi sulle tue finanze o impegni.",
-      "footer": "E molto altro... L'IA capisce il linguaggio naturale ed è sempre pronta ad aiutarti!",
+      "title": "Parla con Wilma come parleresti con una persona",
+      "subtitle": "Ti capisce al volo. Guarda cosa può chiedere tutta la famiglia su WhatsApp:",
+      "footer": "E molto altro... Marito, figli, agenda, obiettivi — lei gestisce tutto in una conversazione.",
       "examples": {
-        "0": "Speso 200 con la carta",
-        "1": "Ricevuto 10 mila di stipendio",
-        "2": "Quanto ho speso oggi?",
-        "3": "Saldo del mese?",
-        "4": "Pagato 30 di benzina",
-        "5": "Ho l'affitto il 22",
-        "6": "Quanto ho speso questo mese?",
-        "7": "Quali promemoria ho oggi?",
-        "8": "Riunione domani alle 14",
-        "9": "Ricordami di chiamare il cliente",
-        "10": "Visita medica venerdì",
-        "11": "Compleanno di Giovanni il 15",
-        "12": "Prenota dentista mercoledì alle 15",
-        "13": "Riunione domani alle 10 con il cliente"
+        "0": "Pagato l'affitto oggi: 650",
+        "1": "Dai 20 di paghetta a Giovanni questo mese",
+        "2": "Quanto resta per chiudere il mese?",
+        "3": "Ricordami il dentista di Ana mercoledì",
+        "4": "Messi 50 da parte per il viaggio di dicembre",
+        "5": "Spesi 60 al supermercato adesso",
+        "6": "Quanto ha speso la famiglia di spesa?",
+        "7": "Mia madre compie gli anni il 15, avvisami",
+        "8": "Giovanni ha già speso tutta la paghetta?",
+        "9": "Mio marito ha pagato la luce questa settimana?",
+        "10": "Quanto manca all'obiettivo del risparmio?",
+        "11": "Aggiungi Rafael (mio marito) all'account",
+        "12": "Visita di Giovanni giovedì alle 14",
+        "13": "Mandami il riepilogo delle bollette di casa"
       }
     },
     "stats": {
-      "title": "Perché scegliere Dona Wilma?",
-      "subtitle": "Semplicità e tecnologia per facilitare la tua giornata",
+      "title": "Perché tutta la famiglia preferisce Dona Wilma",
+      "subtitle": "La semplicità che entra nella routine di chi gestisce la casa.",
       "items": {
         "0": {
           "title": "Direttamente su WhatsApp",
-          "description": "Registra le tue finanze senza aprire nessuna app"
+          "description": "Nessuna nuova app. La famiglia chatta sul WhatsApp che usa già."
         },
         "1": {
-          "title": "IA che ti capisce",
-          "description": "Categorizzazione automatica con intelligenza artificiale"
+          "title": "Pensata per la famiglia",
+          "description": "Marito, figli, paghetta, budget di casa — tutto insieme."
         },
         "2": {
-          "title": "Disponibile 24h",
-          "description": "La tua assistente personale che lavora tutto il tempo"
+          "title": "Sempre attenta",
+          "description": "Si occupa 24h — bollette, promemoria, obiettivi, senza dimenticare niente."
         },
         "3": {
-          "title": "Sicuro e privato",
-          "description": "I tuoi dati protetti con crittografia avanzata"
+          "title": "Sicura e privata",
+          "description": "Dati della famiglia crittografati e protetti."
         }
       }
     },
     "steps": {
       "items": {
         "0": {
-          "title": "Invia un messaggio",
-          "description": "Manda un testo o audio su WhatsApp"
+          "title": "Parla con Wilma",
+          "description": "Mandale un messaggio: 'pagato l affitto', 'paghetta Giovanni 20 euro', 'dentista di Ana mercoledì'."
         },
         "1": {
-          "title": "L'IA organizza tutto",
-          "description": "Dona Wilma capisce, categorizza e registra automaticamente le tue finanze"
+          "title": "Lei organizza per tutti",
+          "description": "Wilma categorizza, divide per famiglia, ricorda il necessario — e consolida tutto per te."
         },
         "2": {
-          "title": "Segui sul pannello",
-          "description": "Vedi grafici e report completi nel pannello web o ricevi riepiloghi su WhatsApp"
+          "title": "La famiglia vive più serena",
+          "description": "Dashboard aperta quando vuoi. Obiettivi visibili, paghette sotto controllo, bollette in pari."
         }
       }
     },
     "footer": {
-      "tagline": "La tua assistente personale per le finanze",
+      "tagline": "L'organizzazione della casa, in una conversazione WhatsApp.",
       "links": "Link",
       "terms": "Termini di Servizio",
       "privacy": "Informativa sulla Privacy",
@@ -891,85 +891,85 @@
       }
     },
     "heroV2": {
-      "eyebrow": "Le tue finanze su WhatsApp",
-      "title1": "Scrivi su WhatsApp",
-      "title2": "e Dona Wilma",
-      "title3": "lo segna per te.",
-      "subtitle": "Nessuna nuova app. Nessun foglio di calcolo. Tu parli e lei ci pensa — come tua madre che tiene d'occhio i conti.",
-      "primaryCta": "Parla con Dona Wilma",
-      "secondaryCta": "Scopri come funziona",
-      "trust": "Prova gratuita · funziona sul tuo WhatsApp di sempre",
+      "eyebrow": "L'organizzazione della casa, su WhatsApp",
+      "title1": "La tua famiglia",
+      "title2": "organizzata,",
+      "title3": "senza nessun foglio di calcolo.",
+      "subtitle": "Dona Wilma si occupa delle bollette, degli impegni e degli obiettivi della casa — e tiene tutta la famiglia sulla stessa pagina, su WhatsApp.",
+      "primaryCta": "Iniziare a organizzare la casa",
+      "secondaryCta": "Vedi come funziona",
+      "trust": "Senza contratto · tutta la famiglia in un solo abbonamento",
       "chatHeaderName": "Dona Wilma",
-      "chatHeaderStatus": "online · si occupa dei tuoi conti",
-      "postitTop": "segnato qui 😊",
-      "postitBottom": "✓ conto pagato"
+      "chatHeaderStatus": "online · si prende cura della tua famiglia",
+      "postitTop": "annotato qui 😊",
+      "postitBottom": "✓ affitto pagato"
     },
     "strip": {
-      "whatsapp": "Tutto su WhatsApp",
-      "protected": "I tuoi dati protetti",
-      "always": "non dorme mai",
-      "noDownload": "Niente da scaricare",
+      "whatsapp": "Tutta la casa su WhatsApp",
+      "protected": "Dati della famiglia al sicuro",
+      "always": "sempre attenta ai tuoi conti",
+      "noDownload": "Nessuna nuova app per nessuno",
       "always24h": "24h"
     },
     "howItWorksV2": {
-      "title": "Come funziona",
-      "subtitle": "In 3 passi, la tua vita finanziaria torna a stare nel palmo della mano.",
+      "title": "Come entra nella tua routine",
+      "subtitle": "In 3 passi, Wilma prende in mano l'organizzazione della casa.",
       "steps": [
         {
-          "title": "Scrivi su WhatsApp",
-          "desc": "Scrivi o manda un audio: \"speso 47 al mercato\", \"paga l'affitto il 5\". Nessuna app nuova, nessun foglio.",
-          "postit": "segnato ✍️"
+          "title": "Le dici cosa conta",
+          "desc": "Le parli su WhatsApp delle bollette, della paghetta dei figli, delle visite, dei compleanni — come ti viene in mente.",
+          "postit": "dimmi pure 💛"
         },
         {
-          "title": "Lei organizza",
-          "desc": "Dona Wilma capisce, categorizza e conserva tutto con cura — così non ci pensi due volte.",
-          "postit": "tutto a posto 💚"
+          "title": "Lei si occupa di tutto",
+          "desc": "Wilma organizza, ricorda, divide per categoria e avvisa la famiglia quando serve. Come se fosse una persona in più in casa.",
+          "postit": "tutto in ordine ✨"
         },
         {
-          "title": "Tu controlli",
-          "desc": "Apri il pannello quando vuoi e vedi saldo, spese per categoria e avvisi — nel modo che ha senso per te.",
-          "postit": "tutto ok!"
+          "title": "La famiglia vive più serena",
+          "desc": "Marito, figli, obiettivi, bollette — tutto in una pagina sola. Dashboard aperta quando vuoi vedere il mese intero.",
+          "postit": "tutto bene 💚"
         }
       ]
     },
     "cares": {
-      "title": "Di cosa si occupa per te",
-      "subtitle": "Un'assistente completa travestita da chat WhatsApp.",
+      "title": "Cosa fa per la tua famiglia",
+      "subtitle": "Nessun'altra app pensa all'organizzazione della casa intera. Wilma sì.",
       "items": [
         {
-          "title": "Pannello professionale",
-          "desc": "Saldo, entrate, uscite e grafici chiari — quando vuoi controllare."
+          "title": "Budget della casa",
+          "desc": "Affitto, luce, spesa, scuola — tutto al suo posto. Wilma ti mostra quanto resta per il resto del mese."
         },
         {
-          "title": "Categorie personalizzate",
-          "desc": "Impara a modo tuo e organizza ogni spesa senza doverlo dire."
+          "title": "Paghetta dei figli",
+          "desc": "Imposti l'importo, tuo figlio la riceve sul proprio WhatsApp e tu vedi dove la spende. Addio bustine di contanti."
         },
         {
-          "title": "Google Calendar",
-          "desc": "Impegni e promemoria sincronizzati — 1 giorno e 1 ora prima."
+          "title": "Agenda + budget insieme",
+          "desc": "Dentista di Ana mercoledì? Wilma lo ricorda e chiede già se mettere da parte €30 per la visita."
         },
         {
-          "title": "Avvisi giusti",
-          "desc": "Ti avvisa quando ti stai avvicinando al limite. Senza sorprese."
+          "title": "Famiglia nello stesso piano",
+          "desc": "Marito, figli adolescenti, ognuno col proprio WhatsApp. Un solo abbonamento — Wilma consolida tutto per chi gestisce la casa."
         }
       ]
     },
     "mockups": {
       "chat": {
-        "me1": "Speso 47 al mercato adesso",
-        "her1": "Segnato! <b>€ 47,00</b> al Mercato 🛒",
-        "me2": "Ricordami l'affitto il 5",
-        "her2": "Ci penso io ⏰"
+        "me1": "Pagato l'affitto: € 650",
+        "her1": "Annotato! <b>€ 650,00</b> in Casa 🏠",
+        "me2": "Ricordami il dentista di Ana mercoledì",
+        "her2": "Pensa a tutto io ⏰"
       },
       "dashboard": {
-        "balance": "Saldo del mese"
+        "balance": "Quanto resta per la famiglia"
       },
       "categories": {
-        "title": "Categorie di questo mese",
-        "market": "Mercato",
+        "title": "Dove sono finiti i soldi di casa",
+        "market": "Spesa",
         "home": "Casa",
         "food": "Alimentazione",
-        "transport": "Trasporti"
+        "transport": "Famiglia"
       },
       "weekdays": [
         "Lun",
@@ -982,12 +982,12 @@
       ]
     },
     "heroChat": {
-      "b0": "Speso 47 al mercato adesso",
-      "b1": "Segnato! <b>€ 47,00</b> al Mercato 🛒. Questo mese sei già a € 320 in quella categoria.",
-      "b2": "Uh, è tanto",
-      "b3": "Sì, caro. Vuoi che ti avvisi quando supera € 400? 💚",
-      "b4": "Va bene! E ricordami l'affitto il 5",
-      "b5": "Ci penso io. Il 5 ti avviso dell'<b>affitto</b> presto presto ⏰"
+      "b0": "Pagato l'affitto: € 650",
+      "b1": "Annotato ✍️ Questo mese sta chiudendo in positivo finora 💚",
+      "b2": "Sta finendo la paghetta di Giovanni?",
+      "b3": "Gli restano ancora <b>€ 5</b> del mese. Questa settimana ha speso di più in merende.",
+      "b4": "Metti da parte 50 per il viaggio di dicembre",
+      "b5": "Messi via! Mancano solo <b>€ 300</b> all'obiettivo della famiglia 🎄"
     },
     "homage": {
       "eyebrow": "chi era Dona Wilma",

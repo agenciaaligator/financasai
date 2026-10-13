@@ -714,10 +714,10 @@
       "subtitle": "In 3 simple steps, organize your financial life"
     },
     "plans": {
-      "title": "Choose your plan",
-      "subtitle": "Everything you need in a single plan",
-      "sectionTitle": "Your financial life under control.",
-      "sectionSubtitle": "No spreadsheets. No complexity.",
+      "title": "Choose the right plan for your home",
+      "subtitle": "You subscribe, the whole family uses it.",
+      "sectionTitle": "Your family organized, no fuss.",
+      "sectionSubtitle": "No spreadsheet. No chaos.",
       "monthlyTitle": "Premium Monthly",
       "annualTitle": "Premium Annual",
       "bestValue": "Best Value",
@@ -743,11 +743,11 @@
       "errorDesc": "Could not complete the action. Please try again.",
       "features": {
         "0": "Unlimited transactions",
-        "1": "Unlimited categories",
-        "2": "Integrated WhatsApp",
-        "3": "Automatic AI classification",
-        "4": "Financial queries via WhatsApp",
-        "5": "Priority support"
+        "1": "Digital allowance for kids",
+        "2": "Whole family on the same account",
+        "3": "Automated household budget",
+        "4": "Family goals with tracking",
+        "5": "Calendar + bills in one place"
       },
       "choosePlanTitle": "Choose your plan",
       "choosePlanDesc": "Manage your finances with artificial intelligence",
@@ -756,95 +756,95 @@
     },
     "faq": {
       "title": "Frequently asked questions",
-      "subtitle": "Get answers about Dona Wilma",
+      "subtitle": "What families most ask before subscribing.",
       "items": {
         "0": {
-          "question": "How does data security work?",
-          "answer": "We use end-to-end encryption and secure storage on Supabase, with ISO 27001 certification. Your data is protected with the highest industry security standards, including daily automatic backups."
+          "question": "Is my family's data safe?",
+          "answer": "Yes. We use end-to-end encryption and store on Supabase (ISO 27001). Even with several family members on the same account, each person only sees what makes sense for them — you choose what your spouse and kids can access."
         },
         "1": {
-          "question": "Can I cancel my subscription at any time?",
-          "answer": "Yes! You can cancel at any time without fines, fees or bureaucracy. Your plan remains active until the end of the paid period, and you keep access to all your data."
+          "question": "Can I cancel my subscription anytime?",
+          "answer": "Yes, no fees or paperwork. While active, the whole family keeps using it normally. After cancellation, you still have access to your data."
         },
         "2": {
-          "question": "How does the integrated WhatsApp work?",
-          "answer": "You can record financial transactions and make queries by chatting naturally with Dona Wilma on WhatsApp. Just send messages like 'spent 50 at the grocery store' or 'how much did I spend this month?' — no need to open the app!"
+          "question": "How does Wilma enter the family's WhatsApp?",
+          "answer": "Each family member (you, spouse, teenage kids) connects their own WhatsApp number. Everyone chats with Wilma individually, and she consolidates everything for whoever runs the household bills."
         },
         "3": {
-          "question": "How can I try Dona Wilma?",
-          "answer": "When you subscribe to the plan, you'll have immediate access to all Dona Wilma features. Discount coupons may occasionally be available for new users."
+          "question": "Do I need to install any app?",
+          "answer": "No. Everything happens on the WhatsApp your family already uses. No downloads, no new accounts for anyone to create — you subscribe, invite the family, and each one starts chatting with Wilma on their own WhatsApp."
         },
         "4": {
-          "question": "How does the Google Calendar integration work?",
-          "answer": "You connect your Google account once in the dashboard. From then on, every appointment you create via WhatsApp or the Dona Wilma dashboard is automatically sent to your Google Calendar with reminders configured."
+          "question": "How does the kids' allowance work?",
+          "answer": "You set the monthly amount for each kid. They get it on their own WhatsApp and Wilma records where they spend. You keep an eye from afar, without needing to ask. Financial education without being nagging."
         },
         "5": {
-          "question": "Can I get reminders on WhatsApp and Google at the same time?",
-          "answer": "Yes. By default you receive two reminders on each channel: 1 day before and 1 hour before the appointment. WhatsApp reminders arrive as a message from Dona Wilma; Google reminders arrive as push and email notifications."
+          "question": "Can I add my husband/wife and my kids?",
+          "answer": "Yes, no extra cost per person. One subscription — each family member gets access to their own WhatsApp with Wilma. You stay in command as the organizer."
         }
       }
     },
     "interaction": {
-      "title": "Interact with Dona Wilma 24/7",
-      "subtitle": "Ask anything about your finances or appointments. Here are some examples of what you can say:",
-      "footer": "And much more... The AI understands natural language and is always ready to help!",
+      "title": "Talk to Wilma like you'd talk to a person",
+      "subtitle": "She understands your way. Here's what the whole family can ask on WhatsApp:",
+      "footer": "And much more... Husband, kids, calendar, goals — she handles it all in one conversation.",
       "examples": {
-        "0": "Spent 200 on the credit card",
-        "1": "Received 10k salary",
-        "2": "How much did I spend today?",
-        "3": "Monthly balance?",
-        "4": "Paid 30 for gas",
-        "5": "Rent is due on the 22nd",
-        "6": "How much did I spend this month?",
-        "7": "What reminders do I have today?",
-        "8": "Meeting tomorrow at 2pm",
-        "9": "Remind me to call the client",
-        "10": "Doctor's appointment on Friday",
-        "11": "John's birthday on the 15th",
-        "12": "Book dentist Wednesday at 3pm",
-        "13": "Meeting tomorrow at 10am with client"
+        "0": "Paid rent today: 1,200",
+        "1": "Set $20 allowance for John this month",
+        "2": "How much is left for the month?",
+        "3": "Remind me of Ana's dentist Wednesday",
+        "4": "Set aside 100 for the December trip",
+        "5": "Spent 120 at the grocery store",
+        "6": "How much did the family spend on groceries?",
+        "7": "My mom's birthday is on the 15th, remind me",
+        "8": "Did John spend all his allowance?",
+        "9": "Did my husband pay the electric bill this week?",
+        "10": "How much left to reach the savings goal?",
+        "11": "Add Rafael (my husband) to the account",
+        "12": "John's appointment Thursday at 2pm",
+        "13": "Send me the household bills summary"
       }
     },
     "stats": {
-      "title": "Why choose Dona Wilma?",
-      "subtitle": "Simplicity and technology to make your day easier",
+      "title": "Why the whole family picks Dona Wilma",
+      "subtitle": "Simplicity that fits the routine of whoever runs the house.",
       "items": {
         "0": {
-          "title": "Directly on WhatsApp",
-          "description": "Track your finances without opening any app"
+          "title": "Right on WhatsApp",
+          "description": "No new app. The family chats on the WhatsApp they already use."
         },
         "1": {
-          "title": "AI that understands you",
-          "description": "Automatic categorization with artificial intelligence"
+          "title": "Built for the family",
+          "description": "Husband, kids, allowance, household budget — all together."
         },
         "2": {
-          "title": "Available 24/7",
-          "description": "Your personal assistant working around the clock"
+          "title": "Always watching",
+          "description": "She handles 24h — bills, reminders, goals, nothing forgotten."
         },
         "3": {
           "title": "Safe and private",
-          "description": "Your data protected with cutting-edge encryption"
+          "description": "Family data encrypted and protected."
         }
       }
     },
     "steps": {
       "items": {
         "0": {
-          "title": "Send a message",
-          "description": "Send a text or audio on WhatsApp like 'spent 50 at the store' or 'meeting tomorrow at 10am'"
+          "title": "Talk to Wilma",
+          "description": "Send a message: 'paid the rent', 'John's allowance $20', 'Ana's dentist Wednesday'."
         },
         "1": {
-          "title": "AI organizes everything",
-          "description": "Dona Wilma understands, categorizes and records your finances automatically"
+          "title": "She organizes for all of you",
+          "description": "Wilma categorizes, splits by family member, remembers what's needed — and consolidates it for you."
         },
         "2": {
-          "title": "Track on the dashboard",
-          "description": "See full charts and reports on the web dashboard or get summaries on WhatsApp"
+          "title": "The family lives lighter",
+          "description": "Dashboard whenever you want. Goals visible, allowances controlled, bills on time."
         }
       }
     },
     "footer": {
-      "tagline": "Your personal finance assistant",
+      "tagline": "Household organization, in one WhatsApp conversation.",
       "links": "Links",
       "terms": "Terms of Service",
       "privacy": "Privacy Policy",
@@ -898,85 +898,85 @@
       }
     },
     "heroV2": {
-      "eyebrow": "Your finances over WhatsApp",
-      "title1": "Text it,",
-      "title2": "and Dona Wilma",
-      "title3": "writes it down for you.",
-      "subtitle": "No new app. No spreadsheet. You talk and she takes care of it — like your mom watching over your bills.",
-      "primaryCta": "Talk to Dona Wilma",
+      "eyebrow": "Home organization, in your WhatsApp",
+      "title1": "Your family",
+      "title2": "organized,",
+      "title3": "with no spreadsheet.",
+      "subtitle": "Dona Wilma handles household bills, appointments and family goals — and keeps everyone on the same page, right in WhatsApp.",
+      "primaryCta": "Start organizing the house",
       "secondaryCta": "See how it works",
-      "trust": "Free trial · works on your everyday WhatsApp",
+      "trust": "No contract · one subscription for the whole family",
       "chatHeaderName": "Dona Wilma",
-      "chatHeaderStatus": "online · minding your accounts",
+      "chatHeaderStatus": "online · watching over your family",
       "postitTop": "noted here 😊",
-      "postitBottom": "✓ bill paid"
+      "postitBottom": "✓ rent paid"
     },
     "strip": {
-      "whatsapp": "All on WhatsApp",
-      "protected": "Your data protected",
-      "always": "she never sleeps on the job",
-      "noDownload": "Nothing to download",
+      "whatsapp": "The whole family on WhatsApp",
+      "protected": "Family data kept safe",
+      "always": "always watching your bills",
+      "noDownload": "No new app for anyone",
       "always24h": "24h"
     },
     "howItWorksV2": {
-      "title": "How it works",
-      "subtitle": "In 3 steps, your financial life fits in the palm of your hand again.",
+      "title": "How she fits into your routine",
+      "subtitle": "In 3 steps, Wilma takes charge of your household organization.",
       "steps": [
         {
-          "title": "Text her",
-          "desc": "Type or record audio: \"spent 47 at the store\", \"pay rent on the 5th\". No new app, no spreadsheet.",
-          "postit": "noted ✍️"
+          "title": "You tell her what matters",
+          "desc": "Message her about household bills, kids' allowances, appointments, birthdays — however it comes to mind.",
+          "postit": "go ahead 💛"
         },
         {
-          "title": "She organizes",
-          "desc": "Dona Wilma understands, categorizes and saves everything carefully — so you never think twice.",
-          "postit": "all sorted 💚"
+          "title": "She takes care of it",
+          "desc": "Wilma organizes, remembers, splits by category and alerts the family when needed. Like one more person in the house.",
+          "postit": "all sorted ✨"
         },
         {
-          "title": "You keep track",
-          "desc": "Open the dashboard whenever you want and see balance, spending by category and alerts — the way it makes sense.",
-          "postit": "all good!"
+          "title": "You all live lighter",
+          "desc": "Husband, kids, goals, bills — all on one page. Dashboard whenever you want to see the full month.",
+          "postit": "all good 💚"
         }
       ]
     },
     "cares": {
-      "title": "What she handles for you",
-      "subtitle": "A full assistant disguised as a WhatsApp chat.",
+      "title": "What she does for your family",
+      "subtitle": "No other app thinks about the whole household's organization. Wilma does.",
       "items": [
         {
-          "title": "Professional dashboard",
-          "desc": "Balance, income, expenses and clear charts — whenever you want to check."
+          "title": "Household budget",
+          "desc": "Rent, utilities, groceries, school — all in place. Wilma shows you what's left for the rest of the month."
         },
         {
-          "title": "Custom categories",
-          "desc": "She learns your way and organizes every expense without you having to say it."
+          "title": "Kids' digital allowance",
+          "desc": "Set the amount, your kid gets it on their own WhatsApp, and you see where it goes. No more envelope cash."
         },
         {
-          "title": "Google Calendar",
-          "desc": "Appointments and reminders in sync — 1 day and 1 hour before."
+          "title": "Calendar + budget together",
+          "desc": "Ana's dentist on Wednesday? Wilma remembers and asks if you want to set aside $30 for the appointment."
         },
         {
-          "title": "Right-size alerts",
-          "desc": "She warns you when you're getting close to the limit. No surprises."
+          "title": "Family on one plan",
+          "desc": "Husband, teenage kids, each with their own WhatsApp. One subscription — Wilma consolidates for whoever runs the house."
         }
       ]
     },
     "mockups": {
       "chat": {
-        "me1": "Spent 47 at the store just now",
-        "her1": "Got it! <b>$47.00</b> at Market 🛒",
-        "me2": "Remind me of rent on the 5th",
+        "me1": "Paid rent: $1,200",
+        "her1": "Got it! <b>$1,200.00</b> in Home 🏠",
+        "me2": "Remind me of Ana's dentist on Wednesday",
         "her2": "I've got you, dear ⏰"
       },
       "dashboard": {
-        "balance": "Monthly balance"
+        "balance": "What's left for the family"
       },
       "categories": {
-        "title": "Categories this month",
-        "market": "Market",
+        "title": "Where the household money went",
+        "market": "Groceries",
         "home": "Home",
         "food": "Food",
-        "transport": "Transport"
+        "transport": "Family"
       },
       "weekdays": [
         "Mon",
@@ -989,12 +989,12 @@
       ]
     },
     "heroChat": {
-      "b0": "Just spent 47 at the store",
-      "b1": "Got it! <b>$47.00</b> at Market 🛒. This month you're already at $320 in that category.",
-      "b2": "Wow, that's a lot",
-      "b3": "It is, dear. Want me to warn you when it passes $400? 💚",
-      "b4": "Sure! And remind me of rent on the 5th",
-      "b5": "I've got you. On the 5th I'll remind you about <b>rent</b> nice and early ⏰"
+      "b0": "Paid rent: $1,200",
+      "b1": "Noted, dear ✍️ This month is closing in the green so far 💚",
+      "b2": "Is John's allowance running out?",
+      "b3": "Still <b>$8</b> left this month. He's been spending more on snacks this week.",
+      "b4": "Set aside 100 for December trip",
+      "b5": "Saved! Only <b>$900</b> left to the family goal 🎄"
     },
     "homage": {
       "eyebrow": "who was Dona Wilma",
