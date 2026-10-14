@@ -1088,6 +1088,10 @@
         "dpo": {
           "title": "9. Contacto do Encarregado (DPO)",
           "content": "Para questões relacionadas com a privacidade e proteção de dados, entre em contacto: contato@donawilma.com.br"
+        },
+        "googleData": {
+          "title": "10. Dados do Google (Google Limited Use)",
+          "content": "Quando liga a Dona Wilma ao Google Agenda, solicitamos os âmbitos \"https://www.googleapis.com/auth/calendar.events\" (para criar, editar e eliminar eventos em seu nome) e \"https://www.googleapis.com/auth/calendar.readonly\" (para consultar os seus compromissos e enviar lembretes pelo WhatsApp).\n\nUsamos estes dados exclusivamente para sincronizar os compromissos solicitados por si com o seu Google Agenda, enviar lembretes pelo WhatsApp e responder às suas consultas sobre a agenda. Armazenamos apenas os tokens OAuth necessários (encriptados em repouso no Supabase) e metadados mínimos dos eventos que a nossa aplicação sincroniza. Não copiamos nem armazenamos o conteúdo integral da sua agenda.\n\nO uso pela Dona Wilma de informações recebidas das Google APIs cumpre a Google API Services User Data Policy, incluindo os requisitos de Uso Limitado (Limited Use). Especificamente: (a) não transferimos estes dados a terceiros, exceto quando necessário para fornecer ou melhorar funcionalidades visíveis ao utilizador; (b) não utilizamos estes dados para publicidade; (c) estes dados nunca são lidos por humanos, exceto com o seu consentimento explícito, por motivos de segurança (ex.: investigação de abuso), para cumprir a legislação aplicável, ou para operações internas em formato agregado e anonimizado.\n\nPode revogar o acesso da Dona Wilma ao Google Agenda em qualquer momento em https://myaccount.google.com/permissions ou enviando um e-mail para contato@donawilma.com.br — nós revogaremos e eliminaremos os tokens e dados vinculados em até 30 dias."
         }
       }
     }
