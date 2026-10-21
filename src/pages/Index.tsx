@@ -1,6 +1,6 @@
 import { CALENDAR_ENABLED } from "@/lib/featureFlags";
 import { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -429,8 +429,8 @@ const LandingPage = () => {
                 <li><a href="#home" className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.nav.home', 'Home')}</a></li>
                 <li><a href="#como-funciona" className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.nav.howItWorks')}</a></li>
                 <li><a href="#planos" className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.nav.plans')}</a></li>
-                <li><Link to="/termos" className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.footer.terms')}</Link></li>
-                <li><Link to="/privacidade" className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.footer.privacy')}</Link></li>
+                <li><a href="/termos.html" className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.footer.terms')}</a></li>
+                <li><a href="/privacidade.html" className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.footer.privacy')}</a></li>
               </ul>
             </div>
             <div>
