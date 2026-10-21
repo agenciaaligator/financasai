@@ -1088,6 +1088,10 @@
         "dpo": {
           "title": "9. Contacto del Responsable (DPO)",
           "content": "Para cuestiones relacionadas con la privacidad y protección de datos, póngase en contacto: contato@donawilma.com.br"
+        },
+        "googleData": {
+          "title": "10. Datos de Google (Google Limited Use)",
+          "content": "Cuando conectas Dona Wilma con Google Calendar, solicitamos los ámbitos \"https://www.googleapis.com/auth/calendar.events\" (para crear, editar y eliminar eventos en tu nombre) y \"https://www.googleapis.com/auth/calendar.readonly\" (para consultar tus compromisos y enviar recordatorios por WhatsApp).\n\nUsamos estos datos exclusivamente para sincronizar los compromisos solicitados por ti con tu Google Calendar, enviar recordatorios por WhatsApp y responder a tus consultas sobre la agenda. Solo almacenamos los tokens OAuth necesarios (cifrados en reposo en Supabase) y metadatos mínimos de los eventos que nuestra aplicación sincroniza. No copiamos ni almacenamos el contenido íntegro de tu calendario.\n\nEl uso por parte de Dona Wilma de la información recibida de las Google APIs cumple con la Google API Services User Data Policy, incluidos los requisitos de Uso Limitado (Limited Use). Específicamente: (a) no transferimos estos datos a terceros, excepto cuando sea necesario para proporcionar o mejorar funciones visibles al usuario; (b) no usamos estos datos para publicidad; (c) estos datos nunca son leídos por humanos, excepto con tu consentimiento explícito, por motivos de seguridad (ej.: investigación de abuso), para cumplir con la legislación aplicable, o para operaciones internas en forma agregada y anonimizada.\n\nPuedes revocar el acceso de Dona Wilma a Google Calendar en cualquier momento en https://myaccount.google.com/permissions o enviando un correo a contato@donawilma.com.br — revocaremos y eliminaremos los tokens y datos vinculados en un plazo de 30 días."
         }
       }
     }

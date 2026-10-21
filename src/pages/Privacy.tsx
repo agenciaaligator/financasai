@@ -10,7 +10,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 
 const sectionKeys = [
   "dataCollected", "dataUsage", "sharing", "ai", "security",
-  "rights", "cookies", "retention", "dpo"
+  "rights", "cookies", "retention", "dpo", "googleData"
 ] as const;
 
 export default function Privacy() {

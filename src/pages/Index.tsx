@@ -429,8 +429,8 @@ const LandingPage = () => {
                 <li><a href="#home" className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.nav.home', 'Home')}</a></li>
                 <li><a href="#como-funciona" className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.nav.howItWorks')}</a></li>
                 <li><a href="#planos" className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.nav.plans')}</a></li>
-                <li><button onClick={() => navigate("/termos")} className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.footer.terms')}</button></li>
-                <li><button onClick={() => navigate("/privacidade")} className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.footer.privacy')}</button></li>
+                <li><a href="/termos.html" className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.footer.terms')}</a></li>
+                <li><a href="/privacidade.html" className="hover:text-white hover:translate-x-1 inline-block transition-all">{t('landing.footer.privacy')}</a></li>
               </ul>
             </div>
             <div>
