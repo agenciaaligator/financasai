@@ -25,13 +25,17 @@ import { AdminPanel } from "@/components/admin/AdminPanel";
 import { useUserRole } from "@/hooks/useUserRole";
 import { SignUpForm } from "@/components/auth/SignUpForm";
 import { supabase } from "@/integrations/supabase/client";
+import { usePageTracking } from "@/hooks/usePageTracking";
 
 const queryClient = new QueryClient();
 
 const AuthEventHandler = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  
+
+  // Dispara pageview no PostHog + GA4 a cada mudanca de rota do React Router
+  usePageTracking();
+
   const [isRecovery] = useState(() => {
     return sessionStorage.getItem('supabase_recovery') === 'true' ||
            window.location.hash.includes('type=recovery') ||

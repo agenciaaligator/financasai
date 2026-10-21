@@ -2,8 +2,13 @@ import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import './i18n'
+import { initAnalytics } from './lib/analytics'
 
 console.log('[MAIN] App inicializando...');
+
+// Inicializa analytics o quanto antes (silenciosamente no-op se as chaves nao
+// estiverem configuradas no .env)
+initAnalytics();
 
 // Função AGRESSIVA para buscar versão remota - tenta version.txt primeiro
 async function fetchRemoteVersion(timeoutMs = 1500): Promise<string | null> {

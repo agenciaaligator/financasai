@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { track } from '@/lib/analytics';
 
 export const useCheckout = () => {
   const [loading, setLoading] = useState(false);
@@ -9,14 +10,20 @@ export const useCheckout = () => {
     setLoading(true);
     try {
       console.log('[CHECKOUT] Creating session with priceId:', priceId, 'cycle:', cycle);
-      
+
+      track('checkout_started', {
+        gateway: 'stripe',
+        price_id: priceId,
+        cycle: cycle || 'monthly',
+      });
+
       toast({
         title: "🔄 Redirecionando para checkout...",
         description: "Aguarde enquanto preparamos seu pagamento",
       });
 
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { 
+        body: {
           priceId,
           cycle: cycle || 'monthly'
         },
