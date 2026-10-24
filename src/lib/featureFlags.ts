@@ -1,14 +1,15 @@
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * 🚧 Agenda / Google Calendar — flag ATIVADA TEMPORARIAMENTE neste branch
- * exclusivamente para gravar o vídeo-demo exigido pela verificação OAuth do
- * Google ("Funcionalidade do app"). Este branch NÃO deve ser mergeado em main
- * até o Google aprovar o app em verificação — a flag deve voltar pra `false`
- * no merge ou o branch deve ser descartado após a gravação.
+ * Agenda / Google Calendar — flag de rollout.
  *
- * Motivo original da flag: verificação do app no Google Cloud em análise.
- * Nada foi removido — toda a funcionalidade volta com esta única flag.
+ * Ativada em produção para permitir gravação do vídeo-demo OAuth exigido pela
+ * verificação do Google Cloud, e para disponibilizar a funcionalidade para
+ * usuários da lista de testers aprovada no Google OAuth Consent Screen.
+ *
+ * Importante: usuários fora da lista de testers VÃO ver o botão "Conectar
+ * Google Agenda" mas o Google vai rejeitar o OAuth com "unverified app" até
+ * a verificação ser aprovada. Avaliar se adicionar aviso no UI pra isso.
  */
 export const CALENDAR_ENABLED = true;
 
