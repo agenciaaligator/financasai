@@ -1,4 +1,28 @@
+# robots.txt — Dona Wilma
+# https://donawilma.com.br
+
 User-agent: *
 Allow: /
+Allow: /comparacao.html
+Allow: /privacidade.html
+Allow: /termos.html
+
+# Rotas de aplicacao (nao indexar - sao fluxos autenticados ou transitorios)
+Disallow: /login
+Disallow: /register
+Disallow: /choose-plan
+Disallow: /escolher-plano
+Disallow: /signup
+Disallow: /cadastro
+Disallow: /admin
+Disallow: /boas-vindas
+Disallow: /reset-password
+Disallow: /set-password
+Disallow: /payment-success
+Disallow: /payment-cancelled
+Disallow: /pagamento-pix
+Disallow: /subscription-inactive
+Disallow: /auth/
+Disallow: /conectar-agenda
 
 Sitemap: https://donawilma.com.br/sitemap.xml
