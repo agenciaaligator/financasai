@@ -1,12 +1,17 @@
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * 🚧 Agenda / Google Calendar temporariamente desativada.
- * Motivo: verificação do app no Google Cloud ainda em análise.
- * Ao aprovar: mudar para `true` (e definir CALENDAR_ENABLED=true nos secrets do Supabase).
- * Nada foi removido — toda a funcionalidade volta com esta única flag.
+ * Agenda / Google Calendar — flag de rollout.
+ *
+ * Ativada em produção para permitir gravação do vídeo-demo OAuth exigido pela
+ * verificação do Google Cloud, e para disponibilizar a funcionalidade para
+ * usuários da lista de testers aprovada no Google OAuth Consent Screen.
+ *
+ * Importante: usuários fora da lista de testers VÃO ver o botão "Conectar
+ * Google Agenda" mas o Google vai rejeitar o OAuth com "unverified app" até
+ * a verificação ser aprovada. Avaliar se adicionar aviso no UI pra isso.
  */
-export const CALENDAR_ENABLED = false;
+export const CALENDAR_ENABLED = true;
 
 export interface PlanLimits {
   maxTransactions: number | null;
