@@ -48,6 +48,148 @@ async function sendWhatsAppMessage(to: string, message: string): Promise<void> {
 }
 
 // ============================================================
+// 🤖 Helper central pra chamadas Gemini (Google AI Studio direto).
+//
+// Substitui as chamadas antigas ao Lovable AI Gateway, removendo um
+// hop de rede e a dependencia externa. Usa Gemini 2.5 Flash (mesmo
+// modelo do gateway) e aceita entrada em formato OpenAI (`messages`
+// com `role` + `content`) pra minimizar impacto nos call sites.
+//
+// Features:
+// - Converte formato OpenAI -> formato nativo Gemini automaticamente
+// - Timeout configuravel (default 15s) via AbortController
+// - 1 retry em 5xx/429/timeout (opcional)
+// - Suporte a imagens em base64 via image_url
+// - Suporte a system prompts via role: 'system'
+//
+// Config necessaria: secret GEMINI_API_KEY no Supabase Edge Functions.
+// ============================================================
+interface GeminiMsgPart {
+  type: 'text' | 'image_url';
+  text?: string;
+  image_url?: { url: string };
+}
+interface GeminiMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string | GeminiMsgPart[];
+}
+interface GeminiOptions {
+  temperature?: number;
+  maxTokens?: number;
+  timeoutMs?: number;
+  retries?: number;
+  model?: string;
+}
+
+async function callGemini(messages: GeminiMessage[], opts: GeminiOptions = {}): Promise<string> {
+  const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+  if (!GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY não configurado nos secrets do Supabase');
+  }
+
+  const model = opts.model ?? 'gemini-2.5-flash';
+  const timeout = opts.timeoutMs ?? 15000;
+  const maxRetries = opts.retries ?? 1;
+
+  // Separa system prompt do resto
+  const systemMsg = messages.find((m) => m.role === 'system');
+  const nonSystem = messages.filter((m) => m.role !== 'system');
+
+  // Converte formato OpenAI -> Gemini native
+  const contents = nonSystem.map((m) => {
+    const role = m.role === 'assistant' ? 'model' : 'user';
+    const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [];
+
+    if (typeof m.content === 'string') {
+      parts.push({ text: m.content });
+    } else {
+      for (const p of m.content) {
+        if (p.type === 'text' && p.text) {
+          parts.push({ text: p.text });
+        } else if (p.type === 'image_url' && p.image_url?.url) {
+          const match = p.image_url.url.match(/^data:(.+?);base64,(.+)$/);
+          if (!match) {
+            throw new Error('image_url deve estar no formato data:MIME;base64,...');
+          }
+          parts.push({ inlineData: { mimeType: match[1], data: match[2] } });
+        }
+      }
+    }
+
+    return { role, parts };
+  });
+
+  const body: Record<string, unknown> = {
+    contents,
+    generationConfig: {
+      temperature: opts.temperature ?? 0.2,
+      maxOutputTokens: opts.maxTokens ?? 500,
+    },
+  };
+
+  if (systemMsg) {
+    const sysText = typeof systemMsg.content === 'string'
+      ? systemMsg.content
+      : systemMsg.content.filter((p) => p.type === 'text').map((p) => p.text || '').join('\n');
+    body.systemInstruction = { parts: [{ text: sysText }] };
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+
+      if (res.ok) {
+        const data = await res.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (typeof text === 'string' && text.length > 0) {
+          return text;
+        }
+        // Resposta sem texto (safety block, etc) — nao vale retry
+        console.error('❌ Gemini retornou sem texto:', JSON.stringify(data).slice(0, 500));
+        throw new Error('Gemini retornou resposta vazia');
+      }
+
+      const errText = await res.text();
+
+      // Retry em 429 (rate limit) ou 5xx
+      if ((res.status === 429 || res.status >= 500) && attempt < maxRetries) {
+        console.warn(`⚠️ Gemini ${res.status} (tentativa ${attempt + 1}): ${errText.slice(0, 200)}`);
+        lastErr = new Error(`Gemini ${res.status}`);
+        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+        continue;
+      }
+
+      // 4xx (client error) - nao retenta, loga e lanca
+      console.error(`❌ Gemini ${res.status}:`, errText.slice(0, 400));
+      throw new Error(`Erro na API Gemini: ${res.status}`);
+    } catch (err: unknown) {
+      clearTimeout(timer);
+      const errAny = err as { name?: string; message?: string };
+      if (errAny?.name === 'AbortError') {
+        console.warn(`⚠️ Gemini timeout após ${timeout}ms (tentativa ${attempt + 1})`);
+        lastErr = new Error('Gemini timeout');
+        if (attempt < maxRetries) continue;
+        throw new Error('Gemini não respondeu a tempo');
+      }
+      throw err;
+    }
+  }
+
+  throw (lastErr as Error) ?? new Error('Gemini falhou após tentativas');
+}
+
+// ============================================================
 // Enforcement de uso WhatsApp (soft cap 80/100%, hard cap 120%)
 // ============================================================
 async function checkUsageBeforeReply(
@@ -1049,25 +1191,12 @@ class NaturalLanguageProcessor {
     confidence: number;
   } | null> {
     try {
-      const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-      if (!LOVABLE_API_KEY) {
-        console.error('LOVABLE_API_KEY not configured');
-        return null;
-      }
-
       console.log('🤖 Processing natural language:', messageText);
 
-      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
-          messages: [{
-            role: 'system',
-            content: `Você é um assistente financeiro que analisa mensagens em linguagem natural e extrai informações estruturadas.
+      const content: string = await callGemini([
+        {
+          role: 'system',
+          content: `Você é um assistente financeiro que analisa mensagens em linguagem natural e extrai informações estruturadas.
 
 INTENÇÕES POSSÍVEIS:
 - "add_transaction": usuário quer registrar uma receita ou despesa
@@ -1102,23 +1231,10 @@ IMPORTANTE:
 
 Retorne APENAS um JSON válido no formato:
 {"intent": "add_transaction", "entities": {"amount": 150, "title": "mercado", "type": "expense"}, "confidence": 0.95}`
-          }, {
-            role: 'user',
-            content: messageText
-          }],
-          temperature: 0.3,
-          max_tokens: 300
-        })
-      });
+        },
+        { role: 'user', content: messageText }
+      ], { temperature: 0.3, maxTokens: 300 });
 
-      if (!response.ok) {
-        console.error('AI API error:', response.status, await response.text());
-        return null;
-      }
-
-      const result = await response.json();
-      const content = result.choices[0]?.message?.content;
-      
       console.log('🤖 NLP Response:', content);
 
       // Parse JSON
@@ -1205,25 +1321,11 @@ class AICategorizer {
         console.error('Error fetching patterns for AI context:', err);
       }
       
-      const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-      if (!LOVABLE_API_KEY) {
-        console.error('LOVABLE_API_KEY not configured');
-        return { category_id: null, category_name: 'Sem categoria', confidence: 0 };
-      }
-
       // Chamar a IA para análise semântica
-      const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
-          messages: [
-            {
-              role: 'system',
-              content: `Você é um assistente que categoriza transações financeiras. 
+      const aiContent: string = await callGemini([
+        {
+          role: 'system',
+          content: `Você é um assistente que categoriza transações financeiras.
               
 Seu trabalho é analisar a mensagem do usuário e escolher a categoria MAIS ADEQUADA da lista fornecida.
 
@@ -1246,31 +1348,19 @@ Responda APENAS com um JSON válido no formato:
 {"category": "Nome da Categoria", "confidence": 0.95}
 
 Onde confidence é um número entre 0 e 1 indicando sua confiança na escolha.`
-            },
-            {
-              role: 'user',
-              content: `Mensagem do usuário: "${messageText}"
-              
+        },
+        {
+          role: 'user',
+          content: `Mensagem do usuário: "${messageText}"
+
 Categorias disponíveis: ${categoriesText}${patternsContext}
 
 Tipo da transação: ${transactionType === 'income' ? 'receita' : 'despesa'}
 
 Qual a melhor categoria?`
-            }
-          ],
-          temperature: 0.3,
-          max_tokens: 100
-        }),
-      });
+        }
+      ], { temperature: 0.3, maxTokens: 100 });
 
-      if (!aiResponse.ok) {
-        console.error('AI API error:', aiResponse.status, await aiResponse.text());
-        return { category_id: null, category_name: 'Sem categoria', confidence: 0 };
-      }
-
-      const aiResult = await aiResponse.json();
-      const aiContent = aiResult.choices[0]?.message?.content;
-      
       console.log('🤖 AI Response:', aiContent);
 
       // Parse da resposta da IA
@@ -1364,27 +1454,15 @@ class ReceiptOCR {
     category: string;
     date?: string;
   }> {
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY não configurado');
-    }
-
     console.log('🤖 Analisando nota fiscal com Gemini Vision...');
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [{
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: `Analise esta imagem de documento financeiro brasileiro e extraia as seguintes informações:
+    const content: string = await callGemini([
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: `Analise esta imagem de documento financeiro brasileiro e extraia as seguintes informações:
 
 1. Valor total (apenas número, ex: 87.50)
 2. Nome do estabelecimento ou empresa
@@ -1411,28 +1489,16 @@ IMPORTANTE:
 
 Retorne APENAS um JSON válido no formato:
 {"amount": 87.50, "merchant": "Nome do Local", "category": "Mercado", "date": "07/10/2025", "document_type": "receipt", "due_date": ""}`
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:image/jpeg;base64,${imageBase64}`
-              }
+          },
+          {
+            type: 'image_url',
+            image_url: {
+              url: `data:image/jpeg;base64,${imageBase64}`
             }
-          ]
-        }],
-        temperature: 0.2,
-        max_tokens: 500
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Erro na API Gemini:', response.status, errorText);
-      throw new Error(`Erro na API Gemini: ${response.status}`);
-    }
-
-    const result = await response.json();
-    const content = result.choices[0]?.message?.content;
+          }
+        ]
+      }
+    ], { temperature: 0.2, maxTokens: 500 });
 
     console.log('🤖 Resposta Gemini Vision:', content);
 
@@ -2142,8 +2208,8 @@ class WhatsAppAgent {
     // 🔐 VALIDAÇÃO DE SEGREDOS ANTES DE PROCESSAR IMAGEM
     if (message.image || message.type === 'image') {
       const WHATSAPP_ACCESS_TOKEN = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
-      const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-      
+      const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+
       if (!WHATSAPP_ACCESS_TOKEN) {
         console.error('❌ WHATSAPP_ACCESS_TOKEN não configurado');
         return {
@@ -2151,9 +2217,9 @@ class WhatsAppAgent {
           sessionData: session.session_data || {}
         };
       }
-      
-      if (!LOVABLE_API_KEY) {
-        console.error('❌ LOVABLE_API_KEY não configurado');
+
+      if (!GEMINI_API_KEY) {
+        console.error('❌ GEMINI_API_KEY não configurado');
         return {
           response: '🤖 Serviço de OCR temporariamente indisponível. Tente adicionar manualmente: "gastei 50 mercado"',
           sessionData: session.session_data || {}
