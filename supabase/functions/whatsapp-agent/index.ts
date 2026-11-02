@@ -1421,7 +1421,7 @@ Retorne APENAS um JSON válido no formato:
           ]
         }],
         temperature: 0.2,
-        max_tokens: 300
+        max_tokens: 500
       })
     });
 
@@ -1433,22 +1433,44 @@ Retorne APENAS um JSON válido no formato:
 
     const result = await response.json();
     const content = result.choices[0]?.message?.content;
-    
+
     console.log('🤖 Resposta Gemini Vision:', content);
 
-    // Parse do JSON
-    const jsonMatch = content.match(/\{[^}]+\}/);
-    if (!jsonMatch) {
+    // Extrai JSON da resposta. Gemini às vezes envolve em markdown
+    // (```json ... ```) ou adiciona explicação antes/depois. Precisamos
+    // lidar com os três casos: markdown code block, JSON puro com campos
+    // aninhados, ou texto misturado com JSON.
+    let jsonText: string | null = null;
+    const markdownMatch = content?.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+    if (markdownMatch) {
+      jsonText = markdownMatch[1];
+    } else if (content) {
+      // Pega do primeiro '{' ao último '}' da resposta (suporta JSON aninhado)
+      const start = content.indexOf('{');
+      const end = content.lastIndexOf('}');
+      if (start >= 0 && end > start) {
+        jsonText = content.slice(start, end + 1);
+      }
+    }
+
+    if (!jsonText) {
+      console.error('❌ Nenhum JSON encontrado na resposta do Gemini. Content:', content);
       throw new Error('Não consegui extrair dados da nota fiscal');
     }
 
-    const extractedData = JSON.parse(jsonMatch[0]);
-    
+    let extractedData: Record<string, unknown>;
+    try {
+      extractedData = JSON.parse(jsonText);
+    } catch (parseErr) {
+      console.error('❌ JSON invalido na resposta do Gemini. Texto extraido:', jsonText, 'Erro:', parseErr);
+      throw new Error('Não consegui extrair dados da nota fiscal');
+    }
+
     return {
-      amount: parseFloat(extractedData.amount) || 0,
-      merchant: extractedData.merchant || 'Desconhecido',
-      category: extractedData.category || 'Outros',
-      date: extractedData.date || undefined
+      amount: parseFloat(String(extractedData.amount)) || 0,
+      merchant: (extractedData.merchant as string) || 'Desconhecido',
+      category: (extractedData.category as string) || 'Outros',
+      date: (extractedData.date as string) || undefined
     };
   }
 }
