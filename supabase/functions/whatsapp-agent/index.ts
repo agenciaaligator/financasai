@@ -123,7 +123,12 @@ async function callGemini(messages: GeminiMessage[], opts: GeminiOptions = {}): 
     contents,
     generationConfig: {
       temperature: opts.temperature ?? 0.2,
-      maxOutputTokens: opts.maxTokens ?? 500,
+      maxOutputTokens: opts.maxTokens ?? 1000,
+      // Desativa o modo "thinking" do gemini-2.5-flash. Com thinking ativado
+      // (default), o modelo gasta tokens "pensando" antes de responder, o
+      // que facilmente consome maxOutputTokens inteiro e deixa a resposta
+      // truncada ou vazia. Pra tasks estruturadas (JSON) isso só atrapalha.
+      thinkingConfig: { thinkingBudget: 0 },
     },
   };
 
@@ -1359,18 +1364,34 @@ Tipo da transação: ${transactionType === 'income' ? 'receita' : 'despesa'}
 
 Qual a melhor categoria?`
         }
-      ], { temperature: 0.3, maxTokens: 100 });
+      ], { temperature: 0.3, maxTokens: 300 });
 
       console.log('🤖 AI Response:', aiContent);
 
-      // Parse da resposta da IA
-      const jsonMatch = aiContent.match(/\{[^}]+\}/);
-      if (!jsonMatch) {
-        console.error('Failed to parse AI response');
+      // Parse robusto do JSON — mesma estrategia do OCR. Lida com markdown
+      // code block (```json ... ```) e com JSON embutido em texto.
+      let catJsonText: string | null = null;
+      const catMarkdown = aiContent?.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+      if (catMarkdown) {
+        catJsonText = catMarkdown[1];
+      } else if (aiContent) {
+        const s = aiContent.indexOf('{');
+        const e = aiContent.lastIndexOf('}');
+        if (s >= 0 && e > s) catJsonText = aiContent.slice(s, e + 1);
+      }
+
+      if (!catJsonText) {
+        console.error('Failed to parse AI response. Content:', aiContent);
         return { category_id: null, category_name: 'Sem categoria', confidence: 0 };
       }
 
-      const aiSuggestion = JSON.parse(jsonMatch[0]);
+      let aiSuggestion: Record<string, unknown>;
+      try {
+        aiSuggestion = JSON.parse(catJsonText);
+      } catch (parseErr) {
+        console.error('Failed to JSON.parse AI response. Texto:', catJsonText, 'Erro:', parseErr);
+        return { category_id: null, category_name: 'Sem categoria', confidence: 0 };
+      }
       const suggestedCategory = aiSuggestion.category;
       const confidence = aiSuggestion.confidence || 0;
 
