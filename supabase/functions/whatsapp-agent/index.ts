@@ -157,11 +157,16 @@ async function callGemini(messages: GeminiMessage[], opts: GeminiOptions = {}): 
       if (res.ok) {
         const data = await res.json();
         const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        const finishReason = data?.candidates?.[0]?.finishReason;
+        const usage = data?.usageMetadata;
+        if (finishReason === 'MAX_TOKENS') {
+          console.warn('⚠️ Gemini finalizou por MAX_TOKENS. usage:', JSON.stringify(usage));
+        }
         if (typeof text === 'string' && text.length > 0) {
           return text;
         }
-        // Resposta sem texto (safety block, etc) — nao vale retry
-        console.error('❌ Gemini retornou sem texto:', JSON.stringify(data).slice(0, 500));
+        // Resposta sem texto (safety block, thinking consumiu tudo, etc) — nao vale retry
+        console.error('❌ Gemini retornou sem texto. finishReason:', finishReason, 'usage:', JSON.stringify(usage), 'data:', JSON.stringify(data).slice(0, 500));
         throw new Error('Gemini retornou resposta vazia');
       }
 
@@ -1519,9 +1524,9 @@ Retorne APENAS um JSON válido no formato:
           }
         ]
       }
-    ], { temperature: 0.2, maxTokens: 500 });
+    ], { temperature: 0.2, maxTokens: 2000 });
 
-    console.log('🤖 Resposta Gemini Vision:', content);
+    console.log('🤖 Resposta Gemini Vision (length:', content.length, '):', content);
 
     // Extrai JSON da resposta. Gemini às vezes envolve em markdown
     // (```json ... ```) ou adiciona explicação antes/depois. Precisamos
