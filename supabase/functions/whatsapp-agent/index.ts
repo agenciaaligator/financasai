@@ -1441,8 +1441,9 @@ class ReceiptOCR {
     }
 
     // 1. Obter URL da mídia
+    // v21.0 - v17.0 foi descontinuada pela Meta (versoes duram ~2 anos)
     const mediaInfoResponse = await fetch(
-      `https://graph.facebook.com/v17.0/${mediaId}`,
+      `https://graph.facebook.com/v21.0/${mediaId}`,
       {
         headers: {
           'Authorization': `Bearer ${WHATSAPP_ACCESS_TOKEN}`
@@ -1451,6 +1452,12 @@ class ReceiptOCR {
     );
 
     if (!mediaInfoResponse.ok) {
+      const errBody = await mediaInfoResponse.text().catch(() => '');
+      console.error('❌ Falha ao obter URL da midia:', {
+        status: mediaInfoResponse.status,
+        body: errBody.slice(0, 500),
+        mediaId,
+      });
       throw new Error(`Erro ao obter URL da mídia: ${mediaInfoResponse.status}`);
     }
 
@@ -1465,6 +1472,12 @@ class ReceiptOCR {
     });
 
     if (!mediaResponse.ok) {
+      const errBody = await mediaResponse.text().catch(() => '');
+      console.error('❌ Falha ao baixar midia:', {
+        status: mediaResponse.status,
+        body: errBody.slice(0, 500),
+        mediaUrl: mediaUrl?.slice(0, 120),
+      });
       throw new Error(`Erro ao baixar mídia: ${mediaResponse.status}`);
     }
 
@@ -7824,7 +7837,7 @@ serve(async (req) => {
       console.log('[SEND-VALIDATION-CODE] 🔐 Generated code:', code);
       
       // Enviar via WhatsApp Business API
-      const WHATSAPP_API_URL = `https://graph.facebook.com/v17.0/${Deno.env.get('WHATSAPP_PHONE_NUMBER_ID')}/messages`;
+      const WHATSAPP_API_URL = `https://graph.facebook.com/v21.0/${Deno.env.get('WHATSAPP_PHONE_NUMBER_ID')}/messages`;
       const WHATSAPP_ACCESS_TOKEN = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
 
       console.log('[SEND-VALIDATION-CODE] 📤 Calling WhatsApp API...');
