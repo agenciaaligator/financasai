@@ -1524,7 +1524,15 @@ Retorne APENAS um JSON válido no formato:
           }
         ]
       }
-    ], { temperature: 0.2, maxTokens: 2000 });
+    ], {
+      // gemini-2.0-flash nao tem thinking nativo, entao evita o bug de
+      // consumir maxOutputTokens em "latent thinking" (thinkingBudget: 0
+      // no 2.5-flash nao zerava totalmente em v1beta). Vision funciona
+      // identico ao 2.5-flash.
+      model: 'gemini-2.0-flash',
+      temperature: 0.2,
+      maxTokens: 2000,
+    });
 
     console.log('🤖 Resposta Gemini Vision (length:', content.length, '):', content);
 
