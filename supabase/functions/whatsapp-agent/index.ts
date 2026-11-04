@@ -1506,42 +1506,67 @@ class ReceiptOCR {
         content: [
           {
             type: 'text',
-            text: `Analise esta imagem de documento financeiro brasileiro e extraia as seguintes informações:
+            text: `Você é um classificador de notas fiscais brasileiras. Siga ESTE PROCESSO sem pular etapas:
 
-1. Valor total (apenas número, ex: 87.50)
-2. Nome do estabelecimento ou empresa
-3. Categoria provável (escolha UMA das opções: Mercado, Restaurantes e delivery, Transporte, Combustível, Moradia, Contas da casa, Saúde, Educação, Lazer, Assinaturas, Compras, Cuidados pessoais, Pets, Outros)
-4. Data do documento (formato DD/MM/AAAA)
-5. Tipo de documento: "receipt" (cupom fiscal, comprovante de compra) ou "bill" (conta de luz/água/gás/telefone, boleto, fatura)
-6. Se for uma CONTA (bill): extraia a DATA DE VENCIMENTO (formato DD/MM/AAAA)
+ETAPA 1 — Leia o(s) ITEM(ns) listados na seção de produtos da nota (coluna "DESCRIÇÃO" / "DISCRIMINAÇÃO" / lista de itens). IGNORE o cabeçalho com o nome do estabelecimento nesta etapa.
+ETAPA 2 — Resuma o item principal em 2–4 palavras em minúsculas (ex: "gasolina comum", "carregador celular", "dipirona 500mg", "refrigerante coca").
+ETAPA 3 — Decida a CATEGORIA a partir do ITEM, NÃO do nome do estabelecimento. O estabelecimento só decide o desempate quando o item é genérico.
 
-IMPORTANTE:
-- Para "amount", retorne APENAS o número decimal (use ponto como separador)
-- Para "merchant", retorne o nome do estabelecimento ou concessionária
-- Para "category", escolha UMA categoria da lista acima. REGRAS OBRIGATÓRIAS:
+CATEGORIAS VÁLIDAS (escolha UMA, exatamente como escrito):
+Mercado, Restaurantes e delivery, Transporte, Combustível, Moradia, Contas da casa, Saúde, Educação, Lazer, Assinaturas, Compras, Cuidados pessoais, Pets, Outros
 
-  REGRA MESTRE (prevalece sobre as regras por estabelecimento abaixo):
-  Olhe PRIMEIRO o ITEM comprado nos produtos da nota. Se o item claramente não é o produto principal do tipo de estabelecimento, a categoria é do ITEM, não do estabelecimento. Exemplos:
-    - Posto de gasolina vendendo carregador de celular, fone, cabo, pilha, chocolate, bebida, lanche → "Compras" (se for acessório/eletrônico) OU "Mercado" (se for comida/bebida), NÃO "Combustível"
-    - Supermercado vendendo remédio/vacina/medicamento → "Saúde", NÃO "Mercado"
-    - Farmácia vendendo cosmético/shampoo/maquiagem → "Cuidados pessoais" só se o item for 100% cosmético; caso contrário "Saúde"
-    - Loja de conveniência vendendo refeição pronta → "Restaurantes e delivery"
+MAPEAMENTO ITEM → CATEGORIA:
+- Gasolina, etanol, diesel, GNV, arla → "Combustível"
+- Uber, 99, táxi, pedágio, estacionamento, metrô, ônibus, passagem → "Transporte"
+- Comida pronta, lanche, refeição, bebida em restaurante, delivery → "Restaurantes e delivery"
+- Alimentos crus, frios, hortifruti, limpeza, higiene básica (sabão, papel higiênico) → "Mercado"
+- Remédio, medicamento, vacina, exame, consulta → "Saúde"
+- Shampoo, maquiagem, perfume, creme facial, esmalte → "Cuidados pessoais"
+- Carregador, cabo, fone, pilha, eletrônico, brinquedo, roupa, acessório, utensílio → "Compras"
+- Ração, petisco animal, areia de gato, consulta veterinária → "Pets"
+- Luz, água, gás, internet, telefone, celular (plano) → "Contas da casa"
+- Aluguel, condomínio, IPTU → "Moradia"
+- Curso, mensalidade escolar, material didático, livro técnico → "Educação"
+- Cinema, show, parque, streaming avulso, viagem lazer → "Lazer"
+- Netflix, Spotify, Amazon Prime, assinatura mensal → "Assinaturas"
 
-  Só use a regra do estabelecimento abaixo se o item VENDIDO bater com o produto principal do estabelecimento:
-  * Drogaria, farmácia, drogasil, droga raia, pague menos, pacheco, ultrafarma vendendo remédio/medicamento → "Saúde"
-  * Hospital, clínica, laboratório, consultório médico/dentista/exame → "Saúde"
-  * Supermercado, mercado, padaria, açougue, hortifruti vendendo comida/limpeza/higiene → "Mercado"
-  * Restaurante, lanchonete, cafeteria, delivery vendendo refeição → "Restaurantes e delivery"
-  * Posto de gasolina vendendo GASOLINA/ETANOL/DIESEL/GNV/ARLA → "Combustível"
-  * Uber, 99, estacionamento, pedágio → "Transporte"
-  * Conta de luz/água/gás/internet/celular → "Contas da casa"
-  * Aluguel, condomínio → "Moradia"
-- Para "date", use formato DD/MM/AAAA (data da compra ou emissão)
-- Para "document_type", use "receipt" para cupons/comprovantes ou "bill" para contas/boletos/faturas
-- Para "due_date", APENAS se for uma conta (bill): extraia a data de VENCIMENTO no formato DD/MM/AAAA. Procure por campos como "Vencimento", "Data de vencimento", "Vence em". Se não encontrar, deixe vazio.
+EXEMPLOS CONCRETOS (siga este padrão):
 
-Retorne APENAS um JSON válido no formato:
-{"amount": 87.50, "merchant": "Nome do Local", "category": "Mercado", "date": "07/10/2025", "document_type": "receipt", "due_date": ""}`
+Exemplo 1 — Nota: "DUCATI AUTO POSTO LTDA" + item "CARREGADOR DE CELULAR BRIXBOX"
+→ main_item: "carregador celular"
+→ category: "Compras" (NÃO "Combustível" — o posto vende carregador, não combustível aqui)
+
+Exemplo 2 — Nota: "SHELL SELECT" + item "GASOLINA ADITIVADA 30L"
+→ main_item: "gasolina"
+→ category: "Combustível"
+
+Exemplo 3 — Nota: "DROGARIA PACHECO" + item "DIPIRONA 500MG"
+→ main_item: "dipirona"
+→ category: "Saúde"
+
+Exemplo 4 — Nota: "DROGARIA PACHECO" + item "BATOM REVLON"
+→ main_item: "batom"
+→ category: "Cuidados pessoais" (NÃO "Saúde" — o item é cosmético, não remédio)
+
+Exemplo 5 — Nota: "CARREFOUR" + item "AMOXICILINA + ARROZ + FEIJÃO"
+→ main_item: "arroz feijão amoxicilina"
+→ category: "Mercado" (maioria do valor em comida; se fosse SÓ remédio, seria "Saúde")
+
+Exemplo 6 — Nota: "POSTO IPIRANGA" + item "SALGADINHO + REFRIGERANTE"
+→ main_item: "salgadinho refrigerante"
+→ category: "Mercado" (comida/bebida, não combustível)
+
+FORMATO DE SAÍDA — JSON válido, APENAS JSON, sem markdown, sem comentários, campos exatos nesta ordem:
+{"amount": 49.90, "merchant": "DUCATI AUTO POSTO LTDA", "main_item": "carregador celular", "category": "Compras", "date": "02/11/2026", "document_type": "receipt", "due_date": ""}
+
+REGRAS DE CAMPO:
+- "amount": número decimal com PONTO (ex: 49.90)
+- "merchant": nome do estabelecimento exatamente como está na nota
+- "main_item": descrição curta do produto COMPRADO, 2–4 palavras, minúsculas
+- "category": uma das categorias válidas acima, grafia exata (com acento)
+- "date": DD/MM/AAAA (data da compra/emissão)
+- "document_type": "receipt" (cupom/comprovante) ou "bill" (boleto/fatura)
+- "due_date": DD/MM/AAAA só se for bill com vencimento; caso contrário ""`
           },
           {
             type: 'image_url',
