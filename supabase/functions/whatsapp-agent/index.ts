@@ -1519,11 +1519,20 @@ IMPORTANTE:
 - Para "amount", retorne APENAS o número decimal (use ponto como separador)
 - Para "merchant", retorne o nome do estabelecimento ou concessionária
 - Para "category", escolha UMA categoria da lista acima. REGRAS OBRIGATÓRIAS:
-  * Se o estabelecimento for drogaria, farmácia, drogasil, droga raia, pague menos, pacheco, ultrafarma, ou vender remédios/medicamentos/injeção/vacina → SEMPRE "Saúde" (mesmo que também venda outros itens)
-  * Se for hospital, clínica, laboratório, consultório médico/dentista/exame → "Saúde"
-  * Supermercado, mercado, padaria, açougue, hortifruti → "Mercado"
-  * Restaurante, lanchonete, cafeteria, delivery → "Restaurantes e delivery"
-  * Posto de gasolina, combustível → "Combustível"
+
+  REGRA MESTRE (prevalece sobre as regras por estabelecimento abaixo):
+  Olhe PRIMEIRO o ITEM comprado nos produtos da nota. Se o item claramente não é o produto principal do tipo de estabelecimento, a categoria é do ITEM, não do estabelecimento. Exemplos:
+    - Posto de gasolina vendendo carregador de celular, fone, cabo, pilha, chocolate, bebida, lanche → "Compras" (se for acessório/eletrônico) OU "Mercado" (se for comida/bebida), NÃO "Combustível"
+    - Supermercado vendendo remédio/vacina/medicamento → "Saúde", NÃO "Mercado"
+    - Farmácia vendendo cosmético/shampoo/maquiagem → "Cuidados pessoais" só se o item for 100% cosmético; caso contrário "Saúde"
+    - Loja de conveniência vendendo refeição pronta → "Restaurantes e delivery"
+
+  Só use a regra do estabelecimento abaixo se o item VENDIDO bater com o produto principal do estabelecimento:
+  * Drogaria, farmácia, drogasil, droga raia, pague menos, pacheco, ultrafarma vendendo remédio/medicamento → "Saúde"
+  * Hospital, clínica, laboratório, consultório médico/dentista/exame → "Saúde"
+  * Supermercado, mercado, padaria, açougue, hortifruti vendendo comida/limpeza/higiene → "Mercado"
+  * Restaurante, lanchonete, cafeteria, delivery vendendo refeição → "Restaurantes e delivery"
+  * Posto de gasolina vendendo GASOLINA/ETANOL/DIESEL/GNV/ARLA → "Combustível"
   * Uber, 99, estacionamento, pedágio → "Transporte"
   * Conta de luz/água/gás/internet/celular → "Contas da casa"
   * Aluguel, condomínio → "Moradia"
