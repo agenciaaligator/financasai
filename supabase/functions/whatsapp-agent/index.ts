@@ -87,10 +87,12 @@ async function callGemini(messages: GeminiMessage[], opts: GeminiOptions = {}): 
     throw new Error('GEMINI_API_KEY não configurado nos secrets do Supabase');
   }
 
-  // Modelo recomendado pelo Google em nov/2026. gemini-2.0-flash foi
-  // descontinuado em jun/2026, gemini-2.5-flash tambem foi descontinuado
-  // (ambos retornam 404 "no longer available").
-  const model = opts.model ?? 'gemini-3.8-flash';
+  // gemini-3.6-flash: modelo "Stable" na doc oficial do Google
+  // (ai.google.dev/gemini-api/docs/models) em nov/2026.
+  // gemini-2.0-flash: shutdown 01/06/2026.
+  // gemini-2.5-flash: deprecated, shutdown planejado 01/12/2026.
+  // gemini-3.8-flash: marcado como "New" (sem label Stable).
+  const model = opts.model ?? 'gemini-3.6-flash';
   const timeout = opts.timeoutMs ?? 15000;
   const maxRetries = opts.retries ?? 1;
 
