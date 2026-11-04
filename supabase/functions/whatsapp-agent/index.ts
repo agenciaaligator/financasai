@@ -3644,13 +3644,37 @@ class WhatsAppAgent {
         parsedDate = `${localTime.getUTCFullYear()}-${String(localTime.getUTCMonth() + 1).padStart(2, '0')}-${String(localTime.getUTCDate()).padStart(2, '0')}`;
       }
 
+      // Resolve a categoria que o OCR extraiu para um category_id.
+      // Sem isso, saveTransaction ignora ocrData.category e cai no
+      // keyword matcher, que olha so o title ("DUCATI AUTO POSTO LTDA"
+      // -> "posto" -> Transporte) e sobrescreve o que o Gemini decidiu.
+      let ocrCategoryId: string | undefined;
+      if (ocrData.category) {
+        const normalize = (s: string) =>
+          s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+        const ocrCatNorm = normalize(ocrData.category);
+        const { data: userCats } = await supabase
+          .from('categories')
+          .select('id, name')
+          .eq('user_id', session.user_id!)
+          .eq('type', 'expense');
+        const match = userCats?.find((c) => normalize(c.name) === ocrCatNorm);
+        if (match) {
+          ocrCategoryId = match.id;
+          console.log(`✅ OCR category "${ocrData.category}" -> category_id ${match.id}`);
+        } else {
+          console.log(`⚠️ OCR category "${ocrData.category}" nao bateu com nenhuma categoria do user; fallback no matcher`);
+        }
+      }
+
       // Criar transação
       const transaction: Partial<Transaction> = {
         amount: ocrData.amount,
         title: ocrData.merchant,
         type: 'expense',
         date: parsedDate,
-        source: 'whatsapp'
+        source: 'whatsapp',
+        category_id: ocrCategoryId,
       };
 
       // Buscar nome do usuário para resposta personalizada
